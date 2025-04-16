@@ -1,5 +1,12 @@
 #include<Windows.h>
 #include<cstdint>
+#include<d3d12.h>
+#include<dxgi1_6.h>
+#include <string>
+#include <cassert>
+
+#pragma comment(lib, "d3d12.lib")
+#pragma comment(lib, "dxgi.lib")
 
 //ウィンドウプロシージャ
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -62,9 +69,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 
 
 
-//windowsアプリでのエントリーポイント(main関数)
-int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
-{
+	//DXGIファクトリーの生成
+	IDXGIFactory6* dxgiFactory = nullptr;
+
+	/*HRESULTはWindows系のエラーコードであり
+	 関数が成功したかSUCCEEDEDマクロで判定できる*/
+	HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory));
+
+	/*初期化の根本的な部分でエラーが出た場合ｈプログラムが間違っているか、
+	どうにも出来ない場合が多いのでassertにしておく*/
+	assert(SUCCEEDED(hr));
+
+
 	MSG msg{};
 
 	//ウィンドウのxボタンが押されるまでループ
@@ -84,4 +100,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	}
 
 	return 0;
+}
+
+
+void Log(const std::string& message)
+{
+	//標準出力にメッセージを出力
+	OutputDebugStringA(message.c_str());
 }
