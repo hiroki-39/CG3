@@ -1,6 +1,7 @@
 #include<Windows.h>
 #include<cstdint>
-
+#include<string>
+#include<format>
 
 //ウィンドウプロシージャ
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -66,6 +67,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//ウィンドウの表示
 	ShowWindow(hwnd, SW_SHOW);
 
+	//文字列を格納
+	std::string str0{ "HelloWorld!" };
+	//整数を文字列にする
+	std::string str1{ std::to_string(12) };
+
 	MSG msg{};
 
 	//ウィンドウのxボタンが押されるまでループ
@@ -79,10 +85,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 		else
 		{
-			//ゲームの更新処理
-			//ゲームの描画処理
+			/*---ゲームの更新処理---*/
+
+
+
+			/*---ゲームの描画処理---*/
 		}
 	}
 
 	return 0;
+}
+
+
+
+//---ここから下は関数の実装---//
+
+/// <summary>
+///	出力メッセージをデバッグウィンドウに表示する
+/// </summary>
+/// <param name="message"></param>
+void Log(const std::string& message)
+{
+	OutputDebugStringA(message.c_str());
 }
