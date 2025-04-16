@@ -16,7 +16,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 
 	//標準のメッセージ処理を行う
 	return DefWindowProc(hwnd, msg, wparam, lparam);
+}
 
+
+
+//windowsアプリでのエントリーポイント(main関数)
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+{
 	/*---ウィンドウクラスの登録---*/
 	WNDCLASS wc{};
 	//ウィンドウプロシージャ
@@ -42,9 +48,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
 
 	//ウィンドウの生成
-	hwnd = CreateWindow(
+	HWND hwnd = CreateWindow(
 		wc.lpszClassName,     //クラス名
-		L"CG2MyWindow",       //タイトルバー名
+		L"CG2",       //タイトルバー名
 		WS_OVERLAPPEDWINDOW,  //ウィンドウスタイル
 		CW_USEDEFAULT,        //表示座X標(Windowsに任せる)
 		CW_USEDEFAULT,        //表示Y座標(WindowsOSに任せる)
@@ -58,13 +64,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 
 	//ウィンドウの表示
 	ShowWindow(hwnd, SW_SHOW);
-}
 
-
-
-//windowsアプリでのエントリーポイント(main関数)
-int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
-{
 	MSG msg{};
 
 	//ウィンドウのxボタンが押されるまでループ
