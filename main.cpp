@@ -92,7 +92,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	/*HRESULTはWindows系のエラーコードであり
 	 関数が成功したかSUCCEEDEDマクロで判定できる*/
-	HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory));
+	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
 
 	/*初期化の根本的な部分でエラーが出た場合ｈプログラムが間違っているか、
 	どうにも出来ない場合が多いのでassertにしておく*/
