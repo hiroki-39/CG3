@@ -7,7 +7,13 @@
 #include <format>
 #include <filesystem>
 #include <fstream>
+#include <chrono>
 
+void Log(std::ostream& os, const std::string& message);
+
+std::wstring ConvertString(const std::string& str);
+
+std::string ConvertString(const std::wstring& str);
 
 //ウィンドウプロシージャ
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -90,7 +96,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//ウィンドウの表示
 	ShowWindow(hwnd, SW_SHOW);
 
-
+	Log(logStream, "Hello DirectX!\n");
+	Log(logStream, ConvertString(std::format( L"clientSize:{},{}\n",kClientWidth,kClientHeight)));
 
 	MSG msg{};
 
@@ -116,8 +123,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 //---ここから下は関数の実装---//
 
 //出力ウィンドウにメッセージを出力する
-void Log(const std::string& message)
+void Log(std::ostream& os,const std::string& message)
 {
+	os << message << std::endl;
+
 	//標準出力にメッセージを出力
 	OutputDebugStringA(message.c_str());
 }
