@@ -1,6 +1,7 @@
 #include<Windows.h>
 #include<cstdint>
 
+
 //ウィンドウプロシージャ
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
@@ -65,8 +66,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//ウィンドウの表示
 	ShowWindow(hwnd, SW_SHOW);
 
-	
-
 	MSG msg{};
 
 	//ウィンドウのxボタンが押されるまでループ
@@ -87,5 +86,3 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	return 0;
 }
-
-
