@@ -1,83 +1,103 @@
-#include<Windows.h>
+ï»¿#include<Windows.h>
 #include<cstdint>
-#include<string>
-#include<format>
+#include<d3d12.h>
+#include<dxgi1_6.h>
+#include <cassert>
+#include <string>
+#include <format>
+#include <filesystem>
+#include <fstream>
 
-//ƒEƒBƒ“ƒhƒEƒvƒƒV[ƒWƒƒ
+
+//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ãƒ—ãƒ­ã‚·ãƒ¼ã‚¸ãƒ£
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
-	//ƒƒbƒZ[ƒW‚É‰‚¶‚ÄƒQ[ƒ€ŒÅ—L‚Ìˆ—‚ğs‚¤
+	//ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã«å¿œã˜ã¦ã‚²ãƒ¼ãƒ å›ºæœ‰ã®å‡¦ç†ã‚’è¡Œã†
 	switch (msg)
 	{
-		//ƒEƒBƒ“ƒhƒE‚ª”jŠü‚³‚ê‚½
+		//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ãŒç ´æ£„ã•ã‚ŒãŸ
 	case WM_DESTROY:
-		//OS‚É‘Î‚µ‚ÄAƒAƒvƒŠ‚ÌI—¹‚ğ“`‚¦‚é
+		//OSã«å¯¾ã—ã¦ã€ã‚¢ãƒ—ãƒªã®çµ‚äº†ã‚’ä¼ãˆã‚‹
 		PostQuitMessage(0);
 		return 0;
 	}
 
-	//•W€‚ÌƒƒbƒZ[ƒWˆ—‚ğs‚¤
+	//æ¨™æº–ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸å‡¦ç†ã‚’è¡Œã†
 	return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
 
 
-//windowsƒAƒvƒŠ‚Å‚ÌƒGƒ“ƒgƒŠ[ƒ|ƒCƒ“ƒg(mainŠÖ”)
+//windowsã‚¢ãƒ—ãƒªã§ã®ã‚¨ãƒ³ãƒˆãƒªãƒ¼ãƒã‚¤ãƒ³ãƒˆ(mainé–¢æ•°)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
-	/*---ƒEƒBƒ“ƒhƒEƒNƒ‰ƒX‚Ì“o˜^---*/
+	//ãƒ­ã‚°ã®ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã‚’ç”¨æ„
+	std::filesystem::create_directory("log");
+
+	//ç¾åœ¨æ™‚åˆ»ã‚’å–å¾—(UTCæ™‚åˆ»)
+	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+	//ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ã®åå‰ã«ã‚³ãƒ³ãƒä½•ç§’ã¯ã„ã‚‰ãªã„ã®ã§ã€ç§’ã®ã¿ã«ã™ã‚‹
+	std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> 
+		nowSeconds =std::chrono::time_point_cast<std::chrono::seconds>(now);
+	//æ—¥æœ¬æ™‚é–“(pcã®è¨­å®šæ™‚é–“)ã«å¤‰æ›
+	std::chrono::zoned_time localTime{ std::chrono::current_zone(), nowSeconds };
+	//formaté–¢æ•°ã§ã€å¹´æœˆæ—¥_æ™‚åˆ†ç§’ã®æ–‡å­—åˆ—ã«å¤‰æ›
+	std::string datestring = std::format("{:%Y%m%d_%H%M%S}", localTime);
+	//æ™‚åˆ»ã‚’ä½¿ã£ã¦ãƒ•ã‚¡ã‚¤ãƒ«åã‚’ä½œæˆ
+	std::string logFilePath = std::format("log/")+datestring + ".log";
+	//ãƒ•ã‚¡ã‚¤ãƒ«ã‚’ä½œã£ã¦æ›¸ãè¾¼ã¿æº–å‚™
+	std::ofstream logStream(logFilePath);
+
+	/*---ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚¯ãƒ©ã‚¹ã®ç™»éŒ²---*/
 	WNDCLASS wc{};
-	//ƒEƒBƒ“ƒhƒEƒvƒƒV[ƒWƒƒ
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ãƒ—ãƒ­ã‚·ãƒ¼ã‚¸ãƒ£
 	wc.lpfnWndProc = WindowProc;
-	//ƒEƒBƒ“ƒhƒEƒNƒ‰ƒX–¼
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚¯ãƒ©ã‚¹å
 	wc.lpszClassName = L"CG2MyWindowClass";
-	//ƒCƒ“ƒXƒ^ƒ“ƒXƒnƒ“ƒhƒ‹
+	//ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ãƒãƒ³ãƒ‰ãƒ«
 	wc.hInstance = GetModuleHandle(nullptr);
-	//ƒJ[ƒ\ƒ‹
+	//ã‚«ãƒ¼ã‚½ãƒ«
 	wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
 
-	//ƒEƒBƒ“ƒhƒEƒNƒ‰ƒX‚Ì“o˜^
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚¯ãƒ©ã‚¹ã®ç™»éŒ²
 	RegisterClass(&wc);
 
-	//ƒNƒ‰ƒCƒAƒ“ƒg—Ìˆæ‚ÌƒTƒCƒY
+	//ã‚¯ãƒ©ã‚¤ã‚¢ãƒ³ãƒˆé ˜åŸŸã®ã‚µã‚¤ã‚º
 	const int32_t kClientWidth = 1280;
 	const int32_t kClientHeight = 720;
 
-	//ƒEƒBƒ“ƒhƒTƒCƒY‚ğ•\‚·\‘¢‘Ì‚ÉƒNƒ‰ƒCƒAƒ“ƒg—Ìˆæ‚ÌƒTƒCƒY‚ğ“ü‚ê‚é
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚µã‚¤ã‚ºã‚’è¡¨ã™æ§‹é€ ä½“ã«ã‚¯ãƒ©ã‚¤ã‚¢ãƒ³ãƒˆé ˜åŸŸã®ã‚µã‚¤ã‚ºã‚’å…¥ã‚Œã‚‹
 	RECT wrc = { 0, 0, kClientWidth, kClientHeight };
 
-	//ƒNƒ‰ƒCƒAƒ“ƒg—Ìˆæ‚ÌƒTƒCƒY‚ğƒEƒBƒ“ƒhƒEƒTƒCƒY‚É•ÏŠ·‚·‚é
+	//ã‚¯ãƒ©ã‚¤ã‚¢ãƒ³ãƒˆé ˜åŸŸã®ã‚µã‚¤ã‚ºã‚’ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚µã‚¤ã‚ºã«å¤‰æ›ã™ã‚‹
 	AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
 
-	//ƒEƒBƒ“ƒhƒE‚Ì¶¬
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®ç”Ÿæˆ
 	HWND hwnd = CreateWindow(
-		wc.lpszClassName,     //ƒNƒ‰ƒX–¼
-		L"CG2",       //ƒ^ƒCƒgƒ‹ƒo[–¼
-		WS_OVERLAPPEDWINDOW,  //ƒEƒBƒ“ƒhƒEƒXƒ^ƒCƒ‹
-		CW_USEDEFAULT,        //•\¦ÀX•W(Windows‚É”C‚¹‚é)
-		CW_USEDEFAULT,        //•\¦YÀ•W(WindowsOS‚É”C‚¹‚é)
-		wrc.right - wrc.left, //ƒEƒBƒ“ƒhƒE‰¡•
-		wrc.bottom - wrc.top, //ƒEƒBƒ“ƒhƒEc•
-		nullptr,              //eƒEƒBƒ“ƒhƒEƒnƒ“ƒhƒ‹
-		nullptr,              //ƒƒjƒ…[ƒnƒ“ƒhƒ‹
-		wc.hInstance,         //ƒCƒ“ƒXƒ^ƒ“ƒXƒnƒ“ƒhƒ‹
-		nullptr               //ƒIƒvƒVƒ‡ƒ“
+		wc.lpszClassName,     //ã‚¯ãƒ©ã‚¹å
+		L"CG2_LE2C_07_ã‚«ãƒˆã‚¦_ãƒ’ãƒ­ã‚­",       //ã‚¿ã‚¤ãƒˆãƒ«ãƒãƒ¼å
+		WS_OVERLAPPEDWINDOW,  //ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚¹ã‚¿ã‚¤ãƒ«
+		CW_USEDEFAULT,        //è¡¨ç¤ºåº§Xæ¨™(Windowsã«ä»»ã›ã‚‹)
+		CW_USEDEFAULT,        //è¡¨ç¤ºYåº§æ¨™(WindowsOSã«ä»»ã›ã‚‹)
+		wrc.right - wrc.left, //ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦æ¨ªå¹…
+		wrc.bottom - wrc.top, //ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ç¸¦å¹…
+		nullptr,              //è¦ªã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ãƒãƒ³ãƒ‰ãƒ«
+		nullptr,              //ãƒ¡ãƒ‹ãƒ¥ãƒ¼ãƒãƒ³ãƒ‰ãƒ«
+		wc.hInstance,         //ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ãƒãƒ³ãƒ‰ãƒ«
+		nullptr               //ã‚ªãƒ—ã‚·ãƒ§ãƒ³
 	);
 
-	//ƒEƒBƒ“ƒhƒE‚Ì•\¦
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®è¡¨ç¤º
 	ShowWindow(hwnd, SW_SHOW);
 
-	//•¶š—ñ‚ğŠi”[
-	std::string str0{ "HelloWorld!" };
-	//®”‚ğ•¶š—ñ‚É‚·‚é
-	std::string str1{ std::to_string(12) };
+
 
 	MSG msg{};
 
-	//ƒEƒBƒ“ƒhƒE‚Ìxƒ{ƒ^ƒ“‚ª‰Ÿ‚³‚ê‚é‚Ü‚Åƒ‹[ƒv
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®xãƒœã‚¿ãƒ³ãŒæŠ¼ã•ã‚Œã‚‹ã¾ã§ãƒ«ãƒ¼ãƒ—
 	while (msg.message != WM_QUIT)
 	{
-		//windows‚ÉƒƒbƒZ[ƒW‚ª—ˆ‚½‚çÅ—Dæ‚Åˆ—‚·‚é
+		//windowsã«ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ãŒæ¥ãŸã‚‰æœ€å„ªå…ˆã§å‡¦ç†ã™ã‚‹
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
@@ -85,26 +105,47 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 		else
 		{
-			/*---ƒQ[ƒ€‚ÌXVˆ—---*/
-
-
-
-			/*---ƒQ[ƒ€‚Ì•`‰æˆ—---*/
+			//ã‚²ãƒ¼ãƒ ã®æ›´æ–°å‡¦ç†
+			//ã‚²ãƒ¼ãƒ ã®æç”»å‡¦ç†
 		}
 	}
 
 	return 0;
 }
 
+//---ã“ã“ã‹ã‚‰ä¸‹ã¯é–¢æ•°ã®å®Ÿè£…---//
 
-
-//---‚±‚±‚©‚ç‰º‚ÍŠÖ”‚ÌÀ‘•---//
-
-/// <summary>
-///	o—ÍƒƒbƒZ[ƒW‚ğƒfƒoƒbƒOƒEƒBƒ“ƒhƒE‚É•\¦‚·‚é
-/// </summary>
-/// <param name="message"></param>
+//å‡ºåŠ›ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã«ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã‚’å‡ºåŠ›ã™ã‚‹
 void Log(const std::string& message)
 {
+	//æ¨™æº–å‡ºåŠ›ã«ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã‚’å‡ºåŠ›
 	OutputDebugStringA(message.c_str());
+}
+
+std::wstring ConvertString(const std::string& str) {
+	if (str.empty()) {
+		return std::wstring();
+	}
+
+	auto sizeNeeded = MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), NULL, 0);
+	if (sizeNeeded == 0) {
+		return std::wstring();
+	}
+	std::wstring result(sizeNeeded, 0);
+	MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), &result[0], sizeNeeded);
+	return result;
+}
+
+std::string ConvertString(const std::wstring& str) {
+	if (str.empty()) {
+		return std::string();
+	}
+
+	auto sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), NULL, 0, NULL, NULL);
+	if (sizeNeeded == 0) {
+		return std::string();
+	}
+	std::string result(sizeNeeded, 0);
+	WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), result.data(), sizeNeeded, NULL, NULL);
+	return result;
 }
