@@ -8,10 +8,12 @@
 #include <filesystem>
 #include <fstream>
 #include <chrono>
+#include<dbghelp.h>
+#include <strsafe.h>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
-
+#pragma comment(lib, "Dbghelp.lib")
 
 void Log(std::ostream& os, const std::string& message);
 
@@ -21,10 +23,14 @@ std::string ConvertString(const std::wstring& str);
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
+static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
 
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
+	//例外発生時にコールバックする関数を指定
+	SetUnhandledExceptionFilter(ExportDump); 
+
 	//ログのディレクトリを用意
 	std::filesystem::create_directory("log");
 
@@ -41,6 +47,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	std::string logFilePath = std::format("log/") + datestring + ".log";
 	//ファイルを作って書き込み準備
 	std::ofstream logStream(logFilePath);
+
+	uint32_t* p = nullptr;
+	*p = 100;
 
 	/*---ウィンドウクラスの登録---*/
 	WNDCLASS wc{};
@@ -177,6 +186,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		else
 		{
 			//ゲームの更新処理
+			
+			
 			//ゲームの描画処理
 		}
 	}
@@ -238,4 +249,36 @@ std::string ConvertString(const std::wstring& str) {
 	std::string result(sizeNeeded, 0);
 	WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), result.data(), sizeNeeded, NULL, NULL);
 	return result;
+}
+
+static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception){
+	//時刻を取得して、時刻を名前に入れたファイルを作成
+	SYSTEMTIME time;
+	GetLocalTime(&time);
+
+	wchar_t filePath[MAX_PATH] = {0};
+	CreateDirectory(L"./Dumps", nullptr);
+	StringCchPrintfW(filePath,MAX_PATH,L"./Dumps/%04d-02d%02d-%02d%02d.dmp",
+		time.wYear,time.wMonth,time.wDay,time.wHour,time.wMinute);
+
+	HANDLE dumpFileHandle = CreateFile(filePath, GENERIC_READ |
+		GENERIC_WRITE, FILE_SHARE_WRITE | 
+		FILE_SHARE_READ, 0, CREATE_ALWAYS, 0, 0);
+	//processIdとクラッシュの発生したthreadIdを取得
+	DWORD processId = GetCurrentProcessId();
+	DWORD threadId = GetCurrentThreadId();
+
+	//設定情報を入力
+	MINIDUMP_EXCEPTION_INFORMATION minidumpInformation{ 0 };
+	minidumpInformation.ThreadId = threadId;
+	minidumpInformation.ExceptionPointers = exception;
+	minidumpInformation.ClientPointers = true;
+
+	//Dumpを出力
+	MiniDumpWriteDump(GetCurrentProcess(), processId, dumpFileHandle,
+		MiniDumpNormal, &minidumpInformation, nullptr, nullptr);
+
+
+	return EXCEPTION_EXECUTE_HANDLER;
+
 }
