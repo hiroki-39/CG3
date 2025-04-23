@@ -48,8 +48,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//ファイルを作って書き込み準備
 	std::ofstream logStream(logFilePath);
 
-	uint32_t* p = nullptr;
-	*p = 100;
+	
 
 	/*---ウィンドウクラスの登録---*/
 	WNDCLASS wc{};
@@ -171,6 +170,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	assert(device!= nullptr);
 	//初期化完了のメッセージを出力
 	Log(logStream, "Complete create D3D12Device!!!!\n");
+
+	//コマンドキューの生成
+	ID3D12CommandQueue* commandQueue = nullptr;
+	D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
+	hr = device->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&commandQueue));
+	
+	//コマンドキューの生成に失敗した場合起動できない
+	assert(SUCCEEDED(hr));
 
 	MSG msg{};
 
