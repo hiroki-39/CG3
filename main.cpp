@@ -174,10 +174,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//コマンドキューの生成
 	ID3D12CommandQueue* commandQueue = nullptr;
 	D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
-	hr = device->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&commandQueue));
+	hr = device->CreateCommandQueue(&commandQueueDesc,
+		IID_PPV_ARGS(&commandQueue));
 	
 	//コマンドキューの生成に失敗した場合起動できない
 	assert(SUCCEEDED(hr));
+
+	//コマンドアロケータの生成
+	ID3D12CommandAllocator* commandAllocator = nullptr;
+	hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+		IID_PPV_ARGS(&commandAllocator));
+
+	//コマンドリストの生成
+	ID3D12GraphicsCommandList* commandList = nullptr;
+	hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+		commandAllocator, nullptr, IID_PPV_ARGS(&commandList));
+
+	//コマンドリストの生成に失敗した場合起動できない
+	assert(SUCCEEDED(hr));
+
 
 	MSG msg{};
 
