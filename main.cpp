@@ -29,7 +29,7 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
 	//例外発生時にコールバックする関数を指定
-	SetUnhandledExceptionFilter(ExportDump); 
+	SetUnhandledExceptionFilter(ExportDump);
 
 	//ログのディレクトリを用意
 	std::filesystem::create_directory("log");
@@ -48,7 +48,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//ファイルを作って書き込み準備
 	std::ofstream logStream(logFilePath);
 
-	
+
 
 	/*---ウィンドウクラスの登録---*/
 	WNDCLASS wc{};
@@ -133,7 +133,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//アダプタが見つからなかった場合
 	assert(useAdapter != nullptr);
 
-	/*--- D3D12Deviceの生成 ---*/ 
+	/*--- D3D12Deviceの生成 ---*/
 	ID3D12Device* device = nullptr;
 	//機能レベルとログ出力用の文字列
 	D3D_FEATURE_LEVEL featureLevels[] = {
@@ -167,7 +167,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	}
 
 	//デバイスが生成できなかった場合
-	assert(device!= nullptr);
+	assert(device != nullptr);
 	//初期化完了のメッセージを出力
 	Log(logStream, "Complete create D3D12Device!!!!\n");
 
@@ -176,7 +176,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
 	hr = device->CreateCommandQueue(&commandQueueDesc,
 		IID_PPV_ARGS(&commandQueue));
-	
+
 	//コマンドキューの生成に失敗した場合起動できない
 	assert(SUCCEEDED(hr));
 
@@ -193,6 +193,38 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//コマンドリストの生成に失敗した場合起動できない
 	assert(SUCCEEDED(hr));
 
+	//スワップチェーンの生成
+	IDXGISwapChain1* swapChain = nullptr;
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
+
+	//ウィンドウの幅
+	swapChainDesc.Width = kClientWidth;
+	//ウィンドウの高さ
+	swapChainDesc.Height = kClientHeight;
+	//色の形式
+	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	//マルチサンプルしない
+	swapChainDesc.SampleDesc.Count = 1;
+	//描画をターゲットとして利用
+	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	//ダブルバッファ
+	swapChainDesc.BufferCount = 2;
+	//モニタにうつしたら、中身を破壊
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+
+	//コマンドキュー、ウィンドウハンドル、設定を渡して生成
+	hr = dxgiFactory->CreateSwapChainForHwnd(
+		commandQueue,            //コマンドキュー
+		hwnd,                    //ウィンドウハンドル
+		&swapChainDesc,         //スワップチェーンの設定
+		nullptr,                //モニタの設定
+		nullptr,                //コンシューマーの設定
+		reinterpret_cast<IDXGISwapChain1**>(&swapChain) //スワップチェーンのポインタ
+	);
+
+	//スワップチェーンの生成に失敗した場合起動できない
+	assert(SUCCEEDED(hr));
+
 
 	MSG msg{};
 
@@ -204,12 +236,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
-		}
-		else
+		} else
 		{
 			//ゲームの更新処理
-			
-			
+
+
 			//ゲームの描画処理
 		}
 	}
@@ -273,18 +304,18 @@ std::string ConvertString(const std::wstring& str) {
 	return result;
 }
 
-static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception){
+static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception) {
 	//時刻を取得して、時刻を名前に入れたファイルを作成
 	SYSTEMTIME time;
 	GetLocalTime(&time);
 
-	wchar_t filePath[MAX_PATH] = {0};
+	wchar_t filePath[MAX_PATH] = { 0 };
 	CreateDirectory(L"./Dumps", nullptr);
-	StringCchPrintfW(filePath,MAX_PATH,L"./Dumps/%04d-02d%02d-%02d%02d.dmp",
-		time.wYear,time.wMonth,time.wDay,time.wHour,time.wMinute);
+	StringCchPrintfW(filePath, MAX_PATH, L"./Dumps/%04d-02d%02d-%02d%02d.dmp",
+		time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute);
 
 	HANDLE dumpFileHandle = CreateFile(filePath, GENERIC_READ |
-		GENERIC_WRITE, FILE_SHARE_WRITE | 
+		GENERIC_WRITE, FILE_SHARE_WRITE |
 		FILE_SHARE_READ, 0, CREATE_ALWAYS, 0, 0);
 	//processIdとクラッシュの発生したthreadIdを取得
 	DWORD processId = GetCurrentProcessId();
