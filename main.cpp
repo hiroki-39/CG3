@@ -339,6 +339,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		&rtvDesc,              //RTVの設定
 		rtvHandles[1]);        //RTVのハンドル
 
+	//初期値0でFanceを作る
+	ID3D12Fence* fence = nullptr;
+	UINT64 fenceValue = 0;
+
+	hr = device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE,
+		IID_PPV_ARGS(&fence));
+
+	//フェンスの生成に失敗した場合起動できない
+	assert(SUCCEEDED(hr));
+
+	//Fanceのイベントを作成
+	HANDLE fenceEvent = CreateEvent(nullptr, false, false, nullptr);
+	//イベントの生成に失敗した場合起動できない
+	assert(fenceEvent != nullptr);
+
+
+	/*---メインループ---*/
+
 
 	MSG msg{};
 
@@ -357,6 +375,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//これから書き込むバックバッファのインデックスを取得
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
+			//TransitionBarrierの設定
+			D3D12_RESOURCE_BARRIER barrier{};
+
+			//バリアの種類(今回はTransition)
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+
+			//Noneにする
+			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+			//バリアの設定(バリアを張る対象)
+			barrier.Transition.pResource = swapChainResources[backBufferIndex];
+
+			//現在のResourceState
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+
+			//次のResourceState
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+			//TransitionBarrierを張る
+			commandList->ResourceBarrier(1, &barrier);
+
 			//描画先のRTVを設定
 			commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], false, nullptr);
 
@@ -370,6 +409,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				nullptr                     //指定しない
 			);
 
+			//状態を遷移(RenderTargetからPresentにする)
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+
+			//TransitionBarrierを張る
+			commandList->ResourceBarrier(1, &barrier);
+
 			//コマンドリストの内容を確定させ、全てのコマンドを積んでからcloseする
 			hr = commandList->Close();
 			//コマンドリストの確定に失敗した場合起動できない
@@ -382,6 +428,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//GPUとOSに画面交換を行うように通知
 			swapChain->Present(1, 0);
 
+			//Fanceの値を更新
+			fenceValue++;
+			//GPUがここまでたどり着いた時、Fanseの値を指定した値に代入するようにsignalを送る
+			commandQueue->Signal(fence, fenceValue);
+
+			//Fanceの値が指定したSignal値たどり着いているか確認する
+			//GetCompletedValueの初期値はFance作成時に渡した初期値
+			if (fence->GetCompletedValue() < fenceValue)
+			{
+				//指定したSignal値までGPUがたどり着いていない場合、たどり着くまで待つように、イベントを設定する
+				fence->SetEventOnCompletion(fenceValue, fenceEvent);
+				//イベントが発火するまで待つ
+				WaitForSingleObject(fenceEvent, INFINITE);
+			}
+
 			//次のフレーム用のコマンドリストを準備
 			hr = commandAllocator->Reset();
 			//コマンドアロケータのリセットに失敗した場合起動できない
@@ -389,6 +450,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			hr = commandList->Reset(commandAllocator, nullptr);
 			//コマンドリストのリセットに失敗した場合起動できない
 			assert(SUCCEEDED(hr));
+
 
 
 			//ゲームの描画処理
