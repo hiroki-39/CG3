@@ -19,7 +19,8 @@
 #pragma comment(lib, "dxguid.lib")
 #pragma comment(lib,"dxcompiler.lib")
 
-struct Vector4 final {
+struct Vector4 final
+{
 	float x;
 	float y;
 	float z;
@@ -42,6 +43,8 @@ IDxcBlob* compileshader(const std::wstring& filePath,
 	IDxcCompiler3* dxCompiler,
 	IDxcIncludeHandler* includeHandler,
 	std::ostream& os);
+
+ID3D12Resource* CreateBufferResource(ID3D12Device* device, size_t sizeInbytes);
 
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
@@ -390,6 +393,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	descripitionRootSignature.Flags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
+	/*---RootSignature作成---*/
+	D3D12_ROOT_PARAMETER rootPrameters[1] = {};
+	//CBVを使う
+	rootPrameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	//prixelShederを使う
+	rootPrameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	//レジスタ番号0とバインド
+	rootPrameters[0].Descriptor.ShaderRegister = 0;
+	//ルートパラメータ配列へのポインタ
+	descripitionRootSignature.pParameters = rootPrameters;
+	//配列の長さ
+	descripitionRootSignature.NumParameters = _countof(rootPrameters);
+
 	//シリアライズしてバイナリにする
 	ID3DBlob* signatureBlob = nullptr;
 	ID3DBlob* errorBlob = nullptr;
@@ -484,38 +500,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		IID_PPV_ARGS(&graphicsPipelineState));
 	assert(SUCCEEDED(hr));
 
-	//頂点リソース用のヒープの設定
-	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
+	//マテリアル用のリソースを作る
+	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Vector4));
 
-	//UploadHeapを使う
-	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+	//頂点リソースデータを書き込む
+	Vector4* materialData = nullptr;
 
-	//頂点リソースの設定
-	D3D12_RESOURCE_DESC vertexResourceDesc{};
+	//書き込む為のアドレスを取得
+	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
 
-	//バッファリソース。テクスチャの場合はまた別の設定をする
-	vertexResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	vertexResourceDesc.Width = sizeof(Vector4) * 3;
-	//バッファの場合はこれらを1にする決まり
-	vertexResourceDesc.Height = 1;
-	vertexResourceDesc.DepthOrArraySize = 1;
-	vertexResourceDesc.MipLevels = 1;
-	vertexResourceDesc.SampleDesc.Count = 1;
+	//色の設定
+	*materialData = Vector4{ 1.0f,0.0f,0.0f,1.0f };
 
-	//バッファの場合はこれにする決まり
-	vertexResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-	//実際に頂点リソースを作る
-	ID3D12Resource* vertexResource = nullptr;
-	hr = device->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
-		&vertexResourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-		IID_PPV_ARGS(&vertexResource));
-	assert(SUCCEEDED(hr));
+	//頂点リソースを作成
+	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(Vector4) * 3);
 
 	//頂点バッファビューを作成
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 
-	//リソースの先頭のアドレスから使う
+	////リソースの先頭のアドレスから使う
 	vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress();
 
 	//使用するリソースのサイズは頂点3つのサイズ
@@ -537,6 +540,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//右下
 	vertexData[2] = { 0.5f,-0.5f,0.0f,1.0f };
+
 
 	//ビューポート
 	D3D12_VIEWPORT viewport{ };
@@ -572,7 +576,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			DispatchMessage(&msg);
 		} else
 		{
-			
+
+			//ゲーム処理
+
 			//これから書き込むバックバッファのインデックスを取得
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
@@ -623,6 +629,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
 			//形状を設定
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			//CBVの設定
+			commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
 
 			//描画！
 			commandList->DrawInstanced(3, 1, 0, 0);
@@ -689,6 +697,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	useAdapter->Release();
 	dxgiFactory->Release();
 
+	materialResource->Release();
 	vertexResource->Release();
 	graphicsPipelineState->Release();
 	signatureBlob->Release();
@@ -731,9 +740,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	{
 		//ウィンドウが破棄された
 	case WM_DESTROY:
-		//OSに対して、アプリの終了を伝える
-		PostQuitMessage(0);
-		return 0;
+	//OSに対して、アプリの終了を伝える
+	PostQuitMessage(0);
+	return 0;
 	}
 
 	//標準のメッセージ処理を行う
@@ -749,13 +758,16 @@ void Log(std::ostream& os, const std::string& message)
 	OutputDebugStringA(message.c_str());
 }
 
-std::wstring ConvertString(const std::string& str) {
-	if (str.empty()) {
+std::wstring ConvertString(const std::string& str)
+{
+	if (str.empty())
+	{
 		return std::wstring();
 	}
 
 	auto sizeNeeded = MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), NULL, 0);
-	if (sizeNeeded == 0) {
+	if (sizeNeeded == 0)
+	{
 		return std::wstring();
 	}
 	std::wstring result(sizeNeeded, 0);
@@ -763,13 +775,16 @@ std::wstring ConvertString(const std::string& str) {
 	return result;
 }
 
-std::string ConvertString(const std::wstring& str) {
-	if (str.empty()) {
+std::string ConvertString(const std::wstring& str)
+{
+	if (str.empty())
+	{
 		return std::string();
 	}
 
 	auto sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), NULL, 0, NULL, NULL);
-	if (sizeNeeded == 0) {
+	if (sizeNeeded == 0)
+	{
 		return std::string();
 	}
 	std::string result(sizeNeeded, 0);
@@ -777,7 +792,8 @@ std::string ConvertString(const std::wstring& str) {
 	return result;
 }
 
-static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception) {
+static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
+{
 	//時刻を取得して、時刻を名前に入れたファイルを作成
 	SYSTEMTIME time;
 	GetLocalTime(&time);
@@ -863,7 +879,8 @@ IDxcBlob* compileshader(const std::wstring& filePath,
 	/* 3.警告・エラーが出ていないか確認する */
 	IDxcBlobUtf8* shaderError = nullptr;
 	shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
-	if (shaderError != nullptr && shaderError->GetStringLength() != 0) {
+	if (shaderError != nullptr && shaderError->GetStringLength() != 0)
+	{
 		Log(os, shaderError->GetStringPointer());
 		//警告・エラーダメ絶対
 		assert(false);
@@ -887,4 +904,47 @@ IDxcBlob* compileshader(const std::wstring& filePath,
 
 
 
+}
+
+ID3D12Resource* CreateBufferResource(ID3D12Device* device, size_t sizeInbytes)
+{
+
+	//頂点リソース用のヒープの設定
+	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
+
+	//UploadHeapを使う
+	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+	//頂点リソースの設定
+	D3D12_RESOURCE_DESC resourceDesc{};
+
+	//バッファリソース。テクスチャの場合はまた別の設定をする
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resourceDesc.Width = sizeInbytes;
+
+	//バッファの場合はこれらを1にする決まり
+	resourceDesc.Height = 1;
+	resourceDesc.DepthOrArraySize = 1;
+	resourceDesc.MipLevels = 1;
+	resourceDesc.SampleDesc.Count = 1;
+
+	//バッファの場合はこれにする決まり
+	resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+
+	//実際に頂点リソースを作る
+	ID3D12Resource* bufferResource = nullptr;
+
+	HRESULT hr = device->CreateCommittedResource(
+		&uploadHeapProperties,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&bufferResource)
+	);
+
+	assert(SUCCEEDED(hr));
+
+	return bufferResource;
 }
