@@ -1,4 +1,5 @@
 #include"Object3d.hlsli"
+#define float32_t4x4 float4x4
 
 struct TransformationMatrix
 {
