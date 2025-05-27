@@ -613,6 +613,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//色の設定
 	*materialData = Vector4{ 1.0f,1.0f,1.0f,1.0f };
 
+
+
 	//頂点リソースを作成
 	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * 6);
 
@@ -671,6 +673,39 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//単位行列を書き込む
 	*wvpData = math.MakeIdentity();
+
+
+	//Sprite用の頂点リソースを作る
+	ID3D12Resource* vertexResourceSprite = CreateBufferResource(device, sizeof(VertexData) * 6);
+	//頂点バッファビューを作成
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferviewSprite{};
+	//リソースの先頭アドレスから使う
+	vertexBufferviewSprite.BufferLocation = vertexResourceSprite->GetGPUVirtualAddress();
+	//使用するリソースのサイズは頂点6つ分のサイズ
+	vertexBufferviewSprite.SizeInBytes = sizeof(VertexData) * 6;
+	//1頂点あたりのサイズ
+	vertexBufferviewSprite.StrideInBytes = sizeof(VertexData);
+	//頂点データの設定
+	VertexData* vertexDataSprite = nullptr;
+	vertexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataSprite));
+
+	//1枚目の三角形
+
+	//左下
+	vertexDataSprite[0].position = { 0.0f,360.0f,0.0f,1.0f };
+	vertexDataSprite[0].texcoord = { 0.0f,1.0f };
+	//左上
+	vertexDataSprite[1].position = { 0.0f,0.0f,0.0f,1.0f };
+	vertexDataSprite[1].texcoord = { 0.0f,0.0f };
+
+	//右下
+	vertexDataSprite[2].position = { 640.0f,360.0f,0.0f,1.0f };
+	vertexDataSprite[2].texcoord = { 1.0f,1.0f };
+
+	//2枚目の三角形
+	//左上
+
+
 
 	//ビューポート
 	D3D12_VIEWPORT viewport{ };
@@ -775,7 +810,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			/*--- ↓更新処理ここから↓ ---*/
 
-		/*	ImGui::ShowDemoWindow();*/
+			transform.rotate.y += 0.03f;
 
 			//Transformの更新
 			Matrix4x4 worldMatrix = math.MakeAffineMatrix(
@@ -790,7 +825,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			*wvpData = worldViewProjectionMatrix;
 
 			//開発用UIの処理
-			ImGui::Begin("MaterialColor");
+		  /*ImGui::Begin("MaterialColor");
 			ImGui::ColorEdit4("Color", &(*materialData).x);
 			ImGui::End();
 
@@ -798,7 +833,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			ImGui::DragFloat3("Translate", & transform.translate.x, 0.01f);
 			ImGui::DragFloat3("Rotate", &transform.rotate.x, 0.01f);
 			ImGui::DragFloat3("scale", &transform.scale.x, 0.01f);
-			ImGui::End();
+			ImGui::End();*/
 
 			/*--- ↓描画処理ここから↓ ---*/
 
@@ -932,8 +967,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
 
-	//COMの終了処理
-	CoUninitialize();
+
 
 	//解放処理
 	CloseHandle(fenceEvent);
@@ -972,10 +1006,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	intermediateResource->Release();
 	depthStencilResource->Release();
 
+	vertexResourceSprite->Release();
+
 #ifdef _DEBUG
 	debugController->Release();
 #endif
 	CloseWindow(hwnd);
+
+	//COMの終了処理
+	CoUninitialize();
 
 	//リソースリークチェック
 	IDXGIDebug1* debug;
