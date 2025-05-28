@@ -557,6 +557,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//InputLayout
 	graphicsPipelineStateDesc.InputLayout = inputLayoutDesc;
 
+	//BlenderState
+	graphicsPipelineStateDesc.BlendState = blendDesc;
+
+	//RasterizerState
+	graphicsPipelineStateDesc.RasterizerState = rasterizerDesc;
+
 	//VertexShader
 	graphicsPipelineStateDesc.VS = { vertexShaderBlob->GetBufferPointer(),
 	vertexShaderBlob->GetBufferSize() };
@@ -573,12 +579,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 
 	depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-
-	//BlenderState
-	graphicsPipelineStateDesc.BlendState = blendDesc;
-
-	//RasterizerState
-	graphicsPipelineStateDesc.RasterizerState = rasterizerDesc;
 
 	//DepthStencilの設定
 	graphicsPipelineStateDesc.DepthStencilState = depthStencilDesc;
@@ -804,7 +804,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//SRVを作成
 	device->CreateShaderResourceView(textureResource, &srvDesc, textureSrvHandleCPU);
 
-	//
+	//DepthStenciltextureをウィンドウのサイズで作成
 	ID3D12Resource* depthStencilResource = CreatDepthStencilTextureResource(device, kClientWidth, kClientHeight);
 
 	//DSVの設定
@@ -853,10 +853,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			*wvpData = worldViewProjectionMatrix;
 
 			//Sprite用のWorldViewProjectmatrixを作る
-			Matrix4x4 worldMatrixSprite = math.MakeAffineMatrix(transformSprite.scale,transformSprite.rotate,transformSprite.translate);
+			Matrix4x4 worldMatrixSprite = math.MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
 			Matrix4x4 ViewMatrixSprite = math.MakeIdentity();
-			Matrix4x4 projectionMatrixSprite = math.MakeOrthographicmatrix(0.0f,0.0f, float(kClientWidth), float(kClientHeight),0.0f,100.0f);
-			Matrix4x4 worldViewProjectionMatrixSprite = math.Multiply(worldMatrixSprite,math.Multiply(ViewMatrixSprite,projectionMatrixSprite));
+			Matrix4x4 projectionMatrixSprite = math.MakeOrthographicmatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
+			Matrix4x4 worldViewProjectionMatrixSprite = math.Multiply(worldMatrixSprite, math.Multiply(ViewMatrixSprite, projectionMatrixSprite));
 			*transfomationMartixDataSprite = worldViewProjectionMatrixSprite;
 
 			//開発用UIの処理
@@ -1359,7 +1359,7 @@ ID3D12Resource* CreaTextureResource(ID3D12Device* device, const DirectX::TexMeta
 	//Textureの高さ
 	resourceDesc.Height = UINT(metdata.height);
 	//mipmapの数
-	resourceDesc.MipLevels = UINT16(metdata.mipLevels);
+	resourceDesc.MipLevels = UINT16(metdata.mipLevels)
 	//奥行き or　配列Textureの配列数
 	resourceDesc.DepthOrArraySize = UINT16(metdata.arraySize);
 	//TextureのFormat
