@@ -15,6 +15,7 @@
 #include"Math.h"
 #include"externals/DirectXTex/d3dx12.h"
 #include<vector>
+#include <numbers>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -635,33 +636,93 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//書き込む為のアドレスを取得
 	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
 
-	//一個目の三角形
+	////一個目の三角形
 
-	//左下
-	vertexData[0].position = { -0.5f,-0.5f,0.0f,1.0f };
-	vertexData[0].texcoord = { 0.0f,1.0f };
+	////左下
+	//vertexData[0].position = { -0.5f,-0.5f,0.0f,1.0f };
+	//vertexData[0].texcoord = { 0.0f,1.0f };
 
-	//上
-	vertexData[1].position = { 0.0f,0.5f,0.0f,1.0f };
-	vertexData[1].texcoord = { 0.5f,0.0f };
+	////上
+	//vertexData[1].position = { 0.0f,0.5f,0.0f,1.0f };
+	//vertexData[1].texcoord = { 0.5f,0.0f };
 
-	//右下
-	vertexData[2].position = { 0.5f,-0.5f,0.0f,1.0f };
-	vertexData[2].texcoord = { 1.0f,1.0f };
+	////右下
+	//vertexData[2].position = { 0.5f,-0.5f,0.0f,1.0f };
+	//vertexData[2].texcoord = { 1.0f,1.0f };
 
-	//二個目の三角形
+	////二個目の三角形
 
-	//左下
-	vertexData[3].position = { -0.5f,-0.5f,0.5f,1.0f };
-	vertexData[3].texcoord = { 0.0f,1.0f };
+	////左下
+	//vertexData[3].position = { -0.5f,-0.5f,0.5f,1.0f };
+	//vertexData[3].texcoord = { 0.0f,1.0f };
 
-	//上
-	vertexData[4].position = { 0.0f,0.0f,0.0f,1.0f };
-	vertexData[4].texcoord = { 0.5f,0.0f };
+	////上
+	//vertexData[4].position = { 0.0f,0.0f,0.0f,1.0f };
+	//vertexData[4].texcoord = { 0.5f,0.0f };
 
-	//右下
-	vertexData[5].position = { 0.5f,-0.5f,-0.5f,1.0f };
-	vertexData[5].texcoord = { 1.0f,1.0f };
+	////右下
+	//vertexData[5].position = { 0.5f,-0.5f,-0.5f,1.0f };
+	//vertexData[5].texcoord = { 1.0f,1.0f };
+
+	/*--- 球体 ---*/
+
+	//分裂数
+	const uint32_t kSubdivision = 16;
+
+	//経度分割1つ分の角度
+	const float kLonEvery = 2.0f * std::numbers::pi_v<float> / float(kSubdivision);
+
+	//緯度分割1つ分の角度
+	const float kLatEvery = std::numbers::pi_v<float> / float(kSubdivision);
+
+	//緯度の方向に分割 -π/2 ~ π/2
+	for (uint32_t latIndex = 0; latIndex < kSubdivision; latIndex++)
+	{
+		float lat = -std::numbers::pi_v<float> / 2.0f + kLatEvery * latIndex;
+
+		//経度の方向に分割 0 ~ 2π
+		for (uint32_t lonIndex = 0; lonIndex < kSubdivision; lonIndex++)
+		{
+			uint32_t start = (latIndex * kSubdivision + lonIndex) * 6;
+
+			//現在の経度
+			float lon = lonIndex * kLonEvery;
+
+			//頂点にデータを入力する。基準点a
+			//a
+			vertexData[start].position.x = cos(lat) * cos(lon);
+			vertexData[start].position.y = sin(lat);
+			vertexData[start].position.z = cos(lat) * sin(lon);
+			vertexData[start].position.w = 1.0f;
+
+
+
+			//b
+			vertexData[start].position.x = cos(lat + kLatEvery) * cos(lon);
+			vertexData[start].position.y = sin(lat + kLatEvery);
+			vertexData[start].position.z = cos(lat + kLatEvery) * sin(lon);
+			vertexData[start].position.w = 1.0f;
+
+
+
+			//c
+			vertexData[start].position.x = cos(lat) * cos(lon + kLonEvery);
+			vertexData[start].position.y = sin(lat);
+			vertexData[start].position.z = cos(lat) * sin(lon + kLonEvery);
+			vertexData[start].position.w = 1.0f;
+
+
+
+			//d
+			vertexData[start].position.x = cos(lat + kLatEvery) * cos(lon + kLonEvery);
+			vertexData[start].position.y = sin(lat + kLatEvery);
+			vertexData[start].position.z = cos(lat + kLatEvery) * sin(lon + kLonEvery);
+			vertexData[start].position.w = 1.0f;
+
+
+
+		}
+	}
 
 	//WVP用のリソースを作る
 	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(Matrix4x4));
@@ -837,6 +898,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//ゲーム処理
 
 			/*--- ↓更新処理ここから↓ ---*/
+			
 
 			transform.rotate.y += 0.03f;
 
