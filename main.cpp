@@ -679,7 +679,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	const uint32_t vertexCount = kSubdivision * kSubdivision * 6;
 
 	//頂点リソースを作成
-	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData)* vertexCount);
+	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * vertexCount);
 
 	//頂点バッファビューを作成
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
@@ -710,42 +710,70 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//現在の経度
 			float lon = lonIndex * kLonEvery;
 
-			//頂点にデータを入力する。基準点a
+			//頂点にデータを入力する
+			
+			//三角形1つ目: a,b,c
+
 			//a
-			vertexData[start].position.x = cos(lat) * cos(lon);
-			vertexData[start].position.y = sin(lat);
-			vertexData[start].position.z = cos(lat) * sin(lon);
-			vertexData[start].position.w = 1.0f;
-			vertexData[start].texcoord = { float(lonIndex) / float(kSubdivision),
-				float(latIndex) / float(kSubdivision) };
+			vertexData[start + 0].position.x = cos(lat) * cos(lon);
+			vertexData[start + 0].position.y = sin(lat);
+			vertexData[start + 0].position.z = cos(lat) * sin(lon);
+			vertexData[start + 0].position.w = 1.0f;
+			vertexData[start + 0].texcoord = {
+				float(lonIndex) / float(kSubdivision),
+				 1.0f - float(latIndex) / float(kSubdivision)
+			};
 
 
 
 			//b
-			vertexData[start].position.x = cos(lat + kLatEvery) * cos(lon);
-			vertexData[start].position.y = sin(lat + kLatEvery);
-			vertexData[start].position.z = cos(lat + kLatEvery) * sin(lon);
-			vertexData[start].position.w = 1.0f;
-			vertexData[start].texcoord = { float(lonIndex) / float(kSubdivision),
-			float(latIndex) / float(kSubdivision) };
+			vertexData[start + 1].position.x = cos(lat + kLatEvery) * cos(lon);
+			vertexData[start + 1].position.y = sin(lat + kLatEvery);
+			vertexData[start + 1].position.z = cos(lat + kLatEvery) * sin(lon);
+			vertexData[start + 1].position.w = 1.0f;
+			vertexData[start + 1].texcoord = {
+				float(lonIndex) / float(kSubdivision),
+				 1.0f - float(latIndex + 1) / float(kSubdivision)
+			};
 
 
 
 			//c
-			vertexData[start].position.x = cos(lat) * cos(lon + kLonEvery);
-			vertexData[start].position.y = sin(lat);
-			vertexData[start].position.z = cos(lat) * sin(lon + kLonEvery);
-			vertexData[start].position.w = 1.0f;
-			vertexData[start].texcoord = { float(lonIndex) / float(kSubdivision),float(latIndex) / float(kSubdivision) };
+			vertexData[start + 2].position.x = cos(lat) * cos(lon + kLonEvery);
+			vertexData[start + 2].position.y = sin(lat);
+			vertexData[start + 2].position.z = cos(lat) * sin(lon + kLonEvery);
+			vertexData[start + 2].position.w = 1.0f;
+			vertexData[start + 2].texcoord = {
+				float(lonIndex + 1) / float(kSubdivision),
+				 1.0f - float(latIndex) / float(kSubdivision)
+			};
 
+			//三角形1つ目: c,b,d
 
+			// c
+			vertexData[start + 4].position.x = vertexData[start + 2].position.x;
+			vertexData[start + 4].position.y = vertexData[start + 2].position.y;
+			vertexData[start + 4].position.z = vertexData[start + 2].position.z;
+			vertexData[start + 4].position.w = vertexData[start + 2].position.w;
+			vertexData[start + 4].texcoord = vertexData[start + 2].texcoord;
 
+			// b
+			vertexData[start + 5].position.x = vertexData[start + 1].position.x;
+			vertexData[start + 5].position.y = vertexData[start + 1].position.y;
+			vertexData[start + 5].position.z = vertexData[start + 1].position.z;
+			vertexData[start + 5].position.w = vertexData[start + 1].position.w;
+			vertexData[start + 5].texcoord = vertexData[start + 1].texcoord;
+	
 			//d
-			vertexData[start].position.x = cos(lat + kLatEvery) * cos(lon + kLonEvery);
-			vertexData[start].position.y = sin(lat + kLatEvery);
-			vertexData[start].position.z = cos(lat + kLatEvery) * sin(lon + kLonEvery);
-			vertexData[start].position.w = 1.0f;
-			vertexData[start].texcoord = { float(lonIndex) / float(kSubdivision),float(latIndex) / float(kSubdivision) };
+			vertexData[start + 3].position.x = cos(lat + kLatEvery) * cos(lon + kLonEvery);
+			vertexData[start + 3].position.y = sin(lat + kLatEvery);
+			vertexData[start + 3].position.z = cos(lat + kLatEvery) * sin(lon + kLonEvery);
+			vertexData[start + 3].position.w = 1.0f;
+			vertexData[start + 3].texcoord = {
+				float(lonIndex + 1) / float(kSubdivision),
+				 1.0f - float(latIndex + 1) / float(kSubdivision)
+			};
+
 
 		}
 	}
@@ -855,10 +883,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	};
 
 
-	Transform cameraPosition{ 
+	Transform cameraPosition{
 		{ 1.0f,1.0f,1.0f },
 		{ 0.0f,0.0f,0.0f },
-		{0.0f,0.0f, -20.0f} 
+		{0.0f,0.0f, -10.0f}
 	};
 
 	//ImGuiの初期化
@@ -1039,7 +1067,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
 			//描画！
-			commandList->DrawInstanced(6, 1, 0, 0);
+			commandList->DrawInstanced(vertexCount, 1, 0, 0);
 
 			//スプライト
 			//VBVの設定
