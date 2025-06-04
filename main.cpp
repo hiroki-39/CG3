@@ -748,28 +748,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				 1.0f - float(latIndex) / float(kSubdivision)
 			};
 
-			//三角形1つ目: c,b,d
+			//三角形2つ目: c,b,d
 
 			// c
-			vertexData[start + 4].position.x = vertexData[start + 2].position.x;
-			vertexData[start + 4].position.y = vertexData[start + 2].position.y;
-			vertexData[start + 4].position.z = vertexData[start + 2].position.z;
-			vertexData[start + 4].position.w = vertexData[start + 2].position.w;
-			vertexData[start + 4].texcoord = vertexData[start + 2].texcoord;
+			vertexData[start + 3].position.x = vertexData[start + 2].position.x;
+			vertexData[start + 3].position.y = vertexData[start + 2].position.y;
+			vertexData[start + 3].position.z = vertexData[start + 2].position.z;
+			vertexData[start + 3].position.w = vertexData[start + 2].position.w;
+			vertexData[start + 3].texcoord = vertexData[start + 2].texcoord;
 
 			// b
-			vertexData[start + 5].position.x = vertexData[start + 1].position.x;
-			vertexData[start + 5].position.y = vertexData[start + 1].position.y;
-			vertexData[start + 5].position.z = vertexData[start + 1].position.z;
-			vertexData[start + 5].position.w = vertexData[start + 1].position.w;
-			vertexData[start + 5].texcoord = vertexData[start + 1].texcoord;
+			vertexData[start + 4].position.x = vertexData[start + 1].position.x;
+			vertexData[start + 4].position.y = vertexData[start + 1].position.y;
+			vertexData[start + 4].position.z = vertexData[start + 1].position.z;
+			vertexData[start + 4].position.w = vertexData[start + 1].position.w;
+			vertexData[start + 4].texcoord = vertexData[start + 1].texcoord;
 	
 			//d
-			vertexData[start + 3].position.x = cos(lat + kLatEvery) * cos(lon + kLonEvery);
-			vertexData[start + 3].position.y = sin(lat + kLatEvery);
-			vertexData[start + 3].position.z = cos(lat + kLatEvery) * sin(lon + kLonEvery);
-			vertexData[start + 3].position.w = 1.0f;
-			vertexData[start + 3].texcoord = {
+			vertexData[start + 5].position.x = cos(lat + kLatEvery) * cos(lon + kLonEvery);
+			vertexData[start + 5].position.y = sin(lat + kLatEvery);
+			vertexData[start + 5].position.z = cos(lat + kLatEvery) * sin(lon + kLonEvery);
+			vertexData[start + 5].position.w = 1.0f;
+			vertexData[start + 5].texcoord = {
 				float(lonIndex + 1) / float(kSubdivision),
 				 1.0f - float(latIndex + 1) / float(kSubdivision)
 			};
