@@ -694,7 +694,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			vertexData[start].position.y = sin(lat);
 			vertexData[start].position.z = cos(lat) * sin(lon);
 			vertexData[start].position.w = 1.0f;
-			vertexData[start].texcoord = {float(lonIndex)/float(kSubdivision),float(latIndex)/ float(kSubdivision)};
+			vertexData[start].texcoord = { float(lonIndex) / float(kSubdivision),
+				float(latIndex) / float(kSubdivision) };
 
 
 
@@ -703,6 +704,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			vertexData[start].position.y = sin(lat + kLatEvery);
 			vertexData[start].position.z = cos(lat + kLatEvery) * sin(lon);
 			vertexData[start].position.w = 1.0f;
+			vertexData[start].texcoord = { float(lonIndex) / float(kSubdivision),
+			float(latIndex) / float(kSubdivision) };
 
 
 
@@ -711,6 +714,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			vertexData[start].position.y = sin(lat);
 			vertexData[start].position.z = cos(lat) * sin(lon + kLonEvery);
 			vertexData[start].position.w = 1.0f;
+			vertexData[start].texcoord = { float(lonIndex) / float(kSubdivision),float(latIndex) / float(kSubdivision) };
 
 
 
@@ -719,6 +723,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			vertexData[start].position.y = sin(lat + kLatEvery);
 			vertexData[start].position.z = cos(lat + kLatEvery) * sin(lon + kLonEvery);
 			vertexData[start].position.w = 1.0f;
+			vertexData[start].texcoord = { float(lonIndex) / float(kSubdivision),float(latIndex) / float(kSubdivision) };
 
 
 
@@ -890,7 +895,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
-		} else
+		}
+		else
 		{
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
@@ -899,7 +905,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//ゲーム処理
 
 			/*--- ↓更新処理ここから↓ ---*/
-			
+
 
 			transform.rotate.y += 0.03f;
 
