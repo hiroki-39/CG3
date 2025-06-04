@@ -694,6 +694,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			vertexData[start].position.y = sin(lat);
 			vertexData[start].position.z = cos(lat) * sin(lon);
 			vertexData[start].position.w = 1.0f;
+			vertexData[start].texcoord = {float(lonIndex)/float(kSubdivision),float(latIndex)/ float(kSubdivision)};
 
 
 
@@ -1421,7 +1422,7 @@ ID3D12Resource* CreaTextureResource(ID3D12Device* device, const DirectX::TexMeta
 	//Textureの高さ
 	resourceDesc.Height = UINT(metdata.height);
 	//mipmapの数
-	resourceDesc.MipLevels = UINT16(metdata.mipLevels)
+	resourceDesc.MipLevels = UINT16(metdata.mipLevels);
 	//奥行き or　配列Textureの配列数
 	resourceDesc.DepthOrArraySize = UINT16(metdata.arraySize);
 	//TextureのFormat
