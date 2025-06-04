@@ -614,27 +614,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//色の設定
 	*materialData = Vector4{ 1.0f,1.0f,1.0f,1.0f };
 
+	/*--- 三角形 ---*/
 
+	////頂点リソースを作成
+	//ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * );
 
-	//頂点リソースを作成
-	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * 6);
+	////頂点バッファビューを作成
+	//D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 
-	//頂点バッファビューを作成
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+	//////リソースの先頭のアドレスから使う
+	//vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress();
 
-	////リソースの先頭のアドレスから使う
-	vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress();
+	////使用するリソースのサイズは頂点3つのサイズ
+	//vertexBufferView.SizeInBytes = sizeof(VertexData) * 6;
+	////1頂点当たりのサイズ
+	//vertexBufferView.StrideInBytes = sizeof(VertexData);
 
-	//使用するリソースのサイズは頂点3つのサイズ
-	vertexBufferView.SizeInBytes = sizeof(VertexData) * 6;
-	//1頂点当たりのサイズ
-	vertexBufferView.StrideInBytes = sizeof(VertexData);
+	////頂点リソースデータを書き込む
+	//VertexData* vertexData = nullptr;
 
-	//頂点リソースデータを書き込む
-	VertexData* vertexData = nullptr;
-
-	//書き込む為のアドレスを取得
-	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+	////書き込む為のアドレスを取得
+	//vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
 
 	////一個目の三角形
 
@@ -675,6 +675,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//緯度分割1つ分の角度
 	const float kLatEvery = std::numbers::pi_v<float> / float(kSubdivision);
 
+	//必要な頂点数
+	const uint32_t vertexCount = kSubdivision * kSubdivision * 6;
+
+	//頂点リソースを作成
+	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData)* vertexCount);
+
+	//頂点バッファビューを作成
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+
+	////リソースの先頭のアドレスから使う
+	vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress();
+
+	//使用するリソースのサイズは頂点3つのサイズ
+	vertexBufferView.SizeInBytes = sizeof(VertexData) * vertexCount;
+	//1頂点当たりのサイズ
+	vertexBufferView.StrideInBytes = sizeof(VertexData);
+
+	//頂点リソースデータを書き込む
+	VertexData* vertexData = nullptr;
+
+	//書き込む為のアドレスを取得
+	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
 	//緯度の方向に分割 -π/2 ~ π/2
 	for (uint32_t latIndex = 0; latIndex < kSubdivision; latIndex++)
 	{
@@ -725,10 +747,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			vertexData[start].position.w = 1.0f;
 			vertexData[start].texcoord = { float(lonIndex) / float(kSubdivision),float(latIndex) / float(kSubdivision) };
 
-
-
 		}
 	}
+
+
 
 	//WVP用のリソースを作る
 	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(Matrix4x4));
@@ -833,7 +855,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	};
 
 
-	Vector3 cameraPosition{ 0.0f,0.0f, -10.0f };
+	Transform cameraPosition{ 
+		{ 1.0f,1.0f,1.0f },
+		{ 0.0f,0.0f,0.0f },
+		{0.0f,0.0f, -20.0f} 
+	};
 
 	//ImGuiの初期化
 	IMGUI_CHECKVERSION();
@@ -914,7 +940,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				transform.scale, transform.rotate, transform.translate);
 			*wvpData = worldMatrix;
 
-			Matrix4x4 cameraMatrix = math.MakeAffineMatrix({ 1.0f,1.0f,1.0f }, { 0.0f,0.0f,0.0f }, cameraPosition);
+			Matrix4x4 cameraMatrix = math.MakeAffineMatrix(cameraPosition.scale, cameraPosition.rotate, cameraPosition.translate);
 			Matrix4x4 viewMatrix = math.Inverse(cameraMatrix);
 			Matrix4x4 projectionMatrix = math.MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
 			//WVPMatrixの作成
@@ -1015,6 +1041,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//描画！
 			commandList->DrawInstanced(6, 1, 0, 0);
 
+			//スプライト
 			//VBVの設定
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferviewSprite);
 			//TransfomationMatrixCBufferの場所を指定
