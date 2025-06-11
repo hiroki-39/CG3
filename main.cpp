@@ -55,6 +55,12 @@ struct Material
 	int32_t enableLighting;
 };
 
+struct TransformationMatrix
+{
+	Matrix4x4 WVP;
+	Matrix4x4 World;
+};
+
 
 void Log(std::ostream& os, const std::string& message);
 
@@ -702,7 +708,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//書き込む為のアドレスを取得
 	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
-	
+
 	//緯度の方向に分割 -π/2 ~ π/2
 	for (uint32_t latIndex = 0; latIndex < kSubdivision; latIndex++)
 	{
@@ -815,15 +821,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 	//WVP用のリソースを作る
-	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(Matrix4x4));
+	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(TransformationMatrix));
 
 	//データを書き込む
-	Matrix4x4* wvpData = nullptr;
+	TransformationMatrix* wvpData = nullptr;
+
 	//書き込むためのアドレス取得
 	wvpResource->Map(0, nullptr, reinterpret_cast<void**>(&wvpData));
 
 	//単位行列を書き込む
-	*wvpData = math.MakeIdentity();
+	wvpData->WVP = math.MakeIdentity();
+
+	//WorldMatrixの設定
+	wvpData->World = math.MakeAffineMatrix({ 1.0f,1.0f,1.0f }, { 0.0f,0.0f,0.0f }, { 0.0f,0.0f,0.0f });
 
 	//マテリアル用のリソースを作る
 	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Material));
@@ -910,7 +920,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//色の設定
 	materialDataSprite->color = { 1.0f,1.0f,1.0f,1.0f };
-  
+
 	//Lightingを有効化
 	materialDataSprite->enableLighting = false;
 
@@ -1070,16 +1080,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			transform.rotate.y += 0.03f;
 
 			//Transformの更新
-			Matrix4x4 worldMatrix = math.MakeAffineMatrix(
-				transform.scale, transform.rotate, transform.translate);
-			*wvpData = worldMatrix;
+			//Matrix4x4 worldMatrix = math.MakeAffineMatrix(
+			//	transform.scale, transform.rotate, transform.translate);
+
 
 			Matrix4x4 cameraMatrix = math.MakeAffineMatrix(cameraPosition.scale, cameraPosition.rotate, cameraPosition.translate);
 			Matrix4x4 viewMatrix = math.Inverse(cameraMatrix);
 			Matrix4x4 projectionMatrix = math.MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			
 			//WVPMatrixの作成
-			Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
-			*wvpData = worldViewProjectionMatrix;
+			Matrix4x4 worldViewProjectionMatrix = math.Multiply(wvpData->World, math.Multiply(viewMatrix, projectionMatrix));
+			wvpData->WVP = worldViewProjectionMatrix;
 
 			//Sprite用のWorldViewProjectmatrixを作る
 			Matrix4x4 worldMatrixSprite = math.MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
@@ -1144,25 +1155,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			//Viewportを設定
 			commandList->RSSetViewports(1, &viewport);
-			
+
 			//Scirssorを設定
 			commandList->RSSetScissorRects(1, &scissorRect);
-			
+
 			//RootSignatureの設定
 			commandList->SetGraphicsRootSignature(rootSignature);
-			
+
 			//PSOを設定
 			commandList->SetPipelineState(graphicsPipelineState);
-			
+
 			//VBVの設定
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
-			
+
 			//形状を設定
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			
+
 			//CBVの設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
-			
+
 			//wvp用のCBufferの場所を設定
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
 
