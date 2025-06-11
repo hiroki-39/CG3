@@ -106,26 +106,27 @@ D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(ID3D12DescriptorHeap* descrip
 D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index);
 
 //Transformの初期化
-	Transform  transform{
-		{1.0f,1.0f,1.0f},
-		{0.0f,0.0f,0.0f},
-		{0.0f,0.0f,0.0f},
-	};
+Transform  transform{
+	{1.0f,1.0f,1.0f},
+	{0.0f,0.0f,0.0f},
+	{0.0f,0.0f,0.0f},
+};
 
 
-	//CPUで動かす用のTransform
-	Transform transformSprite{
-		{1.0f,1.0f,1.0f},
-		{0.0f,0.0f,0.0f},
-		{0.0f,0.0f,0.0f},
-	};
+//CPUで動かす用のTransform
+Transform transformSprite{
+	{1.0f,1.0f,1.0f},
+	{0.0f,0.0f,0.0f},
+	{0.0f,0.0f,0.0f},
+};
 
 
-	Transform cameraPosition{
-		{ 1.0f,1.0f,1.0f },
-		{ 0.0f,0.0f,0.0f },
-		{0.0f,0.0f, -10.0f}
-	};
+Transform cameraPosition{
+	{ 1.0f,1.0f,1.0f },
+	{ 0.0f,0.0f,0.0f },
+	{0.0f,0.0f, -10.0f}
+};
+
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
@@ -663,7 +664,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	/*--- 三角形 ---*/
 
 	////頂点リソースを作成
-	//ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * );
+	//ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) *6 );
 
 	////頂点バッファビューを作成
 	//D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
@@ -819,7 +820,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			vertexData[start + 3].normal.x = vertexData[start + 3].position.x;
 			vertexData[start + 3].normal.y = vertexData[start + 3].position.y;
-			vertexData[start + 3].normal.z= vertexData[start + 3].position.z;
+			vertexData[start + 3].normal.z = vertexData[start + 3].position.z;
 
 
 			// b
@@ -1002,9 +1003,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	/*-------------- 初期化 --------------*/
 
-
-	
-
 	//ImGuiの初期化
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -1122,10 +1120,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			Matrix4x4 cameraMatrix = math.MakeAffineMatrix(cameraPosition.scale, cameraPosition.rotate, cameraPosition.translate);
 			Matrix4x4 viewMatrix = math.Inverse(cameraMatrix);
 			Matrix4x4 projectionMatrix = math.MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-
 			//WVPMatrixの作成
 			Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
-			*wvpData = worldViewProjectionMatrix;
+			wvpData->WVP = worldViewProjectionMatrix;
 
 			//Sprite用のWorldViewProjectmatrixを作る
 			Matrix4x4 worldMatrixSprite = math.MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
@@ -1243,7 +1240,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU1);
 
 			//描画！
-			commandList->DrawInstanced(6, 1, 0, 0);
+	/*		commandList->DrawInstanced(6, 1, 0, 0);*/
 
 			//実際のCommandListのImGuiの描画コマンドを積む
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
@@ -1351,6 +1348,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	transformationMatrixResourceSprite->Release();
 
 	materialResourceSprite->Release();
+
+	directionalLightResouerce->Release();
 
 #ifdef _DEBUG
 	debugController->Release();

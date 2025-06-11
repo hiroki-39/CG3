@@ -23,6 +23,5 @@ VertexShaderOutput main(VertexShaderInput input)
     output.position = mul(input.position,gTransformationMatrix.WVP);
     output.texcoord = input.texcoord;
 
-  
     return output;
 }
