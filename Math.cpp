@@ -2,6 +2,32 @@
 #include <cmath>
 #include <assert.h>
 
+float Math::Length(const Vector3& v)
+{
+	return sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+
+Vector3 Math::Normalize(const Vector3& v)
+{
+	float length = Length(v);
+	Vector3 result;
+	if (length != 0)
+	{
+		result.x = v.x / length;
+		result.y = v.y / length;
+		result.z = v.z / length;
+	}
+	else
+	{
+		result.x = 0;
+		result.y = 0;
+		result.z = 0;
+	}
+	return result;
+
+}
+
 //行列の加算
 Matrix4x4 Math::Add(const Matrix4x4& m1, const Matrix4x4& m2)
 {
@@ -196,7 +222,8 @@ Matrix4x4 Math::MakeIdentity()
 			if (i == j)
 			{
 				result.m[i][j] = 1.0f;
-			} else
+			}
+			else
 			{
 				result.m[i][j] = 0.0f;
 			}

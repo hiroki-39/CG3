@@ -30,6 +30,11 @@ struct Matrix4x4 final
 class Math
 {
 public:
+
+	float Length(const Vector3& v);
+
+	Vector3 Normalize(const Vector3& v);
+
 	Matrix4x4 Add(const Matrix4x4& m1, const Matrix4x4& m2);
 
 	Matrix4x4 Subtract(const Matrix4x4& m1, const Matrix4x4& m2);

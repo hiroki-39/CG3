@@ -62,6 +62,13 @@ struct TransformationMatrix
 };
 
 
+struct DirectionlLight
+{
+	Vector4 color; // ライトの色
+	Vector3 direction; //ライトの向き
+	float intensity; //輝度
+};
+
 void Log(std::ostream& os, const std::string& message);
 
 std::wstring ConvertString(const std::string& str);
@@ -98,6 +105,27 @@ D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(ID3D12DescriptorHeap* descrip
 
 D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index);
 
+//Transformの初期化
+	Transform  transform{
+		{1.0f,1.0f,1.0f},
+		{0.0f,0.0f,0.0f},
+		{0.0f,0.0f,0.0f},
+	};
+
+
+	//CPUで動かす用のTransform
+	Transform transformSprite{
+		{1.0f,1.0f,1.0f},
+		{0.0f,0.0f,0.0f},
+		{0.0f,0.0f,0.0f},
+	};
+
+
+	Transform cameraPosition{
+		{ 1.0f,1.0f,1.0f },
+		{ 0.0f,0.0f,0.0f },
+		{0.0f,0.0f, -10.0f}
+	};
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
@@ -456,7 +484,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
 	/*---RootSignature作成---*/
-	D3D12_ROOT_PARAMETER rootPrameters[3] = {};
+	D3D12_ROOT_PARAMETER rootPrameters[4] = {};
 	//CBVを使う
 	rootPrameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	//prixelShederを使う
@@ -479,6 +507,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	rootPrameters[2].DescriptorTable.pDescriptorRanges = descriptorRange;
 	//Tableで利用する数
 	rootPrameters[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
+
+	//CBVを使う
+	rootPrameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	//Pixelshaderで使う
+	rootPrameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	//レジスタ番号1を使う
+	rootPrameters[3].Descriptor.ShaderRegister = 1;
 
 	//ルートパラメータ配列へのポインタ
 	descripitionRootSignature.pParameters = rootPrameters;
@@ -738,8 +773,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			};
 
 			vertexData[start + 0].normal.x = vertexData[start + 0].position.x;
-			vertexData[start + 0].normal.x = vertexData[start + 0].position.y;
-			vertexData[start + 0].normal.x = vertexData[start + 0].position.z;
+			vertexData[start + 0].normal.y = vertexData[start + 0].position.y;
+			vertexData[start + 0].normal.z = vertexData[start + 0].position.z;
 
 
 			//b
@@ -754,8 +789,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			};
 
 			vertexData[start + 1].normal.x = vertexData[start + 1].position.x;
-			vertexData[start + 1].normal.x = vertexData[start + 1].position.y;
-			vertexData[start + 1].normal.x = vertexData[start + 1].position.z;
+			vertexData[start + 1].normal.y = vertexData[start + 1].position.y;
+			vertexData[start + 1].normal.z = vertexData[start + 1].position.z;
 
 			//c
 			vertexData[start + 2].position.x = cos(lat) * cos(lon + kLonEvery);
@@ -769,8 +804,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			};
 
 			vertexData[start + 2].normal.x = vertexData[start + 2].position.x;
-			vertexData[start + 2].normal.x = vertexData[start + 2].position.y;
-			vertexData[start + 2].normal.x = vertexData[start + 2].position.z;
+			vertexData[start + 2].normal.y = vertexData[start + 2].position.y;
+			vertexData[start + 2].normal.z = vertexData[start + 2].position.z;
 
 			//三角形2つ目: c,b,d
 
@@ -783,8 +818,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			vertexData[start + 3].texcoord = vertexData[start + 2].texcoord;
 
 			vertexData[start + 3].normal.x = vertexData[start + 3].position.x;
-			vertexData[start + 3].normal.x = vertexData[start + 3].position.y;
-			vertexData[start + 3].normal.x = vertexData[start + 3].position.z;
+			vertexData[start + 3].normal.y = vertexData[start + 3].position.y;
+			vertexData[start + 3].normal.z= vertexData[start + 3].position.z;
 
 
 			// b
@@ -796,8 +831,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			vertexData[start + 4].texcoord = vertexData[start + 1].texcoord;
 
 			vertexData[start + 4].normal.x = vertexData[start + 4].position.x;
-			vertexData[start + 4].normal.x = vertexData[start + 4].position.y;
-			vertexData[start + 4].normal.x = vertexData[start + 4].position.z;
+			vertexData[start + 4].normal.y = vertexData[start + 4].position.y;
+			vertexData[start + 4].normal.z = vertexData[start + 4].position.z;
 
 
 			//d
@@ -812,12 +847,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			};
 
 			vertexData[start + 5].normal.x = vertexData[start + 5].position.x;
-			vertexData[start + 5].normal.x = vertexData[start + 5].position.y;
-			vertexData[start + 5].normal.x = vertexData[start + 5].position.z;
+			vertexData[start + 5].normal.y = vertexData[start + 5].position.y;
+			vertexData[start + 5].normal.z = vertexData[start + 5].position.z;
 
 		}
 	}
-
 
 
 	//WVP用のリソースを作る
@@ -832,8 +866,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//単位行列を書き込む
 	wvpData->WVP = math.MakeIdentity();
 
-	//WorldMatrixの設定
-	wvpData->World = math.MakeAffineMatrix({ 1.0f,1.0f,1.0f }, { 0.0f,0.0f,0.0f }, { 0.0f,0.0f,0.0f });
+	//Worldmatrixの設定
+	wvpData->World = math.MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
 
 	//マテリアル用のリソースを作る
 	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Material));
@@ -845,12 +879,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
 
 	//色の設定
-	materialData->color = Vector4{ 1.0f,1.0f,1.0f,1.0f };
+	materialData->color = { 1.0f,1.0f,1.0f,1.0f };
 
 	//Lightingを有効化
-	materialData->enableLighting = false;
+	materialData->enableLighting = true;
 
-	/*-------------- Spriteの作成 --------------*/
+	/*-------------- Spriteの設定 --------------*/
 
 	//Sprite用の頂点リソースを作る
 	ID3D12Resource* vertexResourceSprite = CreateBufferResource(device, sizeof(VertexData) * 6);
@@ -909,6 +943,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//単位行列を書き込んでおく
 	*transfomationMartixDataSprite = math.MakeIdentity();
 
+
 	//Sprite用のリソースを作る
 	ID3D12Resource* materialResourceSprite = CreateBufferResource(device, sizeof(Material));
 
@@ -923,6 +958,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//Lightingを有効化
 	materialDataSprite->enableLighting = false;
+
+	/*-------------- 平行光源の設定 --------------*/
+
+	//平行光源用のリソースを作成
+	ID3D12Resource* directionalLightResouerce = CreateBufferResource(device, sizeof(DirectionlLight));
+
+	//データを書き込む
+	DirectionlLight* directionalLightData = nullptr;
+
+	//書き込むためのアドレス取得
+	directionalLightResouerce->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData));
+
+	//ライトの色
+	directionalLightData->color = { 1.0f,1.0f,1.0f,1.0f };
+	//向き
+	directionalLightData->direction = { 0.0f,-1.0f,0.0f };
+	//輝度
+	directionalLightData->intensity = 1.0f;
+
+	directionalLightData->direction = math.Normalize(directionalLightData->direction);
 
 	//ビューポート
 	D3D12_VIEWPORT viewport{ };
@@ -948,27 +1003,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	/*-------------- 初期化 --------------*/
 
 
-	//Transformの初期化
-	Transform  transform{
-		{1.0f,1.0f,1.0f},
-		{0.0f,0.0f,0.0f},
-		{0.0f,0.0f,0.0f},
-	};
-
-
-	//CPUで動かす用のTransform
-	Transform transformSprite{
-		{1.0f,1.0f,1.0f},
-		{0.0f,0.0f,0.0f},
-		{0.0f,0.0f,0.0f},
-	};
-
-
-	Transform cameraPosition{
-		{ 1.0f,1.0f,1.0f },
-		{ 0.0f,0.0f,0.0f },
-		{0.0f,0.0f, -10.0f}
-	};
+	
 
 	//ImGuiの初期化
 	IMGUI_CHECKVERSION();
@@ -1080,17 +1115,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			transform.rotate.y += 0.03f;
 
 			//Transformの更新
-			//Matrix4x4 worldMatrix = math.MakeAffineMatrix(
-			//	transform.scale, transform.rotate, transform.translate);
+			Matrix4x4 worldMatrix = math.MakeAffineMatrix(
+				transform.scale, transform.rotate, transform.translate);
 
 
 			Matrix4x4 cameraMatrix = math.MakeAffineMatrix(cameraPosition.scale, cameraPosition.rotate, cameraPosition.translate);
 			Matrix4x4 viewMatrix = math.Inverse(cameraMatrix);
 			Matrix4x4 projectionMatrix = math.MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-			
+
 			//WVPMatrixの作成
-			Matrix4x4 worldViewProjectionMatrix = math.Multiply(wvpData->World, math.Multiply(viewMatrix, projectionMatrix));
-			wvpData->WVP = worldViewProjectionMatrix;
+			Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
+			*wvpData = worldViewProjectionMatrix;
 
 			//Sprite用のWorldViewProjectmatrixを作る
 			Matrix4x4 worldMatrixSprite = math.MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
@@ -1176,6 +1211,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			//wvp用のCBufferの場所を設定
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
+
+			//平行光源用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
 
 			//SRVのDescriptorTableの先頭を設定
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU1);
