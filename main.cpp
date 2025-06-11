@@ -49,6 +49,12 @@ struct VertexData
 	Vector3 normal;
 };
 
+struct Material
+{
+	Vector4 color;
+	int32_t enableLighting;
+};
+
 
 void Log(std::ostream& os, const std::string& message);
 
@@ -611,17 +617,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		IID_PPV_ARGS(&graphicsPipelineState));
 	assert(SUCCEEDED(hr));
 
-	//マテリアル用のリソースを作る
-	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Vector4));
 
-	//頂点リソースデータを書き込む
-	Vector4* materialData = nullptr;
-
-	//書き込む為のアドレスを取得
-	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
-
-	//色の設定
-	*materialData = Vector4{ 1.0f,1.0f,1.0f,1.0f };
 
 	/*--- 三角形 ---*/
 
@@ -706,6 +702,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//書き込む為のアドレスを取得
 	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+	
 	//緯度の方向に分割 -π/2 ~ π/2
 	for (uint32_t latIndex = 0; latIndex < kSubdivision; latIndex++)
 	{
@@ -828,6 +825,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//単位行列を書き込む
 	*wvpData = math.MakeIdentity();
 
+	//マテリアル用のリソースを作る
+	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Material));
+
+	//頂点リソースデータを書き込む
+	Material* materialData = nullptr;
+
+	//書き込む為のアドレスを取得
+	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
+
+	//色の設定
+	materialData->color = Vector4{ 1.0f,1.0f,1.0f,1.0f };
+
+	//Lightingを有効化
+	materialData->enableLighting = false;
+
+	/*-------------- Spriteの作成 --------------*/
 
 	//Sprite用の頂点リソースを作る
 	ID3D12Resource* vertexResourceSprite = CreateBufferResource(device, sizeof(VertexData) * 6);
@@ -885,6 +898,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	transformationMatrixResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&transfomationMartixDataSprite));
 	//単位行列を書き込んでおく
 	*transfomationMartixDataSprite = math.MakeIdentity();
+
+	//Sprite用のリソースを作る
+	ID3D12Resource* materialResourceSprite = CreateBufferResource(device, sizeof(Material));
+
+	//頂点リソースデータを書き込む
+	Material* materialDataSprite = nullptr;
+
+	//書き込む為のアドレスを取得
+	materialResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&materialDataSprite));
+
+	//色の設定
+	materialDataSprite->color = { 1.0f,1.0f,1.0f,1.0f };
+  
+	//Lightingを有効化
+	materialDataSprite->enableLighting = false;
 
 	//ビューポート
 	D3D12_VIEWPORT viewport{ };
@@ -1064,7 +1092,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 			ImGui::Begin("window");
-			ImGui::ColorEdit4("Color", &(*materialData).x);
+			ImGui::ColorEdit4("Color", &(materialData->color).x);
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 			ImGui::End();
 
@@ -1116,18 +1144,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			//Viewportを設定
 			commandList->RSSetViewports(1, &viewport);
+			
 			//Scirssorを設定
 			commandList->RSSetScissorRects(1, &scissorRect);
+			
 			//RootSignatureの設定
 			commandList->SetGraphicsRootSignature(rootSignature);
+			
 			//PSOを設定
 			commandList->SetPipelineState(graphicsPipelineState);
+			
 			//VBVの設定
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
+			
 			//形状を設定
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			
 			//CBVの設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
+			
 			//wvp用のCBufferの場所を設定
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
 
@@ -1151,6 +1186,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			//TransfomationMatrixCBufferの場所を指定
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
+
+			//マテリアルCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
 
 			//SRVのDescriptorTableの先頭を設定
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU1);
@@ -1262,6 +1300,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	vertexResourceSprite->Release();
 
 	transformationMatrixResourceSprite->Release();
+
+	materialResourceSprite->Release();
 
 #ifdef _DEBUG
 	debugController->Release();
