@@ -978,6 +978,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//輝度
 	directionalLightData->intensity = 1.0f;
 
+	//ライトの正規化
 	directionalLightData->direction = math.Normalize(directionalLightData->direction);
 
 	//ビューポート
@@ -1131,11 +1132,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			Matrix4x4 worldViewProjectionMatrixSprite = math.Multiply(worldMatrixSprite, math.Multiply(ViewMatrixSprite, projectionMatrixSprite));
 			*transfomationMartixDataSprite = worldViewProjectionMatrixSprite;
 
-			//開発用UIの処理
+			//ライトの正規化
+			directionalLightData->direction = math.Normalize(directionalLightData->direction);
 
+			//開発用UIの処理
 
 			ImGui::Begin("window");
 			ImGui::ColorEdit4("Color", &(materialData->color).x);
+			ImGui::DragFloat3("LightDirection", &directionalLightData->direction.x, 0.01f);
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 			ImGui::End();
 
