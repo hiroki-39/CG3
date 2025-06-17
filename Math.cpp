@@ -2,6 +2,46 @@
 #include <cmath>
 #include <assert.h>
 
+
+
+Vector3 Math::Vector3Add(const Vector3& v1, const Vector3& v2)
+{
+	Vector3 result;
+
+	result.x = v1.x + v2.x;
+	result.y = v1.y + v2.y;
+	result.z = v1.z + v2.z;
+
+	return result;
+}
+
+Vector3 Math::Vector3Subtract(const Vector3& v1, const Vector3& v2)
+{
+	Vector3 result;
+
+	result.x = v1.x - v2.x;
+	result.y = v1.y - v2.y;
+	result.z = v1.z - v2.z;
+
+	return result;
+}
+
+Vector3 Math::Vector3Multiply(const Vector3& v, float scalar)
+{
+	Vector3 result;
+
+	result.x = v.x * scalar;
+	result.y = v.y * scalar;
+	result.z = v.z * scalar;
+
+	return result;
+}
+
+float Math::Vector3Dot(const Vector3& v1, const Vector3& v2)
+{
+	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
 float Math::Length(const Vector3& v)
 {
 	return sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
@@ -11,7 +51,9 @@ float Math::Length(const Vector3& v)
 Vector3 Math::Normalize(const Vector3& v)
 {
 	float length = Length(v);
+
 	Vector3 result;
+
 	if (length != 0)
 	{
 		result.x = v.x / length;
@@ -24,12 +66,13 @@ Vector3 Math::Normalize(const Vector3& v)
 		result.y = 0;
 		result.z = 0;
 	}
-	return result;
 
+	return result;
 }
 
+
 //行列の加算
-Matrix4x4 Math::Add(const Matrix4x4& m1, const Matrix4x4& m2)
+Matrix4x4 Math::Matrix4x4Add(const Matrix4x4& m1, const Matrix4x4& m2)
 {
 	Matrix4x4 result;
 
@@ -45,7 +88,7 @@ Matrix4x4 Math::Add(const Matrix4x4& m1, const Matrix4x4& m2)
 }
 
 //行列の減算	
-Matrix4x4 Math::Subtract(const Matrix4x4& m1, const Matrix4x4& m2)
+Matrix4x4 Math::Matrix4x4Subtract(const Matrix4x4& m1, const Matrix4x4& m2)
 {
 	Matrix4x4 result;
 
@@ -61,7 +104,7 @@ Matrix4x4 Math::Subtract(const Matrix4x4& m1, const Matrix4x4& m2)
 }
 
 //行列の積
-Matrix4x4 Math::Multiply(const Matrix4x4& m1, const Matrix4x4& m2)
+Matrix4x4 Math::Matrix4x4Multiply(const Matrix4x4& m1, const Matrix4x4& m2)
 {
 	Matrix4x4 result;
 
@@ -81,7 +124,7 @@ Matrix4x4 Math::Multiply(const Matrix4x4& m1, const Matrix4x4& m2)
 }
 
 //逆行列
-Matrix4x4 Math::Inverse(const Matrix4x4& m)
+Matrix4x4 Math::Matrix4x4Inverse(const Matrix4x4& m)
 {
 	Matrix4x4 result;
 
@@ -396,13 +439,13 @@ Matrix4x4 Math::MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, co
 	// 平行移動行列
 	Matrix4x4 translationMatrix = MakeTranslationMatrix(translate);
 	// 拡大縮小行列と回転行列を掛け算
-	result = Multiply(scaleMatrix, rotateXMatrix);
+	result = Matrix4x4Multiply(scaleMatrix, rotateXMatrix);
 	// さらにY軸回転行列を掛け算
-	result = Multiply(result, rotateYMatrix);
+	result = Matrix4x4Multiply(result, rotateYMatrix);
 	// さらにZ軸回転行列を掛け算
-	result = Multiply(result, rotateZMatrix);
+	result = Matrix4x4Multiply(result, rotateZMatrix);
 	// 最後に平行移動行列を掛け算
-	result = Multiply(result, translationMatrix);
+	result = Matrix4x4Multiply(result, translationMatrix);
 
 	// 結果を返す
 	return result;
