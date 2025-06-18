@@ -53,6 +53,8 @@ struct Material
 {
 	Vector4 color;
 	int32_t enableLighting;
+	float padding[3];
+	Matrix4x4 uvTransform;
 };
 
 struct TransformationMatrix
@@ -120,11 +122,18 @@ Transform transformSprite{
 	{0.0f,0.0f,0.0f},
 };
 
-
+//カメラの位置
 Transform cameraPosition{
 	{ 1.0f,1.0f,1.0f },
 	{ 0.0f,0.0f,0.0f },
 	{0.0f,0.0f, -10.0f}
+};
+
+//UVTransformの初期化
+Transform uvTransformSprite{
+	{ 1.0f,1.0f,1.0f },
+	{ 0.0f,0.0f,0.0f },
+	{ 0.0f,0.0f,0.0f }
 };
 
 //windowsアプリでのエントリーポイント(main関数)
@@ -870,6 +879,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//Lightingを有効化
 	materialData->enableLighting = true;
 
+	//単位行列を書き込む
+	materialData->uvTransform = math.MakeIdentity();
+
 	/*-------------- Spriteの設定 --------------*/
 
 	//Sprite用の頂点リソースを作る
@@ -957,6 +969,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//Lightingを有効化
 	materialDataSprite->enableLighting = false;
+
+	//単位行列を書き込む
+	materialDataSprite->uvTransform = math.MakeIdentity();
 
 	/*-------------- 平行光源の設定 --------------*/
 
@@ -1131,6 +1146,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			Matrix4x4 worldViewProjectionMatrixSprite = math.Matrix4x4Multiply(worldMatrixSprite, math.Matrix4x4Multiply(ViewMatrixSprite, projectionMatrixSprite));
 			transfomationMartixDataSprite->WVP = worldViewProjectionMatrixSprite;
 
+			//UVTransform用の行列
+			Matrix4x4 uvTransformMatrix = math.MakeScaleMatrix(uvTransformSprite.scale);
+			uvTransformMatrix = math.Matrix4x4Multiply(uvTransformMatrix, math.MakeRotateZMatrix(uvTransformSprite.rotate.z));
+			uvTransformMatrix = math.Matrix4x4Multiply(uvTransformMatrix, math.MakeTranslationMatrix(uvTransformSprite.translate));
+			materialDataSprite->uvTransform = uvTransformMatrix;
+
 			//ライトの正規化
 			directionalLightData->direction = math.Normalize(directionalLightData->direction);
 
@@ -1141,6 +1162,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			ImGui::DragFloat3("LightDirection", &directionalLightData->direction.x, 0.01f);
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 			ImGui::DragFloat3("transformSprite", &transformSprite.translate.x, 2.0f);
+			ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+			ImGui::DragFloat2("UVRotate", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+			ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
 			ImGui::End();
 
 			/*--- ↓描画処理ここから↓ ---*/
