@@ -71,6 +71,11 @@ struct DirectionlLight
 	float intensity; //輝度
 };
 
+struct  ModelData
+{
+	std::vector<VertexData> vertices;
+};
+
 void Log(std::ostream& os, const std::string& message);
 
 std::wstring ConvertString(const std::string& str);
@@ -106,6 +111,8 @@ ID3D12Resource* CreatDepthStencilTextureResource(ID3D12Device* device, int32_t w
 D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index);
 
 D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index);
+
+ModelData LoadModel(const std::string& directoryPath,const std::string& filename);
 
 //Transformの初期化
 Transform  transform{
@@ -1826,4 +1833,20 @@ D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descrip
 	D3D12_GPU_DESCRIPTOR_HANDLE handleGPU = descriptorHeap->GetGPUDescriptorHandleForHeapStart();
 	handleGPU.ptr += (descriptorSize * index);
 	return handleGPU;
+}
+
+ModelData LoadModel(const std::string& directoryPath, const std::string& filename)
+{
+	//1.中で必要となる変数の宣言
+	ModelData modelData;
+	//位置
+	std::
+
+	//2.ファイルを開く
+	
+
+	//3.実際にファイルを読み、ModelDataを構築していく
+	
+
+	//4.Modeldataを返す
 }
