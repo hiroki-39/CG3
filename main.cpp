@@ -868,9 +868,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//単位行列を書き込む
 	wvpData->WVP = math.MakeIdentity();
 
-	//Worldmatrixの設定
-	wvpData->World = math.MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
-
 	//マテリアル用のリソースを作る
 	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Material));
 
@@ -994,7 +991,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//ライトの色
 	directionalLightData->color = { 1.0f,1.0f,1.0f,1.0f };
 	//向き
-	directionalLightData->direction = { 0.0f,-1.0f,0.0f };
+	directionalLightData->direction = { 1.0f,0.0f,0.0f };
 	//輝度
 	directionalLightData->intensity = 1.0f;
 
@@ -1145,6 +1142,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//WVPMatrixの作成
 			Matrix4x4 worldViewProjectionMatrix = math.Matrix4x4Multiply(worldMatrix, math.Matrix4x4Multiply(viewMatrix, projectionMatrix));
 			wvpData->WVP = worldViewProjectionMatrix;
+			wvpData->World = worldMatrix;
 
 			//Sprite用のWorldViewProjectmatrixを作る
 			Matrix4x4 worldMatrixSprite = math.MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
@@ -1840,7 +1838,6 @@ ModelData LoadModel(const std::string& directoryPath, const std::string& filenam
 	//1.中で必要となる変数の宣言
 	ModelData modelData;
 	//位置
-	std::
 
 	//2.ファイルを開く
 	
@@ -1849,4 +1846,6 @@ ModelData LoadModel(const std::string& directoryPath, const std::string& filenam
 	
 
 	//4.Modeldataを返す
+
+	return modelData;
 }
