@@ -16,6 +16,7 @@
 #include"externals/DirectXTex/d3dx12.h"
 #include<vector>
 #include <numbers>
+#include <sstream>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -112,7 +113,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(ID3D12DescriptorHeap* descrip
 
 D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index);
 
-ModelData LoadModel(const std::string& directoryPath,const std::string& filename);
+ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename);
 
 //Transformの初期化
 Transform  transform{
@@ -1103,6 +1104,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	bool useMonsterBall = true;
 
+
+	//モデルの読み込み,
+	ModelData modelData = LoadObjFile("resourrce", "plane.obj");
+
+	//頂点リソースを作る
+	ID3D12Resource* vertexResorce = CreateBufferResource(device, sizeof(VertexData) * modelData.vertices.size());
+
+	//頂点バッファビューを作成
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+
+	//リソースの先頭からアドレスから使う
+	vertexBufferView.BufferLocation = vertexResorce->GetGPUVirtualAddress();
+	//使用するリソースのサイズは頂点サイズ
+	vertexBufferView.SizeInBytes = UINT(sizeof(VertexData) * modelData.vertices.size());
+	//1頂点あたりのサイズ
+	vertexBufferView.StrideInBytes = sizeof(VertexData);
+
+	//頂点リソースにデータを書き込む
+	VertexData* vertexData = nullptr;
+	vertexResorce->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+	std::memcpy(vertexData, modelData.vertices.data(), sizeof(VertexData)* modelData.vertices.size());
+
+
 	/*---メインループ---*/
 
 	MSG msg{};
@@ -1833,19 +1857,100 @@ D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descrip
 	return handleGPU;
 }
 
-ModelData LoadModel(const std::string& directoryPath, const std::string& filename)
+ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename)
 {
-	//1.中で必要となる変数の宣言
+	/*--- 1.中で必要となる変数の宣言 ---*/
+	//構成するモデルデータ
 	ModelData modelData;
 	//位置
+	std::vector<Vector4> positions;
+	//法線
+	std::vector<Vector3> normals;
+	//テクスチャ座標
+	std::vector<Vector2> texcoords;
+	//ファイルから読んだ1行を格納するもの
+	std::string line;
 
-	//2.ファイルを開く
-	
+	/*--- 2.ファイルを開く ---*/
+	//ファイルを開く
+	std::ifstream file(directoryPath + "/" + filename);
 
-	//3.実際にファイルを読み、ModelDataを構築していく
-	
+	//開かなかったら止める
+	assert(file.is_open());
 
-	//4.Modeldataを返す
+	/*--- 3.実際にファイルを読み、ModelDataを構築していく ---*/
+	while (std::getline(file, line))
+	{
+		std::string identfier;
+		std::istringstream s(line);
+
+		//先頭の識別子を読む
+		s >> identfier;
+
+		/* "V" : 頂点位置
+		   "vt": 頂点テクスチャ座標
+		   "vn": 頂点法線
+		   "f" : 面
+		*/
+
+		//頂点情報を読む
+		if (identfier == "v")
+		{
+			Vector4 position;
+
+			s >> position.x >> position.y >> position.z;
+			position.w = 1.0f;
+			positions.push_back(position);
+		}
+		else if (identfier == "vt")
+		{
+			Vector2 texcoord;
+
+			s >> texcoord.x >> texcoord.y;
+
+			texcoords.push_back(texcoord);
+		}
+		else if (identfier == "vn")
+		{
+			Vector3 normal;
+
+			s >> normal.x >> normal.y >> normal.z;
+
+			normals.push_back(normal);
+		}
+		else if (identfier == "f")
+		{
+			//面は三角形限定。その他は未対応
+			for (int32_t faceVertex = 0; faceVertex < 3; ++faceVertex)
+			{
+				std::string VertexDefinition;
+				s >> VertexDefinition;
+
+				//頂点の要素へのIndexは「位置/UV/法線」で格納されているので、分解してIndexを取得
+				std::istringstream v(VertexDefinition);
+				uint32_t elementIndices[3];
+
+				for (int32_t element = 0; element < 3; element++)
+				{
+					std::string index;
+
+					// '/'区切りでインデックスを読んでいく
+					std::getline(v, index, '/');
+
+					elementIndices[element] = std::stoi(index);
+				}
+
+				//要素へのIndexから、実際の要素の値を取得して、頂点を構築する
+				Vector4 position = positions[elementIndices[0] - 1];
+				Vector2 texcoord = texcoords[elementIndices[1] - 1];
+				Vector3 normal = normals[elementIndices[2] - 1];
+				VertexData vertex = { position,texcoord,normal };
+				modelData.vertices.push_back(vertex);
+			}
+		}
+	}
+
+	/*--- 4.Modeldataを返す ---*/
 
 	return modelData;
 }
