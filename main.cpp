@@ -126,7 +126,8 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
 
 //Transformの初期化
-Transform  transform{
+Transform  transform
+{
 	{1.0f,1.0f,1.0f},
 	{0.0f,0.0f,0.0f},
 	{0.0f,0.0f,0.0f},
@@ -134,21 +135,24 @@ Transform  transform{
 
 
 //CPUで動かす用のTransform
-Transform transformSprite{
+Transform transformSprite
+{
 	{1.0f,1.0f,1.0f},
 	{0.0f,0.0f,0.0f},
 	{0.0f,0.0f,0.0f},
 };
 
 //カメラの位置
-Transform camera{
+Transform camera
+{
 	{ 1.0f,1.0f,1.0f },
 	{ 0.0f,0.0f,0.0f },
 	{0.0f,0.0f, -10.0f}
 };
 
 //UVTransformの初期化
-Transform uvTransformSprite{
+Transform uvTransformSprite
+{
 	{ 1.0f,1.0f,1.0f },
 	{ 0.0f,0.0f,0.0f },
 	{ 0.0f,0.0f,0.0f }
@@ -283,13 +287,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	/*--- D3D12Deviceの生成 ---*/
 	ID3D12Device* device = nullptr;
 	//機能レベルとログ出力用の文字列
-	D3D_FEATURE_LEVEL featureLevels[] = {
+	D3D_FEATURE_LEVEL featureLevels[] = 
+	{
 		D3D_FEATURE_LEVEL_12_2,
 		D3D_FEATURE_LEVEL_12_1,
 		D3D_FEATURE_LEVEL_12_0,
 	};
 
-	const char* featureLevelStrings[] = {
+	const char* featureLevelStrings[] = 
+	{
 		"12.2",
 		"12.1",
 		"12.0",
@@ -1025,25 +1031,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			{
 				//位置
 				ImGui::DragFloat3("transform.translate", &transform.translate.x, 0.01f);
-				
+
 				// X軸の回転
 				ImGui::SliderAngle("rotate.X", &transform.rotate.x);
-				
+
 				// Y軸の回転
 				ImGui::SliderAngle("rotate.Y", &transform.rotate.y);
-				
+
 				// Z軸の回転
 				ImGui::SliderAngle("rotate.Z", &transform.rotate.z);
-				
+
 				//カラー変更
 				ImGui::ColorEdit4("Color", &(materialData->color).x);
 
 				//ライティングするかどうか
 				ImGui::Checkbox("enableLighting", &materialData->enableLighting);
-				
+
 				//ライティングカラー
 				ImGui::ColorEdit4("LightColor", &(directionalLightData->color).x);
-				
+
 				ImGui::TreePop();
 			}
 
