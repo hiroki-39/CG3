@@ -1,4 +1,4 @@
-#pragma once  
+ï»¿#pragma once  
 #include "externals/DirectXTex/d3dx12.h"  
 
 class ResourceObject
@@ -6,13 +6,13 @@ class ResourceObject
 public:
 
 	/// <summary>
-	/// ƒRƒ“ƒXƒgƒ‰ƒNƒ^
+	/// ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 	/// </summary>
-	/// <param name="resource">ƒ|ƒCƒ“ƒg‚ğ‚à‚ç‚¤</param>
+	/// <param name="resource">ãƒã‚¤ãƒ³ãƒˆã‚’ã‚‚ã‚‰ã†</param>
 	ResourceObject(ID3D12Resource* resource) : resource_(resource) {}
 
 	/// <summary>
-	/// ƒfƒXƒgƒ‰ƒNƒ^
+	/// ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 	/// </summary>
 	~ResourceObject()
 	{
@@ -22,7 +22,7 @@ public:
 		}
 	}
 
-	ID3D12Resource* get() { return resource_; }
+	ID3D12Resource* Get() { return resource_; }
 
 private:
 
