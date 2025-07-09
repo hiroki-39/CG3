@@ -1292,7 +1292,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//解放処理
 	CloseHandle(fenceEvent);
 
-	signatureBlob->Release();
+	/*signatureBlob->Release();
 
 	if (errorBlob)
 	{
@@ -1300,7 +1300,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	}
 
 	pixelShaderBlob->Release();
-	vertexShaderBlob->Release();
+	vertexShaderBlob->Release();*/
 
 #ifdef _DEBUG
 
