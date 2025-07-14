@@ -177,8 +177,7 @@ Transform uvTransformSprite
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
 	D3DResourceLeakChecker leakcheck;
-	//Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
-	//Microsoft::WRL::ComPtr<ID3D12Device> device;
+
 
 	//COMの初期化
 	CoInitializeEx(0, COINIT_MULTITHREADED);
@@ -597,8 +596,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	descripitionRootSignature.NumStaticSamplers = _countof(staticSamplers);
 
 	//シリアライズしてバイナリにする
-	ID3DBlob* signatureBlob = nullptr;
-	ID3DBlob* errorBlob = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
 
 	hr = D3D12SerializeRootSignature(&descripitionRootSignature,
 		D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
@@ -653,11 +652,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
 	//shaderをコンパイルする
-	IDxcBlob* vertexShaderBlob = compileshader(L"object3D.VS.hlsl",
+	Microsoft::WRL::ComPtr <IDxcBlob> vertexShaderBlob = compileshader(L"object3D.VS.hlsl",
 		L"vs_6_0", dxcUtils, dxcCompiler, includehandler, logStream);
 	assert(vertexShaderBlob != nullptr);
 
-	IDxcBlob* pixelShaderBlob = compileshader(L"object3D.PS.hlsl",
+	Microsoft::WRL::ComPtr <IDxcBlob> pixelShaderBlob = compileshader(L"object3D.PS.hlsl",
 		L"ps_6_0", dxcUtils, dxcCompiler, includehandler, logStream);
 	assert(pixelShaderBlob != nullptr);
 
@@ -1292,15 +1291,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//解放処理
 	CloseHandle(fenceEvent);
 
-	/*signatureBlob->Release();
 
-	if (errorBlob)
-	{
-		errorBlob->Release();
-	}
-
-	pixelShaderBlob->Release();
-	vertexShaderBlob->Release();*/
 
 #ifdef _DEBUG
 
