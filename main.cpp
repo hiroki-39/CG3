@@ -18,7 +18,6 @@
 #include <numbers>
 #include <sstream>
 #include<wrl.h>
-#include"ResourceObject.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
