@@ -16,9 +16,11 @@
 #include"externals/DirectXTex/d3dx12.h"
 #include<vector>
 #include <numbers>
+#include <iomanip>
 #include <sstream>
 #include<wrl.h>
 #include <functional>
+#include<array>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -219,7 +221,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//現在時刻を取得(UTC時刻)
 	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-  
+
 	//ログファイルの名前にコンマ何秒はいらないので、秒のみにする
 	std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds>
 		nowSeconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
@@ -937,6 +939,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	vertexResourceObj->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataObj));
 	std::memcpy(vertexDataObj, modelData.vertices.data(), sizeof(VertexData) * modelData.vertices.size());
 
+	/*--- インデックスバッファ用リソースを作る---*/
+	//頂点リソースを作る
+	Microsoft::WRL::ComPtr<ID3D12Resource> indexResourceObj = CreateBufferResource(device, sizeof(uint32_t) * modelData.indices.size());
+
+	//頂点バッファビューを作成
+	D3D12_INDEX_BUFFER_VIEW indexBufferViewObj{};
+
+	//リソースの先頭からアドレスから使う
+	indexBufferViewObj.BufferLocation = indexResourceObj->GetGPUVirtualAddress();
+
+	//使用するリソースのサイズは頂点サイズ
+	indexBufferViewObj.SizeInBytes = UINT(sizeof(uint32_t) * modelData.indices.size());
+
+	//1頂点あたりのサイズ
+	indexBufferViewObj.Format = DXGI_FORMAT_R32_UINT;
+
+	//頂点リソースにデータを書き込む
+	uint32_t* indexDataObj = nullptr;
+	indexResourceObj->Map(0, nullptr, reinterpret_cast<void**>(&indexDataObj));
+	std::memcpy(indexDataObj, modelData.indices.data(), sizeof(uint32_t) * modelData.indices.size());
+	indexResourceObj->Unmap(0, nullptr);
+
 
 	//WVP用のリソースを作る
 	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResourceObj = CreateBufferResource(device, sizeof(TransformationMatrix));
@@ -1310,7 +1334,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 				ImGui::TreePop();
 			}
-			
+
 			if (ImGui::TreeNode("Sprite"))
 			{
 				//位置
@@ -1474,6 +1498,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//VBVの設定
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewObj);
 
+			//IBVの設定
+			commandList->IASetIndexBuffer(&indexBufferViewObj);
+
 			//CBVの設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResourceObj->GetGPUVirtualAddress());
 
@@ -1485,7 +1512,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
 
 			//オブジェクト
-			commandList->DrawInstanced(UINT(modelData.vertices.size()), 1, 0, 0);
+			commandList->DrawIndexedInstanced(UINT(modelData.indices.size()), 1, 0, 0, 0);
 
 			/*--- スプライト ---*/
 
@@ -2074,43 +2101,53 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 		}
 		else if (identfier == "f")
 		{
-			//右手座標系から左手座標系へ変える
-			VertexData triangle[3];
+			// 今から読み込む三角形の3つのインデックスを一時的に格納
+			std::array<uint32_t, 3> indices;
 
-			//面は三角形限定。その他は未対応
 			for (int32_t faceVertex = 0; faceVertex < 3; ++faceVertex)
 			{
 				std::string VertexDefinition;
-				s >> VertexDefinition;
+				s >> VertexDefinition; 
 
-				//頂点の要素へのIndexは「位置/UV/法線」で格納されているので、分解してIndexを取得
+				// 頂点定義を分解（位置 / UV / 法線）に分ける
 				std::istringstream v(VertexDefinition);
 				uint32_t elementIndices[3];
 
 				for (int32_t element = 0; element < 3; ++element)
 				{
 					std::string index;
-
-					// '/'区切りでインデックスを読んでいく
 					std::getline(v, index, '/');
-
-					elementIndices[element] = std::stoi(index);
+					elementIndices[element] = std::stoi(index); 
 				}
 
-				//要素へのIndexから、実際の要素の値を取得して、頂点を構築する
+				// 要素のインデックスから、実際の位置/UV/法線を取得（OBJは1始まりなので-1する）
 				Vector4 position = positions[elementIndices[0] - 1];
 				Vector2 texcoord = texcoords[elementIndices[1] - 1];
 				Vector3 normal = normals[elementIndices[2] - 1];
 
 
-				triangle[faceVertex] = { position,texcoord,normal };
+				// この3要素を1つの頂点データとしてまとめる
+				VertexData vertex{ position, texcoord, normal };
 
+				// 頂点が未登録なら新規追加、すでにあるなら再利用
+				if (vertexToIndex.count(vertex) == 0)
+				{
+					uint32_t newIndex = static_cast<uint32_t>(modelData.vertices.size());
+					
+					vertexToIndex[vertex] = newIndex;
+
+					// 頂点リストに追加
+					modelData.vertices.push_back(vertex);
+				}
+
+				// 頂点に対応するインデックスを三角形インデックス配列に保存
+				indices[faceVertex] = vertexToIndex[vertex];
 			}
 
-			//頂点を逆順で登録することで、回り順を逆にする
-			modelData.vertices.push_back(triangle[2]);
-			modelData.vertices.push_back(triangle[1]);
-			modelData.vertices.push_back(triangle[0]);
+			// 頂点の並び順を反転して左手系（CW）に対応（CCW→CW）
+			modelData.indices.push_back(indices[2]);
+			modelData.indices.push_back(indices[1]);
+			modelData.indices.push_back(indices[0]);
 
 		}
 		else if (identfier == "mtllib")
