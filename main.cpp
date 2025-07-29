@@ -1732,6 +1732,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//音声再生
 	/*SoundPlayWave(xAudio2.Get(), soundData1);*/
 
+	int32_t selectedModel = 0;
+
 	/*---メインループ---*/
 
 	MSG msg{};
@@ -1751,8 +1753,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
-
-			//ゲーム処理
 
 			/*-------------- ↓更新処理ここから↓ --------------*/
 
@@ -1852,32 +1852,49 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 
+			const char* modelNames[] = { "Sphere","PlaneObj","MultiMeshObj","BunnyObj","TeapotObj","SuzanneObj" };
+
 
 			//開発用UIの処理
 
 			ImGui::Begin("window");
 
-			// オブジェクト変換設定のグループ
-			if (ImGui::TreeNode("camera"))
+
+			ImGui::Combo("ModelSelect", &selectedModel, modelNames, IM_ARRAYSIZE(modelNames));
+
+
+
+
+
+			switch (selectedModel)
+			{
+			case 0:
+			/*--- Sphere.obj ---*/
+
+			if (ImGui::CollapsingHeader("Sphere"))
 			{
 				//位置
-				ImGui::DragFloat3("camera.translate", &camera.translate.x, 0.01f);
+				ImGui::DragFloat3("transform.translate", &transformSphere.translate.x, 0.01f);
 
 				// X軸の回転
-				ImGui::SliderAngle("rotate.X", &camera.rotate.x);
+				ImGui::SliderAngle("rotate.X", &transformSphere.rotate.x);
 
 				// Y軸の回転
-				ImGui::SliderAngle("rotate.Y", &camera.rotate.y);
+				ImGui::SliderAngle("rotate.Y", &transformSphere.rotate.y);
 
 				// Z軸の回転
-				ImGui::SliderAngle("rotate.Z", &camera.rotate.z);
+				ImGui::SliderAngle("rotate.Z", &transformSphere.rotate.z);
 
-
-				ImGui::TreePop();
+				//カラー変更
+				ImGui::ColorEdit4("Color", &(materialDataSphere->color).x);
 			}
 
+			break;
+			case 1:
 
-			if (ImGui::TreeNode("PlaneObj"))
+			/*--- Plane.obj ---*/
+
+			if (ImGui::CollapsingHeader("PlaneObj"))
 			{
 				//位置
 				ImGui::DragFloat3("transform.translate", &transformPlaneObj.translate.x, 0.01f);
@@ -1897,13 +1914,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				//ライティングするかどうか
 				ImGui::Checkbox("enableLighting", &materialDataPlaneObj->enableLighting);
 
-				//ライティングカラー
-				ImGui::ColorEdit4("LightColor", &(directionalLightData->color).x);
-
-				ImGui::TreePop();
 			}
 
-			if (ImGui::TreeNode("MultiMeshObj"))
+			break;
+			case 2:
+			/*--- MultiMesh.obj ---*/
+
+			if (ImGui::CollapsingHeader("MultiMeshObj"))
 			{
 				//位置
 				ImGui::DragFloat3("transform.translate", &transformMultiMeshObj.translate.x, 0.01f);
@@ -1920,42 +1937,115 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				//カラー変更
 				ImGui::ColorEdit4("Color", &(materialDataMultiMeshObj->color).x);
 
-				//ライティングするかどうか
-				ImGui::Checkbox("enableLighting", &materialDataMultiMeshObj->enableLighting);
-
-				//ライティングカラー
-				ImGui::ColorEdit4("LightColor", &(directionalLightData->color).x);
-
-				ImGui::TreePop();
 			}
 
-			if (ImGui::TreeNode("Sphere"))
+			break;
+			case 3:
+			/*--- Bunny.obj ---*/
+
+			if (ImGui::CollapsingHeader("BunnyObj"))
 			{
 				//位置
-				ImGui::DragFloat3("transform.translate", &transformSphere.translate.x, 0.01f);
+				ImGui::DragFloat3("transform.translate", &transformBunnyObj.translate.x, 0.01f);
 
 				// X軸の回転
-				ImGui::SliderAngle("rotate.X", &transformSphere.rotate.x);
+				ImGui::SliderAngle("rotate.X", &transformBunnyObj.rotate.x);
 
 				// Y軸の回転
-				ImGui::SliderAngle("rotate.Y", &transformSphere.rotate.y);
+				ImGui::SliderAngle("rotate.Y", &transformBunnyObj.rotate.y);
 
 				// Z軸の回転
-				ImGui::SliderAngle("rotate.Z", &transformSphere.rotate.z);
+				ImGui::SliderAngle("rotate.Z", &transformBunnyObj.rotate.z);
 
 				//カラー変更
-				ImGui::ColorEdit4("Color", &(materialDataSphere->color).x);
+				ImGui::ColorEdit4("Color", &(materialDataBunnyObj->color).x);
 
-				//ライティングするかどうか
-				ImGui::Checkbox("enableLighting", &materialDataSphere->enableLighting);
-
-				//ライティングカラー
-				ImGui::ColorEdit4("LightColor", &(directionalLightData->color).x);
-
-				ImGui::TreePop();
 			}
 
-			if (ImGui::TreeNode("Sprite"))
+
+			break;
+			case 4:
+			/*--- Teapot.obj ---*/
+			if (ImGui::CollapsingHeader("TeapotObj"))
+			{
+				//位置
+				ImGui::DragFloat3("transform.translate", &transformTeapotObj.translate.x, 0.01f);
+
+				// X軸の回転
+				ImGui::SliderAngle("rotate.X", &transformTeapotObj.rotate.x);
+
+				// Y軸の回転
+				ImGui::SliderAngle("rotate.Y", &transformTeapotObj.rotate.y);
+
+				// Z軸の回転
+				ImGui::SliderAngle("rotate.Z", &transformTeapotObj.rotate.z);
+
+				//カラー変更
+				ImGui::ColorEdit4("Color", &(materialDataTeapotObj->color).x);
+
+			}
+
+
+			break;
+			case 5:
+
+			/*--- Suzanne.obj ---*/
+			if (ImGui::CollapsingHeader("SuzanneObj"))
+			{
+				//位置
+				ImGui::DragFloat3("transform.translate", &transformSuzanneObj.translate.x, 0.01f);
+
+				// X軸の回転
+				ImGui::SliderAngle("rotate.X", &transformSuzanneObj.rotate.x);
+
+				// Y軸の回転
+				ImGui::SliderAngle("rotate.Y", &transformSuzanneObj.rotate.y);
+
+				// Z軸の回転
+				ImGui::SliderAngle("rotate.Z", &transformSuzanneObj.rotate.z);
+
+				//カラー変更
+				ImGui::ColorEdit4("Color", &(materialDataSuzanneObj->color).x);
+
+			}
+
+
+			break;
+			}
+
+
+			// カメラ設定のグループ
+			if (ImGui::CollapsingHeader("camera"))
+			{
+				//位置
+				ImGui::DragFloat3("camera.translate", &camera.translate.x, 0.01f);
+
+				// X軸の回転
+				ImGui::SliderAngle("rotate.X", &camera.rotate.x);
+
+				// Y軸の回転
+				ImGui::SliderAngle("rotate.Y", &camera.rotate.y);
+
+				// Z軸の回転
+				ImGui::SliderAngle("rotate.Z", &camera.rotate.z);
+			}
+
+
+			// ライト設定のグループ
+			if (ImGui::CollapsingHeader("Light"))
+			{
+				//向き
+				ImGui::DragFloat3("LightDirection", &directionalLightData->direction.x, 0.01f);
+
+				//カラー
+				ImGui::ColorEdit4("LightColor", &(directionalLightData->color).x);
+
+				//輝度
+				ImGui::SliderAngle("rotate.Y", &directionalLightData->intensity);
+			}
+
+
+			if (ImGui::CollapsingHeader("Sprite"))
 			{
 				//位置
 				ImGui::DragFloat3("transform.translate", &transformSprite.translate.x, 1.0f);
@@ -1978,41 +2068,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				//ライティングカラー
 				ImGui::ColorEdit4("LightColor", &(directionalLightData->color).x);
 
-				ImGui::TreePop();
-			}
-
-			// カメラ設定のグループ
-			if (ImGui::TreeNode("Camera"))
-			{
-				ImGui::DragFloat3("camera.translate", &camera.translate.x, 0.01f);
-				// X軸の回転
-				ImGui::SliderAngle("rotate.X", &camera.rotate.x);
-				// Y軸の回転
-				ImGui::SliderAngle("rotate.Y", &camera.rotate.y);
-				// Z軸の回転
-				ImGui::SliderAngle("rotate.Z", &camera.rotate.z);
-
-				ImGui::TreePop();
-			}
-
-			// ライト設定のグループ
-			if (ImGui::TreeNode("Light"))
-			{
-				ImGui::DragFloat3("LightDirection", &directionalLightData->direction.x, 0.01f);
-
-				ImGui::TreePop();
+				// スプライト変換設定のグループ
+				if (ImGui::CollapsingHeader("Sprite Transform"))
+				{
+					ImGui::DragFloat3("transformSprite", &transformSprite.translate.x, 2.0f);
+					ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+					ImGui::DragFloat2("UVRotate", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+					ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
+					ImGui::TreePop();
+				}
 			}
 
 
-			// スプライト変換設定のグループ
-			if (ImGui::TreeNode("Sprite Transform"))
-			{
-				ImGui::DragFloat3("transformSprite", &transformSprite.translate.x, 2.0f);
-				ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
-				ImGui::DragFloat2("UVRotate", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
-				ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
-				ImGui::TreePop();
-			}
 
 			ImGui::End();
 
@@ -2074,26 +2141,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//PSOを設定
 			commandList->SetPipelineState(graphicsPipelineState.Get());
 
-			//VBVの設定
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);
-
-			//IBVの設定
-			commandList->IASetIndexBuffer(&indexBufferViewSphere);
-
 			//形状を設定
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-			//CBVの設定
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourceSphere->GetGPUVirtualAddress());
-
-			//wvp用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSphere->GetGPUVirtualAddress());
-
-			//平行光源用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
-
-			//SRVのDescriptorTableの先頭を設定
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU1);
 
 			//描画先のRTVとDSVを設定
 			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
@@ -2102,13 +2151,34 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//指定した深度で画面全体をクリア
 			commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-			//描画！
+			switch (selectedModel)
+			{
+			case 0:
+			/*--- Sphere.obj ---*/
 
-			//球体
+			//VBVの設定
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);
+
+			//IBVの設定
+			commandList->IASetIndexBuffer(&indexBufferViewSphere);
+
+			//CBVの設定
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourceSphere->GetGPUVirtualAddress());
+
+			//wvp用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSphere->GetGPUVirtualAddress());
+
+			//SRVのDescriptorTableの先頭を設定
+			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU1);
+
+			//平行光源用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+
+			//描画！
 			commandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
 
-			/*--------- オブジェクト ---------*/
-
+			break;
+			case 1:
 
 			/*--- Plane.obj ---*/
 
@@ -2127,13 +2197,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//SRVのDescriptorTableの先頭を設定
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
 
+			//平行光源用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+
 			//描画！
 			commandList->DrawIndexedInstanced(UINT(modelDataPlaneObj.indices.size()), 1, 0, 0, 0);
 
-
-
-
-
+			break;
+			case 2:
 			/*--- MultiMesh.obj ---*/
 
 			//VBVの設定
@@ -2151,11 +2222,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//SRVのDescriptorTableの先頭を設定
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU3);
 
+			//平行光源用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+
 			//描画！
 			commandList->DrawIndexedInstanced(UINT(modelDataMultiMeshObj.indices.size()), 1, 0, 0, 0);
 
-
-			/*--- Bunny.objの更新処理 ---*/
+			break;
+			case 3:
+			/*--- Bunny.obj ---*/
 
 			//VBVの設定
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewBunnyObj);
@@ -2172,9 +2247,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//SRVのDescriptorTableの先頭を設定
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU4);
 
+			//平行光源用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+
 			//描画！
 			commandList->DrawIndexedInstanced(UINT(modelDataBunnyObj.indices.size()), 1, 0, 0, 0);
 
+			break;
+			case 4:
 			/*--- Teapot.obj ---*/
 
 			//VBVの設定
@@ -2192,10 +2272,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//SRVのDescriptorTableの先頭を設定
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU5);
 
+			//平行光源用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+
 			//描画！
 			commandList->DrawIndexedInstanced(UINT(modelDataTeapotObj.indices.size()), 1, 0, 0, 0);
 
-
+			break;
+			case 5:
 			/*--- Suzanne.obj ---*/
 
 			//VBVの設定
@@ -2213,10 +2297,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//SRVのDescriptorTableの先頭を設定
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU6);
 
+			//平行光源用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+
 			//描画！
 			commandList->DrawIndexedInstanced(UINT(modelDataSuzanneObj.indices.size()), 1, 0, 0, 0);
 
-			/*--- スプライト ---*/
+			break;
+			}
 
 			//VBVの設定
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferviewSprite);
@@ -2233,8 +2321,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//SRVのDescriptorTableの先頭を設定
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU1);
 
+			//平行光源用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+
 			//描画！
 			commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+
+
 
 			//実際のCommandListのImGuiの描画コマンドを積む
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
@@ -2617,12 +2710,12 @@ DirectX::ScratchImage LoadTexture(const std::string& filePath)
 
 	hr = DirectX::GenerateMipMaps(
 		image.GetImages(),
-		image.GetImageCount(), 
-		image.GetMetadata(), 
+		image.GetImageCount(),
+		image.GetMetadata(),
 		DirectX::TEX_FILTER_SRGB,
 		0,
 		mipImages);
-	
+
 	assert(SUCCEEDED(hr));
 
 	//ミップマップ付きのデータを返す
