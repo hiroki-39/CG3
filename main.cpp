@@ -1010,7 +1010,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	/*-------------- オブジェクトファイル --------------*/
 
 	//モデルの読み込み(Plane.ogj)
-	ModelData modelDataPlaneObj = LoadObjFile("resources", "Plane.obj");
+	ModelData modelDataPlaneObj = LoadObjFile("resources", "axis.obj");
 
 	//頂点リソースを作る
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourcePlaneObj = CreateBufferResource(device, sizeof(VertexData) * modelDataPlaneObj.vertices.size());
