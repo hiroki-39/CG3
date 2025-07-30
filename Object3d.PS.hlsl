@@ -1,11 +1,15 @@
 #include"Object3d.hlsli"
+#define float32_t4 float4
+#define float32_t4x4 float4x4
+#define int32_t int
+
 
 struct Material
 {
     float32_t4 color;
     bool enableLighting;
     float32_t4x4 uvTransform;
-    int32_t serectLighting;
+    int32_t selectLightings;
 };
 
 struct DirectionlLight
@@ -36,16 +40,27 @@ PixelShaderOutput main(VertexShaderOutput input)
     float cos;
     float NdotL;
     
-       if(gMaterial.enableLighting != 0)
+    switch (gMaterial.selectLightings)
     {
-          cos = saturate(dot(normalize(input.normal), -gDirectionlLight.direction));
+        case 0:
+            output.color = gMaterial.color * textureColor;
+            
+            break;
+        case 1:
+        
+            cos = saturate(dot(normalize(input.normal), -gDirectionlLight.direction));
             output.color = gMaterial.color * textureColor * gDirectionlLight.color * cos * gDirectionlLight.intensity;
+        
+            break;
+        case 2:
+        
+            NdotL = dot(normalize(input.normal), -gDirectionlLight.direction);
+            cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
+
+            output.color = gMaterial.color * textureColor * gDirectionlLight.color * cos * gDirectionlLight.intensity;
+        
+            break;
     }
-    else
-    {
-        output.color = gMaterial.color * textureColor; 
-    }
-    
     
    
     return output;

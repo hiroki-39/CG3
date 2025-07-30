@@ -71,6 +71,7 @@ struct Material
 	bool enableLighting;
 	float padding[3];
 	Matrix4x4 uvTransform;
+	int32_t selectLightings;
 };
 
 struct TransformationMatrix
@@ -227,42 +228,42 @@ Transform  transformSphere
 {
 	{1.0f,1.0f,1.0f},
 	{0.0f,0.0f,0.0f},
-	{0.0f,2.0f,0.0f},
+	{0.0f,0.0f,0.0f},
 };
 
 Transform  transformPlaneObj
 {
 	{1.0f,1.0f,1.0f},
 	{0.0f,0.0f,0.0f},
-	{-2.0f,0.0f,0.0f},
+	{0.0f,0.0f,0.0f},
 };
 
 Transform  transformMultiMeshObj
 {
 	{1.0f,1.0f,1.0f},
 	{0.0f,0.0f,0.0f},
-	{2.0f,0.0f,0.0f},
+	{0.0f,0.0f,0.0f},
 };
 
 Transform  transformTeapotObj
 {
 	{1.0f,1.0f,1.0f},
 	{0.0f,0.0f,0.0f},
-	{0.0f,-2.0f,0.0f},
+	{0.0f,0.0f,0.0f},
 };
 
 Transform  transformSuzanneObj
 {
 	{1.0f,1.0f,1.0f},
 	{0.0f,0.0f,0.0f},
-	{2.0f,-2.0f,0.0f},
+	{0.0f,0.0f,0.0f},
 };
 
 Transform  transformBunnyObj
 {
 	{1.0f,1.0f,1.0f},
 	{0.0f,0.0f,0.0f},
-	{2.0f,2.0f,0.0f},
+	{0.0f,0.0f,0.0f},
 };
 
 //CPUで動かす用のTransform
@@ -270,7 +271,7 @@ Transform transformSprite
 {
 	{1.0f,1.0f,1.0f},
 	{0.0f,0.0f,0.0f},
-	{-600.0f,0.0f,0.0f},
+	{0.0f,0.0f,0.0f},
 };
 
 //カメラの位置
@@ -999,6 +1000,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//Lightingを有効化
 	materialDataSphere->enableLighting = true;
 
+	//Lightingの種類の設定
+	materialDataSphere->selectLightings = 2;
+
 	//単位行列を書き込む
 	materialDataSphere->uvTransform = math.MakeIdentity();
 
@@ -1078,6 +1082,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//Lightingを有効化
 	materialDataPlaneObj->enableLighting = true;
 
+	//Lightingの種類の設定
+	materialDataPlaneObj->selectLightings = 2;
+
 	//単位行列を書き込む
 	materialDataPlaneObj->uvTransform = math.MakeIdentity();
 
@@ -1154,6 +1161,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//Lightingを有効化
 	materialDataMultiMeshObj->enableLighting = true;
+
+	//Lightingの種類の設定
+	materialDataMultiMeshObj->selectLightings = 2;
 
 	//単位行列を書き込む
 	materialDataMultiMeshObj->uvTransform = math.MakeIdentity();
@@ -1234,6 +1244,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//Lightingを有効化
 	materialDataBunnyObj->enableLighting = true;
 
+	//Lightingの種類の設定
+	materialDataBunnyObj->selectLightings = 2;
+
 	//単位行列を書き込む
 	materialDataBunnyObj->uvTransform = math.MakeIdentity();
 
@@ -1313,6 +1326,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//Lightingを有効化
 	materialDataTeapotObj->enableLighting = true;
 
+	//Lightingの種類の設定
+	materialDataTeapotObj->selectLightings = 2;
+
 	//単位行列を書き込む
 	materialDataTeapotObj->uvTransform = math.MakeIdentity();
 
@@ -1391,6 +1407,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//Lightingを有効化
 	materialDataSuzanneObj->enableLighting = true;
+
+	//Lightingの種類の設定
+	materialDataSuzanneObj->selectLightings = 2;
 
 	//単位行列を書き込む
 	materialDataSuzanneObj->uvTransform = math.MakeIdentity();
@@ -1482,6 +1501,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//Lightingを有効化
 	materialDataSprite->enableLighting = false;
 
+	//Lightingの種類の設定
+	materialDataSprite->selectLightings = 0;
+
 	//単位行列を書き込む
 	materialDataSprite->uvTransform = math.MakeIdentity();
 
@@ -1553,7 +1575,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 	//Textureの読み込み
-	DirectX::ScratchImage mipimages1 = LoadTexture("resources/monsterBall.png");
+	DirectX::ScratchImage mipimages1 = LoadTexture("resources/uvChecker.png");
 	const DirectX::TexMetadata& metadata1 = mipimages1.GetMetadata();
 	Microsoft::WRL::ComPtr<ID3D12Resource> textureResource1 = CreateTextureResource(device, metadata1);
 	Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource1 = UploadTextureData(textureResource1, mipimages1, device, commandList);
@@ -1734,6 +1756,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	int32_t selectedModel = 0;
 
+	bool isDisplaySprite = true;
+
 	/*---メインループ---*/
 
 	MSG msg{};
@@ -1757,6 +1781,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			/*-------------- ↓更新処理ここから↓ --------------*/
 
 			/*--- スフィアの更新処理 ---*/
+
 
 			//Transformの更新
 			Matrix4x4 worldMatrix = math.MakeAffineMatrix(transformSphere.scale, transformSphere.rotate, transformSphere.translate);
@@ -1854,6 +1879,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			const char* modelNames[] = { "Sphere","PlaneObj","MultiMeshObj","BunnyObj","TeapotObj","SuzanneObj" };
 
+			const char* enableLightings[] = { "None","Lambert","Half Lambert" };
 
 			//開発用UIの処理
 
@@ -1862,9 +1888,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			ImGui::Combo("ModelSelect", &selectedModel, modelNames, IM_ARRAYSIZE(modelNames));
 
-
-
-
+			ImGui::Checkbox("displaySprite", &isDisplaySprite);
 
 			switch (selectedModel)
 			{
@@ -1877,16 +1901,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGui::DragFloat3("transform.translate", &transformSphere.translate.x, 0.01f);
 
 				// X軸の回転
-				ImGui::SliderAngle("rotate.X", &transformSphere.rotate.x);
+				ImGui::SliderAngle("transform.rotate.X", &transformSphere.rotate.x);
 
 				// Y軸の回転
-				ImGui::SliderAngle("rotate.Y", &transformSphere.rotate.y);
+				ImGui::SliderAngle("transform.rotate.Y", &transformSphere.rotate.y);
 
 				// Z軸の回転
-				ImGui::SliderAngle("rotate.Z", &transformSphere.rotate.z);
+				ImGui::SliderAngle("transform.rotate.Z", &transformSphere.rotate.z);
+
+				//スケール
+				ImGui::DragFloat3("transform.scale", &transformSphere.scale.x, 0.01f);
 
 				//カラー変更
 				ImGui::ColorEdit4("Color", &(materialDataSphere->color).x);
+
+				//Lightingの切り替え
+				ImGui::Combo("selectedLight", &materialDataSphere->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
 			}
 
 			break;
@@ -1900,13 +1930,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGui::DragFloat3("transform.translate", &transformPlaneObj.translate.x, 0.01f);
 
 				// X軸の回転
-				ImGui::SliderAngle("rotate.X", &transformPlaneObj.rotate.x);
+				ImGui::SliderAngle("transform.rotate.X", &transformPlaneObj.rotate.x);
 
 				// Y軸の回転
-				ImGui::SliderAngle("rotate.Y", &transformPlaneObj.rotate.y);
+				ImGui::SliderAngle("transform.rotate.Y", &transformPlaneObj.rotate.y);
 
 				// Z軸の回転
-				ImGui::SliderAngle("rotate.Z", &transformPlaneObj.rotate.z);
+				ImGui::SliderAngle("transform.rotate.Z", &transformPlaneObj.rotate.z);
+
+				//スケール
+				ImGui::DragFloat3("transform.scale", &transformPlaneObj.scale.x, 0.01f);
 
 				//カラー変更
 				ImGui::ColorEdit4("Color", &(materialDataPlaneObj->color).x);
@@ -1914,6 +1947,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				//ライティングするかどうか
 				ImGui::Checkbox("enableLighting", &materialDataPlaneObj->enableLighting);
 
+				//Lightingの切り替え
+				ImGui::Combo("selectedLight", &materialDataPlaneObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
 			}
 
 			break;
@@ -1926,17 +1961,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGui::DragFloat3("transform.translate", &transformMultiMeshObj.translate.x, 0.01f);
 
 				// X軸の回転
-				ImGui::SliderAngle("rotate.X", &transformMultiMeshObj.rotate.x);
+				ImGui::SliderAngle("transform.rotate.X", &transformMultiMeshObj.rotate.x);
 
 				// Y軸の回転
-				ImGui::SliderAngle("rotate.Y", &transformMultiMeshObj.rotate.y);
+				ImGui::SliderAngle("transform.rotate.Y", &transformMultiMeshObj.rotate.y);
 
 				// Z軸の回転
-				ImGui::SliderAngle("rotate.Z", &transformMultiMeshObj.rotate.z);
+				ImGui::SliderAngle("transform.rotate.Z", &transformMultiMeshObj.rotate.z);
+
+				//スケール
+				ImGui::DragFloat3("transform.scale", &transformMultiMeshObj.scale.x, 0.01f);
 
 				//カラー変更
 				ImGui::ColorEdit4("Color", &(materialDataMultiMeshObj->color).x);
 
+				//Lightingの切り替え
+				ImGui::Combo("selectedLight", &materialDataMultiMeshObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
 			}
 
 			break;
@@ -1949,17 +1989,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGui::DragFloat3("transform.translate", &transformBunnyObj.translate.x, 0.01f);
 
 				// X軸の回転
-				ImGui::SliderAngle("rotate.X", &transformBunnyObj.rotate.x);
+				ImGui::SliderAngle("transform.rotate.X", &transformBunnyObj.rotate.x);
 
 				// Y軸の回転
-				ImGui::SliderAngle("rotate.Y", &transformBunnyObj.rotate.y);
+				ImGui::SliderAngle("transform.rotate.Y", &transformBunnyObj.rotate.y);
 
 				// Z軸の回転
-				ImGui::SliderAngle("rotate.Z", &transformBunnyObj.rotate.z);
+				ImGui::SliderAngle("transform.rotate.Z", &transformBunnyObj.rotate.z);
+
+				//スケール
+				ImGui::DragFloat3("transform.scale", &transformBunnyObj.scale.x, 0.01f);
 
 				//カラー変更
 				ImGui::ColorEdit4("Color", &(materialDataBunnyObj->color).x);
 
+				//Lightingの切り替え
+				ImGui::Combo("selectedLight", &materialDataBunnyObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
 			}
 
 
@@ -1972,17 +2017,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGui::DragFloat3("transform.translate", &transformTeapotObj.translate.x, 0.01f);
 
 				// X軸の回転
-				ImGui::SliderAngle("rotate.X", &transformTeapotObj.rotate.x);
+				ImGui::SliderAngle("transform.rotate.X", &transformTeapotObj.rotate.x);
 
 				// Y軸の回転
-				ImGui::SliderAngle("rotate.Y", &transformTeapotObj.rotate.y);
+				ImGui::SliderAngle("transform.rotate.Y", &transformTeapotObj.rotate.y);
 
 				// Z軸の回転
-				ImGui::SliderAngle("rotate.Z", &transformTeapotObj.rotate.z);
+				ImGui::SliderAngle("transform.rotate.Z", &transformTeapotObj.rotate.z);
+
+				//スケール
+				ImGui::DragFloat3("transform.scale", &transformTeapotObj.scale.x, 0.01f);
 
 				//カラー変更
 				ImGui::ColorEdit4("Color", &(materialDataTeapotObj->color).x);
 
+				//Lightingの切り替え
+				ImGui::Combo("selectedLight", &materialDataTeapotObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
 			}
 
 
@@ -1996,17 +2046,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGui::DragFloat3("transform.translate", &transformSuzanneObj.translate.x, 0.01f);
 
 				// X軸の回転
-				ImGui::SliderAngle("rotate.X", &transformSuzanneObj.rotate.x);
+				ImGui::SliderAngle("transform.rotate.X", &transformSuzanneObj.rotate.x);
 
 				// Y軸の回転
-				ImGui::SliderAngle("rotate.Y", &transformSuzanneObj.rotate.y);
+				ImGui::SliderAngle("transform.rotate.Y", &transformSuzanneObj.rotate.y);
 
 				// Z軸の回転
-				ImGui::SliderAngle("rotate.Z", &transformSuzanneObj.rotate.z);
+				ImGui::SliderAngle("transform.rotate.Z", &transformSuzanneObj.rotate.z);
+
+				//スケール
+				ImGui::DragFloat3("transform.scale", &transformSuzanneObj.scale.x, 0.01f);
 
 				//カラー変更
 				ImGui::ColorEdit4("Color", &(materialDataSuzanneObj->color).x);
 
+				//Lightingの切り替え
+				ImGui::Combo("selectedLight", &materialDataSuzanneObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
 			}
 
 
@@ -2021,13 +2076,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGui::DragFloat3("camera.translate", &camera.translate.x, 0.01f);
 
 				// X軸の回転
-				ImGui::SliderAngle("rotate.X", &camera.rotate.x);
+				ImGui::SliderAngle("camera.rotate.X", &camera.rotate.x);
 
 				// Y軸の回転
-				ImGui::SliderAngle("rotate.Y", &camera.rotate.y);
+				ImGui::SliderAngle("camera.rotate.Y", &camera.rotate.y);
 
 				// Z軸の回転
-				ImGui::SliderAngle("rotate.Z", &camera.rotate.z);
+				ImGui::SliderAngle("camera.rotate.Z", &camera.rotate.z);
 			}
 
 
@@ -2041,43 +2096,46 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGui::ColorEdit4("LightColor", &(directionalLightData->color).x);
 
 				//輝度
-				ImGui::SliderAngle("rotate.Y", &directionalLightData->intensity);
+				ImGui::SliderAngle("Lightrotate.Y", &directionalLightData->intensity);
 			}
 
 
-			if (ImGui::CollapsingHeader("Sprite"))
+
+			if (isDisplaySprite)
 			{
-				//位置
-				ImGui::DragFloat3("transform.translate", &transformSprite.translate.x, 1.0f);
-
-				// X軸の回転
-				ImGui::SliderAngle("rotate.X", &transformSprite.rotate.x);
-
-				// Y軸の回転
-				ImGui::SliderAngle("rotate.Y", &transformSprite.rotate.y);
-
-				// Z軸の回転
-				ImGui::SliderAngle("rotate.Z", &transformSprite.rotate.z);
-
-				//カラー変更
-				ImGui::ColorEdit4("Color", &(materialDataSprite->color).x);
-
-				//ライティングするかどうか
-				ImGui::Checkbox("enableLighting", &materialDataSprite->enableLighting);
-
-				//ライティングカラー
-				ImGui::ColorEdit4("LightColor", &(directionalLightData->color).x);
-
-				// スプライト変換設定のグループ
-				if (ImGui::CollapsingHeader("Sprite Transform"))
+				if (ImGui::CollapsingHeader("Sprite"))
 				{
-					ImGui::DragFloat3("transformSprite", &transformSprite.translate.x, 2.0f);
-					ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
-					ImGui::DragFloat2("UVRotate", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
-					ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
-					ImGui::TreePop();
+					//位置
+					ImGui::DragFloat3("transformSprite.translate", &transformSprite.translate.x, 1.0f);
+
+					// X軸の回転
+					ImGui::SliderAngle("transformSprite.rotate.X", &transformSprite.rotate.x);
+
+					// Y軸の回転
+					ImGui::SliderAngle("transformSprite.rotate.Y", &transformSprite.rotate.y);
+
+					// Z軸の回転
+					ImGui::SliderAngle("transformSprite.rotate.Z", &transformSprite.rotate.z);
+
+					//カラー変更
+					ImGui::ColorEdit4("Color", &(materialDataSprite->color).x);
+
+					//Lightingの切り替え
+					ImGui::Combo("selectedLight", &materialDataSprite->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
+
+
+					// スプライト変換設定のグループ
+					if (ImGui::CollapsingHeader("Sprite Transform"))
+					{
+						ImGui::DragFloat3("transformSprite", &transformSprite.translate.x, 2.0f);
+						ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+						ImGui::DragFloat2("UVRotate", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+						ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
+					}
 				}
 			}
+
+
 
 
 
@@ -2306,26 +2364,32 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			break;
 			}
 
-			//VBVの設定
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferviewSprite);
+			if (isDisplaySprite)
+			{
+				/*--- Sprite ---*/
 
-			//IBVの設定
-			commandList->IASetIndexBuffer(&indexBufferViewSprite);
+				//VBVの設定
+				commandList->IASetVertexBuffers(0, 1, &vertexBufferviewSprite);
 
-			//TransfomationMatrixCBufferの場所を指定
-			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
+				//IBVの設定
+				commandList->IASetIndexBuffer(&indexBufferViewSprite);
 
-			//マテリアルCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
+				//TransfomationMatrixCBufferの場所を指定
+				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 
-			//SRVのDescriptorTableの先頭を設定
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU1);
+				//マテリアルCBufferの場所を設定
+				commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
 
-			//平行光源用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+				//SRVのDescriptorTableの先頭を設定
+				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU1);
 
-			//描画！
-			commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+				//平行光源用のCBufferの場所を設定
+				commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+
+				//描画！
+				commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+			}
+
 
 
 
@@ -2392,6 +2456,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//音声データ解放
 	SoundUnload(&soundData1);
+
 
 	//解放処理
 	CloseHandle(fenceEvent);
