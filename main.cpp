@@ -279,7 +279,7 @@ Transform camera
 {
 	{ 1.0f, 1.0f,  1.0f },
 	{ 0.0f, 0.0f,  0.0f },
-	{ 0.0f, 0.0f, -20.0f}
+	{ 0.0f, 0.0f, -10.0f}
 };
 
 //UVTransformの初期化
@@ -1010,7 +1010,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	/*-------------- オブジェクトファイル --------------*/
 
 	//モデルの読み込み(Plane.ogj)
-	ModelData modelDataPlaneObj = LoadObjFile("resources", "axis.obj");
+	ModelData modelDataPlaneObj = LoadObjFile("resources", "plane.obj");
 
 	//頂点リソースを作る
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourcePlaneObj = CreateBufferResource(device, sizeof(VertexData) * modelDataPlaneObj.vertices.size());
@@ -1752,7 +1752,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	SoundData soundData1 = SoundLoadWave("Resources/Alarm01.wav");
 
 	//音声再生
-	/*SoundPlayWave(xAudio2.Get(), soundData1);*/
+	SoundPlayWave(xAudio2.Get(), soundData1);
 
 	int32_t selectedModel = 0;
 
@@ -1877,7 +1877,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 
-			const char* modelNames[] = { "Sphere","PlaneObj","MultiMeshObj","BunnyObj","TeapotObj","SuzanneObj" };
+			const char* modelNames[] = { "Sphere","PlaneObj","MultiMeshObj","BunnyObj","TeapotObj","SuzanneObj","PlaneObj & BunnyObj" };
 
 			const char* enableLightings[] = { "None","Lambert","Half Lambert" };
 
@@ -2064,6 +2064,63 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGui::Combo("selectedLight", &materialDataSuzanneObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
 			}
 
+			break;
+			case 6:
+
+			/*--- Plane.obj ---*/
+
+			if (ImGui::CollapsingHeader("PlaneObj"))
+			{
+				//位置
+				ImGui::DragFloat3("transformPlaneObj.translate", &transformPlaneObj.translate.x, 0.01f);
+
+				// X軸の回転
+				ImGui::SliderAngle("transformPlaneObj.rotate.X", &transformPlaneObj.rotate.x);
+
+				// Y軸の回転
+				ImGui::SliderAngle("transformPlaneObj.rotate.Y", &transformPlaneObj.rotate.y);
+
+				// Z軸の回転
+				ImGui::SliderAngle("transformPlaneObj.rotate.Z", &transformPlaneObj.rotate.z);
+
+				//スケール
+				ImGui::DragFloat3("transformPlaneObj.scale", &transformPlaneObj.scale.x, 0.01f);
+
+				//カラー変更
+				ImGui::ColorEdit4("Color", &(materialDataPlaneObj->color).x);
+
+				//ライティングするかどうか
+				ImGui::Checkbox("enableLighting", &materialDataPlaneObj->enableLighting);
+
+				//Lightingの切り替え
+				ImGui::Combo("selectedLight", &materialDataPlaneObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
+			}
+
+			/*--- Bunny.obj ---*/
+
+			if (ImGui::CollapsingHeader("BunnyObj"))
+			{
+				//位置
+				ImGui::DragFloat3("transformBunnyObj.translate", &transformBunnyObj.translate.x, 0.01f);
+
+				// X軸の回転
+				ImGui::SliderAngle("transformBunnyObj.rotate.X", &transformBunnyObj.rotate.x);
+
+				// Y軸の回転
+				ImGui::SliderAngle("transformBunnyObj.rotate.Y", &transformBunnyObj.rotate.y);
+
+				// Z軸の回転
+				ImGui::SliderAngle("transformBunnyObj.rotate.Z", &transformBunnyObj.rotate.z);
+
+				//スケール
+				ImGui::DragFloat3("transformBunnyObj.scale", &transformBunnyObj.scale.x, 0.01f);
+
+				//カラー変更
+				ImGui::ColorEdit4("Color", &(materialDataBunnyObj->color).x);
+
+				//Lightingの切り替え
+				ImGui::Combo("selectedLight", &materialDataBunnyObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
+			}
 
 			break;
 			}
@@ -2360,6 +2417,56 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			//描画！
 			commandList->DrawIndexedInstanced(UINT(modelDataSuzanneObj.indices.size()), 1, 0, 0, 0);
+
+			break;
+			case 6:
+
+			/*--- Plane.obj ---*/
+
+			//VBVの設定
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewPlaneObj);
+
+			//IBVの設定
+			commandList->IASetIndexBuffer(&indexBufferViewPlaneObj);
+
+			//CBVの設定
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourcePlaneObj->GetGPUVirtualAddress());
+
+			//wvp用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourcePlaneObj->GetGPUVirtualAddress());
+
+			//SRVのDescriptorTableの先頭を設定
+			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
+
+			//平行光源用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+
+			//描画！
+			commandList->DrawIndexedInstanced(UINT(modelDataPlaneObj.indices.size()), 1, 0, 0, 0);
+
+
+			/*--- Bunny.obj ---*/
+
+            //VBVの設定
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewBunnyObj);
+
+			//IBVの設定
+			commandList->IASetIndexBuffer(&indexBufferViewBunnyObj);
+
+			//CBVの設定
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourceBunnyObj->GetGPUVirtualAddress());
+
+			//wvp用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceBunnyObj->GetGPUVirtualAddress());
+
+			//SRVのDescriptorTableの先頭を設定
+			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU4);
+
+			//平行光源用のCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+
+			//描画！
+			commandList->DrawIndexedInstanced(UINT(modelDataBunnyObj.indices.size()), 1, 0, 0, 0);
 
 			break;
 			}
