@@ -1,10 +1,15 @@
 #include"Object3d.hlsli"
+#define float32_t4 float4
+#define float32_t4x4 float4x4
+#define int32_t int
+
 
 struct Material
 {
-    float32_t4 color; 
-    int32_t enableLighting;   
+    float32_t4 color;
+    bool enableLighting;
     float32_t4x4 uvTransform;
+    int32_t selectLightings;
 };
 
 struct DirectionlLight
@@ -29,21 +34,34 @@ struct PixelShaderOutput
 PixelShaderOutput main(VertexShaderOutput input)
 {
     PixelShaderOutput output;
-    float4 transformedUV = mul(float32_t4(input.texcoord,0.0f,1.0f),gMaterial.uvTransform);
-    float32_t4 textureColor = gTexture.Sample(gSampler,transformedUV.xy);
+    float4 transformedUV = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
+    float32_t4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
     
-    if(gMaterial.enableLighting != 0)
+    float cos;
+    float NdotL;
+    
+    switch (gMaterial.selectLightings)
     {
-        float NdotL = dot(normalize(input.normal),-gDirectionlLight.direction);
-        float cos = pow(NdotL * 0.5f+ 0.5f,2.0f);
+        case 0:
+            output.color = gMaterial.color * textureColor;
+            
+            break;
+        case 1:
+        
+            cos = saturate(dot(normalize(input.normal), -gDirectionlLight.direction));
+            output.color = gMaterial.color * textureColor * gDirectionlLight.color * cos * gDirectionlLight.intensity;
+        
+            break;
+        case 2:
+        
+            NdotL = dot(normalize(input.normal), -gDirectionlLight.direction);
+            cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
 
-        output.color = gMaterial.color * textureColor * gDirectionlLight.color * cos * gDirectionlLight.intensity; 
+            output.color = gMaterial.color * textureColor * gDirectionlLight.color * cos * gDirectionlLight.intensity;
+        
+            break;
     }
-    else
-    {
-        output.color = gMaterial.color * textureColor; 
-    }
+    
    
     return output;
 }
-
