@@ -21,9 +21,12 @@
 #include<wrl.h>
 #include <functional>
 #include<array>
-
 #include<xaudio2.h>
 
+#define DIRECTINPUT_VERSION 0x0800
+#include<dinput.h>
+
+#pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "Dbghelp.lib")
@@ -466,6 +469,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//初期化完了のメッセージを出力
 	Log(logStream, "Complete create D3D12Device!!!!\n");
 
+	/*--- キーボードの初期化 ---*/
+
+	//DirecctInputの初期化
+	Microsoft::WRL::ComPtr<IDirectInput8> directInput = nullptr;
+	result = DirectInput8Create(
+		wc.hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8,
+		reinterpret_cast<void**>(directInput.GetAddressOf()), nullptr);
+	assert(SUCCEEDED(result));
+
+	//キーボードデバイスの生成
+	Microsoft::WRL::ComPtr<IDirectInputDevice8> keyboard = nullptr;
+	result = directInput->CreateDevice(GUID_SysKeyboard, keyboard.GetAddressOf(), nullptr);
+	assert(SUCCEEDED(result));
+
+	//入力データ形式のセット
+	result = keyboard->SetDataFormat(&c_dfDIKeyboard);
+	assert(SUCCEEDED(result));
+
+	//排他制御レベルのセット
+	result = keyboard->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+	assert(SUCCEEDED(result));
 
 #ifdef _DEBUG
 
@@ -1778,6 +1802,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
+
+			//キーボード情報の取得開始
+			keyboard->Acquire();
+
+			//全キーの入力情報を取得
+			BYTE key[256] = {};
+			keyboard->GetDeviceState(sizeof(key), key);
 
 			/*-------------- ↓更新処理ここから↓ --------------*/
 
