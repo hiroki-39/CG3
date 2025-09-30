@@ -1,5 +1,6 @@
 #define float32_t4 float4
 #define float32_t2 float2
+#define float32_t3 float3
 
 struct VertexShaderOutput
 {

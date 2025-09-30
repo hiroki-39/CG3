@@ -1430,7 +1430,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//ライトの正規化
 			directionalLightData->direction = math.Normalize(directionalLightData->direction);
 
-			const char* modelNames[] = { "Sphere","PlaneObj","MultiMeshObj","BunnyObj","TeapotObj","SuzanneObj","PlaneObj & BunnyObj" };
+			const char* modelNames[] = { "Sphere","PlaneObj" };
 
 			const char* enableLightings[] = { "None","Lambert","Half Lambert" };
 
@@ -1443,7 +1443,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			ImGui::Checkbox("displaySprite", &isDisplaySprite);
 
-			
+			switch (selectedModel)
+			{
+			case 0:
+			/*--- Sphere.obj ---*/
+
 			if (ImGui::CollapsingHeader("Sphere"))
 			{
 				//位置
@@ -1467,6 +1471,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				//Lightingの切り替え
 				ImGui::Combo("selectedLight", &materialDataSphere->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
 			}
+
+			break;
+			case 1:
 
 			/*--- Plane.obj ---*/
 
@@ -1495,6 +1502,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 				//Lightingの切り替え
 				ImGui::Combo("selectedLight", &materialDataPlaneObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
+			}
+
+			break;
 			}
 
 
