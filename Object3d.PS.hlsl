@@ -49,15 +49,16 @@ PixelShaderOutput main(VertexShaderOutput input)
         case 1:
         
             cos = saturate(dot(normalize(input.normal), -gDirectionlLight.direction));
-            output.color = gMaterial.color * textureColor * gDirectionlLight.color * cos * gDirectionlLight.intensity;
-        
+            output.color.rgb = gMaterial.color.rgb * textureColor.rgb*gDirectionlLight.color.rgb*cos*gDirectionlLight.intensity;
+            output.color.a = gMaterial.color.a * textureColor.a;
+            
             break;
         case 2:
         
             NdotL = dot(normalize(input.normal), -gDirectionlLight.direction);
             cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
-
-            output.color = gMaterial.color * textureColor * gDirectionlLight.color * cos * gDirectionlLight.intensity;
+            output.color.rgb = gMaterial.color.rgb * textureColor.rgb*gDirectionlLight.color.rgb*cos*gDirectionlLight.intensity;
+            output.color.a = gMaterial.color.a * textureColor.a;
         
             break;
     }

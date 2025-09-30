@@ -352,7 +352,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//ウィンドウの生成
 	HWND hwnd = CreateWindow(
 		wc.lpszClassName,     //クラス名
-		L"CG2_LE2C_07_カトウ_ヒロキ",       //タイトルバー名
+		L"CG3_LE2B_04_カトウ_ヒロキ",       //タイトルバー名
 		WS_OVERLAPPEDWINDOW,  //ウィンドウスタイル
 		CW_USEDEFAULT,        //表示座X標(Windowsに任せる)
 		CW_USEDEFAULT,        //表示Y座標(WindowsOSに任せる)
@@ -783,8 +783,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//BlenderStateの設定
 	D3D12_BLEND_DESC blendDesc{};
 	//全ての色要素を書き込む
-	blendDesc.RenderTarget[0].RenderTargetWriteMask =
-		D3D12_COLOR_WRITE_ENABLE_ALL;
+	blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+	//ブレンディングを有効化
+	blendDesc.RenderTarget[0].BlendEnable = true;
+	blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+	blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+	blendDesc.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+	blendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
+	blendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+	blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
+
 
 	//RasiterZerStateの設定
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
@@ -1113,330 +1121,330 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	materialDataPlaneObj->uvTransform = math.MakeIdentity();
 
 
-	/*-------------- オブジェクトファイル --------------*/
+	///*-------------- オブジェクトファイル --------------*/
 
-	//モデルの読み込み(multiMesh.ogj)
-	ModelData modelDataMultiMeshObj = LoadObjFile("resources", "multiMesh.obj");
+	////モデルの読み込み(multiMesh.ogj)
+	//ModelData modelDataMultiMeshObj = LoadObjFile("resources", "multiMesh.obj");
 
-	//頂点リソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourceMultiMeshObj = CreateBufferResource(device, sizeof(VertexData) * modelDataMultiMeshObj.vertices.size());
+	////頂点リソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourceMultiMeshObj = CreateBufferResource(device, sizeof(VertexData) * modelDataMultiMeshObj.vertices.size());
 
-	//頂点バッファビューを作成
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewMultiMeshObj{};
+	////頂点バッファビューを作成
+	//D3D12_VERTEX_BUFFER_VIEW vertexBufferViewMultiMeshObj{};
 
-	//リソースの先頭からアドレスから使う
-	vertexBufferViewMultiMeshObj.BufferLocation = vertexResourceMultiMeshObj->GetGPUVirtualAddress();
-	//使用するリソースのサイズは頂点サイズ
-	vertexBufferViewMultiMeshObj.SizeInBytes = UINT(sizeof(VertexData) * modelDataMultiMeshObj.vertices.size());
-	//1頂点あたりのサイズ
-	vertexBufferViewMultiMeshObj.StrideInBytes = sizeof(VertexData);
+	////リソースの先頭からアドレスから使う
+	//vertexBufferViewMultiMeshObj.BufferLocation = vertexResourceMultiMeshObj->GetGPUVirtualAddress();
+	////使用するリソースのサイズは頂点サイズ
+	//vertexBufferViewMultiMeshObj.SizeInBytes = UINT(sizeof(VertexData) * modelDataMultiMeshObj.vertices.size());
+	////1頂点あたりのサイズ
+	//vertexBufferViewMultiMeshObj.StrideInBytes = sizeof(VertexData);
 
-	//頂点リソースにデータを書き込む
-	VertexData* vertexDataMultiMeshObj = nullptr;
-	vertexResourceMultiMeshObj->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataMultiMeshObj));
-	std::memcpy(vertexDataMultiMeshObj, modelDataMultiMeshObj.vertices.data(), sizeof(VertexData) * modelDataMultiMeshObj.vertices.size());
+	////頂点リソースにデータを書き込む
+	//VertexData* vertexDataMultiMeshObj = nullptr;
+	//vertexResourceMultiMeshObj->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataMultiMeshObj));
+	//std::memcpy(vertexDataMultiMeshObj, modelDataMultiMeshObj.vertices.data(), sizeof(VertexData) * modelDataMultiMeshObj.vertices.size());
 
-	/*--- インデックスバッファ用リソースを作る---*/
-	//頂点リソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> indexResourceMultiMeshObj = CreateBufferResource(device, sizeof(uint32_t) * modelDataMultiMeshObj.indices.size());
+	///*--- インデックスバッファ用リソースを作る---*/
+	////頂点リソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> indexResourceMultiMeshObj = CreateBufferResource(device, sizeof(uint32_t) * modelDataMultiMeshObj.indices.size());
 
-	//頂点バッファビューを作成
-	D3D12_INDEX_BUFFER_VIEW indexBufferViewMultiMeshObj{};
+	////頂点バッファビューを作成
+	//D3D12_INDEX_BUFFER_VIEW indexBufferViewMultiMeshObj{};
 
-	//リソースの先頭からアドレスから使う
-	indexBufferViewMultiMeshObj.BufferLocation = indexResourceMultiMeshObj->GetGPUVirtualAddress();
+	////リソースの先頭からアドレスから使う
+	//indexBufferViewMultiMeshObj.BufferLocation = indexResourceMultiMeshObj->GetGPUVirtualAddress();
 
-	//使用するリソースのサイズは頂点サイズ
-	indexBufferViewMultiMeshObj.SizeInBytes = UINT(sizeof(uint32_t) * modelDataMultiMeshObj.indices.size());
+	////使用するリソースのサイズは頂点サイズ
+	//indexBufferViewMultiMeshObj.SizeInBytes = UINT(sizeof(uint32_t) * modelDataMultiMeshObj.indices.size());
 
-	//1頂点あたりのサイズ
-	indexBufferViewMultiMeshObj.Format = DXGI_FORMAT_R32_UINT;
+	////1頂点あたりのサイズ
+	//indexBufferViewMultiMeshObj.Format = DXGI_FORMAT_R32_UINT;
 
-	//頂点リソースにデータを書き込む
-	uint32_t* indexDataMultiMeshObj = nullptr;
-	indexResourceMultiMeshObj->Map(0, nullptr, reinterpret_cast<void**>(&indexDataMultiMeshObj));
-	std::memcpy(indexDataMultiMeshObj, modelDataMultiMeshObj.indices.data(), sizeof(uint32_t) * modelDataMultiMeshObj.indices.size());
-	indexResourceMultiMeshObj->Unmap(0, nullptr);
+	////頂点リソースにデータを書き込む
+	//uint32_t* indexDataMultiMeshObj = nullptr;
+	//indexResourceMultiMeshObj->Map(0, nullptr, reinterpret_cast<void**>(&indexDataMultiMeshObj));
+	//std::memcpy(indexDataMultiMeshObj, modelDataMultiMeshObj.indices.data(), sizeof(uint32_t) * modelDataMultiMeshObj.indices.size());
+	//indexResourceMultiMeshObj->Unmap(0, nullptr);
 
 
-	//WVP用のリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResourceMultiMeshObj = CreateBufferResource(device, sizeof(TransformationMatrix));
+	////WVP用のリソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResourceMultiMeshObj = CreateBufferResource(device, sizeof(TransformationMatrix));
 
-	//データを書き込む
-	TransformationMatrix* transformationMatrixDataMultiMeshObj = nullptr;
+	////データを書き込む
+	//TransformationMatrix* transformationMatrixDataMultiMeshObj = nullptr;
 
-	//書き込むためのアドレス取得
-	transformationMatrixResourceMultiMeshObj->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataMultiMeshObj));
+	////書き込むためのアドレス取得
+	//transformationMatrixResourceMultiMeshObj->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataMultiMeshObj));
 
-	//単位行列を書き込む
-	transformationMatrixDataMultiMeshObj->WVP = math.MakeIdentity();
+	////単位行列を書き込む
+	//transformationMatrixDataMultiMeshObj->WVP = math.MakeIdentity();
 
-	//マテリアル用のリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> materialResourceMultiMeshObj = CreateBufferResource(device, sizeof(Material));
+	////マテリアル用のリソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> materialResourceMultiMeshObj = CreateBufferResource(device, sizeof(Material));
 
-	//頂点リソースデータを書き込む
-	Material* materialDataMultiMeshObj = nullptr;
+	////頂点リソースデータを書き込む
+	//Material* materialDataMultiMeshObj = nullptr;
 
-	//書き込む為のアドレスを取得
-	materialResourceMultiMeshObj->Map(0, nullptr, reinterpret_cast<void**>(&materialDataMultiMeshObj));
+	////書き込む為のアドレスを取得
+	//materialResourceMultiMeshObj->Map(0, nullptr, reinterpret_cast<void**>(&materialDataMultiMeshObj));
 
-	//色の設定
-	materialDataMultiMeshObj->color = { 1.0f,1.0f,1.0f,1.0f };
+	////色の設定
+	//materialDataMultiMeshObj->color = { 1.0f,1.0f,1.0f,1.0f };
 
-	//Lightingを有効化
-	materialDataMultiMeshObj->enableLighting = true;
+	////Lightingを有効化
+	//materialDataMultiMeshObj->enableLighting = true;
 
-	//Lightingの種類の設定
-	materialDataMultiMeshObj->selectLightings = 2;
+	////Lightingの種類の設定
+	//materialDataMultiMeshObj->selectLightings = 2;
 
-	//単位行列を書き込む
-	materialDataMultiMeshObj->uvTransform = math.MakeIdentity();
-
-
-	/*-------------- オブジェクトファイル --------------*/
-
-	//モデルの読み込み(bunny.ogj)
-	ModelData modelDataBunnyObj = LoadObjFile("resources", "bunny.obj");
-
-	//頂点リソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourceBunnyObj = CreateBufferResource(device, sizeof(VertexData) * modelDataBunnyObj.vertices.size());
-
-	//頂点バッファビューを作成
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewBunnyObj{};
-
-	//リソースの先頭からアドレスから使う
-	vertexBufferViewBunnyObj.BufferLocation = vertexResourceBunnyObj->GetGPUVirtualAddress();
-	//使用するリソースのサイズは頂点サイズ
-	vertexBufferViewBunnyObj.SizeInBytes = UINT(sizeof(VertexData) * modelDataBunnyObj.vertices.size());
-	//1頂点あたりのサイズ
-	vertexBufferViewBunnyObj.StrideInBytes = sizeof(VertexData);
-
-	//頂点リソースにデータを書き込む
-	VertexData* vertexDataBunnyObj = nullptr;
-	vertexResourceBunnyObj->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataBunnyObj));
-	std::memcpy(vertexDataBunnyObj, modelDataBunnyObj.vertices.data(), sizeof(VertexData) * modelDataBunnyObj.vertices.size());
-
-	/*--- インデックスバッファ用リソースを作る---*/
-	//頂点リソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> indexResourceBunnyObj = CreateBufferResource(device, sizeof(uint32_t) * modelDataBunnyObj.indices.size());
-
-	//頂点バッファビューを作成
-	D3D12_INDEX_BUFFER_VIEW indexBufferViewBunnyObj{};
-
-	//リソースの先頭からアドレスから使う
-	indexBufferViewBunnyObj.BufferLocation = indexResourceBunnyObj->GetGPUVirtualAddress();
-
-	//使用するリソースのサイズは頂点サイズ
-	indexBufferViewBunnyObj.SizeInBytes = UINT(sizeof(uint32_t) * modelDataBunnyObj.indices.size());
-
-	//1頂点あたりのサイズ
-	indexBufferViewBunnyObj.Format = DXGI_FORMAT_R32_UINT;
-
-	//頂点リソースにデータを書き込む
-	uint32_t* indexDataBunnyObj = nullptr;
-	indexResourceBunnyObj->Map(0, nullptr, reinterpret_cast<void**>(&indexDataBunnyObj));
-	std::memcpy(indexDataBunnyObj, modelDataBunnyObj.indices.data(), sizeof(uint32_t) * modelDataBunnyObj.indices.size());
-	indexResourceBunnyObj->Unmap(0, nullptr);
-
-
-	//WVP用のリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResourceBunnyObj = CreateBufferResource(device, sizeof(TransformationMatrix));
-
-	//データを書き込む
-	TransformationMatrix* transformationMatrixDataBunnyObj = nullptr;
-
-	//書き込むためのアドレス取得
-	transformationMatrixResourceBunnyObj->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataBunnyObj));
-
-	//単位行列を書き込む
-	transformationMatrixDataBunnyObj->WVP = math.MakeIdentity();
-
-
-
-	//マテリアル用のリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> materialResourceBunnyObj = CreateBufferResource(device, sizeof(Material));
-
-	//頂点リソースデータを書き込む
-	Material* materialDataBunnyObj = nullptr;
-
-	//書き込む為のアドレスを取得
-	materialResourceBunnyObj->Map(0, nullptr, reinterpret_cast<void**>(&materialDataBunnyObj));
-
-	//色の設定
-	materialDataBunnyObj->color = { 1.0f,1.0f,1.0f,1.0f };
-
-	//Lightingを有効化
-	materialDataBunnyObj->enableLighting = true;
-
-	//Lightingの種類の設定
-	materialDataBunnyObj->selectLightings = 2;
-
-	//単位行列を書き込む
-	materialDataBunnyObj->uvTransform = math.MakeIdentity();
-
-
-	/*-------------- オブジェクトファイル --------------*/
-
-	//モデルの読み込み(teapot.ogj)
-	ModelData modelDataTeapotObj = LoadObjFile("resources", "teapot.obj");
-
-	//頂点リソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourceTeapotObj = CreateBufferResource(device, sizeof(VertexData) * modelDataTeapotObj.vertices.size());
-
-	//頂点バッファビューを作成
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewTeapotObj{};
-
-	//リソースの先頭からアドレスから使う
-	vertexBufferViewTeapotObj.BufferLocation = vertexResourceTeapotObj->GetGPUVirtualAddress();
-	//使用するリソースのサイズは頂点サイズ
-	vertexBufferViewTeapotObj.SizeInBytes = UINT(sizeof(VertexData) * modelDataTeapotObj.vertices.size());
-	//1頂点あたりのサイズ
-	vertexBufferViewTeapotObj.StrideInBytes = sizeof(VertexData);
-
-	//頂点リソースにデータを書き込む
-	VertexData* vertexDataTeapotObj = nullptr;
-	vertexResourceTeapotObj->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataTeapotObj));
-	std::memcpy(vertexDataTeapotObj, modelDataTeapotObj.vertices.data(), sizeof(VertexData) * modelDataTeapotObj.vertices.size());
-
-	/*--- インデックスバッファ用リソースを作る---*/
-	//頂点リソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> indexResourceTeapotObj = CreateBufferResource(device, sizeof(uint32_t) * modelDataTeapotObj.indices.size());
-
-	//頂点バッファビューを作成
-	D3D12_INDEX_BUFFER_VIEW indexBufferViewTeapotObj{};
-
-	//リソースの先頭からアドレスから使う
-	indexBufferViewTeapotObj.BufferLocation = indexResourceTeapotObj->GetGPUVirtualAddress();
-
-	//使用するリソースのサイズは頂点サイズ
-	indexBufferViewTeapotObj.SizeInBytes = UINT(sizeof(uint32_t) * modelDataTeapotObj.indices.size());
-
-	//1頂点あたりのサイズ
-	indexBufferViewTeapotObj.Format = DXGI_FORMAT_R32_UINT;
-
-	//頂点リソースにデータを書き込む
-	uint32_t* indexDataTeapotObj = nullptr;
-	indexResourceTeapotObj->Map(0, nullptr, reinterpret_cast<void**>(&indexDataTeapotObj));
-	std::memcpy(indexDataTeapotObj, modelDataTeapotObj.indices.data(), sizeof(uint32_t) * modelDataTeapotObj.indices.size());
-	indexResourceTeapotObj->Unmap(0, nullptr);
-
-
-	//WVP用のリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResourceTeapotObj = CreateBufferResource(device, sizeof(TransformationMatrix));
-
-	//データを書き込む
-	TransformationMatrix* transformationMatrixDataTeapotObj = nullptr;
-
-	//書き込むためのアドレス取得
-	transformationMatrixResourceTeapotObj->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataTeapotObj));
-
-	//単位行列を書き込む
-	transformationMatrixDataTeapotObj->WVP = math.MakeIdentity();
-
-
-
-	//マテリアル用のリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> materialResourceTeapotObj = CreateBufferResource(device, sizeof(Material));
-
-	//頂点リソースデータを書き込む
-	Material* materialDataTeapotObj = nullptr;
-
-	//書き込む為のアドレスを取得
-	materialResourceTeapotObj->Map(0, nullptr, reinterpret_cast<void**>(&materialDataTeapotObj));
-
-	//色の設定
-	materialDataTeapotObj->color = { 1.0f,1.0f,1.0f,1.0f };
-
-	//Lightingを有効化
-	materialDataTeapotObj->enableLighting = true;
-
-	//Lightingの種類の設定
-	materialDataTeapotObj->selectLightings = 2;
-
-	//単位行列を書き込む
-	materialDataTeapotObj->uvTransform = math.MakeIdentity();
+	////単位行列を書き込む
+	//materialDataMultiMeshObj->uvTransform = math.MakeIdentity();
 
 
 	///*-------------- オブジェクトファイル --------------*/
 
-	//モデルの読み込み(suzanne.ogj)
-	ModelData modelDataSuzanneObj = LoadObjFile("resources", "suzanne.obj");
+	////モデルの読み込み(bunny.ogj)
+	//ModelData modelDataBunnyObj = LoadObjFile("resources", "bunny.obj");
 
-	//頂点リソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourceSuzanneObj = CreateBufferResource(device, sizeof(VertexData) * modelDataSuzanneObj.vertices.size());
+	////頂点リソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourceBunnyObj = CreateBufferResource(device, sizeof(VertexData) * modelDataBunnyObj.vertices.size());
 
-	//頂点バッファビューを作成
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSuzanneObj{};
+	////頂点バッファビューを作成
+	//D3D12_VERTEX_BUFFER_VIEW vertexBufferViewBunnyObj{};
 
-	//リソースの先頭からアドレスから使う
-	vertexBufferViewSuzanneObj.BufferLocation = vertexResourceSuzanneObj->GetGPUVirtualAddress();
-	//使用するリソースのサイズは頂点サイズ
-	vertexBufferViewSuzanneObj.SizeInBytes = UINT(sizeof(VertexData) * modelDataSuzanneObj.vertices.size());
-	//1頂点あたりのサイズ
-	vertexBufferViewSuzanneObj.StrideInBytes = sizeof(VertexData);
+	////リソースの先頭からアドレスから使う
+	//vertexBufferViewBunnyObj.BufferLocation = vertexResourceBunnyObj->GetGPUVirtualAddress();
+	////使用するリソースのサイズは頂点サイズ
+	//vertexBufferViewBunnyObj.SizeInBytes = UINT(sizeof(VertexData) * modelDataBunnyObj.vertices.size());
+	////1頂点あたりのサイズ
+	//vertexBufferViewBunnyObj.StrideInBytes = sizeof(VertexData);
 
-	//頂点リソースにデータを書き込む
-	VertexData* vertexDataSuzanneObj = nullptr;
-	vertexResourceSuzanneObj->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataSuzanneObj));
-	std::memcpy(vertexDataSuzanneObj, modelDataSuzanneObj.vertices.data(), sizeof(VertexData) * modelDataSuzanneObj.vertices.size());
+	////頂点リソースにデータを書き込む
+	//VertexData* vertexDataBunnyObj = nullptr;
+	//vertexResourceBunnyObj->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataBunnyObj));
+	//std::memcpy(vertexDataBunnyObj, modelDataBunnyObj.vertices.data(), sizeof(VertexData) * modelDataBunnyObj.vertices.size());
 
-	/*--- インデックスバッファ用リソースを作る---*/
-	//頂点リソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> indexResourceSuzanneObj = CreateBufferResource(device, sizeof(uint32_t) * modelDataSuzanneObj.indices.size());
+	///*--- インデックスバッファ用リソースを作る---*/
+	////頂点リソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> indexResourceBunnyObj = CreateBufferResource(device, sizeof(uint32_t) * modelDataBunnyObj.indices.size());
 
-	//頂点バッファビューを作成
-	D3D12_INDEX_BUFFER_VIEW indexBufferViewSuzanneObj{};
+	////頂点バッファビューを作成
+	//D3D12_INDEX_BUFFER_VIEW indexBufferViewBunnyObj{};
 
-	//リソースの先頭からアドレスから使う
-	indexBufferViewSuzanneObj.BufferLocation = indexResourceSuzanneObj->GetGPUVirtualAddress();
+	////リソースの先頭からアドレスから使う
+	//indexBufferViewBunnyObj.BufferLocation = indexResourceBunnyObj->GetGPUVirtualAddress();
 
-	//使用するリソースのサイズは頂点サイズ
-	indexBufferViewSuzanneObj.SizeInBytes = UINT(sizeof(uint32_t) * modelDataSuzanneObj.indices.size());
+	////使用するリソースのサイズは頂点サイズ
+	//indexBufferViewBunnyObj.SizeInBytes = UINT(sizeof(uint32_t) * modelDataBunnyObj.indices.size());
 
-	//1頂点あたりのサイズ
-	indexBufferViewSuzanneObj.Format = DXGI_FORMAT_R32_UINT;
+	////1頂点あたりのサイズ
+	//indexBufferViewBunnyObj.Format = DXGI_FORMAT_R32_UINT;
 
-	//頂点リソースにデータを書き込む
-	uint32_t* indexDataSuzanneObj = nullptr;
-	indexResourceSuzanneObj->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSuzanneObj));
-	std::memcpy(indexDataSuzanneObj, modelDataSuzanneObj.indices.data(), sizeof(uint32_t) * modelDataSuzanneObj.indices.size());
-	indexResourceSuzanneObj->Unmap(0, nullptr);
-
-
-	//WVP用のリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResourceSuzanneObj = CreateBufferResource(device, sizeof(TransformationMatrix));
-
-	//データを書き込む
-	TransformationMatrix* transformationMatrixDataSuzanneObj = nullptr;
-
-	//書き込むためのアドレス取得
-	transformationMatrixResourceSuzanneObj->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataSuzanneObj));
-
-	//単位行列を書き込む
-	transformationMatrixDataSuzanneObj->WVP = math.MakeIdentity();
+	////頂点リソースにデータを書き込む
+	//uint32_t* indexDataBunnyObj = nullptr;
+	//indexResourceBunnyObj->Map(0, nullptr, reinterpret_cast<void**>(&indexDataBunnyObj));
+	//std::memcpy(indexDataBunnyObj, modelDataBunnyObj.indices.data(), sizeof(uint32_t) * modelDataBunnyObj.indices.size());
+	//indexResourceBunnyObj->Unmap(0, nullptr);
 
 
+	////WVP用のリソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResourceBunnyObj = CreateBufferResource(device, sizeof(TransformationMatrix));
 
-	//マテリアル用のリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> materialResourceSuzanneObj = CreateBufferResource(device, sizeof(Material));
+	////データを書き込む
+	//TransformationMatrix* transformationMatrixDataBunnyObj = nullptr;
 
-	//頂点リソースデータを書き込む
-	Material* materialDataSuzanneObj = nullptr;
+	////書き込むためのアドレス取得
+	//transformationMatrixResourceBunnyObj->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataBunnyObj));
 
-	//書き込む為のアドレスを取得
-	materialResourceSuzanneObj->Map(0, nullptr, reinterpret_cast<void**>(&materialDataSuzanneObj));
+	////単位行列を書き込む
+	//transformationMatrixDataBunnyObj->WVP = math.MakeIdentity();
 
-	//色の設定
-	materialDataSuzanneObj->color = { 1.0f,1.0f,1.0f,1.0f };
 
-	//Lightingを有効化
-	materialDataSuzanneObj->enableLighting = true;
 
-	//Lightingの種類の設定
-	materialDataSuzanneObj->selectLightings = 2;
+	////マテリアル用のリソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> materialResourceBunnyObj = CreateBufferResource(device, sizeof(Material));
 
-	//単位行列を書き込む
-	materialDataSuzanneObj->uvTransform = math.MakeIdentity();
+	////頂点リソースデータを書き込む
+	//Material* materialDataBunnyObj = nullptr;
+
+	////書き込む為のアドレスを取得
+	//materialResourceBunnyObj->Map(0, nullptr, reinterpret_cast<void**>(&materialDataBunnyObj));
+
+	////色の設定
+	//materialDataBunnyObj->color = { 1.0f,1.0f,1.0f,1.0f };
+
+	////Lightingを有効化
+	//materialDataBunnyObj->enableLighting = true;
+
+	////Lightingの種類の設定
+	//materialDataBunnyObj->selectLightings = 2;
+
+	////単位行列を書き込む
+	//materialDataBunnyObj->uvTransform = math.MakeIdentity();
+
+
+	///*-------------- オブジェクトファイル --------------*/
+
+	////モデルの読み込み(teapot.ogj)
+	//ModelData modelDataTeapotObj = LoadObjFile("resources", "teapot.obj");
+
+	////頂点リソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourceTeapotObj = CreateBufferResource(device, sizeof(VertexData) * modelDataTeapotObj.vertices.size());
+
+	////頂点バッファビューを作成
+	//D3D12_VERTEX_BUFFER_VIEW vertexBufferViewTeapotObj{};
+
+	////リソースの先頭からアドレスから使う
+	//vertexBufferViewTeapotObj.BufferLocation = vertexResourceTeapotObj->GetGPUVirtualAddress();
+	////使用するリソースのサイズは頂点サイズ
+	//vertexBufferViewTeapotObj.SizeInBytes = UINT(sizeof(VertexData) * modelDataTeapotObj.vertices.size());
+	////1頂点あたりのサイズ
+	//vertexBufferViewTeapotObj.StrideInBytes = sizeof(VertexData);
+
+	////頂点リソースにデータを書き込む
+	//VertexData* vertexDataTeapotObj = nullptr;
+	//vertexResourceTeapotObj->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataTeapotObj));
+	//std::memcpy(vertexDataTeapotObj, modelDataTeapotObj.vertices.data(), sizeof(VertexData) * modelDataTeapotObj.vertices.size());
+
+	///*--- インデックスバッファ用リソースを作る---*/
+	////頂点リソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> indexResourceTeapotObj = CreateBufferResource(device, sizeof(uint32_t) * modelDataTeapotObj.indices.size());
+
+	////頂点バッファビューを作成
+	//D3D12_INDEX_BUFFER_VIEW indexBufferViewTeapotObj{};
+
+	////リソースの先頭からアドレスから使う
+	//indexBufferViewTeapotObj.BufferLocation = indexResourceTeapotObj->GetGPUVirtualAddress();
+
+	////使用するリソースのサイズは頂点サイズ
+	//indexBufferViewTeapotObj.SizeInBytes = UINT(sizeof(uint32_t) * modelDataTeapotObj.indices.size());
+
+	////1頂点あたりのサイズ
+	//indexBufferViewTeapotObj.Format = DXGI_FORMAT_R32_UINT;
+
+	////頂点リソースにデータを書き込む
+	//uint32_t* indexDataTeapotObj = nullptr;
+	//indexResourceTeapotObj->Map(0, nullptr, reinterpret_cast<void**>(&indexDataTeapotObj));
+	//std::memcpy(indexDataTeapotObj, modelDataTeapotObj.indices.data(), sizeof(uint32_t) * modelDataTeapotObj.indices.size());
+	//indexResourceTeapotObj->Unmap(0, nullptr);
+
+
+	////WVP用のリソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResourceTeapotObj = CreateBufferResource(device, sizeof(TransformationMatrix));
+
+	////データを書き込む
+	//TransformationMatrix* transformationMatrixDataTeapotObj = nullptr;
+
+	////書き込むためのアドレス取得
+	//transformationMatrixResourceTeapotObj->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataTeapotObj));
+
+	////単位行列を書き込む
+	//transformationMatrixDataTeapotObj->WVP = math.MakeIdentity();
+
+
+
+	////マテリアル用のリソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> materialResourceTeapotObj = CreateBufferResource(device, sizeof(Material));
+
+	////頂点リソースデータを書き込む
+	//Material* materialDataTeapotObj = nullptr;
+
+	////書き込む為のアドレスを取得
+	//materialResourceTeapotObj->Map(0, nullptr, reinterpret_cast<void**>(&materialDataTeapotObj));
+
+	////色の設定
+	//materialDataTeapotObj->color = { 1.0f,1.0f,1.0f,1.0f };
+
+	////Lightingを有効化
+	//materialDataTeapotObj->enableLighting = true;
+
+	////Lightingの種類の設定
+	//materialDataTeapotObj->selectLightings = 2;
+
+	////単位行列を書き込む
+	//materialDataTeapotObj->uvTransform = math.MakeIdentity();
+
+
+	/////*-------------- オブジェクトファイル --------------*/
+
+	////モデルの読み込み(suzanne.ogj)
+	//ModelData modelDataSuzanneObj = LoadObjFile("resources", "suzanne.obj");
+
+	////頂点リソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourceSuzanneObj = CreateBufferResource(device, sizeof(VertexData) * modelDataSuzanneObj.vertices.size());
+
+	////頂点バッファビューを作成
+	//D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSuzanneObj{};
+
+	////リソースの先頭からアドレスから使う
+	//vertexBufferViewSuzanneObj.BufferLocation = vertexResourceSuzanneObj->GetGPUVirtualAddress();
+	////使用するリソースのサイズは頂点サイズ
+	//vertexBufferViewSuzanneObj.SizeInBytes = UINT(sizeof(VertexData) * modelDataSuzanneObj.vertices.size());
+	////1頂点あたりのサイズ
+	//vertexBufferViewSuzanneObj.StrideInBytes = sizeof(VertexData);
+
+	////頂点リソースにデータを書き込む
+	//VertexData* vertexDataSuzanneObj = nullptr;
+	//vertexResourceSuzanneObj->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataSuzanneObj));
+	//std::memcpy(vertexDataSuzanneObj, modelDataSuzanneObj.vertices.data(), sizeof(VertexData) * modelDataSuzanneObj.vertices.size());
+
+	///*--- インデックスバッファ用リソースを作る---*/
+	////頂点リソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> indexResourceSuzanneObj = CreateBufferResource(device, sizeof(uint32_t) * modelDataSuzanneObj.indices.size());
+
+	////頂点バッファビューを作成
+	//D3D12_INDEX_BUFFER_VIEW indexBufferViewSuzanneObj{};
+
+	////リソースの先頭からアドレスから使う
+	//indexBufferViewSuzanneObj.BufferLocation = indexResourceSuzanneObj->GetGPUVirtualAddress();
+
+	////使用するリソースのサイズは頂点サイズ
+	//indexBufferViewSuzanneObj.SizeInBytes = UINT(sizeof(uint32_t) * modelDataSuzanneObj.indices.size());
+
+	////1頂点あたりのサイズ
+	//indexBufferViewSuzanneObj.Format = DXGI_FORMAT_R32_UINT;
+
+	////頂点リソースにデータを書き込む
+	//uint32_t* indexDataSuzanneObj = nullptr;
+	//indexResourceSuzanneObj->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSuzanneObj));
+	//std::memcpy(indexDataSuzanneObj, modelDataSuzanneObj.indices.data(), sizeof(uint32_t) * modelDataSuzanneObj.indices.size());
+	//indexResourceSuzanneObj->Unmap(0, nullptr);
+
+
+	////WVP用のリソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResourceSuzanneObj = CreateBufferResource(device, sizeof(TransformationMatrix));
+
+	////データを書き込む
+	//TransformationMatrix* transformationMatrixDataSuzanneObj = nullptr;
+
+	////書き込むためのアドレス取得
+	//transformationMatrixResourceSuzanneObj->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataSuzanneObj));
+
+	////単位行列を書き込む
+	//transformationMatrixDataSuzanneObj->WVP = math.MakeIdentity();
+
+
+
+	////マテリアル用のリソースを作る
+	//Microsoft::WRL::ComPtr<ID3D12Resource> materialResourceSuzanneObj = CreateBufferResource(device, sizeof(Material));
+
+	////頂点リソースデータを書き込む
+	//Material* materialDataSuzanneObj = nullptr;
+
+	////書き込む為のアドレスを取得
+	//materialResourceSuzanneObj->Map(0, nullptr, reinterpret_cast<void**>(&materialDataSuzanneObj));
+
+	////色の設定
+	//materialDataSuzanneObj->color = { 1.0f,1.0f,1.0f,1.0f };
+
+	////Lightingを有効化
+	//materialDataSuzanneObj->enableLighting = true;
+
+	////Lightingの種類の設定
+	//materialDataSuzanneObj->selectLightings = 2;
+
+	////単位行列を書き込む
+	//materialDataSuzanneObj->uvTransform = math.MakeIdentity();
 
 
 	/*-------------- Spriteの設定 --------------*/
@@ -1647,108 +1655,108 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 
-	//MultiMeshObjで読み込まれている画像を転送する
-	//Textureの読み込み
-	DirectX::ScratchImage mipimages3 = LoadTexture(modelDataMultiMeshObj.material.textureFilePath);
-	const DirectX::TexMetadata& metadata3 = mipimages3.GetMetadata();
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureResource3 = CreateTextureResource(device, metadata3);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource3 = UploadTextureData(textureResource3, mipimages3, device, commandList);
+	////MultiMeshObjで読み込まれている画像を転送する
+	////Textureの読み込み
+	//DirectX::ScratchImage mipimages3 = LoadTexture(modelDataMultiMeshObj.material.textureFilePath);
+	//const DirectX::TexMetadata& metadata3 = mipimages3.GetMetadata();
+	//Microsoft::WRL::ComPtr<ID3D12Resource> textureResource3 = CreateTextureResource(device, metadata3);
+	//Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource3 = UploadTextureData(textureResource3, mipimages3, device, commandList);
 
-	//metDataを基にSRVの設定
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc3{};
-	srvDesc3.Format = metadata3.format;
-	srvDesc3.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	//2Dテクスチャ
-	srvDesc3.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc3.Texture2D.MipLevels = UINT(metadata3.mipLevels);
+	////metDataを基にSRVの設定
+	//D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc3{};
+	//srvDesc3.Format = metadata3.format;
+	//srvDesc3.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	////2Dテクスチャ
+	//srvDesc3.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	//srvDesc3.Texture2D.MipLevels = UINT(metadata3.mipLevels);
 
-	//SRVを作成するDescriptorHeapの場所を決める
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU3 = GetCPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 3);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU3 = GetGPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 3);
-	//先頭はImGuiが使っているので、その次を使う
-	textureSrvHandleCPU3.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	textureSrvHandleGPU3.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	////SRVを作成するDescriptorHeapの場所を決める
+	//D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU3 = GetCPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 3);
+	//D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU3 = GetGPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 3);
+	////先頭はImGuiが使っているので、その次を使う
+	//textureSrvHandleCPU3.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	//textureSrvHandleGPU3.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	//SRVを作成
-	device->CreateShaderResourceView(textureResource3.Get(), &srvDesc3, textureSrvHandleCPU3);
-
-
-	//BunnyObjで読み込まれている画像を転送する
-	//Textureの読み込み
-	DirectX::ScratchImage mipimages4 = LoadTexture(modelDataBunnyObj.material.textureFilePath);
-	const DirectX::TexMetadata& metadata4 = mipimages4.GetMetadata();
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureResource4 = CreateTextureResource(device, metadata4);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource4 = UploadTextureData(textureResource4, mipimages4, device, commandList);
-
-	//metDataを基にSRVの設定
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc4{};
-	srvDesc4.Format = metadata4.format;
-	srvDesc4.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	//2Dテクスチャ
-	srvDesc4.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc4.Texture2D.MipLevels = UINT(metadata4.mipLevels);
-
-	//SRVを作成するDescriptorHeapの場所を決める
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU4 = GetCPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 4);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU4 = GetGPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 4);
-	//先頭はImGuiが使っているので、その次を使う
-	textureSrvHandleCPU4.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	textureSrvHandleGPU4.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-	//SRVを作成
-	device->CreateShaderResourceView(textureResource4.Get(), &srvDesc4, textureSrvHandleCPU4);
+	////SRVを作成
+	//device->CreateShaderResourceView(textureResource3.Get(), &srvDesc3, textureSrvHandleCPU3);
 
 
-	//TeapotObjで読み込まれている画像を転送する
-	//Textureの読み込み
-	DirectX::ScratchImage mipimages5 = LoadTexture(modelDataTeapotObj.material.textureFilePath);
-	const DirectX::TexMetadata& metadata5 = mipimages5.GetMetadata();
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureResource5 = CreateTextureResource(device, metadata5);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource5 = UploadTextureData(textureResource5, mipimages5, device, commandList);
+	////BunnyObjで読み込まれている画像を転送する
+	////Textureの読み込み
+	//DirectX::ScratchImage mipimages4 = LoadTexture(modelDataBunnyObj.material.textureFilePath);
+	//const DirectX::TexMetadata& metadata4 = mipimages4.GetMetadata();
+	//Microsoft::WRL::ComPtr<ID3D12Resource> textureResource4 = CreateTextureResource(device, metadata4);
+	//Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource4 = UploadTextureData(textureResource4, mipimages4, device, commandList);
 
-	//metDataを基にSRVの設定
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc5{};
-	srvDesc5.Format = metadata5.format;
-	srvDesc5.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	//2Dテクスチャ
-	srvDesc5.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc5.Texture2D.MipLevels = UINT(metadata5.mipLevels);
+	////metDataを基にSRVの設定
+	//D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc4{};
+	//srvDesc4.Format = metadata4.format;
+	//srvDesc4.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	////2Dテクスチャ
+	//srvDesc4.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	//srvDesc4.Texture2D.MipLevels = UINT(metadata4.mipLevels);
 
-	//SRVを作成するDescriptorHeapの場所を決める
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU5 = GetCPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 5);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU5 = GetGPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 5);
-	//先頭はImGuiが使っているので、その次を使う
-	textureSrvHandleCPU5.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	textureSrvHandleGPU5.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	////SRVを作成するDescriptorHeapの場所を決める
+	//D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU4 = GetCPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 4);
+	//D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU4 = GetGPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 4);
+	////先頭はImGuiが使っているので、その次を使う
+	//textureSrvHandleCPU4.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	//textureSrvHandleGPU4.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	//SRVを作成
-	device->CreateShaderResourceView(textureResource5.Get(), &srvDesc5, textureSrvHandleCPU5);
+	////SRVを作成
+	//device->CreateShaderResourceView(textureResource4.Get(), &srvDesc4, textureSrvHandleCPU4);
 
 
-	//SuzanneObjで読み込まれている画像を転送する
-	//Textureの読み込み
-	DirectX::ScratchImage mipimages6 = LoadTexture(modelDataSuzanneObj.material.textureFilePath);
-	const DirectX::TexMetadata& metadata6 = mipimages6.GetMetadata();
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureResource6 = CreateTextureResource(device, metadata6);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource6 = UploadTextureData(textureResource6, mipimages6, device, commandList);
+	////TeapotObjで読み込まれている画像を転送する
+	////Textureの読み込み
+	//DirectX::ScratchImage mipimages5 = LoadTexture(modelDataTeapotObj.material.textureFilePath);
+	//const DirectX::TexMetadata& metadata5 = mipimages5.GetMetadata();
+	//Microsoft::WRL::ComPtr<ID3D12Resource> textureResource5 = CreateTextureResource(device, metadata5);
+	//Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource5 = UploadTextureData(textureResource5, mipimages5, device, commandList);
 
-	//metDataを基にSRVの設定
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc6{};
-	srvDesc6.Format = metadata6.format;
-	srvDesc6.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	//2Dテクスチャ
-	srvDesc6.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc6.Texture2D.MipLevels = UINT(metadata6.mipLevels);
+	////metDataを基にSRVの設定
+	//D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc5{};
+	//srvDesc5.Format = metadata5.format;
+	//srvDesc5.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	////2Dテクスチャ
+	//srvDesc5.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	//srvDesc5.Texture2D.MipLevels = UINT(metadata5.mipLevels);
 
-	//SRVを作成するDescriptorHeapの場所を決める
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU6 = GetCPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 6);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU6 = GetGPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 6);
-	//先頭はImGuiが使っているので、その次を使う
-	textureSrvHandleCPU6.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	textureSrvHandleGPU6.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	////SRVを作成するDescriptorHeapの場所を決める
+	//D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU5 = GetCPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 5);
+	//D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU5 = GetGPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 5);
+	////先頭はImGuiが使っているので、その次を使う
+	//textureSrvHandleCPU5.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	//textureSrvHandleGPU5.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	//SRVを作成
-	device->CreateShaderResourceView(textureResource6.Get(), &srvDesc6, textureSrvHandleCPU6);
+	////SRVを作成
+	//device->CreateShaderResourceView(textureResource5.Get(), &srvDesc5, textureSrvHandleCPU5);
+
+
+	////SuzanneObjで読み込まれている画像を転送する
+	////Textureの読み込み
+	//DirectX::ScratchImage mipimages6 = LoadTexture(modelDataSuzanneObj.material.textureFilePath);
+	//const DirectX::TexMetadata& metadata6 = mipimages6.GetMetadata();
+	//Microsoft::WRL::ComPtr<ID3D12Resource> textureResource6 = CreateTextureResource(device, metadata6);
+	//Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource6 = UploadTextureData(textureResource6, mipimages6, device, commandList);
+
+	////metDataを基にSRVの設定
+	//D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc6{};
+	//srvDesc6.Format = metadata6.format;
+	//srvDesc6.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	////2Dテクスチャ
+	//srvDesc6.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	//srvDesc6.Texture2D.MipLevels = UINT(metadata6.mipLevels);
+
+	////SRVを作成するDescriptorHeapの場所を決める
+	//D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU6 = GetCPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 6);
+	//D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU6 = GetGPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 6);
+	////先頭はImGuiが使っているので、その次を使う
+	//textureSrvHandleCPU6.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	//textureSrvHandleGPU6.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	////SRVを作成
+	//device->CreateShaderResourceView(textureResource6.Get(), &srvDesc6, textureSrvHandleCPU6);
 
 
 	//深さ？
@@ -1838,55 +1846,55 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			transformationMatrixDataPlaneObj->World = worldMatrixPlaneObj;
 
 
-			/*--- MultiMesh.objの更新処理 ---*/
+			///*--- MultiMesh.objの更新処理 ---*/
 
-			//Transformの更新
-			Matrix4x4 worldMatrixMultiMeshObj = math.MakeAffineMatrix(transformMultiMeshObj.scale, transformMultiMeshObj.rotate, transformMultiMeshObj.translate);
-			Matrix4x4 cameraMatrixMultiMeshObj = math.MakeAffineMatrix(camera.scale, camera.rotate, camera.translate);
-			Matrix4x4 viewMatrixMultiMeshObj = math.Matrix4x4Inverse(cameraMatrixMultiMeshObj);
-			Matrix4x4 projectionMatrixMultiMeshObj = math.MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-			//WVPMatrixの作成
-			Matrix4x4 worldViewProjectionMatrixMultiMeshObj = math.Matrix4x4Multiply(worldMatrixMultiMeshObj, math.Matrix4x4Multiply(viewMatrixMultiMeshObj, projectionMatrixMultiMeshObj));
-			transformationMatrixDataMultiMeshObj->WVP = worldViewProjectionMatrixMultiMeshObj;
-			transformationMatrixDataMultiMeshObj->World = worldMatrixMultiMeshObj;
+			////Transformの更新
+			//Matrix4x4 worldMatrixMultiMeshObj = math.MakeAffineMatrix(transformMultiMeshObj.scale, transformMultiMeshObj.rotate, transformMultiMeshObj.translate);
+			//Matrix4x4 cameraMatrixMultiMeshObj = math.MakeAffineMatrix(camera.scale, camera.rotate, camera.translate);
+			//Matrix4x4 viewMatrixMultiMeshObj = math.Matrix4x4Inverse(cameraMatrixMultiMeshObj);
+			//Matrix4x4 projectionMatrixMultiMeshObj = math.MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			////WVPMatrixの作成
+			//Matrix4x4 worldViewProjectionMatrixMultiMeshObj = math.Matrix4x4Multiply(worldMatrixMultiMeshObj, math.Matrix4x4Multiply(viewMatrixMultiMeshObj, projectionMatrixMultiMeshObj));
+			//transformationMatrixDataMultiMeshObj->WVP = worldViewProjectionMatrixMultiMeshObj;
+			//transformationMatrixDataMultiMeshObj->World = worldMatrixMultiMeshObj;
 
-			/*--- Bunny.objの更新処理 ---*/
+			///*--- Bunny.objの更新処理 ---*/
 
-			//Transformの更新
-			Matrix4x4 worldMatrixBunnyObj = math.MakeAffineMatrix(transformBunnyObj.scale, transformBunnyObj.rotate, transformBunnyObj.translate);
-			Matrix4x4 cameraMatrixBunnyObj = math.MakeAffineMatrix(camera.scale, camera.rotate, camera.translate);
-			Matrix4x4 viewMatrixBunnyObj = math.Matrix4x4Inverse(cameraMatrixMultiMeshObj);
-			Matrix4x4 projectionMatrixBunnyObj = math.MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-			//WVPMatrixの作成
-			Matrix4x4 worldViewProjectionMatrixBunnyObj = math.Matrix4x4Multiply(worldMatrixBunnyObj, math.Matrix4x4Multiply(viewMatrixBunnyObj, projectionMatrixBunnyObj));
-			transformationMatrixDataBunnyObj->WVP = worldViewProjectionMatrixBunnyObj;
-			transformationMatrixDataBunnyObj->World = worldMatrixBunnyObj;
-
-
-			/*--- Suzanne.objの更新処理 ---*/
-
-			//Transformの更新
-			Matrix4x4 worldMatrixSuzanneObj = math.MakeAffineMatrix(transformSuzanneObj.scale, transformSuzanneObj.rotate, transformSuzanneObj.translate);
-			Matrix4x4 cameraMatrixSuzanneObj = math.MakeAffineMatrix(camera.scale, camera.rotate, camera.translate);
-			Matrix4x4 viewMatrixSuzanneObj = math.Matrix4x4Inverse(cameraMatrixSuzanneObj);
-			Matrix4x4 projectionMatrixSuzanneObj = math.MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-			//WVPMatrixの作成
-			Matrix4x4 worldViewProjectionMatrixSuzanneObj = math.Matrix4x4Multiply(worldMatrixSuzanneObj, math.Matrix4x4Multiply(viewMatrixSuzanneObj, projectionMatrixSuzanneObj));
-			transformationMatrixDataSuzanneObj->WVP = worldViewProjectionMatrixSuzanneObj;
-			transformationMatrixDataSuzanneObj->World = worldMatrixSuzanneObj;
+			////Transformの更新
+			//Matrix4x4 worldMatrixBunnyObj = math.MakeAffineMatrix(transformBunnyObj.scale, transformBunnyObj.rotate, transformBunnyObj.translate);
+			//Matrix4x4 cameraMatrixBunnyObj = math.MakeAffineMatrix(camera.scale, camera.rotate, camera.translate);
+			//Matrix4x4 viewMatrixBunnyObj = math.Matrix4x4Inverse(cameraMatrixMultiMeshObj);
+			//Matrix4x4 projectionMatrixBunnyObj = math.MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			////WVPMatrixの作成
+			//Matrix4x4 worldViewProjectionMatrixBunnyObj = math.Matrix4x4Multiply(worldMatrixBunnyObj, math.Matrix4x4Multiply(viewMatrixBunnyObj, projectionMatrixBunnyObj));
+			//transformationMatrixDataBunnyObj->WVP = worldViewProjectionMatrixBunnyObj;
+			//transformationMatrixDataBunnyObj->World = worldMatrixBunnyObj;
 
 
-			/*--- Teapot.objの更新処理 ---*/
+			///*--- Suzanne.objの更新処理 ---*/
 
-			//Transformの更新
-			Matrix4x4 worldMatrixTeapotObj = math.MakeAffineMatrix(transformTeapotObj.scale, transformTeapotObj.rotate, transformTeapotObj.translate);
-			Matrix4x4 cameraMatrixTeapotObj = math.MakeAffineMatrix(camera.scale, camera.rotate, camera.translate);
-			Matrix4x4 viewMatrixTeapotObj = math.Matrix4x4Inverse(cameraMatrixTeapotObj);
-			Matrix4x4 projectionMatrixTeapotObj = math.MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-			//WVPMatrixの作成
-			Matrix4x4 worldViewProjectionMatrixTeapotObj = math.Matrix4x4Multiply(worldMatrixTeapotObj, math.Matrix4x4Multiply(viewMatrixTeapotObj, projectionMatrixTeapotObj));
-			transformationMatrixDataTeapotObj->WVP = worldViewProjectionMatrixTeapotObj;
-			transformationMatrixDataTeapotObj->World = worldMatrixTeapotObj;
+			////Transformの更新
+			//Matrix4x4 worldMatrixSuzanneObj = math.MakeAffineMatrix(transformSuzanneObj.scale, transformSuzanneObj.rotate, transformSuzanneObj.translate);
+			//Matrix4x4 cameraMatrixSuzanneObj = math.MakeAffineMatrix(camera.scale, camera.rotate, camera.translate);
+			//Matrix4x4 viewMatrixSuzanneObj = math.Matrix4x4Inverse(cameraMatrixSuzanneObj);
+			//Matrix4x4 projectionMatrixSuzanneObj = math.MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			////WVPMatrixの作成
+			//Matrix4x4 worldViewProjectionMatrixSuzanneObj = math.Matrix4x4Multiply(worldMatrixSuzanneObj, math.Matrix4x4Multiply(viewMatrixSuzanneObj, projectionMatrixSuzanneObj));
+			//transformationMatrixDataSuzanneObj->WVP = worldViewProjectionMatrixSuzanneObj;
+			//transformationMatrixDataSuzanneObj->World = worldMatrixSuzanneObj;
+
+
+			///*--- Teapot.objの更新処理 ---*/
+
+			////Transformの更新
+			//Matrix4x4 worldMatrixTeapotObj = math.MakeAffineMatrix(transformTeapotObj.scale, transformTeapotObj.rotate, transformTeapotObj.translate);
+			//Matrix4x4 cameraMatrixTeapotObj = math.MakeAffineMatrix(camera.scale, camera.rotate, camera.translate);
+			//Matrix4x4 viewMatrixTeapotObj = math.Matrix4x4Inverse(cameraMatrixTeapotObj);
+			//Matrix4x4 projectionMatrixTeapotObj = math.MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			////WVPMatrixの作成
+			//Matrix4x4 worldViewProjectionMatrixTeapotObj = math.Matrix4x4Multiply(worldMatrixTeapotObj, math.Matrix4x4Multiply(viewMatrixTeapotObj, projectionMatrixTeapotObj));
+			//transformationMatrixDataTeapotObj->WVP = worldViewProjectionMatrixTeapotObj;
+			//transformationMatrixDataTeapotObj->World = worldMatrixTeapotObj;
 
 			/*--- Spriteの更新処理 ---*/
 
@@ -1984,172 +1992,172 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			case 2:
 			/*--- MultiMesh.obj ---*/
 
-			if (ImGui::CollapsingHeader("MultiMeshObj"))
-			{
-				//位置
-				ImGui::DragFloat3("transform.translate", &transformMultiMeshObj.translate.x, 0.01f);
+			//if (ImGui::CollapsingHeader("MultiMeshObj"))
+			//{
+			//	//位置
+			//	ImGui::DragFloat3("transform.translate", &transformMultiMeshObj.translate.x, 0.01f);
 
-				// X軸の回転
-				ImGui::SliderAngle("transform.rotate.X", &transformMultiMeshObj.rotate.x);
+			//	// X軸の回転
+			//	ImGui::SliderAngle("transform.rotate.X", &transformMultiMeshObj.rotate.x);
 
-				// Y軸の回転
-				ImGui::SliderAngle("transform.rotate.Y", &transformMultiMeshObj.rotate.y);
+			//	// Y軸の回転
+			//	ImGui::SliderAngle("transform.rotate.Y", &transformMultiMeshObj.rotate.y);
 
-				// Z軸の回転
-				ImGui::SliderAngle("transform.rotate.Z", &transformMultiMeshObj.rotate.z);
+			//	// Z軸の回転
+			//	ImGui::SliderAngle("transform.rotate.Z", &transformMultiMeshObj.rotate.z);
 
-				//スケール
-				ImGui::DragFloat3("transform.scale", &transformMultiMeshObj.scale.x, 0.01f);
+			//	//スケール
+			//	ImGui::DragFloat3("transform.scale", &transformMultiMeshObj.scale.x, 0.01f);
 
-				//カラー変更
-				ImGui::ColorEdit4("Color", &(materialDataMultiMeshObj->color).x);
+			//	//カラー変更
+			//	ImGui::ColorEdit4("Color", &(materialDataMultiMeshObj->color).x);
 
-				//Lightingの切り替え
-				ImGui::Combo("selectedLight", &materialDataMultiMeshObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
-			}
+			//	//Lightingの切り替え
+			//	ImGui::Combo("selectedLight", &materialDataMultiMeshObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
+			//}
 
 			break;
 			case 3:
 			/*--- Bunny.obj ---*/
 
-			if (ImGui::CollapsingHeader("BunnyObj"))
-			{
-				//位置
-				ImGui::DragFloat3("transform.translate", &transformBunnyObj.translate.x, 0.01f);
+			//if (ImGui::CollapsingHeader("BunnyObj"))
+			//{
+			//	//位置
+			//	ImGui::DragFloat3("transform.translate", &transformBunnyObj.translate.x, 0.01f);
 
-				// X軸の回転
-				ImGui::SliderAngle("transform.rotate.X", &transformBunnyObj.rotate.x);
+			//	// X軸の回転
+			//	ImGui::SliderAngle("transform.rotate.X", &transformBunnyObj.rotate.x);
 
-				// Y軸の回転
-				ImGui::SliderAngle("transform.rotate.Y", &transformBunnyObj.rotate.y);
+			//	// Y軸の回転
+			//	ImGui::SliderAngle("transform.rotate.Y", &transformBunnyObj.rotate.y);
 
-				// Z軸の回転
-				ImGui::SliderAngle("transform.rotate.Z", &transformBunnyObj.rotate.z);
+			//	// Z軸の回転
+			//	ImGui::SliderAngle("transform.rotate.Z", &transformBunnyObj.rotate.z);
 
-				//スケール
-				ImGui::DragFloat3("transform.scale", &transformBunnyObj.scale.x, 0.01f);
+			//	//スケール
+			//	ImGui::DragFloat3("transform.scale", &transformBunnyObj.scale.x, 0.01f);
 
-				//カラー変更
-				ImGui::ColorEdit4("Color", &(materialDataBunnyObj->color).x);
+			//	//カラー変更
+			//	ImGui::ColorEdit4("Color", &(materialDataBunnyObj->color).x);
 
-				//Lightingの切り替え
-				ImGui::Combo("selectedLight", &materialDataBunnyObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
-			}
+			//	//Lightingの切り替え
+			//	ImGui::Combo("selectedLight", &materialDataBunnyObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
+			//}
 
 
 			break;
 			case 4:
 			/*--- Teapot.obj ---*/
-			if (ImGui::CollapsingHeader("TeapotObj"))
-			{
-				//位置
-				ImGui::DragFloat3("transform.translate", &transformTeapotObj.translate.x, 0.01f);
+			//if (ImGui::CollapsingHeader("TeapotObj"))
+			//{
+			//	//位置
+			//	ImGui::DragFloat3("transform.translate", &transformTeapotObj.translate.x, 0.01f);
 
-				// X軸の回転
-				ImGui::SliderAngle("transform.rotate.X", &transformTeapotObj.rotate.x);
+			//	// X軸の回転
+			//	ImGui::SliderAngle("transform.rotate.X", &transformTeapotObj.rotate.x);
 
-				// Y軸の回転
-				ImGui::SliderAngle("transform.rotate.Y", &transformTeapotObj.rotate.y);
+			//	// Y軸の回転
+			//	ImGui::SliderAngle("transform.rotate.Y", &transformTeapotObj.rotate.y);
 
-				// Z軸の回転
-				ImGui::SliderAngle("transform.rotate.Z", &transformTeapotObj.rotate.z);
+			//	// Z軸の回転
+			//	ImGui::SliderAngle("transform.rotate.Z", &transformTeapotObj.rotate.z);
 
-				//スケール
-				ImGui::DragFloat3("transform.scale", &transformTeapotObj.scale.x, 0.01f);
+			//	//スケール
+			//	ImGui::DragFloat3("transform.scale", &transformTeapotObj.scale.x, 0.01f);
 
-				//カラー変更
-				ImGui::ColorEdit4("Color", &(materialDataTeapotObj->color).x);
+			//	//カラー変更
+			//	ImGui::ColorEdit4("Color", &(materialDataTeapotObj->color).x);
 
-				//Lightingの切り替え
-				ImGui::Combo("selectedLight", &materialDataTeapotObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
-			}
+			//	//Lightingの切り替え
+			//	ImGui::Combo("selectedLight", &materialDataTeapotObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
+			//}
 
 
 			break;
 			case 5:
 
 			/*--- Suzanne.obj ---*/
-			if (ImGui::CollapsingHeader("SuzanneObj"))
-			{
-				//位置
-				ImGui::DragFloat3("transform.translate", &transformSuzanneObj.translate.x, 0.01f);
+			//if (ImGui::CollapsingHeader("SuzanneObj"))
+			//{
+			//	//位置
+			//	ImGui::DragFloat3("transform.translate", &transformSuzanneObj.translate.x, 0.01f);
 
-				// X軸の回転
-				ImGui::SliderAngle("transform.rotate.X", &transformSuzanneObj.rotate.x);
+			//	// X軸の回転
+			//	ImGui::SliderAngle("transform.rotate.X", &transformSuzanneObj.rotate.x);
 
-				// Y軸の回転
-				ImGui::SliderAngle("transform.rotate.Y", &transformSuzanneObj.rotate.y);
+			//	// Y軸の回転
+			//	ImGui::SliderAngle("transform.rotate.Y", &transformSuzanneObj.rotate.y);
 
-				// Z軸の回転
-				ImGui::SliderAngle("transform.rotate.Z", &transformSuzanneObj.rotate.z);
+			//	// Z軸の回転
+			//	ImGui::SliderAngle("transform.rotate.Z", &transformSuzanneObj.rotate.z);
 
-				//スケール
-				ImGui::DragFloat3("transform.scale", &transformSuzanneObj.scale.x, 0.01f);
+			//	//スケール
+			//	ImGui::DragFloat3("transform.scale", &transformSuzanneObj.scale.x, 0.01f);
 
-				//カラー変更
-				ImGui::ColorEdit4("Color", &(materialDataSuzanneObj->color).x);
+			//	//カラー変更
+			//	ImGui::ColorEdit4("Color", &(materialDataSuzanneObj->color).x);
 
-				//Lightingの切り替え
-				ImGui::Combo("selectedLight", &materialDataSuzanneObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
-			}
+			//	//Lightingの切り替え
+			//	ImGui::Combo("selectedLight", &materialDataSuzanneObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
+			//}
 
 			break;
 			case 6:
 
 			/*--- Plane.obj ---*/
 
-			if (ImGui::CollapsingHeader("PlaneObj"))
-			{
-				//位置
-				ImGui::DragFloat3("transformPlaneObj.translate", &transformPlaneObj.translate.x, 0.01f);
+			//if (ImGui::CollapsingHeader("PlaneObj"))
+			//{
+			//	//位置
+			//	ImGui::DragFloat3("transformPlaneObj.translate", &transformPlaneObj.translate.x, 0.01f);
 
-				// X軸の回転
-				ImGui::SliderAngle("transformPlaneObj.rotate.X", &transformPlaneObj.rotate.x);
+			//	// X軸の回転
+			//	ImGui::SliderAngle("transformPlaneObj.rotate.X", &transformPlaneObj.rotate.x);
 
-				// Y軸の回転
-				ImGui::SliderAngle("transformPlaneObj.rotate.Y", &transformPlaneObj.rotate.y);
+			//	// Y軸の回転
+			//	ImGui::SliderAngle("transformPlaneObj.rotate.Y", &transformPlaneObj.rotate.y);
 
-				// Z軸の回転
-				ImGui::SliderAngle("transformPlaneObj.rotate.Z", &transformPlaneObj.rotate.z);
+			//	// Z軸の回転
+			//	ImGui::SliderAngle("transformPlaneObj.rotate.Z", &transformPlaneObj.rotate.z);
 
-				//スケール
-				ImGui::DragFloat3("transformPlaneObj.scale", &transformPlaneObj.scale.x, 0.01f);
+			//	//スケール
+			//	ImGui::DragFloat3("transformPlaneObj.scale", &transformPlaneObj.scale.x, 0.01f);
 
-				//カラー変更
-				ImGui::ColorEdit4("Color", &(materialDataPlaneObj->color).x);
+			//	//カラー変更
+			//	ImGui::ColorEdit4("Color", &(materialDataPlaneObj->color).x);
 
-				//ライティングするかどうか
-				ImGui::Checkbox("enableLighting", &materialDataPlaneObj->enableLighting);
+			//	//ライティングするかどうか
+			//	ImGui::Checkbox("enableLighting", &materialDataPlaneObj->enableLighting);
 
-				//Lightingの切り替え
-				ImGui::Combo("selectedLight", &materialDataPlaneObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
-			}
+			//	//Lightingの切り替え
+			//	ImGui::Combo("selectedLight", &materialDataPlaneObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
+			//}
 
 			/*--- Bunny.obj ---*/
 
-			if (ImGui::CollapsingHeader("BunnyObj"))
-			{
-				//位置
-				ImGui::DragFloat3("transformBunnyObj.translate", &transformBunnyObj.translate.x, 0.01f);
+			//if (ImGui::CollapsingHeader("BunnyObj"))
+			//{
+			//	//位置
+			//	ImGui::DragFloat3("transformBunnyObj.translate", &transformBunnyObj.translate.x, 0.01f);
 
-				// X軸の回転
-				ImGui::SliderAngle("transformBunnyObj.rotate.X", &transformBunnyObj.rotate.x);
+			//	// X軸の回転
+			//	ImGui::SliderAngle("transformBunnyObj.rotate.X", &transformBunnyObj.rotate.x);
 
-				// Y軸の回転
-				ImGui::SliderAngle("transformBunnyObj.rotate.Y", &transformBunnyObj.rotate.y);
+			//	// Y軸の回転
+			//	ImGui::SliderAngle("transformBunnyObj.rotate.Y", &transformBunnyObj.rotate.y);
 
-				// Z軸の回転
-				ImGui::SliderAngle("transformBunnyObj.rotate.Z", &transformBunnyObj.rotate.z);
+			//	// Z軸の回転
+			//	ImGui::SliderAngle("transformBunnyObj.rotate.Z", &transformBunnyObj.rotate.z);
 
-				//スケール
-				ImGui::DragFloat3("transformBunnyObj.scale", &transformBunnyObj.scale.x, 0.01f);
+			//	//スケール
+			//	ImGui::DragFloat3("transformBunnyObj.scale", &transformBunnyObj.scale.x, 0.01f);
 
-				//カラー変更
-				ImGui::ColorEdit4("Color", &(materialDataBunnyObj->color).x);
+			//	//カラー変更
+			//	ImGui::ColorEdit4("Color", &(materialDataBunnyObj->color).x);
 
-				//Lightingの切り替え
-				ImGui::Combo("selectedLight", &materialDataBunnyObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
-			}
+			//	//Lightingの切り替え
+			//	ImGui::Combo("selectedLight", &materialDataBunnyObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
+			//}
 
 			break;
 			}
@@ -2351,151 +2359,151 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			case 2:
 			/*--- MultiMesh.obj ---*/
 
-			//VBVの設定
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewMultiMeshObj);
+			////VBVの設定
+			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewMultiMeshObj);
 
-			//IBVの設定
-			commandList->IASetIndexBuffer(&indexBufferViewMultiMeshObj);
+			////IBVの設定
+			//commandList->IASetIndexBuffer(&indexBufferViewMultiMeshObj);
 
-			//CBVの設定
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourceMultiMeshObj->GetGPUVirtualAddress());
+			////CBVの設定
+			//commandList->SetGraphicsRootConstantBufferView(0, materialResourceMultiMeshObj->GetGPUVirtualAddress());
 
-			//wvp用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceMultiMeshObj->GetGPUVirtualAddress());
+			////wvp用のCBufferの場所を設定
+			//commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceMultiMeshObj->GetGPUVirtualAddress());
 
-			//SRVのDescriptorTableの先頭を設定
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU3);
+			////SRVのDescriptorTableの先頭を設定
+			//commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU3);
 
-			//平行光源用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+			////平行光源用のCBufferの場所を設定
+			//commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
 
-			//描画！
-			commandList->DrawIndexedInstanced(UINT(modelDataMultiMeshObj.indices.size()), 1, 0, 0, 0);
+			////描画！
+			//commandList->DrawIndexedInstanced(UINT(modelDataMultiMeshObj.indices.size()), 1, 0, 0, 0);
 
 			break;
 			case 3:
 			/*--- Bunny.obj ---*/
 
-			//VBVの設定
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewBunnyObj);
+			////VBVの設定
+			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewBunnyObj);
 
-			//IBVの設定
-			commandList->IASetIndexBuffer(&indexBufferViewBunnyObj);
+			////IBVの設定
+			//commandList->IASetIndexBuffer(&indexBufferViewBunnyObj);
 
-			//CBVの設定
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourceBunnyObj->GetGPUVirtualAddress());
+			////CBVの設定
+			//commandList->SetGraphicsRootConstantBufferView(0, materialResourceBunnyObj->GetGPUVirtualAddress());
 
-			//wvp用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceBunnyObj->GetGPUVirtualAddress());
+			////wvp用のCBufferの場所を設定
+			//commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceBunnyObj->GetGPUVirtualAddress());
 
-			//SRVのDescriptorTableの先頭を設定
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU4);
+			////SRVのDescriptorTableの先頭を設定
+			//commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU4);
 
-			//平行光源用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+			////平行光源用のCBufferの場所を設定
+			//commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
 
-			//描画！
-			commandList->DrawIndexedInstanced(UINT(modelDataBunnyObj.indices.size()), 1, 0, 0, 0);
+			////描画！
+			//commandList->DrawIndexedInstanced(UINT(modelDataBunnyObj.indices.size()), 1, 0, 0, 0);
 
 			break;
 			case 4:
 			/*--- Teapot.obj ---*/
 
-			//VBVの設定
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewTeapotObj);
+			////VBVの設定
+			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewTeapotObj);
 
-			//IBVの設定
-			commandList->IASetIndexBuffer(&indexBufferViewTeapotObj);
+			////IBVの設定
+			//commandList->IASetIndexBuffer(&indexBufferViewTeapotObj);
 
-			//CBVの設定
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourceTeapotObj->GetGPUVirtualAddress());
+			////CBVの設定
+			//commandList->SetGraphicsRootConstantBufferView(0, materialResourceTeapotObj->GetGPUVirtualAddress());
 
-			//wvp用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceTeapotObj->GetGPUVirtualAddress());
+			////wvp用のCBufferの場所を設定
+			//commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceTeapotObj->GetGPUVirtualAddress());
 
-			//SRVのDescriptorTableの先頭を設定
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU5);
+			////SRVのDescriptorTableの先頭を設定
+			//commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU5);
 
-			//平行光源用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+			////平行光源用のCBufferの場所を設定
+			//commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
 
-			//描画！
-			commandList->DrawIndexedInstanced(UINT(modelDataTeapotObj.indices.size()), 1, 0, 0, 0);
+			////描画！
+			//commandList->DrawIndexedInstanced(UINT(modelDataTeapotObj.indices.size()), 1, 0, 0, 0);
 
 			break;
 			case 5:
 			/*--- Suzanne.obj ---*/
 
-			//VBVの設定
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSuzanneObj);
+			////VBVの設定
+			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSuzanneObj);
 
-			//IBVの設定
-			commandList->IASetIndexBuffer(&indexBufferViewSuzanneObj);
+			////IBVの設定
+			//commandList->IASetIndexBuffer(&indexBufferViewSuzanneObj);
 
-			//CBVの設定
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourceSuzanneObj->GetGPUVirtualAddress());
+			////CBVの設定
+			//commandList->SetGraphicsRootConstantBufferView(0, materialResourceSuzanneObj->GetGPUVirtualAddress());
 
-			//wvp用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSuzanneObj->GetGPUVirtualAddress());
+			////wvp用のCBufferの場所を設定
+			//commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSuzanneObj->GetGPUVirtualAddress());
 
-			//SRVのDescriptorTableの先頭を設定
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU6);
+			////SRVのDescriptorTableの先頭を設定
+			//commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU6);
 
-			//平行光源用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+			////平行光源用のCBufferの場所を設定
+			//commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
 
-			//描画！
-			commandList->DrawIndexedInstanced(UINT(modelDataSuzanneObj.indices.size()), 1, 0, 0, 0);
+			////描画！
+			//commandList->DrawIndexedInstanced(UINT(modelDataSuzanneObj.indices.size()), 1, 0, 0, 0);
 
 			break;
 			case 6:
 
-			/*--- Plane.obj ---*/
+			///*--- Plane.obj ---*/
 
-			//VBVの設定
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewPlaneObj);
+			////VBVの設定
+			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewPlaneObj);
 
-			//IBVの設定
-			commandList->IASetIndexBuffer(&indexBufferViewPlaneObj);
+			////IBVの設定
+			//commandList->IASetIndexBuffer(&indexBufferViewPlaneObj);
 
-			//CBVの設定
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourcePlaneObj->GetGPUVirtualAddress());
+			////CBVの設定
+			//commandList->SetGraphicsRootConstantBufferView(0, materialResourcePlaneObj->GetGPUVirtualAddress());
 
-			//wvp用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourcePlaneObj->GetGPUVirtualAddress());
+			////wvp用のCBufferの場所を設定
+			//commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourcePlaneObj->GetGPUVirtualAddress());
 
-			//SRVのDescriptorTableの先頭を設定
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
+			////SRVのDescriptorTableの先頭を設定
+			//commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
 
-			//平行光源用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+			////平行光源用のCBufferの場所を設定
+			//commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
 
-			//描画！
-			commandList->DrawIndexedInstanced(UINT(modelDataPlaneObj.indices.size()), 1, 0, 0, 0);
+			////描画！
+			//commandList->DrawIndexedInstanced(UINT(modelDataPlaneObj.indices.size()), 1, 0, 0, 0);
 
 
-			/*--- Bunny.obj ---*/
+			///*--- Bunny.obj ---*/
 
-			//VBVの設定
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewBunnyObj);
+			////VBVの設定
+			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewBunnyObj);
 
-			//IBVの設定
-			commandList->IASetIndexBuffer(&indexBufferViewBunnyObj);
+			////IBVの設定
+			//commandList->IASetIndexBuffer(&indexBufferViewBunnyObj);
 
-			//CBVの設定
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourceBunnyObj->GetGPUVirtualAddress());
+			////CBVの設定
+			//commandList->SetGraphicsRootConstantBufferView(0, materialResourceBunnyObj->GetGPUVirtualAddress());
 
-			//wvp用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceBunnyObj->GetGPUVirtualAddress());
+			////wvp用のCBufferの場所を設定
+			//commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceBunnyObj->GetGPUVirtualAddress());
 
-			//SRVのDescriptorTableの先頭を設定
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU4);
+			////SRVのDescriptorTableの先頭を設定
+			//commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU4);
 
-			//平行光源用のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
+			////平行光源用のCBufferの場所を設定
+			//commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
 
-			//描画！
-			commandList->DrawIndexedInstanced(UINT(modelDataBunnyObj.indices.size()), 1, 0, 0, 0);
+			////描画！
+			//commandList->DrawIndexedInstanced(UINT(modelDataBunnyObj.indices.size()), 1, 0, 0, 0);
 
 			break;
 			}
@@ -2523,7 +2531,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				commandList->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
 
 				//描画！
-				commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+				/*commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);*/
 			}
 
 
