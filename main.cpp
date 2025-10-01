@@ -23,14 +23,9 @@
 #include<array>
 #include<xaudio2.h>
 
-#define DIRECTINPUT_VERSION 0x0800
-#include<dinput.h>
-
-#pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "Dbghelp.lib")
-#pragma comment(lib, "dxguid.lib")
 #pragma comment(lib,"dxcompiler.lib")
 
 #pragma comment(lib,"xaudio2.lib")
@@ -42,6 +37,10 @@
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 #include "externals/DirectXTex/DirectXTex.h"
+
+
+#include "Input.h"
+
 
 Math math;
 
@@ -469,27 +468,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//初期化完了のメッセージを出力
 	Log(logStream, "Complete create D3D12Device!!!!\n");
 
-	/*--- キーボードの初期化 ---*/
+	//キー入力の初期化
 
-	//DirecctInputの初期化
-	Microsoft::WRL::ComPtr<IDirectInput8> directInput = nullptr;
-	result = DirectInput8Create(
-		wc.hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8,
-		reinterpret_cast<void**>(directInput.GetAddressOf()), nullptr);
-	assert(SUCCEEDED(result));
+	//ポインタ
+	Input* input = nullptr;
 
-	//キーボードデバイスの生成
-	Microsoft::WRL::ComPtr<IDirectInputDevice8> keyboard = nullptr;
-	result = directInput->CreateDevice(GUID_SysKeyboard, keyboard.GetAddressOf(), nullptr);
-	assert(SUCCEEDED(result));
-
-	//入力データ形式のセット
-	result = keyboard->SetDataFormat(&c_dfDIKeyboard);
-	assert(SUCCEEDED(result));
-
-	//排他制御レベルのセット
-	result = keyboard->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
-	assert(SUCCEEDED(result));
+	//入力の初期化
+	input = new Input();
+	input->Initialize(wc.hInstance, hwnd);
 
 #ifdef _DEBUG
 
@@ -1378,12 +1364,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
 
-			//キーボード情報の取得開始
-			keyboard->Acquire();
+			//入力の更新
+			input->Update();
 
-			//全キーの入力情報を取得
-			BYTE key[256] = {};
-			keyboard->GetDeviceState(sizeof(key), key);
+			if (input->TriggerKey(DIK_W))
+			{
+				transformPlaneObj.translate.y += 0.1f;
+			}
+			else if (input->PushKey(DIK_S))
+			{
+				transformPlaneObj.translate.y -= 0.01f;
+			}
+
+			if (input->PushKey(DIK_A))
+			{
+				transformPlaneObj.translate.x -= 0.01f;
+			}
+			else if (input->PushKey(DIK_D))
+			{
+				transformPlaneObj.translate.x += 0.01f;
+			}
+
 
 			/*-------------- ↓更新処理ここから↓ --------------*/
 
@@ -1792,6 +1793,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//XAudio2の解放
 	xAudio2.Reset();
+
+	//入力の解放
+	delete input;
 
 	//音声データ解放
 	SoundUnload(&soundData1);
