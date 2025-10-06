@@ -80,3 +80,23 @@ void WinApp::Finalize()
 	//COMの終了処理
 	CoUninitialize();
 }
+
+bool WinApp::ProcessMessage()
+{
+	MSG msg{};
+
+	//windowsにメッセージが来たら最優先で処理する
+	if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+
+	//もし終了メッセージが来ていたらtrueを返す
+	if (msg.message == WM_QUIT)
+	{
+		return true;
+	}
+
+	return false;
+}
