@@ -4,7 +4,7 @@
 #include<wrl.h>
 #define DIRECTLIB_VERSION 0x0800
 #include<dinput.h>
-
+#include"WinApp.h"
 
 #pragma comment(lib,"dinput8.lib")
 #pragma comment(lib,"dxguid.lib")
@@ -19,9 +19,8 @@ public:
 	/// <summary>
 	/// 全体の初期化
 	/// </summary>
-	/// <param name="hInstance"></param>
-	/// <param name="hwnd"></param>
-	void Initialize(HINSTANCE hInstance, HWND hwnd);
+	/// <param name="WinApp"></param>
+	void Initialize(WinApp* winApp);
 
 	/// <summary>
 	/// 更新処理
@@ -55,5 +54,9 @@ private:
 
 	//前回のキーの入力状態保存用配列
 	BYTE keyPre[256] = {};
+
+private:
+	//WindowAPI
+	WinApp* winApp_ = nullptr;
 };
 

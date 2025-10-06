@@ -1,5 +1,10 @@
 ﻿#pragma once
 #include<Windows.h>
+#include"externals/imgui/imgui.h"
+#include"externals/imgui/imgui_impl_dx12.h"
+#include"externals/imgui/imgui_impl_win32.h"
+#include <cstdint>
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 class WinApp
 {
@@ -16,6 +21,11 @@ public:
 	/// 更新処理
 	/// </summary>
 	void Update();
+
+	/// <summary>
+	///	終了処理
+	/// </summary>
+	void Finalize();
 
 	//getter
 	HWND GetHwnd() { return hwnd; }

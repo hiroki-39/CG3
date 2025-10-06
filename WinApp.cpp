@@ -1,9 +1,4 @@
 ﻿#include "WinApp.h"
-#include"externals/imgui/imgui.h"
-#include"externals/imgui/imgui_impl_dx12.h"
-#include"externals/imgui/imgui_impl_win32.h"
-#include <cstdint>
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 //ウインドウプロシージャ
 LRESULT WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparm)
@@ -74,6 +69,14 @@ void WinApp::Update()
 {
 
 
-	Log(logStream, "Hello DirectX!\n");
-	Log(logStream, ConvertString(std::format(L"clientSize:{},{}\n", kClientWidth, kClientHeight)));
+	/*Log(logStream, "Hello DirectX!\n");
+	Log(logStream, ConvertString(std::format(L"clientSize:{},{}\n", kClientWidth, kClientHeight)));*/
+}
+
+void WinApp::Finalize()
+{
+	CloseWindow(hwnd);
+
+	//COMの終了処理
+	CoUninitialize();
 }
