@@ -36,7 +36,7 @@
 
 #include "Input.h"
 #include "WinApp.h"
-
+#include <cstdint>
 
 Math math;
 
@@ -432,7 +432,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//入力の初期化
 	input = new Input();
-	input->Initialize(wc.hInstance, hwnd);
+	input->Initialize(winApp->GetHInstance(), winApp->GetHwnd());
 
 #ifdef _DEBUG
 
@@ -500,9 +500,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
 
 	//ウィンドウの幅
-	swapChainDesc.Width = kClientWidth;
+	swapChainDesc.Width = WinApp::kClientWidth;
 	//ウィンドウの高さ
-	swapChainDesc.Height = kClientHeight;
+	swapChainDesc.Height = WinApp::kClientHeight;
 	//色の形式
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	//マルチサンプルしない
@@ -516,8 +516,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//コマンドキュー、ウィンドウハンドル、設定を渡して生成
 	hr = dxgiFactory->CreateSwapChainForHwnd(
-		commandQueue.Get(),            //コマンドキュー
-		hwnd,                    //ウィンドウハンドル
+		commandQueue.Get(),     //コマンドキュー
+		winApp->GetHwnd(),      //ウィンドウハンドル
 		&swapChainDesc,         //スワップチェーンの設定
 		nullptr,                //モニタの設定
 		nullptr,                //コンシューマーの設定
