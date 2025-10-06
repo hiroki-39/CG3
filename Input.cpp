@@ -12,6 +12,8 @@ void Input::Initialize(HINSTANCE hInstance, HWND hwnd)
 	result = DirectInput8Create(hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, reinterpret_cast<void**>(directInput.GetAddressOf()), nullptr);
 	assert(SUCCEEDED(result));
 
+#pragma region "キーボード操作"
+
 	//キーボードデバイスの生成
 	result = directInput->CreateDevice(GUID_SysKeyboard, keyboard.GetAddressOf(), nullptr);
 	assert(SUCCEEDED(result));
@@ -23,6 +25,24 @@ void Input::Initialize(HINSTANCE hInstance, HWND hwnd)
 	//排他制御レベルのセット
 	result = keyboard->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 	assert(SUCCEEDED(result));
+
+#pragma endregion
+
+#pragma region "コントロール操作"
+
+	//キーボードデバイスの生成
+	result = directInput->CreateDevice(GUID_SysKeyboard, keyboard.GetAddressOf(), nullptr);
+	assert(SUCCEEDED(result));
+
+	//入力データ形式のセット
+	result = keyboard->SetDataFormat(&c_dfDIKeyboard);
+	assert(SUCCEEDED(result));
+
+	//排他制御レベルのセット
+	result = keyboard->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+	assert(SUCCEEDED(result));
+
+#pragma endregion
 }
 
 void Input::Update()
