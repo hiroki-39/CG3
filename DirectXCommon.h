@@ -57,7 +57,7 @@ public://メンバ関数
 	/// <summary>
 	/// ビューポート矩形の初期化
 	/// </summary>
-	void SetViewportAndScissorRect();
+	void SetViewportRect();
 
 	/// <summary>
 	/// シザー矩形の初期化
@@ -182,6 +182,12 @@ private://メンバ変数
 	//深度バッファ
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource;
 
+	//フェンス
+	Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+
+	//フェンス用イベントハンドル
+	HANDLE fenceEvent;
+
 	//ビューポート
 	D3D12_VIEWPORT viewport{ };
 
@@ -194,4 +200,10 @@ private://メンバ変数
 
 	//includehandler
 	IDxcIncludeHandler* includehandler;
+
+	//TransitionBarrier
+	D3D12_RESOURCE_BARRIER barrier{};
+
+	//フェンス値
+	UINT64 fenceValue;
 };
