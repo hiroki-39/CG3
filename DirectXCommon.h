@@ -53,7 +53,7 @@ public://メンバ関数
 	//フェンスの生成
 	/// </summary>
 	void CreateFence();
-	
+
 	/// <summary>
 	/// ビューポート矩形の初期化
 	/// </summary>
@@ -81,6 +81,16 @@ public://メンバ関数
 	///　ImGuiの初期化
 	/// </summary>
 	void InitImGui();
+
+	/// <summary>
+	/// 描画前処理
+	/// </summary>
+	void PreDraw();
+
+	/// <summary>
+	/// 描画後処理
+	/// </summary>
+	void PostDraw();
 
 	/// <summary>
 	/// SRVの指定番号のCPUデスクリプタハンドルを取得
@@ -156,10 +166,13 @@ private://メンバ変数
 
 	//DSVのヒープ
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap;
-	
+
 	//スワップチェーンリソース
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> swapChainResources;
-	
+
+	//RTVを2つ作るので、ディスクリプタを2つ用意
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2];
+
 	//RTVの生成
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
 
@@ -176,7 +189,7 @@ private://メンバ変数
 	D3D12_RECT scissorRect{ };
 
 	//dxcCompiler
-	IDxcUtils* dxcUtils ;
+	IDxcUtils* dxcUtils;
 	IDxcCompiler3* dxcCompiler;
 
 	//includehandler

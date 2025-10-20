@@ -265,9 +265,6 @@ void DirectXCommon::CreateRTV()
 	//ディスクリプタの先頭を取得
 	rtvHandle = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 
-	//RTVを2つ作るので、ディスクリプタを2つ用意
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2];
-
 	//裏表の2つ分
 	for (uint32_t i = 0; i < 2; i++)
 	{
@@ -449,6 +446,77 @@ void DirectXCommon::InitImGui()
 		srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
 		srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
 	);
+}
+
+void DirectXCommon::PreDraw()
+{
+	//これから書き込むバックバッファのインデックスを取得
+	UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
+
+	//TransitionBarrierの設定
+	D3D12_RESOURCE_BARRIER barrier{};
+
+	//バリアの種類(今回はTransition)
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+
+	//Noneにする
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+	//バリアの設定(バリアを張る対象)
+	barrier.Transition.pResource = swapChainResources[backBufferIndex].Get();
+
+	//現在のResourceState
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+
+	//次のResourceState
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+	//TransitionBarrierを張る
+	commandList->ResourceBarrier(1, &barrier);
+
+	//描画先のRTVを設定
+	commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], false, nullptr);
+
+	//指定した色で画面全体をクリアする
+	//RGBAの順番で指定
+	float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
+	commandList->ClearRenderTargetView(
+		rtvHandles[backBufferIndex], //クリアするRTV
+		clearColor,                 //クリアする色
+		0,                          //指定しない
+		nullptr                     //指定しない
+	);
+
+	//描画用のDesciptorHeapを設定
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorheaps[] = { srvDescriptorHeap };
+	commandList->SetDescriptorHeaps(1, descriptorheaps->GetAddressOf());
+
+	//Viewportを設定
+	commandList->RSSetViewports(1, &viewport);
+
+	//Scirssorを設定
+	commandList->RSSetScissorRects(1, &scissorRect);
+
+	//RootSignatureの設定
+	commandList->SetGraphicsRootSignature(rootSignature.Get());
+
+	//PSOを設定
+	commandList->SetPipelineState(graphicsPipelineState.Get());
+
+	//形状を設定
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	//描画先のRTVとDSVを設定
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], false, &dsvHandle);
+
+	//指定した深度で画面全体をクリア
+	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+}
+
+void DirectXCommon::PostDraw()
+{
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE DirectXCommon::GetSRVCPUDescriptorHandle(uint32_t index)
