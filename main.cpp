@@ -25,11 +25,12 @@
 #include "externals/DirectXTex/DirectXTex.h"
 
 
-#include "Input.h"
-#include "WinApp.h"
+#include "Engine/Input/Input.h"
+#include "Engine/Core/OS/WinApp.h"
 #include <cstdint>
 
-#include "DirectXCommon.h"
+#include "Engine/Core/Graphics/DirectXCommon.h"
+#include "Engine/Math/Math.h"
 
 Math math;
 
