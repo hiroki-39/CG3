@@ -1,0 +1,27 @@
+Hello DirectX!
+
+clientSize:1280,720
+
+Use Adapater: NVIDIA GeForce RTX 4060 Laptop GPU
+
+FeatureLevel: 12.2 
+
+Complete create D3D12Device!!!!
+
+Begin CompileShader, path:object3D.VS.hlsl, profile:vs_6_0
+
+object3D.VS.hlsl:16:1: error: unknown type name 'VertexShaderQutput'; did you mean 'VertexShaderOutput'?
+VertexShaderQutput main(VertexShaderInput input)
+^~~~~~~~~~~~~~~~~~
+VertexShaderOutput
+./Object3d.hlsli:2:8: note: 'VertexShaderOutput' declared here
+struct VertexShaderOutput
+       ^
+object3D.VS.hlsl:18:5: error: unknown type name 'VertexShaderQutput'; did you mean 'VertexShaderOutput'?
+    VertexShaderQutput output;
+    ^~~~~~~~~~~~~~~~~~
+    VertexShaderOutput
+./Object3d.hlsli:2:8: note: 'VertexShaderOutput' declared here
+struct VertexShaderOutput
+       ^
+

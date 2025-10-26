@@ -1,0 +1,29 @@
+Hello DirectX!
+
+clientSize:1280,720
+
+Use Adapater: NVIDIA GeForce RTX 4060 Laptop GPU
+
+FeatureLevel: 12.2 
+
+Complete create D3D12Device!!!!
+
+Begin CompileShader, path:object3D.VS.hlsl, profile:vs_6_0
+
+Compile Succeded, path:object3D.VS.hlsl, profile:vs_6_0
+
+Begin CompileShader, path:object3D.PS.hlsl, profile:ps_6_0
+
+object3D.PS.hlsl:51:19: error: redefinition of 'cos'
+            float cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
+                  ^
+object3D.PS.hlsl:44:19: note: previous definition is here
+            float cos = saturate(dot(normalize(input.normal), -gDirectionlLight.direction));
+                  ^
+object3D.PS.hlsl:48:9: error: cannot jump from switch statement to this case label
+        case 2:
+        ^
+object3D.PS.hlsl:44:19: note: jump bypasses variable initialization
+            float cos = saturate(dot(normalize(input.normal), -gDirectionlLight.direction));
+                  ^
+

@@ -1,0 +1,22 @@
+Hello DirectX!
+
+clientSize:1280,720
+
+Use Adapater: NVIDIA GeForce RTX 4060 Laptop GPU
+
+FeatureLevel: 12.2 
+
+Complete create D3D12Device!!!!
+
+Begin CompileShader, path:object3D.VS.hlsl, profile:vs_6_0
+
+Compile Succeded, path:object3D.VS.hlsl, profile:vs_6_0
+
+Begin CompileShader, path:object3D.PS.hlsl, profile:ps_6_0
+
+object3D.PS.hlsl:10:1: error: no template named 'Textrue2D'; did you mean 'Texture2D'?
+Textrue2D<float32_t4> gTexture : register(t0);
+^~~~~~~~~
+Texture2D
+note: 'Texture2D' declared here
+

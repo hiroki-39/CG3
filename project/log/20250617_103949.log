@@ -1,0 +1,23 @@
+Hello DirectX!
+
+clientSize:1280,720
+
+Use Adapater: NVIDIA GeForce RTX 4060 Laptop GPU
+
+FeatureLevel: 12.2 
+
+Complete create D3D12Device!!!!
+
+Begin CompileShader, path:object3D.VS.hlsl, profile:vs_6_0
+
+Compile Succeded, path:object3D.VS.hlsl, profile:vs_6_0
+
+Begin CompileShader, path:object3D.PS.hlsl, profile:ps_6_0
+
+object3D.PS.hlsl:34:79: error: expected ';' at end of declaration
+        float NdotL = dot(normalize(input.normal),-gDirectionlLight.direction)
+                                                                              ^
+                                                                              ;
+
+Compile Succeded, path:object3D.PS.hlsl, profile:ps_6_0
+
