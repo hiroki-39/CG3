@@ -1,0 +1,22 @@
+Hello DirectX!
+
+clientSize:1280,720
+
+Use Adapater: NVIDIA GeForce RTX 4060 Laptop GPU
+
+FeatureLevel: 12.2 
+
+Complete create D3D12Device!!!!
+
+Begin CompileShader, path:object3D.VS.hlsl, profile:vs_6_0
+
+object3D.VS.hlsl:18:4: error: use of undeclared identifier 'Output'
+   Output.texcoord = input.texcoord;
+   ^
+object3D.VS.hlsl:19:5: error: use of undeclared identifier 'Output'
+    Output.position = mul(input.position,gTransformationMatrix.WVP);
+    ^
+object3D.VS.hlsl:20:12: error: use of undeclared identifier 'Output'
+    return Output;
+           ^
+
