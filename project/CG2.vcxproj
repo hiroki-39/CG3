@@ -144,6 +144,7 @@ copy "$(windowsSdkDir)bin\$(targetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Core\Graphics\D3DResourceLeakChecker.cpp" />
     <ClCompile Include="Engine\Core\Graphics\DirectXCommon.cpp" />
     <ClCompile Include="externals\imgui\imgui.cpp" />
     <ClCompile Include="externals\imgui\imgui_demo.cpp" />
@@ -162,10 +163,11 @@ copy "$(windowsSdkDir)bin\$(targetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
-    <ClCompile Include="Engine\Core\Utility\StringUtility.cpp" />
+    <ClCompile Include="Engine\Core\Utility\String\StringUtility.cpp" />
     <ClCompile Include="Engine\Core\OS\WinApp.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Core\Graphics\D3DResourceLeakChecker.h" />
     <ClInclude Include="Engine\Core\Graphics\DirectXCommon.h" />
     <ClInclude Include="externals\imgui\imconfig.h" />
     <ClInclude Include="externals\imgui\imgui.h" />
@@ -178,7 +180,7 @@ copy "$(windowsSdkDir)bin\$(targetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Engine\Input\Input.h" />
     <ClInclude Include="Engine\Core\Utility\Log\Logger.h" />
     <ClInclude Include="Engine\Math\Math.h" />
-    <ClInclude Include="Engine\Core\Utility\StringUtility.h" />
+    <ClInclude Include="Engine\Core\Utility\String\StringUtility.h" />
     <ClInclude Include="Engine\Core\OS\WinApp.h" />
   </ItemGroup>
   <ItemGroup>
