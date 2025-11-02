@@ -5,10 +5,18 @@
 #include<wrl.h>
 #include <array>
 #include <dxcapi.h>
+#include <cassert>
+#include <string>
+
+#include <Engine/Core/Utility/Log/Logger.h>
+#include <Engine/Core/Utility/String/StringUtility.h>
+#include <externals/DirectXTex/d3dx12.h>
+#include <externals/DirectXTex/DirectXTex.h>
 
 #include "Engine/Core/OS/WinApp.h"
 #include"externals/imgui/imgui.h"
 #include"externals/imgui/imgui_impl_dx12.h"
+
 
 class DirectXCommon
 {
@@ -102,27 +110,47 @@ public://メンバ関数
 	/// </summary>
 	D3D12_GPU_DESCRIPTOR_HANDLE GetSRVGPUDescriptorHandle(uint32_t index);
 
+	/// <summary>
+	/// シェーダーのコンパイル
+	/// </summary>
+	Microsoft::WRL::ComPtr<IDxcBlob> compileshader(const std::wstring& filePath, const wchar_t* profile);
+
+	/// <summary>
+	/// バッファリソースの生成
+	/// </summary>
+	Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(size_t sizeInbytes);
+
+	/// <summary>
+	/// テクスチャリソースの生成
+	/// </summary>
+	Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(const Microsoft::WRL::ComPtr<ID3D12Device>& device, const DirectX::TexMetadata& metdata);
+
+	/// <summary>
+	/// テクスチャデータの転送
+	/// </summary>
+	[[nodiscard]]
+	Microsoft::WRL::ComPtr<ID3D12Resource> UploadTextureData(Microsoft::WRL::ComPtr<ID3D12Resource> texture, const DirectX::ScratchImage& mipImages);
+
+	/// <summary>
+	/// テクスチャの読み込み
+	/// </summary>
+	static DirectX::ScratchImage LoadTexture(const std::string& filePath);
+
+	/*-- getter ---*/
+	ID3D12Device* GetDevice() { return device.Get(); }
+	ID3D12GraphicsCommandList* GetCommandList() { return commandList.Get(); }
+
 private:
 
 	/// <summary>
 	/// 指定番号のCPUデスクリプタハンドルを取得
 	/// </summary>
-	static D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap, uint32_t descriptorSize, uint32_t index)
-	{
-		D3D12_CPU_DESCRIPTOR_HANDLE handleCPU = descriptorHeap->GetCPUDescriptorHandleForHeapStart();
-		handleCPU.ptr += (descriptorSize * index);
-		return handleCPU;
-	}
+	static D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap, uint32_t descriptorSize, uint32_t index);
 
 	/// <summary>
 	/// 指定番号のGPUデスクリプタハンドルを取得
 	/// </summary>
-	static D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap, uint32_t descriptorSize, uint32_t index)
-	{
-		D3D12_GPU_DESCRIPTOR_HANDLE handleGPU = descriptorHeap->GetGPUDescriptorHandleForHeapStart();
-		handleGPU.ptr += (descriptorSize * index);
-		return handleGPU;
-	}
+	static D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap, uint32_t descriptorSize, uint32_t index);
 
 private://メンバ変数
 
@@ -198,8 +226,8 @@ private://メンバ変数
 	IDxcUtils* dxcUtils;
 	IDxcCompiler3* dxcCompiler;
 
-	//includehandler
-	IDxcIncludeHandler* includehandler;
+	//includeHandler
+	IDxcIncludeHandler* includeHandler;
 
 	//TransitionBarrier
 	D3D12_RESOURCE_BARRIER barrier{};

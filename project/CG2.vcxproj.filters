@@ -57,7 +57,10 @@
     <ClCompile Include="Engine\Core\Utility\Log\Logger.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Core\Utility\StringUtility.cpp">
+    <ClCompile Include="Engine\Core\Utility\String\StringUtility.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Core\Graphics\D3DResourceLeakChecker.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
@@ -101,7 +104,10 @@
     <ClInclude Include="Engine\Core\Utility\Log\Logger.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Core\Utility\StringUtility.h">
+    <ClInclude Include="Engine\Core\Utility\String\StringUtility.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Core\Graphics\D3DResourceLeakChecker.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
