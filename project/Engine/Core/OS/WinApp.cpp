@@ -1,5 +1,8 @@
 ﻿#include "WinApp.h"
 
+#pragma comment(lib, "winmm.lib")
+
+
 //ウインドウプロシージャ
 LRESULT WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparm)
 {
@@ -26,6 +29,10 @@ LRESULT WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparm)
 
 void WinApp::Initialize()
 {
+	// システムタイマーの分解能を上げる
+	timeBeginPeriod(1);
+
+	//ウィンドウクラスの設定
 	HRESULT hr = CoInitializeEx(0, COINIT_MULTITHREADED);
 
 	//ウィンドウプロシージャ

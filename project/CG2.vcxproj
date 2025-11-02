@@ -165,6 +165,7 @@ copy "$(windowsSdkDir)bin\$(targetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </ClCompile>
     <ClCompile Include="Engine\Core\Utility\String\StringUtility.cpp" />
     <ClCompile Include="Engine\Core\OS\WinApp.cpp" />
+    <ClCompile Include="Engine\Core\Utility\Timer\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Core\Graphics\D3DResourceLeakChecker.h" />
@@ -182,6 +183,7 @@ copy "$(windowsSdkDir)bin\$(targetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Engine\Math\Math.h" />
     <ClInclude Include="Engine\Core\Utility\String\StringUtility.h" />
     <ClInclude Include="Engine\Core\OS\WinApp.h" />
+    <ClInclude Include="Engine\Core\Utility\Timer\Timer.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />
