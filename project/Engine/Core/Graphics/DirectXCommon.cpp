@@ -7,6 +7,9 @@ using namespace Microsoft::WRL;
 
 void DirectXCommon::Initialize(WinApp* winApp)
 {
+	//FPS固定の初期化
+	timer.InitalizeFixFPS();
+
 	//NULLチェック
 	assert(winApp);
 
@@ -534,6 +537,9 @@ void DirectXCommon::PostDraw()
 		//イベントが発火するまで待つ
 		WaitForSingleObject(fenceEvent, INFINITE);
 	}
+
+	//FPS固定
+	timer.UpdateFixFPS();
 
 	//次のフレーム用のコマンドリストを準備
 	hr = commandAllocator->Reset();

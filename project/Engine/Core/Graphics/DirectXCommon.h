@@ -12,6 +12,7 @@
 #include <Engine/Core/Utility/String/StringUtility.h>
 #include <externals/DirectXTex/d3dx12.h>
 #include <externals/DirectXTex/DirectXTex.h>
+#include<Engine/Core/Utility/Timer/Timer.h>
 
 #include "Engine/Core/OS/WinApp.h"
 #include"externals/imgui/imgui.h"
@@ -140,7 +141,7 @@ public://メンバ関数
 	ID3D12Device* GetDevice() { return device.Get(); }
 	ID3D12GraphicsCommandList* GetCommandList() { return commandList.Get(); }
 
-private:
+private://静的メンバ関数
 
 	/// <summary>
 	/// 指定番号のCPUデスクリプタハンドルを取得
@@ -155,6 +156,8 @@ private:
 private://メンバ変数
 
 	WinApp* winApp = nullptr;
+
+	Timer timer ;
 
 	//DirectX12のデバイス
 	Microsoft::WRL::ComPtr<ID3D12Device> device;
