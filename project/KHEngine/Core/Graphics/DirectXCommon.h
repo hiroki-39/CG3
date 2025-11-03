@@ -8,15 +8,15 @@
 #include <cassert>
 #include <string>
 
-#include <Engine/Core/Utility/Log/Logger.h>
-#include <Engine/Core/Utility/String/StringUtility.h>
-#include <externals/DirectXTex/d3dx12.h>
-#include <externals/DirectXTex/DirectXTex.h>
-#include<Engine/Core/Utility/Timer/Timer.h>
+#include "KHEngine/Core/Utility/Log/Logger.h"
+#include "KHEngine/Core/Utility/String/StringUtility.h"
+#include "externals/DirectXTex/d3dx12.h"
+#include "externals/DirectXTex/DirectXTex.h"
+#include "KHEngine/Core/Utility/Timer/Timer.h"
 
-#include "Engine/Core/OS/WinApp.h"
-#include"externals/imgui/imgui.h"
-#include"externals/imgui/imgui_impl_dx12.h"
+#include "KHEngine/Core/OS/WinApp.h"
+#include "externals/imgui/imgui.h"
+#include "externals/imgui/imgui_impl_dx12.h"
 
 
 class DirectXCommon
@@ -157,7 +157,7 @@ private://メンバ変数
 
 	WinApp* winApp = nullptr;
 
-	Timer timer ;
+	Timer timer;
 
 	//DirectX12のデバイス
 	Microsoft::WRL::ComPtr<ID3D12Device> device;

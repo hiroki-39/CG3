@@ -42,28 +42,34 @@
     <ClCompile Include="externals\imgui\imgui_widgets.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Math\Math.cpp">
+    <ClCompile Include="KHEngine\Math\Math.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Input\Input.cpp">
+    <ClCompile Include="KHEngine\Input\Input.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Core\OS\WinApp.cpp">
+    <ClCompile Include="KHEngine\Core\OS\WinApp.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Core\Graphics\DirectXCommon.cpp">
+    <ClCompile Include="KHEngine\Core\Graphics\DirectXCommon.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Core\Utility\Log\Logger.cpp">
+    <ClCompile Include="KHEngine\Core\Utility\Log\Logger.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Core\Utility\String\StringUtility.cpp">
+    <ClCompile Include="KHEngine\Core\Utility\String\StringUtility.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Core\Graphics\D3DResourceLeakChecker.cpp">
+    <ClCompile Include="KHEngine\Core\Graphics\D3DResourceLeakChecker.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Core\Utility\Timer\Timer.cpp">
+    <ClCompile Include="KHEngine\Core\Utility\Timer\Timer.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="KHEngine\Graphics\2d\SpriteCommon.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="KHEngine\Graphics\2d\Sprite.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
@@ -92,28 +98,34 @@
     <ClInclude Include="externals\imgui\imstb_truetype.h">
       <Filter>imgui</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Math\Math.h">
+    <ClInclude Include="KHEngine\Math\Math.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Input\Input.h">
+    <ClInclude Include="KHEngine\Input\Input.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Core\OS\WinApp.h">
+    <ClInclude Include="KHEngine\Core\OS\WinApp.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Core\Graphics\DirectXCommon.h">
+    <ClInclude Include="KHEngine\Core\Graphics\DirectXCommon.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Core\Utility\Log\Logger.h">
+    <ClInclude Include="KHEngine\Core\Utility\Log\Logger.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Core\Utility\String\StringUtility.h">
+    <ClInclude Include="KHEngine\Core\Utility\String\StringUtility.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Core\Graphics\D3DResourceLeakChecker.h">
+    <ClInclude Include="KHEngine\Core\Graphics\D3DResourceLeakChecker.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Core\Utility\Timer\Timer.h">
+    <ClInclude Include="KHEngine\Core\Utility\Timer\Timer.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="KHEngine\Graphics\2d\SpriteCommon.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="KHEngine\Graphics\2d\Sprite.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

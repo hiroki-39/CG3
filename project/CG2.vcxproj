@@ -144,8 +144,8 @@ copy "$(windowsSdkDir)bin\$(targetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Engine\Core\Graphics\D3DResourceLeakChecker.cpp" />
-    <ClCompile Include="Engine\Core\Graphics\DirectXCommon.cpp" />
+    <ClCompile Include="KHEngine\Core\Graphics\D3DResourceLeakChecker.cpp" />
+    <ClCompile Include="KHEngine\Core\Graphics\DirectXCommon.cpp" />
     <ClCompile Include="externals\imgui\imgui.cpp" />
     <ClCompile Include="externals\imgui\imgui_demo.cpp" />
     <ClCompile Include="externals\imgui\imgui_draw.cpp" />
@@ -153,23 +153,25 @@ copy "$(windowsSdkDir)bin\$(targetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="externals\imgui\imgui_impl_win32.cpp" />
     <ClCompile Include="externals\imgui\imgui_tables.cpp" />
     <ClCompile Include="externals\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="Engine\Input\Input.cpp" />
-    <ClCompile Include="Engine\Core\Utility\Log\Logger.cpp" />
+    <ClCompile Include="KHEngine\Input\Input.cpp" />
+    <ClCompile Include="KHEngine\Core\Utility\Log\Logger.cpp" />
     <ClCompile Include="main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
-    <ClCompile Include="Engine\Math\Math.cpp">
+    <ClCompile Include="KHEngine\Math\Math.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
-    <ClCompile Include="Engine\Core\Utility\String\StringUtility.cpp" />
-    <ClCompile Include="Engine\Core\OS\WinApp.cpp" />
-    <ClCompile Include="Engine\Core\Utility\Timer\Timer.cpp" />
+    <ClCompile Include="KHEngine\Core\Utility\String\StringUtility.cpp" />
+    <ClCompile Include="KHEngine\Core\OS\WinApp.cpp" />
+    <ClCompile Include="KHEngine\Core\Utility\Timer\Timer.cpp" />
+    <ClCompile Include="KHEngine\Graphics\2d\Sprite.cpp" />
+    <ClCompile Include="KHEngine\Graphics\2d\SpriteCommon.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Engine\Core\Graphics\D3DResourceLeakChecker.h" />
-    <ClInclude Include="Engine\Core\Graphics\DirectXCommon.h" />
+    <ClInclude Include="KHEngine\Core\Graphics\D3DResourceLeakChecker.h" />
+    <ClInclude Include="KHEngine\Core\Graphics\DirectXCommon.h" />
     <ClInclude Include="externals\imgui\imconfig.h" />
     <ClInclude Include="externals\imgui\imgui.h" />
     <ClInclude Include="externals\imgui\imgui_impl_dx12.h" />
@@ -178,12 +180,14 @@ copy "$(windowsSdkDir)bin\$(targetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="externals\imgui\imstb_rectpack.h" />
     <ClInclude Include="externals\imgui\imstb_textedit.h" />
     <ClInclude Include="externals\imgui\imstb_truetype.h" />
-    <ClInclude Include="Engine\Input\Input.h" />
-    <ClInclude Include="Engine\Core\Utility\Log\Logger.h" />
-    <ClInclude Include="Engine\Math\Math.h" />
-    <ClInclude Include="Engine\Core\Utility\String\StringUtility.h" />
-    <ClInclude Include="Engine\Core\OS\WinApp.h" />
-    <ClInclude Include="Engine\Core\Utility\Timer\Timer.h" />
+    <ClInclude Include="KHEngine\Input\Input.h" />
+    <ClInclude Include="KHEngine\Core\Utility\Log\Logger.h" />
+    <ClInclude Include="KHEngine\Math\Math.h" />
+    <ClInclude Include="KHEngine\Core\Utility\String\StringUtility.h" />
+    <ClInclude Include="KHEngine\Core\OS\WinApp.h" />
+    <ClInclude Include="KHEngine\Core\Utility\Timer\Timer.h" />
+    <ClInclude Include="KHEngine\Graphics\2d\Sprite.h" />
+    <ClInclude Include="KHEngine\Graphics\2d\SpriteCommon.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />
