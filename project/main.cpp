@@ -874,8 +874,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 	//サウンド
-	Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
-	IXAudio2MasteringVoice* masterVoice;
+	//Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
+	//IXAudio2MasteringVoice* masterVoice;
 
 
 	//Textureの読み込み
@@ -1286,7 +1286,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 	//XAudio2の解放
-	xAudio2.Reset();
+	/*xAudio2.Reset();*/
 
 	//入力の解放
 	delete input;
