@@ -25,13 +25,16 @@
 #include "externals/DirectXTex/DirectXTex.h"
 
 
-#include "Engine/Input/Input.h"
-#include "Engine/Core/OS/WinApp.h"
+#include "KHEngine/Input/Input.h"
+#include "KHEngine/Core/OS/WinApp.h"
 #include <cstdint>
 
-#include "Engine/Core/Graphics/DirectXCommon.h"
-#include "Engine/Math/Math.h"
-#include <Engine/Core/Graphics/D3DResourceLeakChecker.h>
+#include "KHEngine/Core/Graphics/DirectXCommon.h"
+#include "KHEngine/Math/Math.h"
+#include "KHEngine/Core/Graphics/D3DResourceLeakChecker.h"
+
+#include "KHEngine/Graphics/2d/SpriteCommon.h"
+#include "KHEngine/Graphics/2d/Sprite.h"
 
 Math math;
 
@@ -245,12 +248,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//COMの初期化
 	CoInitializeEx(0, COINIT_MULTITHREADED);
 
-	////例外発生時にコールバックする関数を指定
-	//SetUnhandledExceptionFilter(ExportDump);
+	//例外発生時にコールバックする関数を指定
+	SetUnhandledExceptionFilter(ExportDump);
 
+#pragma region 基盤システムの初期化
 
-
-	/*---ウィンドウクラスの登録---*/
 	//ポインタ
 	WinApp* winApp = nullptr;
 
@@ -271,21 +273,39 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 #endif 
 
-	//ポインタ
+	// ポインタ
 	DirectXCommon* dxCommon = nullptr;
 
-	//DirectX初期化
+	// DirectX初期化
 	dxCommon = new DirectXCommon();
 	dxCommon->Initialize(winApp);
 
-	//キー入力の初期化
-
-	//ポインタ
+	// 入力のポインタ
 	Input* input = nullptr;
 
-	//入力の初期化
+	// 入力の初期化
 	input = new Input();
 	input->Initialize(winApp);
+
+	// スプライトの共通部分のポインタ
+	SpriteCommon* spriteCommon = nullptr;
+
+	// スプライトの共通部分の初期化
+	spriteCommon = new SpriteCommon();
+	spriteCommon->Initialize();
+
+#pragma endregion 
+
+#pragma region 最初のシーンの初期化
+
+	//スプライトのポインタ
+	Sprite* sprite = nullptr;
+
+	//スプライトの初期化
+	sprite = new Sprite();
+	sprite->Initialize();
+
+#pragma endregion
 
 	HRESULT hr;
 
@@ -854,8 +874,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 	//サウンド
-	Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
-	IXAudio2MasteringVoice* masterVoice;
+	//Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
+	//IXAudio2MasteringVoice* masterVoice;
 
 
 	//Textureの読み込み
@@ -1266,7 +1286,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 	//XAudio2の解放
-	xAudio2.Reset();
+	/*xAudio2.Reset();*/
 
 	//入力の解放
 	delete input;
@@ -1281,6 +1301,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//DirectX12の解放
 	delete dxCommon;
 
+	//スプライトの解放
+	delete spriteCommon;
 
 	////音声データ解放
 	//SoundUnload(&soundData1);
