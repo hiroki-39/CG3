@@ -137,7 +137,7 @@ public://メンバ関数
 	/// </summary>
 	static DirectX::ScratchImage LoadTexture(const std::string& filePath);
 
-	/*-- getter ---*/
+	// --- Getter ---
 	ID3D12Device* GetDevice() { return device.Get(); }
 	ID3D12GraphicsCommandList* GetCommandList() { return commandList.Get(); }
 
