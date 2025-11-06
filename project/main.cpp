@@ -16,6 +16,9 @@
 #include<array>
 #include<xaudio2.h>
 
+#include <unordered_map>
+#include <cassert>
+
 #pragma comment(lib, "Dbghelp.lib")
 #pragma comment(lib,"dxcompiler.lib")
 
@@ -30,17 +33,13 @@
 #include <cstdint>
 
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
-#include "KHEngine/Math/Math.h"
 #include "KHEngine/Core/Graphics/D3DResourceLeakChecker.h"
-
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
 #include "KHEngine/Graphics/2d/Sprite.h"
 
-Math math;
 
 struct Transform
 {
-
 	Vector3 scale;		//スケール
 	Vector3 rotate;		//回転
 	Vector3 translate;	//位置
@@ -243,7 +242,6 @@ Transform uvTransformSprite
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
 	D3DResourceLeakChecker leakcheck;
-
 
 	//COMの初期化
 	CoInitializeEx(0, COINIT_MULTITHREADED);
@@ -1352,8 +1350,9 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 
 	wchar_t filePath[MAX_PATH] = { 0 };
 	CreateDirectory(L"./Dumps", nullptr);
-	StringCchPrintfW(filePath, MAX_PATH, L"./Dumps/%04d-02d%02d-%02d%02d.dmp",
-		time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute);
+	StringCchPrintfW(filePath, MAX_PATH,
+        L"./Dumps/%04d-%02d-%02d-%02d-%02d.dmp",
+        time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute);
 
 	HANDLE dumpFileHandle = CreateFile(filePath, GENERIC_READ |
 		GENERIC_WRITE, FILE_SHARE_WRITE |
