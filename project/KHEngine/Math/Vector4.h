@@ -19,6 +19,43 @@ public:
     Vector4 operator*(float s) const { return { x * s, y * s, z * s, w * s }; }
     Vector4 operator/(float s) const { return { x / s, y / s, z / s, w / s }; }
 
+    Vector4& operator+=(const Vector4& v)
+    {
+        x += v.x;
+        y += v.y;
+        z += v.z;
+        w += v.w;
+        return *this;
+	}
+
+    Vector4& operator-=(const Vector4& v)
+    {
+        x -= v.x;
+        y -= v.y;
+        z -= v.z;
+        w -= v.w;
+        return *this;
+    }
+
+    Vector4& operator*=(float s)
+    {
+        x *= s;
+        y *= s;
+        z *= s;
+        w *= s;
+        return *this;
+	}
+
+    Vector4& operator/=(float s)
+    {
+        x /= s;
+        y /= s;
+        z /= s;
+        w /= s;
+        return *this;
+	}
+
+
     // --- ベクトル演算 ---
 
 	// ベクトルの長さを計算

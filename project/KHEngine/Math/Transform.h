@@ -6,18 +6,18 @@ class Transform
 {
 public:
     // 位置
-    Vector3 position;
+    Vector3 translate;
 	// 回転
     Vector3 rotation;
 	// スケール
     Vector3 scale;
 
 	// コンストラクタ
-    Transform() : position(0, 0, 0), rotation(0, 0, 0), scale(1, 1, 1) {}
+    Transform() : translate(0, 0, 0), rotation(0, 0, 0), scale(1, 1, 1) {}
     
 	// コンストラクタ（引数付き）
     Transform(const Vector3& pos, const Vector3& rot, const Vector3& scl)
-        : position(pos), rotation(rot), scale(scl)
+        : translate(pos), rotation(rot), scale(scl)
     {
     }
 
@@ -31,7 +31,7 @@ public:
         Matrix4x4 rx = Matrix4x4::RotateX(rotation.x);
         Matrix4x4 ry = Matrix4x4::RotateY(rotation.y);
         Matrix4x4 rz = Matrix4x4::RotateZ(rotation.z);
-        Matrix4x4 t = Matrix4x4::Translation(position);
+        Matrix4x4 t = Matrix4x4::Translation(translate);
 
         Matrix4x4 world = Matrix4x4::Multiply(s, rx);
         world = Matrix4x4::Multiply(world, ry);

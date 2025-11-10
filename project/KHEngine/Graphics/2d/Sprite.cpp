@@ -8,9 +8,9 @@ void Sprite::Initialize(SpriteCommon* spriteCommon, D3D12_GPU_DESCRIPTOR_HANDLE 
 
 	// dxCommon を確実に初期化（NULLチェック含む）
 	assert(spriteCommon_ != nullptr);
-	
+
 	this->dxCommon = spriteCommon->GetDirectXCommon();
-	
+
 	assert(this->dxCommon != nullptr);
 
 	textureHandle_ = textureHandle;
@@ -26,7 +26,7 @@ void Sprite::Update()
 	// 頂点リソースにデータを書き込む(4点分)
 
 	// 左下
-	vertexData_[0].position = { 0.0f, 360.0f, 0.0f, 1.0f };
+	vertexData_[0].position = { 0.0f, 1.0f, 0.0f, 1.0f };
 	vertexData_[0].texcoord = { 0.0f, 1.0f };
 	vertexData_[0].normal = { 0.0f, 0.0f, -1.0f };
 
@@ -36,12 +36,12 @@ void Sprite::Update()
 	vertexData_[1].normal = { 0.0f, 0.0f, -1.0f };
 
 	// 右下
-	vertexData_[2].position = { 640.0f, 360.0f, 0.0f, 1.0f };
+	vertexData_[2].position = { 1.0f, 1.0f, 0.0f, 1.0f };
 	vertexData_[2].texcoord = { 1.0f, 1.0f };
 	vertexData_[2].normal = { 0.0f, 0.0f, -1.0f };
 
 	// 右上
-	vertexData_[3].position = { 640.0f, 0.0f, 0.0f, 1.0f };
+	vertexData_[3].position = { 1.0f, 0.0f, 0.0f, 1.0f };
 	vertexData_[3].texcoord = { 1.0f, 0.0f };
 	vertexData_[3].normal = { 0.0f, 0.0f, -1.0f };
 
@@ -51,13 +51,13 @@ void Sprite::Update()
 
 	//　Transform情報を作る
 
-	Transform t;
-	t.position = { 1.0f,1.0f,1.0f };
-	t.rotation = { 0.0f, 0.0f, 0.0f };
-	t.scale = { 1.0f, 1.0f, 1.0f };
+	Transform transform;
+	transform.translate = { position.x,position.y,0.0f };
+	transform.rotation = { 0.0f, 0.0f, rotation };
+	transform.scale = { size.x, size.y, 1.0f };
 
 	// TransformからWorldMatrixを作る
-	Matrix4x4 worldMatrix = t.GetWorldMatrix();
+	Matrix4x4 worldMatrix = transform.GetWorldMatrix();
 
 	// ViewMatrixを作って単位行列を代入
 	Matrix4x4 viewMatrix = Matrix4x4::Identity();

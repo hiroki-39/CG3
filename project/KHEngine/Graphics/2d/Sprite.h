@@ -53,6 +53,18 @@ public://メンバ関数
 	///	</summary>
 	void Draw();
 
+	// --- Getter ---
+	Vector2 GetPosition() const { return position; }
+	float GetRotation() const { return rotation; }
+	const Vector2& GetSize() const { return size; }
+	const Vector4& GetColor() const { return materialData_->color; }
+
+	// --- Setter ---
+	void SetPosition(const Vector2& position) { this->position = position; }
+	void SetRotation(float rotation) { this->rotation = rotation; }
+	void SetSize(const Vector2& size) { this->size = size; }
+	void SetColor(const Vector4& color) { materialData_->color = color; }
+
 private://メンバ関数
 
 	/// <summary>
@@ -71,6 +83,19 @@ private://メンバ関数
 	void CreateTransformationMatrixResource();
 
 private://メンバ変数
+
+	// ---- スプライト情報 ----
+
+	// スプライトの位置
+	Vector2 position = { 0.0f,0.0f };
+
+	// スプライトの回転角
+	float rotation = 0.0f;
+
+	// サイズ
+	Vector2 size = { 64.0f,64.0f };
+
+	// ---- バッファリソース ----
 
 	// 頂点バッファリソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;

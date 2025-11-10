@@ -837,12 +837,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 #pragma region 最初のシーンの初期化
 
-//スプライトのポインタ
-	Sprite* sprite = nullptr;
+	//スプライトのポインタ
+	std::vector<Sprite*> sprites;
 
-	//スプライトの初期化
-	sprite = new Sprite();
-	sprite->Initialize(spriteCommon, textureSrvHandleGPU1);
+	for (uint32_t i = 0; i < 5; i++)
+	{
+		//スプライトの初期化
+		Sprite* sprite = new Sprite();
+		sprite->Initialize(spriteCommon, textureSrvHandleGPU1);
+		sprites.push_back(sprite);
+	}
+
+
 
 #pragma endregion
 
@@ -918,7 +924,53 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//transformationMatrixDataPlaneObj->World = worldMatrixPlaneObj;
 
 		/*--- Spriteの更新処理 ---*/
-		sprite->Update();
+		for (uint32_t i = 0; i < 5; i++)
+		{
+			sprites[i]->Update();
+		}
+
+		//スプライトの位置をそれぞれずらす
+		for (uint32_t i = 0; i < 5; i++)
+		{
+			Vector2 spritePosition = sprites[i]->GetPosition();
+			spritePosition += Vector2(0.5f * i, 0.5f * i);
+			sprites[i]->SetPosition(spritePosition);
+		}
+
+		////スプライトの座標を少しずつ動かす
+
+		//Vector2 spritePosition = sprite->GetPosition();
+
+		//spritePosition += Vector2(0.1f, 0.1f);
+
+		//sprite->SetPosition(spritePosition);
+
+		////スプライトの回転を少しずつ回す
+
+		//float spriteRotation = sprite->GetRotation();
+
+		//spriteRotation += 0.01f;
+
+		//sprite->SetRotation(spriteRotation);
+
+		////色変化させる
+		//Vector4 spriteColor = sprite->GetColor();
+
+		//spriteColor.x += 0.01f;
+		//
+		//if (spriteColor.x > 1.0f)
+		//{
+		//	spriteColor.x = 0.0f;
+		//}
+
+		//sprite->SetColor(spriteColor);
+
+		////　サイズを変化させる
+		//Vector2 spriteSize = sprite->GetSize();
+
+		//spriteSize += Vector2(0.1f, 0.1f);
+
+		//sprite->SetSize(spriteSize);
 
 
 		//ライトの正規化
@@ -1032,8 +1084,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//ImGui::SliderAngle("Lightrotate.Y", &directionalLightData->intensity);
 		}
 
-
-
 		if (isDisplaySprite)
 		{
 			if (ImGui::CollapsingHeader("Sprite"))
@@ -1140,7 +1190,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		{
 			/*--- Sprite ---*/
 
-			sprite->Draw();
+			for (uint32_t i = 0; i < 5; i++)
+			{
+				sprites[i]->Draw();
+			}
 		}
 
 		//実際のCommandListのImGuiの描画コマンドを積む
@@ -1174,6 +1227,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//スプライトの解放
 	delete spriteCommon;
+
+	//スプライトの解放
+	for (uint32_t i = 0; i < 5; i++)
+	{
+		delete sprites[i];
+	}
 
 	////音声データ解放
 	//SoundUnload(&soundData1);
@@ -1231,8 +1290,8 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 	wchar_t filePath[MAX_PATH] = { 0 };
 	CreateDirectory(L"./Dumps", nullptr);
 	StringCchPrintfW(filePath, MAX_PATH,
-        L"./Dumps/%04d-%02d-%02d-%02d-%02d.dmp",
-        time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute);
+		L"./Dumps/%04d-%02d-%02d-%02d-%02d.dmp",
+		time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute);
 
 	HANDLE dumpFileHandle = CreateFile(filePath, GENERIC_READ |
 		GENERIC_WRITE, FILE_SHARE_WRITE |
