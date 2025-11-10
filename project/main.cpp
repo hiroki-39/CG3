@@ -38,42 +38,42 @@
 #include "KHEngine/Graphics/2d/Sprite.h"
 
 
-struct Transform
-{
-	Vector3 scale;		//スケール
-	Vector3 rotate;		//回転
-	Vector3 translate;	//位置
-};
-
-struct VertexData
-{
-
-	Vector4 position;
-	Vector2 texcoord;
-	Vector3 normal;
-
-	bool operator==(const VertexData& other) const
-	{
-		return position.x == other.position.x && position.y == other.position.y && position.z == other.position.z &&
-			texcoord.x == other.texcoord.x && texcoord.y == other.texcoord.y &&
-			normal.x == other.normal.x && normal.y == other.normal.y && normal.z == other.normal.z;
-	}
-};
-
-struct Material
-{
-	Vector4 color;
-	bool enableLighting;
-	float padding[3];
-	Matrix4x4 uvTransform;
-	int32_t selectLightings;
-};
-
-struct TransformationMatrix
-{
-	Matrix4x4 WVP;
-	Matrix4x4 World;
-};
+//struct Transform
+//{
+//	Vector3 scale;		//スケール
+//	Vector3 rotate;		//回転
+//	Vector3 translate;	//位置
+//};
+//
+//struct VertexData
+//{
+//
+//	Vector4 position;
+//	Vector2 texcoord;
+//	Vector3 normal;
+//
+//	bool operator==(const VertexData& other) const
+//	{
+//		return position.x == other.position.x && position.y == other.position.y && position.z == other.position.z &&
+//			texcoord.x == other.texcoord.x && texcoord.y == other.texcoord.y &&
+//			normal.x == other.normal.x && normal.y == other.normal.y && normal.z == other.normal.z;
+//	}
+//};
+//
+//struct Material
+//{
+//	Vector4 color;
+//	bool enableLighting;
+//	float padding[3];
+//	Matrix4x4 uvTransform;
+//	int32_t selectLightings;
+//};
+//
+//struct TransformationMatrix
+//{
+//	Matrix4x4 WVP;
+//	Matrix4x4 World;
+//};
 
 
 struct DirectionlLight
@@ -88,27 +88,27 @@ struct MaterialData
 	std::string textureFilePath;
 };
 
-struct  ModelData
-{
-	std::vector<VertexData> vertices;
-	std::vector<uint32_t> indices;
-	MaterialData material;
-};
-
-namespace std
-{
-	template <>
-	struct hash<VertexData>
-	{
-		size_t operator()(const VertexData& v) const
-		{
-			size_t h1 = hash<float>()(v.position.x) ^ hash<float>()(v.position.y) ^ hash<float>()(v.position.z);
-			size_t h2 = hash<float>()(v.texcoord.x) ^ hash<float>()(v.texcoord.y);
-			size_t h3 = hash<float>()(v.normal.x) ^ hash<float>()(v.normal.y) ^ hash<float>()(v.normal.z);
-			return h1 ^ (h2 << 1) ^ (h3 << 2);
-		}
-	};
-}
+//struct  ModelData
+//{
+//	std::vector<VertexData> vertices;
+//	std::vector<uint32_t> indices;
+//	MaterialData material;
+//};
+//
+//namespace std
+//{
+//	template <>
+//	struct hash<VertexData>
+//	{
+//		size_t operator()(const VertexData& v) const
+//		{
+//			size_t h1 = hash<float>()(v.position.x) ^ hash<float>()(v.position.y) ^ hash<float>()(v.position.z);
+//			size_t h2 = hash<float>()(v.texcoord.x) ^ hash<float>()(v.texcoord.y);
+//			size_t h3 = hash<float>()(v.normal.x) ^ hash<float>()(v.normal.y) ^ hash<float>()(v.normal.z);
+//			return h1 ^ (h2 << 1) ^ (h3 << 2);
+//		}
+//	};
+//}
 
 //チャンクヘッダ
 struct ChunkHeader
@@ -159,7 +159,7 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
 
 void CreateWhiteTexture(DirectX::ScratchImage& outImage);
 
-ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename);
+//ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename);
 
 MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
 
@@ -172,71 +172,71 @@ void SoundUnload(SoundData* soundData);
 void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData);
 
 //Transformの初期化
-Transform  transformSphere
-{
-	{1.0f,1.0f,1.0f},
-	{0.0f,0.0f,0.0f},
-	{0.0f,0.0f,0.0f},
-};
-
-Transform  transformPlaneObj
-{
-	{1.0f,1.0f,1.0f},
-	{0.0f,0.0f,0.0f},
-	{0.0f,0.0f,0.0f},
-};
-
-Transform  transformMultiMeshObj
-{
-	{1.0f,1.0f,1.0f},
-	{0.0f,0.0f,0.0f},
-	{0.0f,0.0f,0.0f},
-};
-
-Transform  transformTeapotObj
-{
-	{1.0f,1.0f,1.0f},
-	{0.0f,0.0f,0.0f},
-	{0.0f,0.0f,0.0f},
-};
-
-Transform  transformSuzanneObj
-{
-	{1.0f,1.0f,1.0f},
-	{0.0f,0.0f,0.0f},
-	{0.0f,0.0f,0.0f},
-};
-
-Transform  transformBunnyObj
-{
-	{1.0f,1.0f,1.0f},
-	{0.0f,0.0f,0.0f},
-	{0.0f,0.0f,0.0f},
-};
-
-//CPUで動かす用のTransform
-Transform transformSprite
-{
-	{1.0f,1.0f,1.0f},
-	{0.0f,0.0f,0.0f},
-	{0.0f,0.0f,0.0f},
-};
-
-//カメラの位置
-Transform camera
-{
-	{ 1.0f, 1.0f,  1.0f },
-	{ 0.0f, 0.0f,  0.0f },
-	{ 0.0f, 0.0f, -10.0f }
-};
-
-//UVTransformの初期化
-Transform uvTransformSprite
-{
-	{ 1.0f, 1.0f, 1.0f },
-	{ 0.0f, 0.0f, 0.0f },
-	{ 0.0f, 0.0f, 0.0f }
-};
+//Transform  transformSphere
+//{
+//	{1.0f,1.0f,1.0f},
+//	{0.0f,0.0f,0.0f},
+//	{0.0f,0.0f,0.0f},
+//};
+//
+//Transform  transformPlaneObj
+//{
+//	{1.0f,1.0f,1.0f},
+//	{0.0f,0.0f,0.0f},
+//	{0.0f,0.0f,0.0f},
+//};
+//
+//Transform  transformMultiMeshObj
+//{
+//	{1.0f,1.0f,1.0f},
+//	{0.0f,0.0f,0.0f},
+//	{0.0f,0.0f,0.0f},
+//};
+//
+//Transform  transformTeapotObj
+//{
+//	{1.0f,1.0f,1.0f},
+//	{0.0f,0.0f,0.0f},
+//	{0.0f,0.0f,0.0f},
+//};
+//
+//Transform  transformSuzanneObj
+//{
+//	{1.0f,1.0f,1.0f},
+//	{0.0f,0.0f,0.0f},
+//	{0.0f,0.0f,0.0f},
+//};
+//
+//Transform  transformBunnyObj
+//{
+//	{1.0f,1.0f,1.0f},
+//	{0.0f,0.0f,0.0f},
+//	{0.0f,0.0f,0.0f},
+//};
+//
+////CPUで動かす用のTransform
+//Transform transformSprite
+//{
+//	{1.0f,1.0f,1.0f},
+//	{0.0f,0.0f,0.0f},
+//	{0.0f,0.0f,0.0f},
+//};
+//
+////カメラの位置
+//Transform camera
+//{
+//	{ 1.0f, 1.0f,  1.0f },
+//	{ 0.0f, 0.0f,  0.0f },
+//	{ 0.0f, 0.0f, -10.0f }
+//};
+//
+////UVTransformの初期化
+//Transform uvTransformSprite
+//{
+//	{ 1.0f, 1.0f, 1.0f },
+//	{ 0.0f, 0.0f, 0.0f },
+//	{ 0.0f, 0.0f, 0.0f }
+//};
 
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
@@ -293,17 +293,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	spriteCommon->Initialize(dxCommon);
 
 #pragma endregion 
-
-#pragma region 最初のシーンの初期化
-
-	//スプライトのポインタ
-	Sprite* sprite = nullptr;
-
-	//スプライトの初期化
-	sprite = new Sprite();
-	sprite->Initialize();
-
-#pragma endregion
 
 	//HRESULT hr;
 	//
@@ -760,97 +749,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	////単位行列を書き込む
 	//materialDataPlaneObj->uvTransform = math.MakeIdentity();
 
-	/*-------------- Spriteの設定 --------------*/
-
-	//Sprite用の頂点リソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourceSprite = dxCommon->CreateBufferResource(sizeof(VertexData) * 4);
-	//頂点バッファビューを作成
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferviewSprite{};
-	//リソースの先頭アドレスから使う
-	vertexBufferviewSprite.BufferLocation = vertexResourceSprite->GetGPUVirtualAddress();
-	//使用するリソースのサイズは頂点6つ分のサイズ
-	vertexBufferviewSprite.SizeInBytes = sizeof(VertexData) * 4;
-	//1頂点あたりのサイズ
-	vertexBufferviewSprite.StrideInBytes = sizeof(VertexData);
-
-
-	//頂点データの設定
-	VertexData* vertexDataSprite = nullptr;
-	vertexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataSprite));
-	//1枚目の三角形
-
-	//左下
-	vertexDataSprite[0].position = { 0.0f,360.0f,0.0f,1.0f };
-	vertexDataSprite[0].texcoord = { 0.0f,1.0f };
-	vertexDataSprite[0].normal = { 0.0f,0.0f,-1.0f };
-
-	//左上
-	vertexDataSprite[1].position = { 0.0f,0.0f,0.0f,1.0f };
-	vertexDataSprite[1].texcoord = { 0.0f,0.0f };
-	vertexDataSprite[1].normal = { 0.0f,0.0f,-1.0f };
-
-	//右下
-	vertexDataSprite[2].position = { 640.0f,360.0f,0.0f,1.0f };
-	vertexDataSprite[2].texcoord = { 1.0f,1.0f };
-	vertexDataSprite[2].normal = { 0.0f,0.0f,-1.0f };
-
-	//右上
-	vertexDataSprite[3].position = { 640.0f,0.0f,0.0f,1.0f };
-	vertexDataSprite[3].texcoord = { 1.0f,0.0f };
-	vertexDataSprite[3].normal = { 0.0f,0.0f,-1.0f };
-
-
-	//Sprite用のインデックスリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> indexResourceSprite = dxCommon->CreateBufferResource(sizeof(uint32_t) * 6);
-	//インデックスバッファビューを作成
-	D3D12_INDEX_BUFFER_VIEW indexBufferViewSprite{};
-	//リソースの先頭アドレスから使う
-	indexBufferViewSprite.BufferLocation = indexResourceSprite->GetGPUVirtualAddress();
-	//使用するリソースのサイズはインデックス6つ分のサイズ
-	indexBufferViewSprite.SizeInBytes = sizeof(uint32_t) * 6;
-	//インデックスはuint32_tとする
-	indexBufferViewSprite.Format = DXGI_FORMAT_R32_UINT;
-
-	//インデックスデータの設定
-	uint32_t* indexDataSprite = nullptr;
-	indexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSprite));
-
-	//インデックスの設定
-	indexDataSprite[0] = 0; indexDataSprite[1] = 1; indexDataSprite[2] = 2;
-	indexDataSprite[3] = 1; indexDataSprite[4] = 3; indexDataSprite[5] = 2;
-
-
-	//Sprite用のTransformationMatrix用のリソースを作る。matrix4x4　1つ分のサイズを用意する
-	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResourceSprite = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
-	//データを書き込む
-	TransformationMatrix* transfomationMartixDataSprite = nullptr;
-	//書き込むためのアドレスを取得
-	transformationMatrixResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&transfomationMartixDataSprite));
-	//単位行列を書き込んでおく
-	transfomationMartixDataSprite->WVP = math.MakeIdentity();
-
-
-
-	//Sprite用のリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> materialResourceSprite = dxCommon->CreateBufferResource(sizeof(Material));
-
-	//頂点リソースデータを書き込む
-	Material* materialDataSprite = nullptr;
-
-	//書き込む為のアドレスを取得
-	materialResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&materialDataSprite));
-
-	//色の設定
-	materialDataSprite->color = { 1.0f,1.0f,1.0f,1.0f };
-
-	//Lightingを有効化
-	materialDataSprite->enableLighting = false;
-
-	//Lightingの種類の設定
-	materialDataSprite->selectLightings = 0;
-
-	//単位行列を書き込む
-	materialDataSprite->uvTransform = math.MakeIdentity();
 
 	/*-------------- 平行光源の設定 --------------*/
 
@@ -937,6 +835,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//SoundPlayWave(xAudio2.Get(), soundData1);
 	//SoundPlayWave(xAudio2.Get(), soundData1);
 
+#pragma region 最初のシーンの初期化
+
+//スプライトのポインタ
+	Sprite* sprite = nullptr;
+
+	//スプライトの初期化
+	sprite = new Sprite();
+	sprite->Initialize(spriteCommon, textureSrvHandleGPU1);
+
+#pragma endregion
+
+
 	int32_t selectedModel = 0;
 
 	bool isDisplaySprite = true;
@@ -961,23 +871,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//入力の更新
 		input->Update();
 
-		if (input->PushKey(DIK_W))
-		{
-			transformPlaneObj.translate.y += 0.1f;
-		}
-		else if (input->PushKey(DIK_S))
-		{
-			transformPlaneObj.translate.y -= 0.01f;
-		}
+		//if (input->PushKey(DIK_W))
+		//{
+		//	transformPlaneObj.translate.y += 0.1f;
+		//}
+		//else if (input->PushKey(DIK_S))
+		//{
+		//	transformPlaneObj.translate.y -= 0.01f;
+		//}
 
-		if (input->PushKey(DIK_A))
-		{
-			transformPlaneObj.translate.x -= 0.01f;
-		}
-		else if (input->PushKey(DIK_D))
-		{
-			transformPlaneObj.translate.x += 0.01f;
-		}
+		//if (input->PushKey(DIK_A))
+		//{
+		//	transformPlaneObj.translate.x -= 0.01f;
+		//}
+		//else if (input->PushKey(DIK_D))
+		//{
+		//	transformPlaneObj.translate.x += 0.01f;
+		//}
 
 
 		/*-------------- ↓更新処理ここから↓ --------------*/
@@ -1008,35 +918,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//transformationMatrixDataPlaneObj->World = worldMatrixPlaneObj;
 
 		/*--- Spriteの更新処理 ---*/
+		sprite->Update();
 
-		//Sprite用のWorldViewProjectmatrixを作る
-		Matrix4x4 worldMatrixSprite = math.MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
-		Matrix4x4 ViewMatrixSprite = math.MakeIdentity();
-		Matrix4x4 projectionMatrixSprite = math.MakeOrthographicmatrix(0.0f, 0.0f, float(winApp->kClientWidth), float(winApp->kClientHeight), 0.0f, 100.0f);
-		Matrix4x4 worldViewProjectionMatrixSprite = math.Matrix4x4Multiply(worldMatrixSprite, math.Matrix4x4Multiply(ViewMatrixSprite, projectionMatrixSprite));
-		transfomationMartixDataSprite->WVP = worldViewProjectionMatrixSprite;
-
-		//UVTransform用の行列
-		Matrix4x4 uvTransformMatrix = math.MakeScaleMatrix(uvTransformSprite.scale);
-		uvTransformMatrix = math.Matrix4x4Multiply(uvTransformMatrix, math.MakeRotateZMatrix(uvTransformSprite.rotate.z));
-		uvTransformMatrix = math.Matrix4x4Multiply(uvTransformMatrix, math.MakeTranslationMatrix(uvTransformSprite.translate));
-		materialDataSprite->uvTransform = uvTransformMatrix;
 
 		//ライトの正規化
-		directionalLightData->direction = math.Normalize(directionalLightData->direction);
+	/*	directionalLightData->direction = math.Normalize(directionalLightData->direction);*/
 
-		const char* modelNames[] = { "Sphere","PlaneObj" };
+		//const char* modelNames[] = { "Sphere","PlaneObj" };
 
-		const char* enableLightings[] = { "None","Lambert","Half Lambert" };
+		//const char* enableLightings[] = { "None","Lambert","Half Lambert" };
 
 		//開発用UIの処理
 
 		ImGui::Begin("window");
 
 
-		ImGui::Combo("ModelSelect", &selectedModel, modelNames, IM_ARRAYSIZE(modelNames));
+		//ImGui::Combo("ModelSelect", &selectedModel, modelNames, IM_ARRAYSIZE(modelNames));
 
-		ImGui::Checkbox("displaySprite", &isDisplaySprite);
+		//ImGui::Checkbox("displaySprite", &isDisplaySprite);
 
 		//switch (selectedModel)
 		//{
@@ -1106,31 +1005,31 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// カメラ設定のグループ
 		if (ImGui::CollapsingHeader("camera"))
 		{
-			//位置
-			ImGui::DragFloat3("camera.translate", &camera.translate.x, 0.01f);
+			////位置
+			//ImGui::DragFloat3("camera.translate", &camera.translate.x, 0.01f);
 
-			// X軸の回転
-			ImGui::SliderAngle("camera.rotate.X", &camera.rotate.x);
+			//// X軸の回転
+			//ImGui::SliderAngle("camera.rotate.X", &camera.rotate.x);
 
-			// Y軸の回転
-			ImGui::SliderAngle("camera.rotate.Y", &camera.rotate.y);
+			//// Y軸の回転
+			//ImGui::SliderAngle("camera.rotate.Y", &camera.rotate.y);
 
-			// Z軸の回転
-			ImGui::SliderAngle("camera.rotate.Z", &camera.rotate.z);
+			//// Z軸の回転
+			//ImGui::SliderAngle("camera.rotate.Z", &camera.rotate.z);
 		}
 
 
 		// ライト設定のグループ
 		if (ImGui::CollapsingHeader("Light"))
 		{
-			//向き
-			ImGui::DragFloat3("LightDirection", &directionalLightData->direction.x, 0.01f);
+			////向き
+			//ImGui::DragFloat3("LightDirection", &directionalLightData->direction.x, 0.01f);
 
-			//カラー
-			ImGui::ColorEdit4("LightColor", &(directionalLightData->color).x);
+			////カラー
+			//ImGui::ColorEdit4("LightColor", &(directionalLightData->color).x);
 
-			//輝度
-			ImGui::SliderAngle("Lightrotate.Y", &directionalLightData->intensity);
+			////輝度
+			//ImGui::SliderAngle("Lightrotate.Y", &directionalLightData->intensity);
 		}
 
 
@@ -1140,31 +1039,31 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			if (ImGui::CollapsingHeader("Sprite"))
 			{
 				//位置
-				ImGui::DragFloat3("transformSprite.translate", &transformSprite.translate.x, 1.0f);
+				//ImGui::DragFloat3("transformSprite.translate", &transformSprite.translate.x, 1.0f);
 
-				// X軸の回転
-				ImGui::SliderAngle("transformSprite.rotate.X", &transformSprite.rotate.x);
+				//// X軸の回転
+				//ImGui::SliderAngle("transformSprite.rotate.X", &transformSprite.rotate.x);
 
-				// Y軸の回転
-				ImGui::SliderAngle("transformSprite.rotate.Y", &transformSprite.rotate.y);
+				//// Y軸の回転
+				//ImGui::SliderAngle("transformSprite.rotate.Y", &transformSprite.rotate.y);
 
-				// Z軸の回転
-				ImGui::SliderAngle("transformSprite.rotate.Z", &transformSprite.rotate.z);
+				//// Z軸の回転
+				//ImGui::SliderAngle("transformSprite.rotate.Z", &transformSprite.rotate.z);
 
 				//カラー変更
-				ImGui::ColorEdit4("Color", &(materialDataSprite->color).x);
+				/*ImGui::ColorEdit4("Color", &(materialDataSprite->color).x);*/
 
 				//Lightingの切り替え
-				ImGui::Combo("selectedLight", &materialDataSprite->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
+				/*ImGui::Combo("selectedLight", &materialDataSprite->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));*/
 
 
 				// スプライト変換設定のグループ
 				if (ImGui::CollapsingHeader("Sprite Transform"))
 				{
-					ImGui::DragFloat3("transformSprite", &transformSprite.translate.x, 2.0f);
-					ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
-					ImGui::DragFloat2("UVRotate", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
-					ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
+					//ImGui::DragFloat3("transformSprite", &transformSprite.translate.x, 2.0f);
+					//ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+					//ImGui::DragFloat2("UVRotate", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+					//ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
 				}
 			}
 		}
@@ -1241,26 +1140,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		{
 			/*--- Sprite ---*/
 
-			//VBVの設定
-			dxCommon->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferviewSprite);
-
-			//IBVの設定
-			dxCommon->GetCommandList()->IASetIndexBuffer(&indexBufferViewSprite);
-
-			//TransfomationMatrixCBufferの場所を指定
-			dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
-
-			//マテリアルCBufferの場所を設定
-			dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
-
-			//SRVのDescriptorTableの先頭を設定
-			dxCommon->GetCommandList()->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU1);
-
-			//平行光源用のCBufferの場所を設定
-			dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
-
-			//描画！
-			dxCommon->GetCommandList()->DrawIndexedInstanced(6, 1, 0, 0, 0);
+			sprite->Draw();
 		}
 
 		//実際のCommandListのImGuiの描画コマンドを積む
@@ -1403,211 +1283,211 @@ void CreateWhiteTexture(DirectX::ScratchImage& outImage)
 }
 
 
-ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename)
-{
-	/*--- 1.中で必要となる変数の宣言 ---*/
-	//構成するモデルデータ
-	ModelData modelData;
-	//位置
-	std::vector<Vector4> positions;
-	//法線
-	std::vector<Vector3> normals;
-	//テクスチャ座標
-	std::vector<Vector2> texcoords;
-	//ファイルから読んだ1行を格納するもの
-	std::string line;
-
-	// 頂点データ 
-	std::unordered_map<VertexData, uint32_t> vertexToIndex;
-
-
-	/*--- 2.ファイルを開く ---*/
-	//ファイルを開く
-	std::ifstream file(directoryPath + "/" + filename);
-
-	//開かなかったら止める
-	assert(file.is_open());
-
-	/*--- 3.実際にファイルを読み、ModelDataを構築していく ---*/
-	while (std::getline(file, line))
-	{
-		std::string identfier;
-		std::istringstream s(line);
-
-		//先頭の識別子を読む
-		s >> identfier;
-
-		/* "V" : 頂点位置
-		   "vt": 頂点テクスチャ座標
-		   "vn": 頂点法線
-		   "f" : 面
-		*/
-
-		//頂点情報を読む
-		if (identfier == "v")
-		{
-			Vector4 position;
-
-			s >> position.x >> position.y >> position.z;
-
-			//位置のxを反転させ、左手座標系にする
-			position.x *= -1.0f;
-
-			position.w = 1.0f;
-
-			positions.push_back(position);
-		}
-		else if (identfier == "vt")
-		{
-			Vector2 texcoord;
-
-			s >> texcoord.x >> texcoord.y;
-
-			//テクスチャのyを反転させ、左手座標系にする
-			texcoord.y = 1.0f - texcoord.y;
-
-			texcoords.push_back(texcoord);
-		}
-		else if (identfier == "vn")
-		{
-			Vector3 normal;
-
-			s >> normal.x >> normal.y >> normal.z;
-
-			//法線のxを反転させ、左手座標系にする
-			normal.x *= -1.0f;
-
-			normals.push_back(normal);
-		}
-		else if (identfier == "f")
-		{
-			// 今から読み込む三角形の3つのインデックスを一時的に格納
-			std::array<uint32_t, 3> indices;
-
-			for (int32_t faceVertex = 0; faceVertex < 3; ++faceVertex)
-			{
-				std::string VertexDefinition;
-				s >> VertexDefinition;
-
-				// 頂点定義を分解（位置 / UV / 法線）に分ける
-				std::istringstream v(VertexDefinition);
-
-				// 頂点情報（位置/UV/法線）のインデックス（OBJは1始まりなので後で-1する）
-				uint32_t posIndex = 0;
-				uint32_t texIndex = 0;
-				uint32_t normIndex = 0;
-
-				// スラッシュの位置を検索（例: 1/2/3 → 1が位置, 2がUV, 3が法線）
-				size_t firstSlash = VertexDefinition.find('/');
-				size_t secondSlash = VertexDefinition.find('/', firstSlash + 1);
-
-				if (firstSlash != std::string::npos && secondSlash != std::string::npos)
-				{
-					// フォーマット: v/vt/vn
-					std::string posStr = VertexDefinition.substr(0, firstSlash);
-					std::string texStr = VertexDefinition.substr(firstSlash + 1, secondSlash - firstSlash - 1);
-					std::string normStr = VertexDefinition.substr(secondSlash + 1);
-
-					if (!posStr.empty())
-					{
-						posIndex = std::stoi(posStr);
-					}
-
-					if (!texStr.empty())
-					{
-						texIndex = std::stoi(texStr);
-					}
-
-					if (!normStr.empty())
-					{
-						normIndex = std::stoi(normStr);
-					}
-				}
-				else if (firstSlash != std::string::npos && VertexDefinition.find("//") != std::string::npos)
-				{
-					// フォーマット: v//vn（UVなし）
-					std::string posStr = VertexDefinition.substr(0, firstSlash);
-					std::string normStr = VertexDefinition.substr(firstSlash + 2); // "//" のあと
-
-					if (!posStr.empty())
-					{
-						posIndex = std::stoi(posStr);
-					}
-
-					if (!normStr.empty())
-					{
-						normIndex = std::stoi(normStr);
-					}
-				}
-				else if (firstSlash != std::string::npos)
-				{
-					// フォーマット: v/vt（法線なし）
-					std::string posStr = VertexDefinition.substr(0, firstSlash);
-					std::string texStr = VertexDefinition.substr(firstSlash + 1);
-
-					if (!posStr.empty())
-					{
-						posIndex = std::stoi(posStr);
-					}
-
-					if (!texStr.empty())
-					{
-						texIndex = std::stoi(texStr);
-					}
-				}
-				else
-				{
-					// フォーマット: v（位置のみ）
-					posIndex = std::stoi(VertexDefinition);
-				}
-
-				// インデックスを使って頂点情報を取得
-				Vector4 position = positions[posIndex - 1];
-				Vector2 texcoord = texIndex ? texcoords[texIndex - 1] : Vector2{ 0.0f, 0.0f };
-				Vector3 normal = normIndex ? normals[normIndex - 1] : Vector3{ 0.0f, 0.0f, 0.0f };
-
-
-
-				// この3要素を1つの頂点データとしてまとめる
-				VertexData vertex{ position, texcoord, normal };
-
-				// 頂点が未登録なら新規追加、すでにあるなら再利用
-				if (vertexToIndex.count(vertex) == 0)
-				{
-					uint32_t newIndex = static_cast<uint32_t>(modelData.vertices.size());
-
-					vertexToIndex[vertex] = newIndex;
-
-					// 頂点リストに追加
-					modelData.vertices.push_back(vertex);
-				}
-
-				// 頂点に対応するインデックスを三角形インデックス配列に保存
-				indices[faceVertex] = vertexToIndex[vertex];
-			}
-
-			// 頂点の並び順を反転して左手系に対応
-			modelData.indices.push_back(indices[2]);
-			modelData.indices.push_back(indices[1]);
-			modelData.indices.push_back(indices[0]);
-
-		}
-		else if (identfier == "mtllib")
-		{
-			//materialTemplateLibraryファイルの名前を取得
-			std::string materialFilename;
-			s >> materialFilename;
-
-			//基本的にobjファイルと同一階層にmtlは存在させるので、
-			modelData.material = LoadMaterialTemplateFile(directoryPath, materialFilename);
-
-		}
-	}
-
-	/*--- 4.Modeldataを返す ---*/
-
-	return modelData;
-}
+//ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename)
+//{
+//	/*--- 1.中で必要となる変数の宣言 ---*/
+//	//構成するモデルデータ
+//	ModelData modelData;
+//	//位置
+//	std::vector<Vector4> positions;
+//	//法線
+//	std::vector<Vector3> normals;
+//	//テクスチャ座標
+//	std::vector<Vector2> texcoords;
+//	//ファイルから読んだ1行を格納するもの
+//	std::string line;
+//
+//	// 頂点データ 
+//	std::unordered_map<VertexData, uint32_t> vertexToIndex;
+//
+//
+//	/*--- 2.ファイルを開く ---*/
+//	//ファイルを開く
+//	std::ifstream file(directoryPath + "/" + filename);
+//
+//	//開かなかったら止める
+//	assert(file.is_open());
+//
+//	/*--- 3.実際にファイルを読み、ModelDataを構築していく ---*/
+//	while (std::getline(file, line))
+//	{
+//		std::string identfier;
+//		std::istringstream s(line);
+//
+//		//先頭の識別子を読む
+//		s >> identfier;
+//
+//		/* "V" : 頂点位置
+//		   "vt": 頂点テクスチャ座標
+//		   "vn": 頂点法線
+//		   "f" : 面
+//		*/
+//
+//		//頂点情報を読む
+//		if (identfier == "v")
+//		{
+//			Vector4 position;
+//
+//			s >> position.x >> position.y >> position.z;
+//
+//			//位置のxを反転させ、左手座標系にする
+//			position.x *= -1.0f;
+//
+//			position.w = 1.0f;
+//
+//			positions.push_back(position);
+//		}
+//		else if (identfier == "vt")
+//		{
+//			Vector2 texcoord;
+//
+//			s >> texcoord.x >> texcoord.y;
+//
+//			//テクスチャのyを反転させ、左手座標系にする
+//			texcoord.y = 1.0f - texcoord.y;
+//
+//			texcoords.push_back(texcoord);
+//		}
+//		else if (identfier == "vn")
+//		{
+//			Vector3 normal;
+//
+//			s >> normal.x >> normal.y >> normal.z;
+//
+//			//法線のxを反転させ、左手座標系にする
+//			normal.x *= -1.0f;
+//
+//			normals.push_back(normal);
+//		}
+//		else if (identfier == "f")
+//		{
+//			// 今から読み込む三角形の3つのインデックスを一時的に格納
+//			std::array<uint32_t, 3> indices;
+//
+//			for (int32_t faceVertex = 0; faceVertex < 3; ++faceVertex)
+//			{
+//				std::string VertexDefinition;
+//				s >> VertexDefinition;
+//
+//				// 頂点定義を分解（位置 / UV / 法線）に分ける
+//				std::istringstream v(VertexDefinition);
+//
+//				// 頂点情報（位置/UV/法線）のインデックス（OBJは1始まりなので後で-1する）
+//				uint32_t posIndex = 0;
+//				uint32_t texIndex = 0;
+//				uint32_t normIndex = 0;
+//
+//				// スラッシュの位置を検索（例: 1/2/3 → 1が位置, 2がUV, 3が法線）
+//				size_t firstSlash = VertexDefinition.find('/');
+//				size_t secondSlash = VertexDefinition.find('/', firstSlash + 1);
+//
+//				if (firstSlash != std::string::npos && secondSlash != std::string::npos)
+//				{
+//					// フォーマット: v/vt/vn
+//					std::string posStr = VertexDefinition.substr(0, firstSlash);
+//					std::string texStr = VertexDefinition.substr(firstSlash + 1, secondSlash - firstSlash - 1);
+//					std::string normStr = VertexDefinition.substr(secondSlash + 1);
+//
+//					if (!posStr.empty())
+//					{
+//						posIndex = std::stoi(posStr);
+//					}
+//
+//					if (!texStr.empty())
+//					{
+//						texIndex = std::stoi(texStr);
+//					}
+//
+//					if (!normStr.empty())
+//					{
+//						normIndex = std::stoi(normStr);
+//					}
+//				}
+//				else if (firstSlash != std::string::npos && VertexDefinition.find("//") != std::string::npos)
+//				{
+//					// フォーマット: v//vn（UVなし）
+//					std::string posStr = VertexDefinition.substr(0, firstSlash);
+//					std::string normStr = VertexDefinition.substr(firstSlash + 2); // "//" のあと
+//
+//					if (!posStr.empty())
+//					{
+//						posIndex = std::stoi(posStr);
+//					}
+//
+//					if (!normStr.empty())
+//					{
+//						normIndex = std::stoi(normStr);
+//					}
+//				}
+//				else if (firstSlash != std::string::npos)
+//				{
+//					// フォーマット: v/vt（法線なし）
+//					std::string posStr = VertexDefinition.substr(0, firstSlash);
+//					std::string texStr = VertexDefinition.substr(firstSlash + 1);
+//
+//					if (!posStr.empty())
+//					{
+//						posIndex = std::stoi(posStr);
+//					}
+//
+//					if (!texStr.empty())
+//					{
+//						texIndex = std::stoi(texStr);
+//					}
+//				}
+//				else
+//				{
+//					// フォーマット: v（位置のみ）
+//					posIndex = std::stoi(VertexDefinition);
+//				}
+//
+//				// インデックスを使って頂点情報を取得
+//				Vector4 position = positions[posIndex - 1];
+//				Vector2 texcoord = texIndex ? texcoords[texIndex - 1] : Vector2{ 0.0f, 0.0f };
+//				Vector3 normal = normIndex ? normals[normIndex - 1] : Vector3{ 0.0f, 0.0f, 0.0f };
+//
+//
+//
+//				// この3要素を1つの頂点データとしてまとめる
+//				VertexData vertex{ position, texcoord, normal };
+//
+//				// 頂点が未登録なら新規追加、すでにあるなら再利用
+//				if (vertexToIndex.count(vertex) == 0)
+//				{
+//					uint32_t newIndex = static_cast<uint32_t>(modelData.vertices.size());
+//
+//					vertexToIndex[vertex] = newIndex;
+//
+//					// 頂点リストに追加
+//					modelData.vertices.push_back(vertex);
+//				}
+//
+//				// 頂点に対応するインデックスを三角形インデックス配列に保存
+//				indices[faceVertex] = vertexToIndex[vertex];
+//			}
+//
+//			// 頂点の並び順を反転して左手系に対応
+//			modelData.indices.push_back(indices[2]);
+//			modelData.indices.push_back(indices[1]);
+//			modelData.indices.push_back(indices[0]);
+//
+//		}
+//		else if (identfier == "mtllib")
+//		{
+//			//materialTemplateLibraryファイルの名前を取得
+//			std::string materialFilename;
+//			s >> materialFilename;
+//
+//			//基本的にobjファイルと同一階層にmtlは存在させるので、
+//			modelData.material = LoadMaterialTemplateFile(directoryPath, materialFilename);
+//
+//		}
+//	}
+//
+//	/*--- 4.Modeldataを返す ---*/
+//
+//	return modelData;
+//}
 
 MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename)
 {

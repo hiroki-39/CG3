@@ -1,13 +1,13 @@
-#pragma once
+ï»¿#pragma once
 #include <cmath>
 
-// “x‚ğƒ‰ƒWƒAƒ“‚É•ÏŠ·
+// åº¦ã‚’ãƒ©ã‚¸ã‚¢ãƒ³ã«å¤‰æ›
 inline float ToRadians(float degrees) { return degrees * (3.1415926535f / 180.0f); }
 
-// ƒ‰ƒWƒAƒ“‚ğ“x‚É•ÏŠ·
+// ãƒ©ã‚¸ã‚¢ãƒ³ã‚’åº¦ã«å¤‰æ›
 inline float ToDegrees(float radians) { return radians * (180.0f / 3.1415926535f); }
 
-// ’l‚ğmin‚©‚çmax‚Ì”ÍˆÍ‚ÉƒNƒ‰ƒ“ƒv‚·‚é
+// å€¤ã‚’minã‹ã‚‰maxã®ç¯„å›²ã«ã‚¯ãƒ©ãƒ³ãƒ—ã™ã‚‹
 inline float Clamp(float v, float min, float max)
 {
     if (v < min) return min;

@@ -1,5 +1,7 @@
 ﻿#pragma once
+#include "KHEngine/Core/Graphics/DirectXCommon.h"
 #include "KHEngine/Math/MathCommon.h"
+#include "KHEngine/Core/OS/WinApp.h"
 #include <wrl.h>
 #include <d3d12.h>
 #include <cstdint>
@@ -24,6 +26,13 @@ struct Material
 	int32_t selectLightings; // ライティング種類選択
 };
 
+// 座標変換行列データ
+struct TransformationMatrix
+{
+	Matrix4x4 WVP;		// ワールドビュー射影変換行列
+	Matrix4x4 World;	// ワールド変換行列
+};
+
 // スプライト
 class Sprite
 {
@@ -32,7 +41,17 @@ public://メンバ関数
 	/// <summary>
 	/// 初期化
 	/// </summary>
-	void Initialize(SpriteCommon* spriteCommon);
+	void Initialize(SpriteCommon* spriteCommon, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle);
+
+	/// <summary>
+	/// 更新処理
+	/// </summary>
+	void Update();
+
+	/// <summary>
+	/// 描画処理
+	///	</summary>
+	void Draw();
 
 private://メンバ関数
 
@@ -45,6 +64,11 @@ private://メンバ関数
 	/// マテリアルの作成
 	/// </summary>
 	void CreateMaterialResource();
+
+	/// <summary>
+	/// 座標変換行列データの作成
+	///	</summary>
+	void CreateTransformationMatrixResource();
 
 private://メンバ変数
 
@@ -75,5 +99,20 @@ private://メンバ変数
 
 	//スプライト共通部分
 	SpriteCommon* spriteCommon_ = nullptr;
+
+	// 変換行列リソース
+	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResource_;
+
+	// 変換行列データの仮想アドレス
+	TransformationMatrix* transformationMatrixData_ = nullptr;
+
+	// テクスチャハンドル
+	D3D12_GPU_DESCRIPTOR_HANDLE textureHandle_;
+
+
+	// DirectXCommon取得
+	DirectXCommon* dxCommon = nullptr;
+
+	WinApp* winApp_ = nullptr;
 };
 

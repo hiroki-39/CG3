@@ -1,8 +1,8 @@
-#include "Matrix4x4.h"
+ï»¿#include "Matrix4x4.h"
 #include <cmath>
 #include <cassert>
 
-/* --- Šî–{s—ñ --- */
+/* --- åŸºæœ¬è¡Œåˆ— --- */
 
 Matrix4x4 Matrix4x4::Identity()
 {
@@ -74,7 +74,7 @@ Matrix4x4 Matrix4x4::RotateZ(float rad)
     return result;
 }
 
-/* --- s—ñŒvZ --- */
+/* --- è¡Œåˆ—è¨ˆç®— --- */
 
 Matrix4x4 Matrix4x4::Multiply(const Matrix4x4& a, const Matrix4x4& b)
 {
@@ -164,7 +164,7 @@ Matrix4x4 Matrix4x4::Inverse(const Matrix4x4& m)
     return result;
 }
 
-/* --- “Š‰eE•ÏŠ·ŠÖ˜A --- */
+/* --- æŠ•å½±ãƒ»å¤‰æ›é–¢é€£ --- */
 
 Matrix4x4 Matrix4x4::Perspective(float fovY, float aspect, float nearZ, float farZ)
 {
