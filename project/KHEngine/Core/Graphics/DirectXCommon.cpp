@@ -5,6 +5,8 @@
 
 using namespace Microsoft::WRL;
 
+const uint32_t DirectXCommon::kMaxSRVCount = 512;
+
 void DirectXCommon::Initialize(WinApp* winApp)
 {
 	//FPS固定の初期化
@@ -240,7 +242,7 @@ void DirectXCommon::CreateDescriptorHeaps()
 	rtvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
 
 	//SRV用のヒープでディスクリプタの数は128。RTVはShader内で触るものではないので、ShaderVisibleはtrue
-	srvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 128, true);
+	srvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, kMaxSRVCount, true);
 
 	//DSV用のヒープでディスクリプタの数は1。RTVはShader内で触るものではないので、ShaderVisibleはfalse
 	dsvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
@@ -677,7 +679,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_
 	return bufferResource;
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(const Microsoft::WRL::ComPtr<ID3D12Device>& device, const DirectX::TexMetadata& metdata)
+Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(const DirectX::TexMetadata& metdata)
 {
 	//1.metadataを元にResureceの設定
 	D3D12_RESOURCE_DESC resourceDesc{};
@@ -755,70 +757,6 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::UploadTextureData(Microsof
 	return intermediataeResource;
 }
 
-DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
-{
-
-	//テクスチャファイルを読んでプログラムで扱えるようにする
-	DirectX::ScratchImage image{};
-
-	DirectX::ScratchImage mipImages{};
-
-	std::wstring filePathW = StringUtility::ConvertString(filePath);
-
-	HRESULT hr = DirectX::LoadFromWICFile(
-		filePathW.c_str(),
-		DirectX::WIC_FLAGS_DEFAULT_SRGB,
-		nullptr,
-		image
-	);
-
-
-	// 読み込み失敗なら白テクスチャを返す
-	if (FAILED(hr))
-	{
-		// 白色1x1のテクスチャを作成
-		DirectX::TexMetadata metadata{};
-		metadata.width = 1;
-		metadata.height = 1;
-		metadata.arraySize = 1;
-		metadata.mipLevels = 1;
-		metadata.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		metadata.dimension = DirectX::TEX_DIMENSION_TEXTURE2D;
-
-		DirectX::Image whiteImage{};
-		whiteImage.width = 1;
-		whiteImage.height = 1;
-		whiteImage.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		whiteImage.rowPitch = 4;
-		whiteImage.slicePitch = 4;
-
-		uint8_t* pixels = new uint8_t[4]{ 255, 255, 255, 255 }; // 白 RGBA
-		whiteImage.pixels = pixels;
-
-		image.InitializeFromImage(whiteImage);
-
-		// mipなしでそのまま返す
-		mipImages.InitializeFromImage(whiteImage);
-
-		delete[] pixels;
-		return mipImages;
-	}
-
-	//ミップマップの作成
-
-	hr = DirectX::GenerateMipMaps(
-		image.GetImages(),
-		image.GetImageCount(),
-		image.GetMetadata(),
-		DirectX::TEX_FILTER_SRGB,
-		0,
-		mipImages);
-
-	assert(SUCCEEDED(hr));
-
-	//ミップマップ付きのデータを返す
-	return mipImages;
-}
 
 D3D12_CPU_DESCRIPTOR_HANDLE DirectXCommon::GetCPUDescriptorHandle(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap, uint32_t descriptorSize, uint32_t index)
 {

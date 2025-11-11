@@ -1,7 +1,7 @@
 ﻿#include "Sprite.h"
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
 
-void Sprite::Initialize(SpriteCommon* spriteCommon, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle)
+void Sprite::Initialize(SpriteCommon* spriteCommon, std::string TextureFilePath)
 {
 	// 引数で受け取ってメンバ変数に記録する
 	this->spriteCommon_ = spriteCommon;
@@ -13,7 +13,8 @@ void Sprite::Initialize(SpriteCommon* spriteCommon, D3D12_GPU_DESCRIPTOR_HANDLE 
 
 	assert(this->dxCommon != nullptr);
 
-	textureHandle_ = textureHandle;
+	//単位行列を書き込んでおく
+	textureIndex = 
 
 	// 頂点バッファ・インデックスバッファの作成
 	CreateBufferResource();

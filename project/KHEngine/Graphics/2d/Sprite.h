@@ -41,7 +41,7 @@ public://メンバ関数
 	/// <summary>
 	/// 初期化
 	/// </summary>
-	void Initialize(SpriteCommon* spriteCommon, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle);
+	void Initialize(SpriteCommon* spriteCommon, std::string TextureFilePath);
 
 	/// <summary>
 	/// 更新処理
@@ -134,6 +134,8 @@ private://メンバ変数
 	// テクスチャハンドル
 	D3D12_GPU_DESCRIPTOR_HANDLE textureHandle_;
 
+	// テクスチャ番号
+	uint32_t textureIndex = 0;
 
 	// DirectXCommon取得
 	DirectXCommon* dxCommon = nullptr;

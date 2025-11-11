@@ -124,18 +124,13 @@ public://メンバ関数
 	/// <summary>
 	/// テクスチャリソースの生成
 	/// </summary>
-	Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(const Microsoft::WRL::ComPtr<ID3D12Device>& device, const DirectX::TexMetadata& metdata);
+	Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(const DirectX::TexMetadata& metdata);
 
 	/// <summary>
 	/// テクスチャデータの転送
 	/// </summary>
 	[[nodiscard]]
 	Microsoft::WRL::ComPtr<ID3D12Resource> UploadTextureData(Microsoft::WRL::ComPtr<ID3D12Resource> texture, const DirectX::ScratchImage& mipImages);
-
-	/// <summary>
-	/// テクスチャの読み込み
-	/// </summary>
-	static DirectX::ScratchImage LoadTexture(const std::string& filePath);
 
 	// --- Getter ---
 	ID3D12Device* GetDevice() { return device.Get(); }
@@ -152,6 +147,11 @@ private://静的メンバ関数
 	/// 指定番号のGPUデスクリプタハンドルを取得
 	/// </summary>
 	static D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap, uint32_t descriptorSize, uint32_t index);
+
+public:
+	
+	// 最大SRV数　(最大テクスチャ枚数)
+	static const uint32_t kMaxSRVCount;
 
 private://メンバ変数
 
@@ -237,4 +237,6 @@ private://メンバ変数
 
 	//フェンス値
 	UINT64 fenceValue;
+
+
 };

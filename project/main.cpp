@@ -36,6 +36,7 @@
 #include "KHEngine/Core/Graphics/D3DResourceLeakChecker.h"
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
 #include "KHEngine/Graphics/2d/Sprite.h"
+#include "KHEngine/Graphics/Resource/TextureManager.h"
 
 
 //struct Transform
@@ -277,6 +278,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// DirectX初期化
 	dxCommon = new DirectXCommon();
 	dxCommon->Initialize(winApp);
+
+	//テクスチャマネージャの初期化
+	TextureManager::GetInstance()->Initialize();
 
 	// 入力のポインタ
 	Input* input = nullptr;
@@ -1221,6 +1225,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//WindowsAPIの解放
 	delete winApp;
 	winApp = nullptr;
+
+	// テクスチャマネージャの解放
+	TextureManager::GetInstance()->Finalize();
 
 	//DirectX12の解放
 	delete dxCommon;
