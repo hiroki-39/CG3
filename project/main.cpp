@@ -280,7 +280,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	dxCommon->Initialize(winApp);
 
 	//テクスチャマネージャの初期化
-	TextureManager::GetInstance()->Initialize();
+	TextureManager::GetInstance()->Initialize(dxCommon);
 
 	// 入力のポインタ
 	Input* input = nullptr;
@@ -777,30 +777,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
 	//IXAudio2MasteringVoice* masterVoice;
 
-
-	//Textureの読み込み
-	DirectX::ScratchImage mipimages1 = dxCommon->LoadTexture("resources/uvChecker.png");
-	const DirectX::TexMetadata& metadata1 = mipimages1.GetMetadata();
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureResource1 = dxCommon->CreateTextureResource(dxCommon->GetDevice(), metadata1);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource1 = dxCommon->UploadTextureData(textureResource1, mipimages1);
-
-	//metDataを基にSRVの設定
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc1{};
-	srvDesc1.Format = metadata1.format;
-	srvDesc1.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	//2Dテクスチャ
-	srvDesc1.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc1.Texture2D.MipLevels = UINT(metadata1.mipLevels);
-
-	////SRVを作成するDescriptorHeapの場所を決める
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU1 = dxCommon->GetSRVCPUDescriptorHandle(1);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU1 = dxCommon->GetSRVGPUDescriptorHandle(1);
-
-	//SRVを作成
-	dxCommon->GetDevice()->CreateShaderResourceView(textureResource1.Get(), &srvDesc1, textureSrvHandleCPU1);
-
-
-
 	////PlaneObjで読み込まれている画像を転送する
 	////Textureの読み込み
 	//DirectX::ScratchImage mipimages2 = dxCommon->LoadTexture(modelDataPlaneObj.material.textureFilePath);
@@ -839,6 +815,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//SoundPlayWave(xAudio2.Get(), soundData1);
 	//SoundPlayWave(xAudio2.Get(), soundData1);
 
+	TextureManager* texManager = TextureManager::GetInstance();
+
+    // Begin upload batch before loading textures so AddTextureUpload queues into the batch
+    dxCommon->BeginTextureUploadBatch();
+
+    //Textureの読み込み (these calls will add upload jobs)
+    texManager->LoadTexture("resources/uvChecker.png");
+    texManager->LoadTexture("resources/monsterBall.png");
+    texManager->LoadTexture("resources/checkerBoard.png");
+
+    // Execute the batched upload commands to transfer textures to GPU
+    texManager->ExecuteUploadCommands();
+
+    // TextureIndex を取得
+    uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/uvChecker.png");
+    uint32_t monsterBallTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/monsterBall.png");
+    uint32_t checkerBoardTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/checkerBoard.png");
+
+    // 中間リソースをまとめて解放
+    texManager->ClearIntermediateResources();
+
 #pragma region 最初のシーンの初期化
 
 	//スプライトのポインタ
@@ -848,13 +845,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	{
 		//スプライトの初期化
 		Sprite* sprite = new Sprite();
-		sprite->Initialize(spriteCommon, textureSrvHandleGPU1);
+		sprite->Initialize(spriteCommon, uvCheckerTex);
 		sprites.push_back(sprite);
 	}
 
 
 
 #pragma endregion
+
+	// コマンドリストの実行
+	/*dxCommon->ExecuteCommandList();*/
+
+	// 中間リソースをまとめて解放
+
 
 
 	int32_t selectedModel = 0;
@@ -1215,6 +1218,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//XAudio2の解放
 	/*xAudio2.Reset();*/
+	// テクスチャマネージャの解放
+	TextureManager::GetInstance()->Finalize();
 
 	//入力の解放
 	delete input;
@@ -1226,8 +1231,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	delete winApp;
 	winApp = nullptr;
 
-	// テクスチャマネージャの解放
-	TextureManager::GetInstance()->Finalize();
+
 
 	//DirectX12の解放
 	delete dxCommon;

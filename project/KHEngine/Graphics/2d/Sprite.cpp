@@ -1,7 +1,7 @@
 ﻿#include "Sprite.h"
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
 
-void Sprite::Initialize(SpriteCommon* spriteCommon, std::string TextureFilePath)
+void Sprite::Initialize(SpriteCommon* spriteCommon, uint32_t textureIndex)
 {
 	// 引数で受け取ってメンバ変数に記録する
 	this->spriteCommon_ = spriteCommon;
@@ -13,8 +13,8 @@ void Sprite::Initialize(SpriteCommon* spriteCommon, std::string TextureFilePath)
 
 	assert(this->dxCommon != nullptr);
 
-	//単位行列を書き込んでおく
-	textureIndex = 
+	// 受け取ったテクスチャインデックスを保存する
+	this->textureIndex = textureIndex;
 
 	// 頂点バッファ・インデックスバッファの作成
 	CreateBufferResource();
@@ -86,10 +86,15 @@ void Sprite::Draw()
 	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResource_->GetGPUVirtualAddress());
 
 	// SRVのDescriptorTableの先頭の設定
-	dxCommon->GetCommandList()->SetGraphicsRootDescriptorTable(2, textureHandle_);
+	dxCommon->GetCommandList()->SetGraphicsRootDescriptorTable(2, TextureManager::GetInstance()->GetSrvHandleGPU(textureIndex));
 
-	//描画！
+	// 描画
 	dxCommon->GetCommandList()->DrawIndexedInstanced(6, 1, 0, 0, 0);
+}
+
+void Sprite::SetTexture(uint32_t textureIndex)
+{
+	this->textureIndex = textureIndex;
 }
 
 void Sprite::CreateBufferResource()

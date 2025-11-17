@@ -18,6 +18,12 @@
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_dx12.h"
 
+struct UploadBatch
+{
+	Microsoft::WRL::ComPtr<ID3D12Resource> dst;
+	Microsoft::WRL::ComPtr<ID3D12Resource> interm;
+	std::vector<D3D12_SUBRESOURCE_DATA> sub;
+};
 
 class DirectXCommon
 {
@@ -111,6 +117,7 @@ public://メンバ関数
 	/// </summary>
 	D3D12_GPU_DESCRIPTOR_HANDLE GetSRVGPUDescriptorHandle(uint32_t index);
 
+
 	/// <summary>
 	/// シェーダーのコンパイル
 	/// </summary>
@@ -131,6 +138,25 @@ public://メンバ関数
 	/// </summary>
 	[[nodiscard]]
 	Microsoft::WRL::ComPtr<ID3D12Resource> UploadTextureData(Microsoft::WRL::ComPtr<ID3D12Resource> texture, const DirectX::ScratchImage& mipImages);
+
+	/// <summary>
+	/// テクスチャアップロードバッチ開始
+	/// </summary>
+	void BeginTextureUploadBatch();
+
+	/// <summary>
+	/// テクスチャアップロードバッチ完了
+	/// </summary>
+	void AddTextureUpload(
+		Microsoft::WRL::ComPtr<ID3D12Resource> texture,
+		Microsoft::WRL::ComPtr<ID3D12Resource> intermediate,
+		const std::vector<D3D12_SUBRESOURCE_DATA>& subresources
+	);
+
+	/// <summary>
+	/// テクスチャアップロードバッチ実行
+	/// </summary>
+	void ExecuteTextureUploadBatch();
 
 	// --- Getter ---
 	ID3D12Device* GetDevice() { return device.Get(); }
@@ -159,84 +185,89 @@ private://メンバ変数
 
 	Timer timer;
 
-	//DirectX12のデバイス
+	// DirectX12のデバイス
 	Microsoft::WRL::ComPtr<ID3D12Device> device;
 
-	//DXGIファクトリ
+	// DXGIファクトリ
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
 
-	//コマンドアロケータ
+	// コマンドアロケータ
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator;
 
-	//コマンドリスト
+	// コマンドリスト
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList;
 
-	//コマンドキュー
+	// コマンドキュー
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue;
 
-	//スワップチェーン
+	// スワップチェーン
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain;
 
 
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
 
-	//SRV用のDescriptorSize
+	// SRV用のDescriptorSize
 	uint32_t desriptorSizeSRV;
 
-	//RTV用のDescriptorSize
+	// RTV用のDescriptorSize
 	uint32_t desriptorSizeRTV;
 
-	//DSV用のDescriptorSize
+	// DSV用のDescriptorSize
 	uint32_t desriptorSizeDSV;
 
-	//RTVのヒープ
+	// RTVのヒープ
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap;
 
-	//SRVのヒープ
+	// SRVのヒープ
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap;
 
-	//DSVのヒープ
+	// DSVのヒープ
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap;
 
 	//スワップチェーンリソース
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> swapChainResources;
 
-	//RTVを2つ作るので、ディスクリプタを2つ用意
+	// RTVを2つ作るので、ディスクリプタを2つ用意
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2];
 
-	//RTVの生成
+	// RTVの生成
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
 
-	//RTVハンドル
+	// RTVハンドル
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
 
-	//深度バッファ
+	// 深度バッファ
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource;
 
-	//フェンス
+	// フェンス
 	Microsoft::WRL::ComPtr<ID3D12Fence> fence;
 
 	//フェンス用イベントハンドル
 	HANDLE fenceEvent;
 
-	//ビューポート
+	// ビューポート
 	D3D12_VIEWPORT viewport{ };
 
-	//シザー矩形
+	// シザー矩形
 	D3D12_RECT scissorRect{ };
 
-	//dxcCompiler
+	// dxcCompiler
 	IDxcUtils* dxcUtils;
 	IDxcCompiler3* dxcCompiler;
 
-	//includeHandler
+	// includeHandler
 	IDxcIncludeHandler* includeHandler;
 
-	//TransitionBarrier
+	// TransitionBarrier
 	D3D12_RESOURCE_BARRIER barrier{};
 
-	//フェンス値
+	// フェンス値
 	UINT64 fenceValue;
 
-
+	// テクスチャアップロードキュー
+	std::vector<UploadBatch> textureUploadQueue_;
+	// アップロード用コマンド関連
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> uploadAllocator_;
+	// アップロード用コマンドリスト
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> uploadCommandList_;
 };

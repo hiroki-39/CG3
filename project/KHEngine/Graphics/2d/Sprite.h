@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
+#include "KHEngine/Graphics/Resource/TextureManager.h"
 #include "KHEngine/Math/MathCommon.h"
 #include "KHEngine/Core/OS/WinApp.h"
 #include <wrl.h>
@@ -41,7 +42,7 @@ public://メンバ関数
 	/// <summary>
 	/// 初期化
 	/// </summary>
-	void Initialize(SpriteCommon* spriteCommon, std::string TextureFilePath);
+	void Initialize(SpriteCommon* spriteCommon, uint32_t textureIndex);
 
 	/// <summary>
 	/// 更新処理
@@ -52,6 +53,12 @@ public://メンバ関数
 	/// 描画処理
 	///	</summary>
 	void Draw();
+
+	/// <summary>
+	/// テクスチャの設定
+	/// </summary>
+	/// <param name="textureIndex">テクスチャインデックス</param>
+	void SetTexture(uint32_t textureIndex);
 
 	// --- Getter ---
 	Vector2 GetPosition() const { return position; }

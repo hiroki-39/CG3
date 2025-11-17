@@ -200,8 +200,6 @@ void DirectXCommon::CreateSwapChain()
 {
 	HRESULT hr;
 
-	//スワップチェーンの生成
-
 	//ウィンドウの幅
 	swapChainDesc.Width = WinApp::kClientWidth;
 	//ウィンドウの高さ
@@ -757,6 +755,82 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::UploadTextureData(Microsof
 	return intermediataeResource;
 }
 
+void DirectXCommon::BeginTextureUploadBatch()
+{
+	HRESULT hr;
+
+	// Note: Use DIRECT command list type here so ResourceBarrier calls are allowed.
+	hr = device->CreateCommandAllocator(
+		D3D12_COMMAND_LIST_TYPE_DIRECT,
+		IID_PPV_ARGS(&uploadAllocator_)
+	);
+	assert(SUCCEEDED(hr));
+
+	hr = device->CreateCommandList(
+		0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+		uploadAllocator_.Get(), nullptr,
+		IID_PPV_ARGS(&uploadCommandList_)
+	);
+	assert(SUCCEEDED(hr));
+
+	// Ensure the command list starts open and ready for recording (CreateCommandList usually returns it open)
+	textureUploadQueue_.clear();
+}
+
+void DirectXCommon::AddTextureUpload(Microsoft::WRL::ComPtr<ID3D12Resource> texture, Microsoft::WRL::ComPtr<ID3D12Resource> intermediate, const std::vector<D3D12_SUBRESOURCE_DATA>& subresources)
+{
+	textureUploadQueue_.push_back({ texture, intermediate, subresources });
+}
+
+void DirectXCommon::ExecuteTextureUploadBatch()
+{
+	// record copies & barriers into uploadCommandList_
+	for (auto& job : textureUploadQueue_)
+	{
+		UpdateSubresources(
+			uploadCommandList_.Get(),
+			job.dst.Get(),
+			job.interm.Get(),
+			0, 0,
+			(UINT)job.sub.size(),
+			job.sub.data()
+		);
+
+		// バリア
+		D3D12_RESOURCE_BARRIER barrier{};
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrier.Transition.pResource = job.dst.Get();
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		
+		uploadCommandList_->ResourceBarrier(1, &barrier);
+
+	}
+
+	// close and execute
+	uploadCommandList_->Close();
+
+	ID3D12CommandList* lists[] = { uploadCommandList_.Get() };
+	commandQueue->ExecuteCommandLists(1, lists);
+
+	// GPU 完了をフェンスで待つ（PostDraw と同様）
+	fenceValue++;
+	commandQueue->Signal(fence.Get(), fenceValue);
+
+	if (fence->GetCompletedValue() < fenceValue)
+	{
+		fence->SetEventOnCompletion(fenceValue, fenceEvent);
+		WaitForSingleObject(fenceEvent, INFINITE);
+	}
+
+	// GPU 完了後にコマンドアロケータ／コマンドリストをリセットして解放
+	uploadAllocator_.Reset();
+	uploadCommandList_.Reset();
+
+	// キューをクリア（中間リソースは TextureManager 側で明示的に解放する）
+	textureUploadQueue_.clear();
+}
 
 D3D12_CPU_DESCRIPTOR_HANDLE DirectXCommon::GetCPUDescriptorHandle(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap, uint32_t descriptorSize, uint32_t index)
 {
