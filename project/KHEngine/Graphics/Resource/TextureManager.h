@@ -39,6 +39,11 @@ public://メンバ関数
 	/// </summary>
 	void ExecuteUploadCommands();
 	
+	/// <summary>
+	/// メタデータを取得
+	/// </summary>
+	/// <param name="textureIndex">テクスチャインデックス</param>
+	const DirectX::TexMetadata& GetMetaData(uint32_t textureIndex);
 
 	// SRVインデックスの開始番号
 	uint32_t GetTextureIndexByFilePath(const std::string& filePath);
@@ -77,7 +82,7 @@ private:
 		std::vector<D3D12_SUBRESOURCE_DATA> subresources;			 // サブリソースデータ群
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandleCPU;					 // SRVハンドル(CPU)
 		D3D12_GPU_DESCRIPTOR_HANDLE srvHandleGPU;					 // SRVハンドル(GPU)
-		DirectX::ScratchImage image; // アップロード完了までピクセルを保持
+		DirectX::ScratchImage image;								 // アップロード完了までピクセルを保持
 	};
 
 

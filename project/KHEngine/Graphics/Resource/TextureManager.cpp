@@ -198,3 +198,14 @@ std::vector<D3D12_SUBRESOURCE_DATA> TextureManager::CreateSubresources(const Dir
 
 	return subresources;
 }
+
+const DirectX::TexMetadata& TextureManager::GetMetaData(uint32_t textureIndex)
+{
+	// 範囲外指定違反チェック
+	assert(textureIndex >= kSRVIndexTop && textureIndex < textureDatas.size() + kSRVIndexTop);
+
+	// テクスチャデータの参照を取得
+	TextureData& textureData = textureDatas[textureIndex - kSRVIndexTop];
+
+	return textureData.metadata;
+}

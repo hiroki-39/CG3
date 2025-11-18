@@ -817,38 +817,34 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	TextureManager* texManager = TextureManager::GetInstance();
 
-    // Begin upload batch before loading textures so AddTextureUpload queues into the batch
-    dxCommon->BeginTextureUploadBatch();
+	// テクスチャアップロードの開始
+	dxCommon->BeginTextureUploadBatch();
 
-    //Textureの読み込み (these calls will add upload jobs)
-    texManager->LoadTexture("resources/uvChecker.png");
-    texManager->LoadTexture("resources/monsterBall.png");
-    texManager->LoadTexture("resources/checkerBoard.png");
+	//Textureの読み込み
+	texManager->LoadTexture("resources/uvChecker.png");
+	texManager->LoadTexture("resources/monsterBall.png");
+	texManager->LoadTexture("resources/checkerBoard.png");
 
-    // Execute the batched upload commands to transfer textures to GPU
-    texManager->ExecuteUploadCommands();
+	// テクスチャアップロードの実行
+	texManager->ExecuteUploadCommands();
 
-    // TextureIndex を取得
-    uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/uvChecker.png");
-    uint32_t monsterBallTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/monsterBall.png");
-    uint32_t checkerBoardTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/checkerBoard.png");
+	// TextureIndex を取得
+	uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/uvChecker.png");
+	uint32_t monsterBallTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/monsterBall.png");
+	uint32_t checkerBoardTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/checkerBoard.png");
 
-    // 中間リソースをまとめて解放
-    texManager->ClearIntermediateResources();
+	// 中間リソースをまとめて解放
+	texManager->ClearIntermediateResources();
 
 #pragma region 最初のシーンの初期化
 
 	//スプライトのポインタ
 	std::vector<Sprite*> sprites;
 
-	for (uint32_t i = 0; i < 5; i++)
-	{
-		//スプライトの初期化
-		Sprite* sprite = new Sprite();
-		sprite->Initialize(spriteCommon, uvCheckerTex);
-		sprites.push_back(sprite);
-	}
-
+	//スプライトの初期化
+	Sprite* sprite = new Sprite();
+	sprite->Initialize(spriteCommon, uvCheckerTex);
+	sprites.push_back(sprite);
 
 
 #pragma endregion

@@ -65,12 +65,22 @@ public://メンバ関数
 	float GetRotation() const { return rotation; }
 	const Vector2& GetSize() const { return size; }
 	const Vector4& GetColor() const { return materialData_->color; }
+	const Vector2& GetAnchorPoint() const { return anchorPoint; }
+	bool IsFlipX() const { return isFlipX_; }
+	bool IsFlipY() const { return isFlipY_; }
+	Vector2 GetTextureLeftTop() const { return textureLeftTop; }
+	Vector2 GetTextureSize() const { return textureSize; }
 
 	// --- Setter ---
 	void SetPosition(const Vector2& position) { this->position = position; }
 	void SetRotation(float rotation) { this->rotation = rotation; }
 	void SetSize(const Vector2& size) { this->size = size; }
 	void SetColor(const Vector4& color) { materialData_->color = color; }
+	void SetAnchorPoint(const Vector2& anchorPoint) { this->anchorPoint = anchorPoint; }
+	void SetFlipX(bool isFlipX) { this->isFlipX_ = isFlipX; }
+	void SetFlipY(bool isFlipY) { this->isFlipY_ = isFlipY; }
+	void SetTextureLeftTop(const Vector2& textureLeftTop) { this->textureLeftTop = textureLeftTop; }
+	void SetTextureSize(const Vector2& textureSize) { this->textureSize = textureSize; }
 
 private://メンバ関数
 
@@ -89,6 +99,11 @@ private://メンバ関数
 	///	</summary>
 	void CreateTransformationMatrixResource();
 
+	/// <summary>
+	/// テクスチャサイズをイメージに合わせる
+	/// </summary>
+	void AdjustTextureSize();
+
 private://メンバ変数
 
 	// ---- スプライト情報 ----
@@ -101,6 +116,21 @@ private://メンバ変数
 
 	// サイズ
 	Vector2 size = { 64.0f,64.0f };
+
+	// アンカーポイント
+	Vector2 anchorPoint = { 0.0f,0.0f };
+
+	// 左右フリップ
+	bool isFlipX_ = false; 
+
+	// 上下フリップ
+	bool isFlipY_ = false;
+
+	// テクスチャ左上座標
+	Vector2 textureLeftTop = { 0.0f,0.0f };
+
+	// テクスチャ切り出しサイズ
+	Vector2 textureSize = { 100.0f,100.0f };
 
 	// ---- バッファリソース ----
 
