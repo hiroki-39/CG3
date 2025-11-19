@@ -841,11 +841,56 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//スプライトのポインタ
 	std::vector<Sprite*> sprites;
 
-	//スプライトの初期化
-	Sprite* sprite = new Sprite();
-	sprite->Initialize(spriteCommon, uvCheckerTex);
-	sprites.push_back(sprite);
+	//スプライトの初期化（5個作ってそれぞれ挫折を見られるように設定）
+	const int kSpriteCount = 5;
+	std::array<uint32_t, 3> textureIndices = { uvCheckerTex, monsterBallTex, checkerBoardTex };
+	std::array<const char*, 3> textureNames = { "uvChecker.png", "monsterBall.png", "checkerBoard.png" };
 
+	// 作成して初期設定
+	for (int i = 0; i < kSpriteCount; ++i)
+	{
+		Sprite* s = new Sprite();
+		// テクスチャは順繰りに割り当て
+		s->Initialize(spriteCommon, textureIndices[i % textureIndices.size()]);
+
+		// 初期位置を見やすく分散
+		s->SetPosition(Vector2(50.0f + i * 140.0f, 120.0f + (i % 2) * 140.0f));
+		// サイズを共通に（必要に応じて変えてください）
+		s->SetSize(Vector2(128.0f, 128.0f));
+
+		// アンカーポイントをバリエーション付与
+		switch (i)
+		{
+		case 0: s->SetAnchorPoint(Vector2(0.0f, 0.0f)); break;   // 左上
+		case 1: s->SetAnchorPoint(Vector2(0.5f, 0.5f)); break;   // 中央
+		case 2: s->SetAnchorPoint(Vector2(1.0f, 1.0f)); break;   // 右下
+		case 3: s->SetAnchorPoint(Vector2(0.0f, 0.5f)); break;   // 左中央
+		case 4: s->SetAnchorPoint(Vector2(0.5f, 0.0f)); break;   // 上中央
+		}
+
+		// フリップを一部のスプライトで有効化して確認しやすくする
+		s->SetFlipX(i == 2 || i == 4);
+		s->SetFlipY(i == 1 || i == 3);
+
+		// テクスチャの範囲指定（左上とサイズ）を一部に設定
+		// ここではピクセル単位として指定している想定（Spriteの実装に合わせて必要なら正規化値に変更）
+		if (i == 3)
+		{
+			s->SetTextureLeftTop(Vector2(0.0f, 0.0f));
+			s->SetTextureSize(Vector2(64.0f, 64.0f));
+		}
+		else if (i == 4)
+		{
+			s->SetTextureLeftTop(Vector2(64.0f, 64.0f));
+			s->SetTextureSize(Vector2(64.0f, 64.0f));
+		}
+		// その他はデフォルト（全体）を使用
+
+		sprites.push_back(s);
+	}
+
+	// 選択用インデックス（ImGuiで操作するための状態）
+	int selectedSpriteIndex = 0;
 
 #pragma endregion
 
@@ -933,12 +978,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 
 		//スプライトの位置をそれぞれずらす
-		for (uint32_t i = 0; i < 5; i++)
-		{
-			Vector2 spritePosition = sprites[i]->GetPosition();
-			spritePosition += Vector2(0.5f * i, 0.5f * i);
-			sprites[i]->SetPosition(spritePosition);
-		}
+		//for (uint32_t i = 0; i < 5; i++)
+		//{
+		//	Vector2 spritePosition = sprites[i]->GetPosition();
+		//	spritePosition += Vector2(0.5f * i, 0.5f * i);
+		//	sprites[i]->SetPosition(spritePosition);
+		//}
 
 		////スプライトの座標を少しずつ動かす
 
@@ -1049,7 +1094,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//	//ライティングするかどうか
 		//	ImGui::Checkbox("enableLighting", &materialDataPlaneObj->enableLighting);
 
-		//	//Lightingの切り替え
+		//	//Lightingの種類の設定
 		//	ImGui::Combo("selectedLight", &materialDataPlaneObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
 		//}
 
@@ -1058,65 +1103,113 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 		// カメラ設定のグループ
-		if (ImGui::CollapsingHeader("camera"))
-		{
-			////位置
-			//ImGui::DragFloat3("camera.translate", &camera.translate.x, 0.01f);
+		//if (ImGui::CollapsingHeader("camera"))
+		//{
+		//	////位置
+		//	//ImGui::DragFloat3("camera.translate", &camera.translate.x, 0.01f);
 
-			//// X軸の回転
-			//ImGui::SliderAngle("camera.rotate.X", &camera.rotate.x);
+		//	//// X軸の回転
+		//	//ImGui::SliderAngle("camera.rotate.X", &camera.rotate.x);
 
-			//// Y軸の回転
-			//ImGui::SliderAngle("camera.rotate.Y", &camera.rotate.y);
+		//	//// Y軸の回転
+		//	//ImGui::SliderAngle("camera.rotate.Y", &camera.rotate.y);
 
-			//// Z軸の回転
-			//ImGui::SliderAngle("camera.rotate.Z", &camera.rotate.z);
-		}
+		//	//// Z軸の回転
+		//	//ImGui::SliderAngle("camera.rotate.Z", &camera.rotate.z);
+		//}
 
 
 		// ライト設定のグループ
-		if (ImGui::CollapsingHeader("Light"))
-		{
-			////向き
-			//ImGui::DragFloat3("LightDirection", &directionalLightData->direction.x, 0.01f);
+		//if (ImGui::CollapsingHeader("Light"))
+		//{
+		//	////向き
+		//	//ImGui::DragFloat3("LightDirection", &directionalLightData->direction.x, 0.01f);
 
-			////カラー
-			//ImGui::ColorEdit4("LightColor", &(directionalLightData->color).x);
+		//	////カラー
+		//	//ImGui::ColorEdit4("LightColor", &(directionalLightData->color).x);
 
-			////輝度
-			//ImGui::SliderAngle("Lightrotate.Y", &directionalLightData->intensity);
-		}
+		//	////輝度
+		//	//ImGui::SliderAngle("Lightrotate.Y", &directionalLightData->intensity);
+		//}
 
 		if (isDisplaySprite)
 		{
 			if (ImGui::CollapsingHeader("Sprite"))
 			{
-				//位置
-				//ImGui::DragFloat3("transformSprite.translate", &transformSprite.translate.x, 1.0f);
-
-				//// X軸の回転
-				//ImGui::SliderAngle("transformSprite.rotate.X", &transformSprite.rotate.x);
-
-				//// Y軸の回転
-				//ImGui::SliderAngle("transformSprite.rotate.Y", &transformSprite.rotate.y);
-
-				//// Z軸の回転
-				//ImGui::SliderAngle("transformSprite.rotate.Z", &transformSprite.rotate.z);
-
-				//カラー変更
-				/*ImGui::ColorEdit4("Color", &(materialDataSprite->color).x);*/
-
-				//Lightingの切り替え
-				/*ImGui::Combo("selectedLight", &materialDataSprite->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));*/
-
-
-				// スプライト変換設定のグループ
-				if (ImGui::CollapsingHeader("Sprite Transform"))
+				// スプライト一覧と選択
+				if (ImGui::CollapsingHeader("Sprite Instances"))
 				{
-					//ImGui::DragFloat3("transformSprite", &transformSprite.translate.x, 2.0f);
-					//ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
-					//ImGui::DragFloat2("UVRotate", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
-					//ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
+					// スプライト選択
+					ImGui::SliderInt("Selected Sprite", &selectedSpriteIndex, 0, int(sprites.size()) - 1);
+
+					// 簡易表示: 各スプライトのテクスチャ名・位置を表示（デバッグ用）
+					for (int i = 0; i < (int)sprites.size(); ++i)
+					{
+						ImGui::Text("Sprite %d: pos=(%.1f,%.1f) size=(%.1f,%.1f) anchor=(%.2f,%.2f) flipX=%d flipY=%d",
+							i,
+							sprites[i]->GetPosition().x, sprites[i]->GetPosition().y,
+							sprites[i]->GetSize().x, sprites[i]->GetSize().y,
+							sprites[i]->GetAnchorPoint().x, sprites[i]->GetAnchorPoint().y,
+							sprites[i]->IsFlipX() ? 1 : 0, sprites[i]->IsFlipY() ? 1 : 0);
+					}
+				}
+
+				// 選択中スプライトの詳細編集
+				Sprite* cur = sprites[selectedSpriteIndex];
+				if (cur)
+				{
+					ImGui::Separator();
+					ImGui::Text("Edit Sprite %d", selectedSpriteIndex);
+
+					// 位置・回転・サイズ（既存のAPIを使う）
+					Vector2 pos = cur->GetPosition();
+					if (ImGui::DragFloat2("Position", &pos.x, 1.0f)) cur->SetPosition(pos);
+
+					float rot = cur->GetRotation();
+					if (ImGui::SliderAngle("Rotation", &rot)) cur->SetRotation(rot);
+
+					Vector2 size = cur->GetSize();
+					if (ImGui::DragFloat2("Size", &size.x, 1.0f, 1.0f, 4096.0f)) cur->SetSize(size);
+
+					// アンカーポイント
+					Vector2 anchor = cur->GetAnchorPoint();
+					if (ImGui::DragFloat2("Anchor (0..1)", &anchor.x, 0.01f, 0.0f, 1.0f))
+					{
+						cur->SetAnchorPoint(anchor);
+					}
+
+					// フリップ
+					bool flipX = cur->IsFlipX();
+					if (ImGui::Checkbox("Flip X", &flipX)) cur->SetFlipX(flipX);
+					bool flipY = cur->IsFlipY();
+					if (ImGui::Checkbox("Flip Y", &flipY)) cur->SetFlipY(flipY);
+
+					// テクスチャ範囲（左上ピクセルと幅高さ）
+					Vector2 texLeftTop = cur->GetTextureLeftTop();
+					Vector2 texSize = cur->GetTextureSize();
+					if (ImGui::DragFloat2("Texture LeftTop (px)", &texLeftTop.x, 1.0f, 0.0f, 4096.0f)) cur->SetTextureLeftTop(texLeftTop);
+					if (ImGui::DragFloat2("Texture Size (px)", &texSize.x, 1.0f, 1.0f, 4096.0f)) cur->SetTextureSize(texSize);
+
+					// テクスチャ切替
+					static int selectedTex = 0;
+					if (ImGui::Combo("Texture", &selectedTex, textureNames.data(), (int)textureNames.size()))
+					{
+						cur->SetTexture(textureIndices[selectedTex]);
+					}
+
+					// ボタンで次のテクスチャに切り替える
+					if (ImGui::Button("Cycle Texture"))
+					{
+						int currentTex = selectedTex;
+						currentTex = (currentTex + 1) % int(textureIndices.size());
+						selectedTex = currentTex;
+						cur->SetTexture(textureIndices[selectedTex]);
+					}
+
+					// 表示中の値（読み取り専用）
+					ImGui::Text("Current texture leftTop=(%.1f,%.1f) size=(%.1f,%.1f)",
+						cur->GetTextureLeftTop().x, cur->GetTextureLeftTop().y,
+						cur->GetTextureSize().x, cur->GetTextureSize().y);
 				}
 			}
 		}
@@ -1347,7 +1440,6 @@ void CreateWhiteTexture(DirectX::ScratchImage& outImage)
 
 	outImage.InitializeFromImage(img);
 }
-
 
 //ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename)
 //{

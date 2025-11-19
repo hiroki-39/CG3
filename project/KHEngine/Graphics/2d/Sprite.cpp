@@ -20,6 +20,8 @@ void Sprite::Initialize(SpriteCommon* spriteCommon, uint32_t textureIndex)
 	CreateBufferResource();
 	CreateMaterialResource();
 	CreateTransformationMatrixResource();
+
+	AdjustTextureSize();
 }
 
 void Sprite::Update()
@@ -61,7 +63,7 @@ void Sprite::Update()
 
 	// 左上
 	vertexData_[1].position = { left, top, 0.0f, 1.0f };
-	vertexData_[1].texcoord = { tex_left, tex_right };
+	vertexData_[1].texcoord = { tex_left, tex_top };
 	vertexData_[1].normal = { 0.0f, 0.0f, -1.0f };
 
 	// 右下
