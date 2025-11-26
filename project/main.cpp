@@ -4,7 +4,6 @@
 #include<dbghelp.h>
 #include <strsafe.h>
 #include<dxgidebug.h>
-#include"Math.h"
 #include"externals/DirectXTex/d3dx12.h"
 #include<vector>
 #include <numbers>
@@ -15,6 +14,7 @@
 #include <functional>
 #include<array>
 #include<xaudio2.h>
+#include <list>
 
 #pragma comment(lib, "Dbghelp.lib")
 #pragma comment(lib,"dxcompiler.lib")
@@ -23,21 +23,20 @@
 
 
 #include "externals/DirectXTex/DirectXTex.h"
-
-
 #include "Engine/Input/Input.h"
 #include "Engine/Core/OS/WinApp.h"
 #include <cstdint>
-
 #include "Engine/Core/Graphics/DirectXCommon.h"
 #include <Engine/Core/Graphics/D3DResourceLeakChecker.h>
-#include <Engine/Math/Math.cpp>
+#include "Engine/Math/Math.h"
 
 #include <random>
 
-
-using namespace Math;
-
+struct AABB
+{
+	Vector3 min;
+	Vector3 max;
+};
 
 struct Transform
 {
@@ -45,6 +44,7 @@ struct Transform
 	Vector3 rotate;		//回転
 	Vector3 translate;	//位置
 };
+
 
 struct VertexData
 {
@@ -91,7 +91,7 @@ struct  ModelData
 
 namespace std
 {
-	template <>
+	template < >
 	struct hash<VertexData>
 	{
 		size_t operator()(const VertexData& v) const
@@ -171,6 +171,19 @@ struct ParticleForGPU
 	Vector4 color;
 };
 
+struct Emitter
+{
+	Transform transform; //エミッターの位置情報
+	uint32_t count; //生成するパーティクルの数
+	float frequency; //生成頻度
+	float frequencyTime; //頻度用時刻
+};
+
+struct AccelerationField
+{
+	Vector3 accleration; //加速度
+	AABB area; //範囲
+};
 
 void Log(std::ostream& os, const std::string& message);
 
@@ -193,8 +206,11 @@ void SoundUnload(SoundData* soundData);
 void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData);
 
 //particle生成関数
-Particle MakeNewParticle(std::mt19937& randamEngine);
+Particle MakeNewParticle(std::mt19937& randamEngine, const Vector3& translate);
 
+std::list<Particle> Emit(const Emitter& emitter, std::mt19937& randamEngine);
+
+bool IsCollision(const AABB& aabb, const Vector3& point);
 
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
@@ -505,7 +521,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	/*-------------- オブジェクトファイル --------------*/
 
-	//モデルの読み込み(Plane.ogj)
+	//モデルの読み込み
 	ModelData modelData;
 	modelData.vertices.clear();
 
@@ -537,7 +553,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
 	std::memcpy(vertexData, modelData.vertices.data(), sizeof(VertexData) * modelData.vertices.size());
 
-	const uint32_t kNumMaxInstance = 10;
+	const uint32_t kNumMaxInstance = 100;
 
 	// Instancing用のTransFormationMatrixリソースを作成
 	Microsoft::WRL::ComPtr<ID3D12Resource> instancingResource = dxCommon->CreateBufferResource(sizeof(ParticleForGPU) * kNumMaxInstance);
@@ -643,14 +659,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	std::uniform_real_distribution<float> distColor(0.0f, 1.0f);
 	std::uniform_real_distribution<float> distTime(1.0f, 3.0f);
 
-	//パーティクルの配列
-	Particle particles[kNumMaxInstance];
+	Emitter emitter{};
+	emitter.count = 3;
+	emitter.frequency = 0.5f;
+	emitter.frequencyTime = 0.0f;
+	emitter.transform.translate = { 0.0f,0.0f,0.0f };
+	emitter.transform.rotate = { 0.0f,0.0f,0.0f };
+	emitter.transform.scale = { 1.0f,1.0f,1.0f };
+
+	//パーティクルの配列（list）
+	std::list<Particle> particles;
+	// kNumMaxInstance * 3 のパーティクルを生成（必要なら数を調整）
 	for (uint32_t index = 0; index < kNumMaxInstance; index++)
 	{
-		particles[index] = MakeNewParticle(randomEngine);
-		particles[index].color = { distColor(randomEngine), distColor(randomEngine), distColor(randomEngine),1.0f };
-		particles[index].lifeTime = distTime(randomEngine);
-		particles[index].currentTime = 0.0f;
+		for (int j = 0; j < 3; ++j)
+		{
+			Particle p = MakeNewParticle(randomEngine, emitter.transform.translate);
+			p.color = { distColor(randomEngine), distColor(randomEngine), distColor(randomEngine), 1.0f };
+			p.lifeTime = distTime(randomEngine);
+			p.currentTime = 0.0f;
+			particles.push_back(p);
+		}
 	}
 
 	const float kDeltaTime = 1.0f / 60.0f;
@@ -662,12 +691,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	Transform camera
 	{
 		{ 1.0f, 1.0f,  1.0f },
-		{0.0f,0.0f,  0.0f },
-		{ 0.0f, 0.0f, -30.0f }
+		{ 0.0f, 0.0f,  0.0f },
+		{ 0.0f, 0.0f, -20.0f }
 	};
 
-	bool update = false;
-	// ビルボード（カメラ目線）を使うかどうか
+	AccelerationField accelerationField;
+	accelerationField.accleration = { -15.0f, 0.0f, 0.0f };
+	accelerationField.area.min = { -1.0f, -1.0f, -1.0f };
+	accelerationField.area.max = { 1.0f, 1.0f, 1.0f };
+
+	bool update = true;
+	// ビルボード（カメラ目線）
 	bool useBillboard = true;
 
 	/*---メインループ---*/
@@ -693,70 +727,86 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		uint32_t numInstance = 0;
 
+		// カメラ行列（アフィン） - ループ外で一度計算
+		Matrix4x4 cameraMatrix = Matrix4x4::MakeAffine(camera.scale, camera.rotate, camera.translate);
+		// ビルボード行列の計算（共通）
+		Matrix4x4 billboardMatrix = Matrix4x4::MakeIdentity();
 
-		for (uint32_t index = 0; index < kNumMaxInstance; index++)
+		if (useBillboard)
 		{
-			if (particles[index].lifeTime <= particles[index].currentTime)
+			Matrix4x4 camRotOnly = cameraMatrix;
+			camRotOnly.m[3][0] = 0.0f;
+			camRotOnly.m[3][1] = 0.0f;
+			camRotOnly.m[3][2] = 0.0f;
+			Matrix4x4 invCam = Matrix4x4::Inverse(camRotOnly);
+			billboardMatrix = baccktoFrontMatrix * invCam;
+			billboardMatrix.m[3][0] = 0.0f;
+			billboardMatrix.m[3][1] = 0.0f;
+			billboardMatrix.m[3][2] = 0.0f;
+		}
+		else
+		{
+			billboardMatrix = Matrix4x4::MakeIdentity();
+		}
+
+		Matrix4x4 viewMatrix = Matrix4x4::Inverse(cameraMatrix);
+		Matrix4x4 projectionMatrix = Matrix4x4::MakePerspectiveFov(0.45f, float(winApp->kClientWidth) / float(winApp->kClientHeight), 0.1f, 100.0f);
+
+		//パーティクルの更新と描画準備
+		for (auto it = particles.begin(); it != particles.end(); )
+		{
+			Particle& p = *it;
+
+			// ライフ切れ
+			if (p.currentTime >= p.lifeTime)
 			{
+				it = particles.erase(it);
 				continue;
 			}
 
-			// Update particle motion when enabled
+
 			if (update)
 			{
+				//加速度の影響を受ける
+				if (IsCollision(accelerationField.area, p.transform.translate))
+				{
+					p.velocity += accelerationField.accleration * kDeltaTime;
+				}
+
 				//位置の更新
-				particles[index].transform.translate += particles[index].velocity * kDeltaTime;
-				particles[index].currentTime += kDeltaTime;
+				p.transform.translate += p.velocity * kDeltaTime;
+				p.currentTime += kDeltaTime;
 			}
 
-			// カメラ行列（アフィン）
-			Matrix4x4 cameraMatrix = Matrix4x4::MakeAffineMatrix(camera.scale, camera.rotate, camera.translate);
+			// ワールド行列を作る
+			Matrix4x4 scalematrix = Matrix4x4::MakeScaleMatrix(p.transform.scale);
+			Matrix4x4 translatematrix = Matrix4x4::MakeTranslationMatrix(p.transform.translate);
 
-			// ビルボード行列の計算
-			Matrix4x4 billboardMatrix = Matrix4x4::MakeIdentity();
-
-			if (useBillboard)
-			{
-				// カメラの回転成分だけを取り、逆行列にすることでカメラに常に正面を向かせる
-				Matrix4x4 camRotOnly = cameraMatrix;
-				// 平行移動成分を取り除く
-				camRotOnly.m[3][0] = 0.0f;
-				camRotOnly.m[3][1] = 0.0f;
-				camRotOnly.m[3][2] = 0.0f;
-				// 逆行列（回転のみの逆）をとる
-				Matrix4x4 invCam = Matrix4x4::Inverse(camRotOnly);
-				// 必要であれば Y 軸反転（面の向き調整）
-				billboardMatrix = baccktoFrontMatrix * invCam;
-				// 位置成分が混入しないよう明示的にクリア
-				billboardMatrix.m[3][0] = 0.0f;
-				billboardMatrix.m[3][1] = 0.0f;
-				billboardMatrix.m[3][2] = 0.0f;
-			}
-			else
-			{
-				billboardMatrix = Matrix4x4::MakeIdentity();
-			}
-
-			Matrix4x4 scalematrix = Matrix4x4::MakeScaleMatrix(particles[index].transform.scale);
-			Matrix4x4 translatematrix = Matrix4x4::MakeTranslationMatrix(particles[index].transform.translate);
-		
 			Matrix4x4 worldMatrix = scalematrix * billboardMatrix * translatematrix;
-			Matrix4x4 viewMatrix = Matrix4x4::Inverse(cameraMatrix);
-			Matrix4x4 projectionMatrix = Matrix4x4::MakePerspectiveFovMatrix(0.45f, float(winApp->kClientWidth) / float(winApp->kClientHeight), 0.1f, 100.0f);
 			//WVPMatrixの作成
 			Matrix4x4 worldViewProjectionMatrix = worldMatrix * (viewMatrix * projectionMatrix);
-			
-			// インスタンスデータを書き込む
-			instancingData[numInstance].WVP = worldViewProjectionMatrix;
-			instancingData[numInstance].World = worldMatrix;
-			instancingData[numInstance].color = particles[index].color;
-			float alpha = 1.0f - (particles[index].currentTime / particles[index].lifeTime);
-			instancingData[numInstance].color.w = alpha;
 
-			++numInstance;
+			if (numInstance < kNumMaxInstance)
+			{
+				instancingData[numInstance].WVP = worldViewProjectionMatrix;
+				instancingData[numInstance].World = worldMatrix;
+				instancingData[numInstance].color = p.color;
+				float alpha = 1.0f - (p.currentTime / p.lifeTime);
+				instancingData[numInstance].color.w = alpha;
+
+				++numInstance;
+			}
+
+			++it;
 		}
 
-
+		// Emitterの更新
+		emitter.frequencyTime += kDeltaTime;
+		if (emitter.frequency <= emitter.frequencyTime)
+		{
+			particles.splice(particles.end(), Emit(emitter, randomEngine));
+			emitter.frequencyTime -= emitter.frequency;
+		}
 
 		//開発用UIの処理
 
@@ -764,15 +814,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		ImGui::ColorEdit4("MaterialColor", &materialData->color.x);
 		ImGui::Checkbox("UpdateParticles", &update);
-
 		// Billboard トグルを追加
-		ImGui::Checkbox("Billboard Enabled", &useBillboard);
-
+		ImGui::Checkbox("useBillboard ", &useBillboard);
 		// カメラの位置
 		ImGui::SliderFloat3("CameraTranslate", &camera.translate.x, -50.0f, 50.0f);
 		// カメラの回転
 		ImGui::SliderFloat3("CameraRotate", &camera.rotate.x, -std::numbers::pi_v<float>, std::numbers::pi_v<float>);
-
 
 		const char* blendItems = "Alpha\0Additive\0Multiply\0PreMultiplied\0None\0";
 		if (ImGui::Combo("Blend Mode", &currentBlendModeIndex, blendItems))
@@ -780,6 +827,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			// 選択が変わったら現在のPSOを更新
 			currentGraphicsPipelineState = psoForBlendMode[currentBlendModeIndex];
 		}
+
+		if (ImGui::Button("Add particle"))
+		{
+			particles.splice(particles.end(), Emit(emitter, randomEngine));
+		}
+
+		ImGui::DragFloat3("EmitterTranslate", &emitter.transform.translate.x, 0.01f, -100.0f, 100.0f);
 
 		ImGui::End();
 
@@ -814,7 +868,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		dxCommon->GetCommandList()->SetGraphicsRootDescriptorTable(2, textureSrvGPU);
 
-		//描画！
+		//描画！ (頂点数, インスタンス数, ...)
 		dxCommon->GetCommandList()->DrawInstanced(UINT(modelData.vertices.size()), numInstance, 0, 0);
 
 		//実際のCommandListのImGuiの描画コマンドを積む
@@ -1100,7 +1154,6 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 				Vector3 normal = normIndex ? normals[normIndex - 1] : Vector3{ 0.0f, 0.0f, 0.0f };
 
 
-
 				// この3要素を1つの頂点データとしてまとめる
 				VertexData vertex{ position, texcoord, normal };
 
@@ -1313,14 +1366,46 @@ void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData)
 	result = pSourceVoice->Start();
 }
 
-Particle MakeNewParticle(std::mt19937& randamEngine)
+Particle MakeNewParticle(std::mt19937& randamEngine, const Vector3& translate)
 {
 	std::uniform_real_distribution<float> distribution(-1.0f, 1.0f);
+	std::uniform_real_distribution<float> distColor(0.0f, 1.0f);
+	std::uniform_real_distribution<float> distTime(1.0f, 3.0f);
+
 	Particle particle;
 	particle.transform.scale = { 1.0f,1.0f,1.0f };
 	particle.transform.rotate = { 0.0f, 0.0f, 0.0f };
 	particle.transform.translate = { distribution(randamEngine),distribution(randamEngine),distribution(randamEngine) };
 	particle.velocity = { distribution(randamEngine), distribution(randamEngine), distribution(randamEngine) };
+	particle.color = { distColor(randamEngine), distColor(randamEngine), distColor(randamEngine), 1.0f };
+	particle.lifeTime = distTime(randamEngine);
+
+	Vector3 randomTranslate{ distribution(randamEngine),
+		distribution(randamEngine),
+		distribution(randamEngine)
+	};
+
+	particle.transform.translate = translate + randomTranslate;
 
 	return particle;
+}
+
+std::list<Particle> Emit(const Emitter& emitter, std::mt19937& randamEngine)
+{
+	std::list<Particle> particles;
+
+	for (uint32_t count = 0; count < emitter.count; count++)
+	{
+		particles.push_back(MakeNewParticle(randamEngine, emitter.transform.translate));
+	}
+
+	return particles;
+}
+
+bool IsCollision(const AABB& aabb, const Vector3& point)
+{
+	if (point.x < aabb.min.x || point.x > aabb.max.x) { return false; }
+	if (point.y < aabb.min.y || point.y > aabb.max.y) { return false; }
+	if (point.z < aabb.min.z || point.z > aabb.max.z) { return false; }
+	return true;
 }
