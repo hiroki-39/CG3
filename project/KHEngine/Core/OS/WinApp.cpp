@@ -1,5 +1,6 @@
 ﻿#include "WinApp.h"
 
+
 #pragma comment(lib, "winmm.lib")
 
 
@@ -87,6 +88,8 @@ void WinApp::Finalize()
 	//COMの終了処理
 	CoUninitialize();
 }
+
+
 
 bool WinApp::ProcessMessage()
 {

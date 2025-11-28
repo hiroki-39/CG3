@@ -1,14 +1,182 @@
 ﻿#pragma once
+#include "KHEngine/Core/Graphics/DirectXCommon.h"
+#include "KHEngine/Graphics/Resource/TextureManager.h"
+#include "KHEngine/Math/MathCommon.h"
+#include "KHEngine/Core/OS/WinApp.h"
+#include <wrl.h>
+#include <d3d12.h>
+#include <cstdint>
+
+class SpriteCommon;
+
+// 頂点データ
+struct vertexData
+{
+	Vector4 position;  //xyz：座標　w：画面外判定用
+	Vector2 texcoord;  //uv：テクスチャ座標
+	Vector3 normal;	   //xyz：法線
+};
+
+// マテリアルデータ
+struct Material
+{
+	Vector4 color;		     // 色RGBA
+	bool enableLighting;     // ライティング有効化フラグ
+	float padding[3];	     // パディング
+	Matrix4x4 uvTransform;   // UV変換行列
+	int32_t selectLightings; // ライティング種類選択
+};
+
+// 座標変換行列データ
+struct TransformationMatrix
+{
+	Matrix4x4 WVP;		// ワールドビュー射影変換行列
+	Matrix4x4 World;	// ワールド変換行列
+};
 
 // スプライト
 class Sprite
 {
-public://メンバ変数
+public://メンバ関数
 
 	/// <summary>
 	/// 初期化
 	/// </summary>
-	void Initialize();
+	void Initialize(SpriteCommon* spriteCommon, uint32_t textureIndex);
 
+	/// <summary>
+	/// 更新処理
+	/// </summary>
+	void Update();
+
+	/// <summary>
+	/// 描画処理
+	///	</summary>
+	void Draw();
+
+	/// <summary>
+	/// テクスチャの設定
+	/// </summary>
+	/// <param name="textureIndex">テクスチャインデックス</param>
+	void SetTexture(uint32_t textureIndex);
+
+	// --- Getter ---
+	Vector2 GetPosition() const { return position; }
+	float GetRotation() const { return rotation; }
+	const Vector2& GetSize() const { return size; }
+	const Vector4& GetColor() const { return materialData_->color; }
+	const Vector2& GetAnchorPoint() const { return anchorPoint; }
+	bool IsFlipX() const { return isFlipX_; }
+	bool IsFlipY() const { return isFlipY_; }
+	Vector2 GetTextureLeftTop() const { return textureLeftTop; }
+	Vector2 GetTextureSize() const { return textureSize; }
+
+	// --- Setter ---
+	void SetPosition(const Vector2& position) { this->position = position; }
+	void SetRotation(float rotation) { this->rotation = rotation; }
+	void SetSize(const Vector2& size) { this->size = size; }
+	void SetColor(const Vector4& color) { materialData_->color = color; }
+	void SetAnchorPoint(const Vector2& anchorPoint) { this->anchorPoint = anchorPoint; }
+	void SetFlipX(bool isFlipX) { this->isFlipX_ = isFlipX; }
+	void SetFlipY(bool isFlipY) { this->isFlipY_ = isFlipY; }
+	void SetTextureLeftTop(const Vector2& textureLeftTop) { this->textureLeftTop = textureLeftTop; }
+	void SetTextureSize(const Vector2& textureSize) { this->textureSize = textureSize; }
+
+private://メンバ関数
+
+	/// <summary>
+	///　頂点バッファ・インデックスバッファの作成
+	/// </summary>
+	void CreateBufferResource();
+
+	/// <summary>
+	/// マテリアルの作成
+	/// </summary>
+	void CreateMaterialResource();
+
+	/// <summary>
+	/// 座標変換行列データの作成
+	///	</summary>
+	void CreateTransformationMatrixResource();
+
+	/// <summary>
+	/// テクスチャサイズをイメージに合わせる
+	/// </summary>
+	void AdjustTextureSize();
+
+private://メンバ変数
+
+	// ---- スプライト情報 ----
+
+	// スプライトの位置
+	Vector2 position = { 0.0f,0.0f };
+
+	// スプライトの回転角
+	float rotation = 0.0f;
+
+	// サイズ
+	Vector2 size = { 64.0f,64.0f };
+
+	// アンカーポイント
+	Vector2 anchorPoint = { 0.0f,0.0f };
+
+	// 左右フリップ
+	bool isFlipX_ = false; 
+
+	// 上下フリップ
+	bool isFlipY_ = false;
+
+	// テクスチャ左上座標
+	Vector2 textureLeftTop = { 0.0f,0.0f };
+
+	// テクスチャ切り出しサイズ
+	Vector2 textureSize = { 100.0f,100.0f };
+
+	// ---- バッファリソース ----
+
+	// 頂点バッファリソース
+	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;
+	// インデックスバッファリソース
+	Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
+
+
+	// 頂点データの仮想アドレス
+	vertexData* vertexData_ = nullptr;
+	// インデックスデータの仮想アドレス
+	uint32_t* indexData_ = nullptr;
+
+
+	// 頂点バッファビュー
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
+	// インデックスバッファビュー
+	D3D12_INDEX_BUFFER_VIEW indexBufferView;
+
+
+	// マテリアルリソース
+	Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
+
+	// マテリアルデータの仮想アドレス
+	Material* materialData_ = nullptr;
+
+
+	//スプライト共通部分
+	SpriteCommon* spriteCommon_ = nullptr;
+
+	// 変換行列リソース
+	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResource_;
+
+	// 変換行列データの仮想アドレス
+	TransformationMatrix* transformationMatrixData_ = nullptr;
+
+	// テクスチャハンドル
+	D3D12_GPU_DESCRIPTOR_HANDLE textureHandle_;
+
+	// テクスチャ番号
+	uint32_t textureIndex = 0;
+
+	// DirectXCommon取得
+	DirectXCommon* dxCommon = nullptr;
+
+	WinApp* winApp_ = nullptr;
 };
 

@@ -155,11 +155,8 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="externals\imgui\imgui_widgets.cpp" />
     <ClCompile Include="KHEngine\Input\Input.cpp" />
     <ClCompile Include="KHEngine\Core\Utility\Log\Logger.cpp" />
+    <ClCompile Include="KHEngine\Math\Matrix4x4.cpp" />
     <ClCompile Include="main.cpp">
-      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
-      <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
-    </ClCompile>
-    <ClCompile Include="KHEngine\Math\Math.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
@@ -168,6 +165,7 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="KHEngine\Core\Utility\Timer\Timer.cpp" />
     <ClCompile Include="KHEngine\Graphics\2d\Sprite.cpp" />
     <ClCompile Include="KHEngine\Graphics\2d\SpriteCommon.cpp" />
+    <ClCompile Include="KHEngine\Graphics\Resource\TextureManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="KHEngine\Core\Graphics\D3DResourceLeakChecker.h" />
@@ -182,12 +180,19 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="externals\imgui\imstb_truetype.h" />
     <ClInclude Include="KHEngine\Input\Input.h" />
     <ClInclude Include="KHEngine\Core\Utility\Log\Logger.h" />
-    <ClInclude Include="KHEngine\Math\Math.h" />
     <ClInclude Include="KHEngine\Core\Utility\String\StringUtility.h" />
     <ClInclude Include="KHEngine\Core\OS\WinApp.h" />
     <ClInclude Include="KHEngine\Core\Utility\Timer\Timer.h" />
     <ClInclude Include="KHEngine\Graphics\2d\Sprite.h" />
     <ClInclude Include="KHEngine\Graphics\2d\SpriteCommon.h" />
+    <ClInclude Include="KHEngine\Math\MathCommon.h" />
+    <ClInclude Include="KHEngine\Math\Matrix4x4.h" />
+    <ClInclude Include="KHEngine\Math\Transform.h" />
+    <ClInclude Include="KHEngine\Math\Vector2.h" />
+    <ClInclude Include="KHEngine\Math\Vector3.h" />
+    <ClInclude Include="KHEngine\Math\Vector4.h" />
+    <ClInclude Include="KHEngine\Math\MathUtility.h" />
+    <ClInclude Include="KHEngine\Graphics\Resource\TextureManager.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

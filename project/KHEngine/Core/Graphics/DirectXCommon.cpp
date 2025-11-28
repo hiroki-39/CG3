@@ -5,6 +5,8 @@
 
 using namespace Microsoft::WRL;
 
+const uint32_t DirectXCommon::kMaxSRVCount = 512;
+
 void DirectXCommon::Initialize(WinApp* winApp)
 {
 	//FPS固定の初期化
@@ -198,8 +200,6 @@ void DirectXCommon::CreateSwapChain()
 {
 	HRESULT hr;
 
-	//スワップチェーンの生成
-
 	//ウィンドウの幅
 	swapChainDesc.Width = WinApp::kClientWidth;
 	//ウィンドウの高さ
@@ -240,7 +240,7 @@ void DirectXCommon::CreateDescriptorHeaps()
 	rtvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
 
 	//SRV用のヒープでディスクリプタの数は128。RTVはShader内で触るものではないので、ShaderVisibleはtrue
-	srvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 128, true);
+	srvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, kMaxSRVCount, true);
 
 	//DSV用のヒープでディスクリプタの数は1。RTVはShader内で触るものではないので、ShaderVisibleはfalse
 	dsvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
@@ -677,7 +677,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_
 	return bufferResource;
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(const Microsoft::WRL::ComPtr<ID3D12Device>& device, const DirectX::TexMetadata& metdata)
+Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(const DirectX::TexMetadata& metdata)
 {
 	//1.metadataを元にResureceの設定
 	D3D12_RESOURCE_DESC resourceDesc{};
@@ -755,69 +755,81 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::UploadTextureData(Microsof
 	return intermediataeResource;
 }
 
-DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
+void DirectXCommon::BeginTextureUploadBatch()
 {
+	HRESULT hr;
 
-	//テクスチャファイルを読んでプログラムで扱えるようにする
-	DirectX::ScratchImage image{};
-
-	DirectX::ScratchImage mipImages{};
-
-	std::wstring filePathW = StringUtility::ConvertString(filePath);
-
-	HRESULT hr = DirectX::LoadFromWICFile(
-		filePathW.c_str(),
-		DirectX::WIC_FLAGS_DEFAULT_SRGB,
-		nullptr,
-		image
+	// Note: Use DIRECT command list type here so ResourceBarrier calls are allowed.
+	hr = device->CreateCommandAllocator(
+		D3D12_COMMAND_LIST_TYPE_DIRECT,
+		IID_PPV_ARGS(&uploadAllocator_)
 	);
-
-
-	// 読み込み失敗なら白テクスチャを返す
-	if (FAILED(hr))
-	{
-		// 白色1x1のテクスチャを作成
-		DirectX::TexMetadata metadata{};
-		metadata.width = 1;
-		metadata.height = 1;
-		metadata.arraySize = 1;
-		metadata.mipLevels = 1;
-		metadata.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		metadata.dimension = DirectX::TEX_DIMENSION_TEXTURE2D;
-
-		DirectX::Image whiteImage{};
-		whiteImage.width = 1;
-		whiteImage.height = 1;
-		whiteImage.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		whiteImage.rowPitch = 4;
-		whiteImage.slicePitch = 4;
-
-		uint8_t* pixels = new uint8_t[4]{ 255, 255, 255, 255 }; // 白 RGBA
-		whiteImage.pixels = pixels;
-
-		image.InitializeFromImage(whiteImage);
-
-		// mipなしでそのまま返す
-		mipImages.InitializeFromImage(whiteImage);
-
-		delete[] pixels;
-		return mipImages;
-	}
-
-	//ミップマップの作成
-
-	hr = DirectX::GenerateMipMaps(
-		image.GetImages(),
-		image.GetImageCount(),
-		image.GetMetadata(),
-		DirectX::TEX_FILTER_SRGB,
-		0,
-		mipImages);
-
 	assert(SUCCEEDED(hr));
 
-	//ミップマップ付きのデータを返す
-	return mipImages;
+	hr = device->CreateCommandList(
+		0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+		uploadAllocator_.Get(), nullptr,
+		IID_PPV_ARGS(&uploadCommandList_)
+	);
+	assert(SUCCEEDED(hr));
+
+	// Ensure the command list starts open and ready for recording (CreateCommandList usually returns it open)
+	textureUploadQueue_.clear();
+}
+
+void DirectXCommon::AddTextureUpload(Microsoft::WRL::ComPtr<ID3D12Resource> texture, Microsoft::WRL::ComPtr<ID3D12Resource> intermediate, const std::vector<D3D12_SUBRESOURCE_DATA>& subresources)
+{
+	textureUploadQueue_.push_back({ texture, intermediate, subresources });
+}
+
+void DirectXCommon::ExecuteTextureUploadBatch()
+{
+	// record copies & barriers into uploadCommandList_
+	for (auto& job : textureUploadQueue_)
+	{
+		UpdateSubresources(
+			uploadCommandList_.Get(),
+			job.dst.Get(),
+			job.interm.Get(),
+			0, 0,
+			(UINT)job.sub.size(),
+			job.sub.data()
+		);
+
+		// バリア
+		D3D12_RESOURCE_BARRIER barrier{};
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrier.Transition.pResource = job.dst.Get();
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		
+		uploadCommandList_->ResourceBarrier(1, &barrier);
+
+	}
+
+	// close and execute
+	uploadCommandList_->Close();
+
+	ID3D12CommandList* lists[] = { uploadCommandList_.Get() };
+	commandQueue->ExecuteCommandLists(1, lists);
+
+	// GPU 完了をフェンスで待つ（PostDraw と同様）
+	fenceValue++;
+	commandQueue->Signal(fence.Get(), fenceValue);
+
+	if (fence->GetCompletedValue() < fenceValue)
+	{
+		fence->SetEventOnCompletion(fenceValue, fenceEvent);
+		WaitForSingleObject(fenceEvent, INFINITE);
+	}
+
+	// GPU 完了後にコマンドアロケータ／コマンドリストをリセットして解放
+	uploadAllocator_.Reset();
+	uploadCommandList_.Reset();
+
+	// キューをクリア（中間リソースは TextureManager 側で明示的に解放する）
+	textureUploadQueue_.clear();
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE DirectXCommon::GetCPUDescriptorHandle(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap, uint32_t descriptorSize, uint32_t index)
