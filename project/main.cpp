@@ -894,12 +894,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 #pragma endregion
 
-	// コマンドリストの実行
-	/*dxCommon->ExecuteCommandList();*/
-
-	// 中間リソースをまとめて解放
-
-
 
 	int32_t selectedModel = 0;
 
@@ -1132,6 +1126,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//	//ImGui::SliderAngle("Lightrotate.Y", &directionalLightData->intensity);
 		//}
 
+		// スプライト表示・編集のグループ
 		if (isDisplaySprite)
 		{
 			if (ImGui::CollapsingHeader("Sprite"))
