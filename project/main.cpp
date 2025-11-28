@@ -185,6 +185,18 @@ struct AccelerationField
 	AABB area; //範囲
 };
 
+// 追加: 表現ごとの列挙
+enum class ParticleEffect
+{
+	Wind = 0,
+	Fire,
+	Snow,
+	Explosion,
+	Smoke,
+	Confetti,
+	Count
+};
+
 void Log(std::ostream& os, const std::string& message);
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
@@ -205,10 +217,10 @@ void SoundUnload(SoundData* soundData);
 //音声再生
 void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData);
 
-//particle生成関数
-Particle MakeNewParticle(std::mt19937& randamEngine, const Vector3& translate);
+//particle生成関数（エフェクトを指定可能に変更）
+Particle MakeNewParticle(std::mt19937& randamEngine, const Vector3& translate, ParticleEffect effect = ParticleEffect::Wind);
 
-std::list<Particle> Emit(const Emitter& emitter, std::mt19937& randamEngine);
+std::list<Particle> Emit(const Emitter& emitter, std::mt19937& randamEngine, ParticleEffect effect = ParticleEffect::Wind);
 
 bool IsCollision(const AABB& aabb, const Vector3& point);
 
@@ -663,9 +675,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	emitter.count = 3;
 	emitter.frequency = 0.5f;
 	emitter.frequencyTime = 0.0f;
-	emitter.transform.translate = { 0.0f,0.0f,0.0f };
+	emitter.transform.translate = { 0.0f,-2.0f,0.0f };
 	emitter.transform.rotate = { 0.0f,0.0f,0.0f };
 	emitter.transform.scale = { 1.0f,1.0f,1.0f };
+
+	// 現在のエフェクト選択（UIで変更可能）
+	ParticleEffect currentEffect = ParticleEffect::Wind;
 
 	//パーティクルの配列（list）
 	std::list<Particle> particles;
@@ -674,7 +689,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	{
 		for (int j = 0; j < 3; ++j)
 		{
-			Particle p = MakeNewParticle(randomEngine, emitter.transform.translate);
+			Particle p = MakeNewParticle(randomEngine, emitter.transform.translate, currentEffect);
 			p.color = { distColor(randomEngine), distColor(randomEngine), distColor(randomEngine), 1.0f };
 			p.lifeTime = distTime(randomEngine);
 			p.currentTime = 0.0f;
@@ -767,13 +782,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			if (update)
 			{
-				//加速度の影響を受ける
-				if (IsCollision(accelerationField.area, p.transform.translate))
+				//風のエフェクトの時のみ加速度を適用
+				if (currentEffect == ParticleEffect::Wind)
 				{
-					p.velocity += accelerationField.accleration * kDeltaTime;
+					//加速度の影響を受ける
+					if (IsCollision(accelerationField.area, p.transform.translate))
+					{
+						p.velocity += accelerationField.accleration * kDeltaTime;
+					}
 				}
 
-				//位置の更新
+
+				//位置の更新	
 				p.transform.translate += p.velocity * kDeltaTime;
 				p.currentTime += kDeltaTime;
 			}
@@ -804,7 +824,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		emitter.frequencyTime += kDeltaTime;
 		if (emitter.frequency <= emitter.frequencyTime)
 		{
-			particles.splice(particles.end(), Emit(emitter, randomEngine));
+			particles.splice(particles.end(), Emit(emitter, randomEngine, currentEffect));
 			emitter.frequencyTime -= emitter.frequency;
 		}
 
@@ -812,8 +832,95 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		ImGui::Begin("window");
 
+		// エフェクト選択UI
+		const char* effectItems = "Wind\0Fire\0Snow\0Explosion\0Smoke\0";
+		int effectIndex = static_cast<int>(currentEffect);
+		if (ImGui::Combo("Effect", &effectIndex, effectItems))
+		{
+			currentEffect = static_cast<ParticleEffect>(effectIndex);
+
+			particles.clear();
+
+			emitter.frequencyTime = 0.0f;
+
+			switch (currentEffect)
+			{
+			case ParticleEffect::Wind:
+			currentBlendModeIndex = static_cast<int>(BlendMode::Additive);
+			emitter.count = 3;
+			emitter.frequency = 0.5f;
+			break;
+			case ParticleEffect::Fire:
+			currentBlendModeIndex = static_cast<int>(BlendMode::Additive);
+			emitter.count = 6;
+			emitter.frequency = 0.03f;
+			break;
+			case ParticleEffect::Snow:
+			currentBlendModeIndex = static_cast<int>(BlendMode::Additive);
+			emitter.count = 8;
+			emitter.frequency = 0.02f;
+			break;
+			case ParticleEffect::Explosion:
+			currentBlendModeIndex = static_cast<int>(BlendMode::Additive);
+			emitter.count = 60;
+			emitter.frequency = 1.0f;
+			break;
+			case ParticleEffect::Smoke:
+			currentBlendModeIndex = static_cast<int>(BlendMode::Additive);
+			emitter.count = 10;
+			emitter.frequency = 0.1f;
+			break;
+			case ParticleEffect::Confetti:
+			currentBlendModeIndex = static_cast<int>(BlendMode::Alpha);
+			emitter.count = 20;
+			emitter.frequency = 0.02f;
+			break;
+			default:
+			currentBlendModeIndex = static_cast<int>(BlendMode::Alpha);
+			break;
+			}
+
+			//　PSOを更新
+			currentGraphicsPipelineState = psoForBlendMode[currentBlendModeIndex];
+
+			// 視覚フィードバックとして新エフェクトのパーティクルを即発生させる
+			if (currentEffect == ParticleEffect::Explosion)
+			{
+				// 爆発は一度に大量に出す（バースト）
+				particles.splice(particles.end(), Emit(emitter, randomEngine, currentEffect));
+			}
+			else
+			{
+				// それ以外は少数のシードをすぐ出して切り替わりを見せる
+				Emitter seed = emitter;
+				// seed を少なめにしても良い（最低1）
+				uint32_t seedCount = (seed.count > 3) ? (seed.count / 3) : 1;
+				seed.count = seedCount;
+				particles.splice(particles.end(), Emit(seed, randomEngine, currentEffect));
+			}
+		}
+
+		if (ImGui::Button("Add particle"))
+		{
+			particles.splice(particles.end(), Emit(emitter, randomEngine, currentEffect));
+		}
+
+		ImGui::DragFloat3("EmitterTranslate", &emitter.transform.translate.x, 0.01f, -100.0f, 100.0f);
+		ImGui::DragInt("EmitterCount", reinterpret_cast<int*>(&emitter.count), 1, 1, 200);
+		ImGui::DragFloat("EmitterFrequency", &emitter.frequency, 0.001f, 0.0f, 10.0f);
+
+		const char* blendItems = "Alpha\0Additive\0Multiply\0PreMultiplied\0None\0";
+
+		if (ImGui::Combo("Blend Mode", &currentBlendModeIndex, blendItems))
+		{
+			// 選択が変わったら現在のPSOを更新
+			currentGraphicsPipelineState = psoForBlendMode[currentBlendModeIndex];
+		}
+
 		ImGui::ColorEdit4("MaterialColor", &materialData->color.x);
+
 		ImGui::Checkbox("UpdateParticles", &update);
+
 		// Billboard トグルを追加
 		ImGui::Checkbox("useBillboard ", &useBillboard);
 		// カメラの位置
@@ -821,21 +928,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// カメラの回転
 		ImGui::SliderFloat3("CameraRotate", &camera.rotate.x, -std::numbers::pi_v<float>, std::numbers::pi_v<float>);
 
-		const char* blendItems = "Alpha\0Additive\0Multiply\0PreMultiplied\0None\0";
-		if (ImGui::Combo("Blend Mode", &currentBlendModeIndex, blendItems))
-		{
-			// 選択が変わったら現在のPSOを更新
-			currentGraphicsPipelineState = psoForBlendMode[currentBlendModeIndex];
-		}
-
-		if (ImGui::Button("Add particle"))
-		{
-			particles.splice(particles.end(), Emit(emitter, randomEngine));
-		}
-
-		ImGui::DragFloat3("EmitterTranslate", &emitter.transform.translate.x, 0.01f, -100.0f, 100.0f);
-
 		ImGui::End();
+
 
 
 		/*-------------- ↓描画処理ここから↓ --------------*/
@@ -1366,37 +1460,118 @@ void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData)
 	result = pSourceVoice->Start();
 }
 
-Particle MakeNewParticle(std::mt19937& randamEngine, const Vector3& translate)
+// 変更: 効果ごとの初期値を与える MakeNewParticle
+Particle MakeNewParticle(std::mt19937& randamEngine, const Vector3& translate, ParticleEffect effect)
 {
 	std::uniform_real_distribution<float> distribution(-1.0f, 1.0f);
+	std::uniform_real_distribution<float> distUniform(-1.0f, 1.0f);
 	std::uniform_real_distribution<float> distColor(0.0f, 1.0f);
+	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 	std::uniform_real_distribution<float> distTime(1.0f, 3.0f);
 
 	Particle particle;
-	particle.transform.scale = { 1.0f,1.0f,1.0f };
 	particle.transform.rotate = { 0.0f, 0.0f, 0.0f };
-	particle.transform.translate = { distribution(randamEngine),distribution(randamEngine),distribution(randamEngine) };
-	particle.velocity = { distribution(randamEngine), distribution(randamEngine), distribution(randamEngine) };
-	particle.color = { distColor(randamEngine), distColor(randamEngine), distColor(randamEngine), 1.0f };
-	particle.lifeTime = distTime(randamEngine);
+	particle.currentTime = 0.0f;
 
-	Vector3 randomTranslate{ distribution(randamEngine),
-		distribution(randamEngine),
-		distribution(randamEngine)
-	};
+	switch (effect)
+	{
+	case ParticleEffect::Fire:
+	{
+		// 火: 上向きに飛び、橙〜黄色、短めの寿命、小〜中サイズ
+		float rx = distUniform(randamEngine) * 0.4f;
+		float rz = distUniform(randamEngine) * 0.4f;
+		particle.transform.translate = translate + Vector3{ rx, 0.0f, rz };
+		particle.velocity = Vector3{ distUniform(randamEngine) * 0.5f, 1.2f + dist01(randamEngine) * 1.4f, distUniform(randamEngine) * 0.5f };
+		particle.color = Vector4{ 0.9f, 0.45f + dist01(randamEngine) * 0.25f, 0.05f, 1.0f };
+		particle.lifeTime = 0.6f + dist01(randamEngine) * 1.2f;
+		float s = 0.2f + dist01(randamEngine) * 0.8f;
+		particle.transform.scale = Vector3{ s, s, s };
+		break;
+	}
+	case ParticleEffect::Snow:
+	{
+		// 雪: 上からゆっくり落ちる、白、長寿命、大きさゆらぎ
+		float rx = distUniform(randamEngine) * 4.0f;
+		float rz = distUniform(randamEngine) * 4.0f;
+		particle.transform.translate = translate + Vector3{ rx, 8.0f + dist01(randamEngine) * 2.0f, rz };
+		particle.velocity = Vector3{ distUniform(randamEngine) * 0.1f, -0.2f - dist01(randamEngine) * 0.6f, distUniform(randamEngine) * 0.1f };
+		particle.color = Vector4{ 0.95f, 0.95f, 1.0f, 1.0f };
+		particle.lifeTime = 6.0f + dist01(randamEngine) * 6.0f;
+		float s = 0.15f + dist01(randamEngine) * 0.35f;
+		particle.transform.scale = Vector3{ s, s, s };
+		break;
+	}
+	case ParticleEffect::Explosion:
+	{
+		// 爆発: 一気に飛び散る、高速、短寿命
+		particle.transform.translate = translate;
+		Vector3 dir = Vector3{ distUniform(randamEngine), distUniform(randamEngine), distUniform(randamEngine) };
+		float len = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+		if (len < 1e-5f) dir = Vector3{ 1,1,0 }; else dir = dir * (1.0f / len);
+		float speed = 8.0f + dist01(randamEngine) * 12.0f;
+		particle.velocity = dir * speed;
+		particle.color = Vector4{ 1.0f, 0.6f + dist01(randamEngine) * 0.4f, 0.1f, 1.0f };
+		particle.lifeTime = 0.3f + dist01(randamEngine) * 0.7f;
+		float s = 0.2f + dist01(randamEngine) * 0.6f;
+		particle.transform.scale = Vector3{ s, s, s };
+		break;
+	}
+	case ParticleEffect::Smoke:
+	{
+		// 煙: 上昇して大きくなる、灰色、中〜長寿命
+		float rx = distUniform(randamEngine) * 0.5f;
+		float rz = distUniform(randamEngine) * 0.5f;
+		particle.transform.translate = translate + Vector3{ rx, 0.0f, rz };
+		particle.velocity = Vector3{ distUniform(randamEngine) * 0.3f, 0.4f + dist01(randamEngine) * 0.6f, distUniform(randamEngine) * 0.3f };
+		float g = 0.3f + dist01(randamEngine) * 0.25f;
+		particle.color = Vector4{ g, g, g, 0.8f };
+		particle.lifeTime = 2.0f + dist01(randamEngine) * 4.0f;
+		float s = 0.3f + dist01(randamEngine) * 1.0f;
+		particle.transform.scale = Vector3{ s, s, s };
+		break;
+	}
+	case ParticleEffect::Confetti:
+	{
+		// 紙吹雪: カラフルでランダムに舞う、回転は無視（見た目は色とサイズで）
+		float rx = distUniform(randamEngine) * 1.0f;
+		float rz = distUniform(randamEngine) * 1.0f;
+		particle.transform.translate = translate + Vector3{ rx, 0.0f, rz };
+		particle.velocity = Vector3{ distUniform(randamEngine) * 2.0f, 1.0f + dist01(randamEngine) * 2.0f, distUniform(randamEngine) * 2.0f };
+		particle.color = Vector4{ dist01(randamEngine), dist01(randamEngine), dist01(randamEngine), 1.0f };
+		particle.lifeTime = 3.0f + dist01(randamEngine) * 3.0f;
+		float s = 0.05f + dist01(randamEngine) * 0.2f;
+		particle.transform.scale = Vector3{ s, s * (0.4f + dist01(randamEngine) * 1.6f), s };
+		break;
+	}
+	case ParticleEffect::Wind:
+	default:
+	{
+		particle.transform.scale = { 1.0f,1.0f,1.0f };
+		particle.transform.rotate = { 0.0f, 0.0f, 0.0f };
+		particle.transform.translate = { distribution(randamEngine),distribution(randamEngine),distribution(randamEngine) };
+		particle.velocity = { distribution(randamEngine), distribution(randamEngine), distribution(randamEngine) };
+		particle.color = { distColor(randamEngine), distColor(randamEngine), distColor(randamEngine), 1.0f };
+		particle.lifeTime = distTime(randamEngine);
 
-	particle.transform.translate = translate + randomTranslate;
+		Vector3 randomTranslate{ distribution(randamEngine),
+			distribution(randamEngine),
+			distribution(randamEngine)
+		};
+		break;
+	}
+	}
 
 	return particle;
 }
 
-std::list<Particle> Emit(const Emitter& emitter, std::mt19937& randamEngine)
+// Emit も effect を渡すように変更
+std::list<Particle> Emit(const Emitter& emitter, std::mt19937& randamEngine, ParticleEffect effect)
 {
 	std::list<Particle> particles;
 
 	for (uint32_t count = 0; count < emitter.count; count++)
 	{
-		particles.push_back(MakeNewParticle(randamEngine, emitter.transform.translate));
+		particles.push_back(MakeNewParticle(randamEngine, emitter.transform.translate, effect));
 	}
 
 	return particles;
