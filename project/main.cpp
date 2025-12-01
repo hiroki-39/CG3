@@ -36,6 +36,8 @@
 #include "KHEngine/Core/Graphics/D3DResourceLeakChecker.h"
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
 #include "KHEngine/Graphics/2d/Sprite.h"
+#include "KHEngine/Graphics/3d/Object3d.h"
+#include "KHEngine/Graphics/3d/Object3dCommon.h"
 #include "KHEngine/Graphics/Resource/TextureManager.h"
 
 
@@ -154,8 +156,6 @@ struct SoundData
 
 void Log(std::ostream& os, const std::string& message);
 
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
-
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
 
 void CreateWhiteTexture(DirectX::ScratchImage& outImage);
@@ -172,71 +172,12 @@ void SoundUnload(SoundData* soundData);
 //音声再生
 void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData);
 
-//Transformの初期化
-//Transform  transformSphere
-//{
-//	{1.0f,1.0f,1.0f},
-//	{0.0f,0.0f,0.0f},
-//	{0.0f,0.0f,0.0f},
-//};
-//
-//Transform  transformPlaneObj
-//{
-//	{1.0f,1.0f,1.0f},
-//	{0.0f,0.0f,0.0f},
-//	{0.0f,0.0f,0.0f},
-//};
-//
-//Transform  transformMultiMeshObj
-//{
-//	{1.0f,1.0f,1.0f},
-//	{0.0f,0.0f,0.0f},
-//	{0.0f,0.0f,0.0f},
-//};
-//
-//Transform  transformTeapotObj
-//{
-//	{1.0f,1.0f,1.0f},
-//	{0.0f,0.0f,0.0f},
-//	{0.0f,0.0f,0.0f},
-//};
-//
-//Transform  transformSuzanneObj
-//{
-//	{1.0f,1.0f,1.0f},
-//	{0.0f,0.0f,0.0f},
-//	{0.0f,0.0f,0.0f},
-//};
-//
-//Transform  transformBunnyObj
-//{
-//	{1.0f,1.0f,1.0f},
-//	{0.0f,0.0f,0.0f},
-//	{0.0f,0.0f,0.0f},
-//};
-//
-////CPUで動かす用のTransform
-//Transform transformSprite
-//{
-//	{1.0f,1.0f,1.0f},
-//	{0.0f,0.0f,0.0f},
-//	{0.0f,0.0f,0.0f},
-//};
-//
-////カメラの位置
+//カメラの位置
 //Transform camera
 //{
 //	{ 1.0f, 1.0f,  1.0f },
 //	{ 0.0f, 0.0f,  0.0f },
 //	{ 0.0f, 0.0f, -10.0f }
-//};
-//
-////UVTransformの初期化
-//Transform uvTransformSprite
-//{
-//	{ 1.0f, 1.0f, 1.0f },
-//	{ 0.0f, 0.0f, 0.0f },
-//	{ 0.0f, 0.0f, 0.0f }
 //};
 
 //windowsアプリでのエントリーポイント(main関数)
@@ -296,7 +237,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	spriteCommon = new SpriteCommon();
 	spriteCommon->Initialize(dxCommon);
 
-#pragma endregion 
+	// 3dモデルの共通部分のポインタ
+	Object3dCommon* object3dCommon = nullptr;
+	
+	// 3dモデルの共通部分の初期化
+	object3dCommon = new Object3dCommon();
+	
+	object3dCommon->Initialize();
+
+#pragma endregion 基盤システムの初期化
 
 	//HRESULT hr;
 	//
@@ -892,7 +841,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// 選択用インデックス（ImGuiで操作するための状態）
 	int selectedSpriteIndex = 0;
 
-#pragma endregion
+	Object3d* object3d  = new Object3d();
+	object3d->Initialize();
+
+#pragma endregion 最初のシーンの終了
 
 
 	int32_t selectedModel = 0;
@@ -1305,29 +1257,35 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// テクスチャマネージャの解放
 	TextureManager::GetInstance()->Finalize();
 
-	//入力の解放
+	// 入力の解放
 	delete input;
 
-	//WindowsAPIの終了処理
+	// WindowsAPIの終了処理
 	winApp->Finalize();
 
-	//WindowsAPIの解放
+	// WindowsAPIの解放
 	delete winApp;
 	winApp = nullptr;
 
-
-
-	//DirectX12の解放
+	// DirectX12の解放
 	delete dxCommon;
 
-	//スプライトの解放
+	// スプライトの解放
 	delete spriteCommon;
 
-	//スプライトの解放
+	// スプライトの解放
 	for (uint32_t i = 0; i < 5; i++)
 	{
 		delete sprites[i];
 	}
+
+	// 3dモデルの解放
+	delete object3dCommon;
+	
+	// 3dモデルの解放
+	delete object3d;
+
+
 
 	////音声データ解放
 	//SoundUnload(&soundData1);
@@ -1342,29 +1300,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 //---ここから下は関数の実装---//
 
-//ウィンドウプロシージャ
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-
-	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
-	{
-		return true;
-	}
-
-	//メッセージに応じてゲーム固有の処理を行う
-	switch (msg)
-	{
-		//ウィンドウが破棄された
-	case WM_DESTROY:
-	//OSに対して、アプリの終了を伝える
-	PostQuitMessage(0);
-	return 0;
-	}
-
-	//標準のメッセージ処理を行う
-	return DefWindowProc(hwnd, msg, wparam, lparam);
-}
-
 //出力ウィンドウにメッセージを出力する
 void Log(std::ostream& os, const std::string& message)
 {
@@ -1373,8 +1308,6 @@ void Log(std::ostream& os, const std::string& message)
 	//標準出力にメッセージを出力
 	OutputDebugStringA(message.c_str());
 }
-
-
 
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 {
@@ -1409,9 +1342,6 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 	return EXCEPTION_EXECUTE_HANDLER;
 
 }
-
-
-
 
 void CreateWhiteTexture(DirectX::ScratchImage& outImage)
 {
