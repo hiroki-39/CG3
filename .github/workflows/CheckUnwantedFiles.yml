@@ -3,8 +3,7 @@ name: CheckUnwantedFiles
 
 on:
   #GitubのActionsタブから手動で実行出来るようにすろ
-  workflow_dispath:
-
+  workflow_dispatch:
   # masterブランチへのプッシュでも実行する
   push:
     branches:
