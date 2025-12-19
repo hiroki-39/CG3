@@ -438,7 +438,12 @@ void DirectXCommon::InitImGui()
 		srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
 		srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
 	);
+
+	// ImGui の DX12 実装が内部デバイスオブジェクトを作る実装ならここで確実に生成する
+	//（フォントテクスチャ等）  
+	ImGui_ImplDX12_CreateDeviceObjects();
 }
+
 
 void DirectXCommon::PreDraw()
 {
@@ -465,35 +470,32 @@ void DirectXCommon::PreDraw()
 
 	//描画先のRTVを設定
 	commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], false, nullptr);
-	
+
 	//描画先のDSVを設定
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], false, &dsvHandle);
 
 	//指定した色で画面全体をクリアする
-	//RGBAの順番で指定
 	float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
 	commandList->ClearRenderTargetView(
-		rtvHandles[backBufferIndex], //クリアするRTV
-		clearColor,                 //クリアする色
-		0,                          //指定しない
-		nullptr                     //指定しない
+		rtvHandles[backBufferIndex],
+		clearColor,
+		0,
+		nullptr
 	);
 
-	//指定した深度で画面全体をクリア
+	//深度クリア
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-	//描画用のDesciptorHeapを設定
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorheaps[] = { srvDescriptorHeap };
-	commandList->SetDescriptorHeaps(1, descriptorheaps->GetAddressOf());
+	// 描画用のデスクリプタヒープを設定（安全な生ポインタ配列を渡す）
+	ID3D12DescriptorHeap* descriptorHeaps[] = { srvDescriptorHeap.Get() };
+	commandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
 	//Viewportを設定
 	commandList->RSSetViewports(1, &viewport);
 
-	//Scirssorを設定
+	//Scissorを設定
 	commandList->RSSetScissorRects(1, &scissorRect);
-
-
 }
 
 void DirectXCommon::PostDraw()

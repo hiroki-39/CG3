@@ -9,7 +9,14 @@
 
 class SpriteCommon;
 
-// 頂点データ
+
+
+// スプライト
+class Sprite
+{
+public: //構造体
+
+	// 頂点データ
 struct vertexData
 {
 	Vector4 position;  //xyz：座標　w：画面外判定用
@@ -33,10 +40,6 @@ struct TransformationMatrix
 	Matrix4x4 WVP;		// ワールドビュー射影変換行列
 	Matrix4x4 World;	// ワールド変換行列
 };
-
-// スプライト
-class Sprite
-{
 public://メンバ関数
 
 	/// <summary>

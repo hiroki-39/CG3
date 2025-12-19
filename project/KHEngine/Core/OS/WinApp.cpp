@@ -95,17 +95,17 @@ bool WinApp::ProcessMessage()
 {
 	MSG msg{};
 
-	//windowsにメッセージが来たら最優先で処理する
-	if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+	// 来たメッセージを全て処理する（1つだけ処理して戻す実装だと取りこぼしが発生して反応が悪くなる）
+	while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
-	}
 
-	//もし終了メッセージが来ていたらtrueを返す
-	if (msg.message == WM_QUIT)
-	{
-		return true;
+		// 終了メッセージが来たら true を返す
+		if (msg.message == WM_QUIT)
+		{
+			return true;
+		}
 	}
 
 	return false;
