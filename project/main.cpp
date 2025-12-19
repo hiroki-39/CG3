@@ -228,14 +228,6 @@ Transform camera
 	{ 0.0f, 0.0f, -10.0f }
 };
 
-//UVTransformの初期化
-Transform uvTransformSprite
-{
-	{ 1.0f, 1.0f, 1.0f },
-	{ 0.0f, 0.0f, 0.0f },
-	{ 0.0f, 0.0f, 0.0f }
-};
-
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
@@ -489,178 +481,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	assert(SUCCEEDED(hr));
 
-	//===================================
-	//球体の設定
-	//===================================
-
-	/*--- VertexBufferの設定 ---*/
-
-	//分裂数
-	const uint32_t kSubdivision = 16;
-
-	//経度分割1つ分の角度
-	const float kLonEvery = 2.0f * std::numbers::pi_v<float> / float(kSubdivision);
-
-	//緯度分割1つ分の角度
-	const float kLatEvery = std::numbers::pi_v<float> / float(kSubdivision);
-
-	//必要な頂点数
-	const uint32_t vertexCount = (kSubdivision + 1) * (kSubdivision + 1);
-
-	//頂点リソースを作成
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourceSphere = dxCommon->CreateBufferResource(sizeof(VertexData) * vertexCount);
-
-	//頂点バッファビューを作成
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSphere{};
-
-	////リソースの先頭のアドレスから使う
-	vertexBufferViewSphere.BufferLocation = vertexResourceSphere->GetGPUVirtualAddress();
-
-	//使用するリソースのサイズは頂点3つのサイズ
-	vertexBufferViewSphere.SizeInBytes = sizeof(VertexData) * vertexCount;
-	//1頂点当たりのサイズ
-	vertexBufferViewSphere.StrideInBytes = sizeof(VertexData);
-
-	//頂点リソースデータを書き込む
-	VertexData* vertexDataSphere = nullptr;
-
-	//書き込む為のアドレスを取得
-	vertexResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataSphere));
-
-	//緯度の方向に分割 -π/2 ~ π/2
-	for (uint32_t latIndex = 0; latIndex <= kSubdivision; latIndex++)
-	{
-		//経度の方向に分割 0 ~ 2π
-		for (uint32_t lonIndex = 0; lonIndex <= kSubdivision; lonIndex++)
-		{
-			uint32_t index = latIndex * (kSubdivision + 1) + lonIndex;
-
-			//現在の経度
-			float lon = lonIndex * kLonEvery;
-			//現在の緯度
-			float lat = -std::numbers::pi_v<float> / 2.0f + kLatEvery * latIndex;
-
-			//頂点にデータを入力する
-
-			//位置
-			vertexDataSphere[index].position.x = cos(lat) * cos(lon);
-			vertexDataSphere[index].position.y = sin(lat);
-			vertexDataSphere[index].position.z = cos(lat) * sin(lon);
-			vertexDataSphere[index].position.w = 1.0f;
-
-			//テクスチャ座標
-			vertexDataSphere[index].texcoord = {
-				 1.0f - float(lonIndex) / float(kSubdivision),
-				 1.0f - float(latIndex) / float(kSubdivision)
-			};
-
-			//法線
-			Vector3 normal = math.Normalize({ vertexDataSphere[index].position.x,
-				vertexDataSphere[index].position.y, vertexDataSphere[index].position.z });
-			vertexDataSphere[index].normal = normal;
-		}
-	}
-
-
-	/*--- 頂点インデックスの設定 ---*/
-
-	//必要な頂点数
-	const uint32_t indexCount = kSubdivision * kSubdivision * 6;
-
-	//球体用のインデックスリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> indexResourceSphere = dxCommon->CreateBufferResource(sizeof(uint32_t) * indexCount);
-
-	//インデックスバッファビューを作成
-	D3D12_INDEX_BUFFER_VIEW indexBufferViewSphere{};
-
-	//リソースの先頭アドレスから使う
-	indexBufferViewSphere.BufferLocation = indexResourceSphere->GetGPUVirtualAddress();
-
-	//使用するリソースのサイズはインデックス6つ分のサイズ
-	indexBufferViewSphere.SizeInBytes = sizeof(uint32_t) * indexCount;
-
-	//インデックスはuint32_tとする
-	indexBufferViewSphere.Format = DXGI_FORMAT_R32_UINT;
-
-	//インデックスデータの設定
-	uint32_t* indexDataSphere = nullptr;
-	indexResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSphere));
-
-	//インデックスの設定
-	uint32_t currentIndex = 0;
-
-	//緯度の方向に分割 -π/2 ~ π/2
-	for (uint32_t latIndex = 0; latIndex < kSubdivision; latIndex++)
-	{
-		//経度の方向に分割 0 ~ 2π
-		for (uint32_t lonIndex = 0; lonIndex < kSubdivision; lonIndex++)
-		{
-			// 左上
-			uint32_t v0 = latIndex * (kSubdivision + 1) + lonIndex;
-			// 右上
-			uint32_t v1 = v0 + 1;
-			// 左下
-			uint32_t v2 = (latIndex + 1) * (kSubdivision + 1) + lonIndex;
-			// 右下
-			uint32_t v3 = v2 + 1;
-
-			//頂点にデータを入力する
-
-			//三角形1つ目:abc
-			indexDataSphere[currentIndex++] = v0;
-			indexDataSphere[currentIndex++] = v1;
-			indexDataSphere[currentIndex++] = v2;
-
-
-			//三角形2つ目:cbd
-			indexDataSphere[currentIndex++] = v2;
-			indexDataSphere[currentIndex++] = v1;
-			indexDataSphere[currentIndex++] = v3;
-
-		}
-	}
-
-
-
-
-
-	//TransformationMatrix用のリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource>transformationMatrixResourceSphere = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
-
-	//データを書き込む
-	TransformationMatrix* transformationMatrixDataSphere = nullptr;
-
-	//書き込むためのアドレス取得
-	transformationMatrixResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataSphere));
-
-	//単位行列を書き込む
-	transformationMatrixDataSphere->WVP = math.MakeIdentity();
-
-
-
-
-	//マテリアル用のリソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> materialResourceSphere = dxCommon->CreateBufferResource(sizeof(Material));
-
-	//頂点リソースデータを書き込む
-	Material* materialDataSphere = nullptr;
-
-	//書き込む為のアドレスを取得
-	materialResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&materialDataSphere));
-
-	//色の設定
-	materialDataSphere->color = { 1.0f,1.0f,1.0f,1.0f };
-
-	//Lightingを有効化
-	materialDataSphere->enableLighting = true;
-
-	//Lightingの種類の設定
-	materialDataSphere->selectLightings = 2;
-
-	//単位行列を書き込む
-	materialDataSphere->uvTransform = math.MakeIdentity();
-
-
 	/*-------------- オブジェクトファイル --------------*/
 
 	//モデルの読み込み(Plane.ogj)
@@ -906,19 +726,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	dxCommon->GetDevice()->CreateShaderResourceView(textureResource2.Get(), &srvDesc2, textureSrvHandleCPU2);
 
 
-	////Xaudioエンジンのインスタンスを生成
-	//result = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
-	////マスターボイスを生成
-	//result = xAudio2.Get()->CreateMasteringVoice(&masterVoice);
-
-
-	////音声データの読み込み
-	//SoundData soundData1 = SoundLoadWave("Resources/Alarm01.wav");
-
-	////音声再生
-	//SoundPlayWave(xAudio2.Get(), soundData1);
-	//SoundPlayWave(xAudio2.Get(), soundData1);
-
 	int32_t selectedModel = 0;
 
 	bool isDisplaySprite = true;
@@ -964,19 +771,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		/*-------------- ↓更新処理ここから↓ --------------*/
 
-		/*--- スフィアの更新処理 ---*/
-
-
-		//Transformの更新
-		Matrix4x4 worldMatrix = math.MakeAffineMatrix(transformSphere.scale, transformSphere.rotate, transformSphere.translate);
-		Matrix4x4 cameraMatrix = math.MakeAffineMatrix(camera.scale, camera.rotate, camera.translate);
-		Matrix4x4 viewMatrix = math.Matrix4x4Inverse(cameraMatrix);
-		Matrix4x4 projectionMatrix = math.MakePerspectiveFovMatrix(0.45f, float(winApp->kClientWidth) / float(winApp->kClientHeight), 0.1f, 100.0f);
-		//WVPMatrixの作成
-		Matrix4x4 worldViewProjectionMatrix = math.Matrix4x4Multiply(worldMatrix, math.Matrix4x4Multiply(viewMatrix, projectionMatrix));
-		transformationMatrixDataSphere->WVP = worldViewProjectionMatrix;
-		transformationMatrixDataSphere->World = worldMatrix;
-
 		/*--- Plane.objの更新処理 ---*/
 
 		//Transformの更新
@@ -1007,7 +801,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//ライトの正規化
 		directionalLightData->direction = math.Normalize(directionalLightData->direction);
 
-		const char* modelNames[] = { "Sphere","PlaneObj" };
 
 		const char* enableLightings[] = { "None","Lambert","Half Lambert" };
 
@@ -1016,41 +809,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		ImGui::Begin("window");
 
 
-		ImGui::Combo("ModelSelect", &selectedModel, modelNames, IM_ARRAYSIZE(modelNames));
-
 		ImGui::Checkbox("displaySprite", &isDisplaySprite);
-
-		switch (selectedModel)
-		{
-		case 0:
-		/*--- Sphere.obj ---*/
-
-		if (ImGui::CollapsingHeader("Sphere"))
-		{
-			//位置
-			ImGui::DragFloat3("transform.translate", &transformSphere.translate.x, 0.01f);
-
-			// X軸の回転
-			ImGui::SliderAngle("transform.rotate.X", &transformSphere.rotate.x);
-
-			// Y軸の回転
-			ImGui::SliderAngle("transform.rotate.Y", &transformSphere.rotate.y);
-
-			// Z軸の回転
-			ImGui::SliderAngle("transform.rotate.Z", &transformSphere.rotate.z);
-
-			//スケール
-			ImGui::DragFloat3("transform.scale", &transformSphere.scale.x, 0.01f);
-
-			//カラー変更
-			ImGui::ColorEdit4("Color", &(materialDataSphere->color).x);
-
-			//Lightingの切り替え
-			ImGui::Combo("selectedLight", &materialDataSphere->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
-		}
-
-		break;
-		case 1:
 
 		/*--- Plane.obj ---*/
 
@@ -1079,9 +838,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			//Lightingの切り替え
 			ImGui::Combo("selectedLight", &materialDataPlaneObj->selectLightings, enableLightings, IM_ARRAYSIZE(enableLightings));
-		}
-
-		break;
 		}
 
 
@@ -1170,36 +926,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//形状を設定
 		dxCommon->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-
-		switch (selectedModel)
-		{
-		case 0:
-		/*--- Sphere.obj ---*/
-
-		//VBVの設定
-		dxCommon->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);
-
-		//IBVの設定
-		dxCommon->GetCommandList()->IASetIndexBuffer(&indexBufferViewSphere);
-
-		//CBVの設定
-		dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResourceSphere->GetGPUVirtualAddress());
-
-		//wvp用のCBufferの場所を設定
-		dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSphere->GetGPUVirtualAddress());
-
-		//SRVのDescriptorTableの先頭を設定
-		dxCommon->GetCommandList()->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU1);
-
-		//平行光源用のCBufferの場所を設定
-		dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(3, directionalLightResouerce->GetGPUVirtualAddress());
-
-		//描画！
-		dxCommon->GetCommandList()->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
-
-		break;
-		case 1:
-
 		/*--- Plane.obj ---*/
 
 		//VBVの設定
@@ -1223,8 +949,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//描画！
 		dxCommon->GetCommandList()->DrawIndexedInstanced(UINT(modelDataPlaneObj.indices.size()), 1, 0, 0, 0);
 
-		break;
-		}
 
 		if (isDisplaySprite)
 		{
@@ -1287,8 +1011,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	////解放処理
 	//CloseHandle(fenceEvent);
-
-
 
 	return 0;
 }
