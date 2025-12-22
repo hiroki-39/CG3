@@ -136,16 +136,16 @@ void Sprite::CreateBufferResource()
 	// --- VertexResourceを作る ---
 
 	//　頂点リソースを作る
-	vertexResource_ = dxCommon->CreateBufferResource(sizeof(vertexData) * 4);
+	vertexResource_ = dxCommon->CreateBufferResource(sizeof(VertexData) * 4);
 
 	//　リソースの先頭アドレスから使う
 	vertexBufferView.BufferLocation = vertexResource_->GetGPUVirtualAddress();
 
 	//　リソースの先頭アドレスから使う
-	vertexBufferView.SizeInBytes = static_cast<UINT>(sizeof(vertexData) * 4);
+	vertexBufferView.SizeInBytes = static_cast<UINT>(sizeof(VertexData) * 4);
 
 	//　1頂点あたりのサイズ
-	vertexBufferView.StrideInBytes = static_cast<UINT>(sizeof(vertexData));
+	vertexBufferView.StrideInBytes = static_cast<UINT>(sizeof(VertexData));
 
 	// VertexResourceにデータを書き込むためのアドレスを取得してvertexData_に割り当てる
 	vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_));

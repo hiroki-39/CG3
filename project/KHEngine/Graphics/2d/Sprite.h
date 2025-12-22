@@ -14,10 +14,10 @@ class SpriteCommon;
 // スプライト
 class Sprite
 {
-public:
+private:
 
 	// 頂点データ
-	struct vertexData
+	struct VertexData
 	{
 		Vector4 position;  //xyz：座標　w：画面外判定用
 		Vector2 texcoord;  //uv：テクスチャ座標
@@ -145,7 +145,7 @@ private://メンバ変数
 
 
 	// 頂点データの仮想アドレス
-	vertexData* vertexData_ = nullptr;
+	VertexData* vertexData_ = nullptr;
 	// インデックスデータの仮想アドレス
 	uint32_t* indexData_ = nullptr;
 
