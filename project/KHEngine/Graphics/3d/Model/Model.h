@@ -1,10 +1,11 @@
 ﻿#pragma once
-#include "KHEngine/Graphics/3d/Object3dCommon.h"
+#include "KHEngine/Graphics/3d/Model/ModelCommon.h"
+
 #include "KHEngine/Math/MathCommon.h"
 
-class Object3d
+class Model
 {
-public:// 構造体
+public: //構造体
 
 	struct VertexData
 	{
@@ -29,20 +30,6 @@ public:// 構造体
 		int32_t selectLightings;
 	};
 
-	struct TransformationMatrix
-	{
-		Matrix4x4 WVP;
-		Matrix4x4 World;
-	};
-
-
-	struct DirectionlLight
-	{
-		Vector4 color; // ライトの色
-		Vector3 direction; //ライトの向き
-		float intensity; //輝度
-	};
-
 	struct MaterialData
 	{
 		std::string textureFilePath;
@@ -56,24 +43,20 @@ public:// 構造体
 		MaterialData material;
 	};
 
-public://メンバ関数
+public: //メンバ関数
 
 	/// <summary>
 	/// 初期化
 	/// </summary>
-	void Initialize(Object3dCommon* object3dCommon);
-	
-	/// <summary>
-	/// 更新処理
-	/// </summary>
-	void Update();
-	
+	void Initialize(ModelCommon* modelCommon);
+
+
 	/// <summary>
 	/// 描画処理
 	/// </summary>
 	void Draw();
 
-private://メンバ関数
+private: //メンバ関数
 
 	/// <summary>
 	///　頂点バッファ・インデックスバッファの作成
@@ -86,17 +69,6 @@ private://メンバ関数
 	void CreateMaterialResource();
 
 	/// <summary>
-	/// 座標変換行列データの作成
-	///	</summary>
-	void CreateTransformationMatrixResource();
-
-	/// <summary>
-	/// 平行光源の作成
-	/// </summary>
-	void CreateDirectionalLight();
-
-
-	/// <summary>
 	/// objファイルの読み込み
 	/// </summary>
 	static ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename);
@@ -106,15 +78,13 @@ private://メンバ関数
 	/// </summary>
 	static MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
 
-private://メンバ変数
-
-	// 共通部分
-	Object3dCommon* object3dCommon = nullptr;
+private: //メンバ変数
 
 	// DirectXCommon取得
 	DirectXCommon* dxCommon = nullptr;
 
-	WinApp* winApp_ = nullptr;
+	//ModelCommonのポインタ
+	ModelCommon* modelCommon = nullptr;
 
 	// objファイルのデータ
 	ModelData modelData;
@@ -139,34 +109,18 @@ private://メンバ変数
 
 	// マテリアルリソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
+
 	// マテリアルデータの仮想アドレス
 	Material* materialData_ = nullptr;
 
-
-	// 変換行列リソース
-	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResource_;
-	// 変換行列データの仮想アドレス
-	TransformationMatrix* transformationMatrixData_ = nullptr;
-
-
-	//平行光源用のリソース
-	Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResouerce_;
-	//データを書き込む
-	DirectionlLight* directionalLightData_ = nullptr;
-
-
-	Transform transform;
-
-	Transform cameraTransform;
 };
-
 
 namespace std
 {
 	template <>
-	struct hash<Object3d::VertexData>
+	struct hash<Model::VertexData>
 	{
-		size_t operator()(const Object3d::VertexData& v) const
+		size_t operator()(const Model::VertexData& v) const
 		{
 			size_t h1 = hash<float>()(v.position.x) ^ hash<float>()(v.position.y) ^ hash<float>()(v.position.z);
 			size_t h2 = hash<float>()(v.texcoord.x) ^ hash<float>()(v.texcoord.y);
@@ -175,4 +129,3 @@ namespace std
 		}
 	};
 }
-

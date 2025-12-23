@@ -1,18 +1,16 @@
-﻿#include "Object3d.h"
+﻿#include "Model.h"
 #include "KHEngine/Graphics/Resource/TextureManager.h"
 #include <fstream>
 #include <sstream>
 
-
-void Object3d::Initialize(Object3dCommon* object3dCommon)
+void Model::Initialize(ModelCommon* modelCommon)
 {
 	// 引数で受け取ってメンバ変数に記録
-	this->object3dCommon = object3dCommon;
-	assert(this->object3dCommon != nullptr);
+	this->modelCommon = modelCommon;
+	assert(this->modelCommon != nullptr);
 
-	// DirectXCommonを取得して保存
-	this->dxCommon = this->object3dCommon->GetDirectXCommon();
-	assert(this->dxCommon != nullptr);
+	dxCommon = modelCommon->GetDirectXCommon();
+	assert(dxCommon != nullptr);
 
 	//モデルの読み込み(Plane.ogj)
 	modelData = LoadObjFile("resources", "plane.obj");
@@ -23,42 +21,15 @@ void Object3d::Initialize(Object3dCommon* object3dCommon)
 	//マテリアルの作成
 	CreateMaterialResource();
 
-	//座標変換行列データの作成
-	CreateTransformationMatrixResource();
-
-	//平行光源の作成
-	CreateDirectionalLight();
-
 	// .objの参照しているテクスチャを読み込み
 	TextureManager::GetInstance()->LoadTexture(modelData.material.textureFilePath);
 
 	// 読み込んだテクスチャの番号を取得
 	modelData.material.textureIndex =
 		TextureManager::GetInstance()->GetTextureIndexByFilePath(modelData.material.textureFilePath);
-
-	transform.translate = { 0.0f,0.0f,0.0f };
-	transform.rotation = { 0.0f,0.0f,0.0f };
-	transform.scale = { 1.0f,1.0f,1.0f };
-
-	cameraTransform.translate = { 0.0f,0.0f,-15.0f };
-	cameraTransform.rotation = { 0.0f,0.0f,0.0f };
-	cameraTransform.scale = { 1.0f,1.0f,1.0f };
 }
 
-void Object3d::Update()
-{
-	//Transformの更新
-	Matrix4x4 worldMatrix = transform.GetWorldMatrix();
-	Matrix4x4 cameraMatrix = cameraTransform.GetWorldMatrix();
-	Matrix4x4 viewMatrix = Matrix4x4::Inverse(cameraMatrix);
-	Matrix4x4 projectionMatrix = Matrix4x4::Perspective(0.45f, float(winApp_->kClientWidth) / float(winApp_->kClientHeight), 0.1f, 100.0f);
-	//WVPMatrixの作成
-	Matrix4x4 worldViewProjectionMatrix = Matrix4x4::Multiply(worldMatrix, Matrix4x4::Multiply(viewMatrix, projectionMatrix));
-	transformationMatrixData_->WVP = worldViewProjectionMatrix;
-	transformationMatrixData_->World = worldMatrix;
-}
-
-void Object3d::Draw()
+void Model::Draw()
 {
 	//VBVの設定
 	dxCommon->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView);
@@ -69,20 +40,14 @@ void Object3d::Draw()
 	//CBVの設定
 	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
 
-	//wvp用のCBufferの場所を設定
-	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResource_->GetGPUVirtualAddress());
-
 	//SRVのDescriptorTableの先頭を設定
 	dxCommon->GetCommandList()->SetGraphicsRootDescriptorTable(2, TextureManager::GetInstance()->GetSrvHandleGPU(modelData.material.textureIndex));
-
-	//平行光源用のCBufferの場所を設定
-	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(3, directionalLightResouerce_->GetGPUVirtualAddress());
 
 	//描画！
 	dxCommon->GetCommandList()->DrawIndexedInstanced(UINT(modelData.indices.size()), 1, 0, 0, 0);
 }
 
-void Object3d::CreateBufferResource()
+void Model::CreateBufferResource()
 {
 	/*--- 頂点バッファ用リソースを作る ---*/
 
@@ -121,7 +86,7 @@ void Object3d::CreateBufferResource()
 
 }
 
-void Object3d::CreateMaterialResource()
+void Model::CreateMaterialResource()
 {
 	//マテリアル用のリソースを作る
 	materialResource_ = dxCommon->CreateBufferResource(sizeof(Material));
@@ -142,36 +107,7 @@ void Object3d::CreateMaterialResource()
 	materialData_->uvTransform = Matrix4x4::Identity();
 }
 
-void Object3d::CreateTransformationMatrixResource()
-{
-	//WVP用のリソースを作る
-	transformationMatrixResource_ = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
-
-	//書き込むためのアドレス取得
-	transformationMatrixResource_->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixData_));
-
-	//単位行列を書き込む
-	transformationMatrixData_->WVP = Matrix4x4::Identity();
-	transformationMatrixData_->World = Matrix4x4::Identity();
-}
-
-void Object3d::CreateDirectionalLight()
-{
-	//平行光源用のリソースを作成
-	directionalLightResouerce_ = dxCommon->CreateBufferResource(sizeof(DirectionlLight));
-
-	//書き込むためのアドレス取得
-	directionalLightResouerce_->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData_));
-
-	//ライトの色
-	directionalLightData_->color = { 1.0f,1.0f,1.0f,1.0f };
-	//向き
-	directionalLightData_->direction = { 1.0f,0.0f,0.0f };
-	//輝度
-	directionalLightData_->intensity = 1.0f;
-}
-
-Object3d::ModelData Object3d::LoadObjFile(const std::string& directoryPath, const std::string& filename)
+Model::ModelData Model::LoadObjFile(const std::string& directoryPath, const std::string& filename)
 {
 	/*--- 1.中で必要となる変数の宣言 ---*/
 	//構成するモデルデータ
@@ -377,7 +313,7 @@ Object3d::ModelData Object3d::LoadObjFile(const std::string& directoryPath, cons
 	return modelData;
 }
 
-Object3d::MaterialData Object3d::LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename)
+Model::MaterialData Model::LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename)
 {
 	/*---	1.中で必要となる変数の宣言	---*/
 

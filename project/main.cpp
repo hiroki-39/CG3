@@ -31,10 +31,11 @@
 #include "KHEngine/Core/Graphics/D3DResourceLeakChecker.h"
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
 #include "KHEngine/Graphics/2d/Sprite.h"
-#include "KHEngine/Graphics/3d/Object3dCommon.h"
-#include "KHEngine/Graphics/3d/Object3d.h"
+#include "KHEngine/Graphics/3d/Object/Object3dCommon.h"
+#include "KHEngine/Graphics/3d/Object/Object3d.h"
 #include "KHEngine/Graphics/Resource/TextureManager.h"
-
+#include "KHEngine/Graphics/3d/Model/ModelCommon.h"
+#include "KHEngine/Graphics/3d/Model/Model.h"
 
 
 
@@ -87,13 +88,13 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
 
 void CreateWhiteTexture(DirectX::ScratchImage& outImage);
 
-SoundData SoundLoadWave(const char* filename);
-
-//音声データ解放
-void SoundUnload(SoundData* soundData);
-
-//音声再生
-void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData);
+//SoundData SoundLoadWave(const char* filename);
+//
+////音声データ解放
+//void SoundUnload(SoundData* soundData);
+//
+////音声再生
+//void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData);
 
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
@@ -157,6 +158,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	object3dCommon = new Object3dCommon();
 	object3dCommon->Initialize(dxCommon);
 
+	ModelCommon modelCommon;
+	modelCommon.Initialize(dxCommon);
+
 #pragma endregion 
 
 
@@ -164,6 +168,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	// テクスチャアップロードの開始
 	dxCommon->BeginTextureUploadBatch();
+
+	auto* model = new Model();
+	model->Initialize(&modelCommon);
 
 	// 既存スプライト用テクスチャの読み込み
 	texManager->LoadTexture("resources/uvChecker.png");
@@ -240,6 +247,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	Object3d* object3d = new Object3d();
 	object3d->Initialize(object3dCommon);
+	object3d->SetModel(model);
+	
+
+	// UI 用の編集状態を保持（初期値は object3d の現在値から）
+	Vector3 editTranslate = object3d->GetTranslate();
+	Vector3 editRotation = object3d->GetRotation();
+	Vector3 editScale = object3d->GetScale();
+
+	// 描画/同期フラグ
+	bool drawSecondInstance = true;
+	bool syncTransforms = true;
 
 #pragma endregion
 
@@ -373,6 +391,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 		}
 
+		ImGui::Separator();
+		if (ImGui::CollapsingHeader("Model Controls"))
+		{
+			ImGui::Text("Edit primary instance transform:");
+
+			if (ImGui::DragFloat3("Position (X,Y,Z)", &editTranslate.x, 0.1f, -10000.0f, 10000.0f))
+			{
+				object3d->SetTranslate(editTranslate);
+			}
+			if (ImGui::DragFloat3("Rotation (X,Y,Z deg)", &editRotation.x, 0.5f, -360.0f, 360.0f))
+			{
+				object3d->SetRotation(editRotation);
+			}
+			if (ImGui::DragFloat3("Scale (X,Y,Z)", &editScale.x, 0.01f, 0.001f, 100.0f))
+			{
+				object3d->SetScale(editScale);
+			}
+		}
+
 		ImGui::End();
 
 
@@ -387,9 +424,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		object3d->Draw();
 
-
 		spriteCommon->SetCommonDrawSetting();
-		
+
 		if (isDisplaySprite)
 		{
 			/*--- Sprite ---*/
@@ -399,6 +435,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				sprites[i]->Draw();
 			}
 		}
+
 
 		//実際のCommandListのImGuiの描画コマンドを積む
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), dxCommon->GetCommandList());
