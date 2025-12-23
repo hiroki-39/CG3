@@ -58,6 +58,11 @@ void Object3d::Draw()
 
 }
 
+void Object3d::SetModel(const std::string& filePath)
+{
+	model = ModelManager::GetInstance()->FindModel(filePath);
+}
+
 void Object3d::CreateTransformationMatrixResource()
 {
 	//WVP用のリソースを作る

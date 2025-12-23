@@ -170,6 +170,7 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="KHEngine\Graphics\3d\Object\Object3dCommon.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Model\Model.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelCommon.cpp" />
+    <ClCompile Include="KHEngine\Graphics\3d\Model\ModelManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="KHEngine\Core\Graphics\D3DResourceLeakChecker.h" />
@@ -201,6 +202,7 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="KHEngine\Graphics\3d\Object\Object3dCommon.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Model\Model.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Model\ModelCommon.h" />
+    <ClInclude Include="KHEngine\Graphics\3d\Model\ModelManager.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

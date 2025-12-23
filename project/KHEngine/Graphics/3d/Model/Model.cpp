@@ -3,7 +3,7 @@
 #include <fstream>
 #include <sstream>
 
-void Model::Initialize(ModelCommon* modelCommon)
+void Model::Initialize(ModelCommon* modelCommon, const std::string& directoryPath, const std::string& filename)
 {
 	// 引数で受け取ってメンバ変数に記録
 	this->modelCommon = modelCommon;

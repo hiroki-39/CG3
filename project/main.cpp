@@ -36,6 +36,7 @@
 #include "KHEngine/Graphics/Resource/TextureManager.h"
 #include "KHEngine/Graphics/3d/Model/ModelCommon.h"
 #include "KHEngine/Graphics/3d/Model/Model.h"
+#include "KHEngine/Graphics/3d/Model/ModelManager.h"
 
 
 
@@ -136,6 +137,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	dxCommon = new DirectXCommon();
 	dxCommon->Initialize(winApp);
 
+	//ModelCommonの初期化
+	ModelManager::GetInstance()->Initialize(dxCommon);
+
 	//テクスチャマネージャの初期化
 	TextureManager::GetInstance()->Initialize(dxCommon);
 
@@ -158,9 +162,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	object3dCommon = new Object3dCommon();
 	object3dCommon->Initialize(dxCommon);
 
-	ModelCommon modelCommon;
-	modelCommon.Initialize(dxCommon);
-
 #pragma endregion 
 
 
@@ -169,8 +170,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// テクスチャアップロードの開始
 	dxCommon->BeginTextureUploadBatch();
 
-	auto* model = new Model();
-	model->Initialize(&modelCommon);
+	ModelManager::GetInstance()->LoadModel("plane.obj");
 
 	// 既存スプライト用テクスチャの読み込み
 	texManager->LoadTexture("resources/uvChecker.png");
@@ -247,7 +247,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	Object3d* object3d = new Object3d();
 	object3d->Initialize(object3dCommon);
-	object3d->SetModel(model);
+	object3d->SetModel("plane.obj");
 	
 
 	// UI 用の編集状態を保持（初期値は object3d の現在値から）
@@ -452,6 +452,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//XAudio2の解放
 	/*xAudio2.Reset();*/
+
+	// モデルマネージャーの解放
+	ModelManager::GetInstance()->Finalize();
+
 	// テクスチャマネージャの解放
 	TextureManager::GetInstance()->Finalize();
 

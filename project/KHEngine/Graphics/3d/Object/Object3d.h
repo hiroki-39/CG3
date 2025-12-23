@@ -2,6 +2,7 @@
 #include "KHEngine/Graphics/3d/Object/Object3dCommon.h"
 #include "KHEngine/Math/MathCommon.h"
 #include "KHEngine/Graphics/3d/Model/Model.h"
+#include "KHEngine/Graphics/3d/Model/ModelManager.h"
 
 class Object3d
 {
@@ -45,6 +46,7 @@ public://メンバ関数
 
 	// --- Setter ---
 	void SetModel(Model* model) { this->model = model; }
+	void SetModel(const std::string& filePath);
 	void SetScale(const Vector3& scale) { transform.scale = scale; }
 	void SetRotation(const Vector3& rotation) { transform.rotation = rotation; }
 	void SetTranslate(const Vector3& translate) { transform.translate = translate; }
