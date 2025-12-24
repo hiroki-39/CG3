@@ -40,7 +40,7 @@ void ModelManager::LoadModel(const std::string& filePath)
 
 	// モデルの生成とファイル読み込み、初期化
 	std::unique_ptr<Model> model = std::make_unique<Model>();
-	model->Initialize(modelCommon,"resource",filePath);
+	model->Initialize(modelCommon,"resources",filePath);
 
 	// モデルをマップに格納
 	models.insert(std::make_pair(filePath, std::move(model)));
@@ -52,7 +52,7 @@ Model* ModelManager::FindModel(const std::string& filePath)
 	if (models.contains(filePath))
 	{
 		// 読み込みモデルを戻り値として返す
-		return models[filePath].get();
+		return models.at(filePath).get();
 	}
 
 	// ファイル名一致なし

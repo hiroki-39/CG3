@@ -13,7 +13,8 @@ void Model::Initialize(ModelCommon* modelCommon, const std::string& directoryPat
 	assert(dxCommon != nullptr);
 
 	//モデルの読み込み(Plane.ogj)
-	modelData = LoadObjFile("resources", "plane.obj");
+	modelData = LoadObjFile(directoryPath, filename);
+	
 
 	// 頂点データ・インデックスデータの作成
 	CreateBufferResource();

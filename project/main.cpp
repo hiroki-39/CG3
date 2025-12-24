@@ -13,7 +13,6 @@
 #include <functional>
 #include<array>
 #include<xaudio2.h>
-
 #include <unordered_map>
 #include <cassert>
 
@@ -245,20 +244,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// 選択用インデックス（ImGuiで操作するための状態）
 	int selectedSpriteIndex = 0;
 
-	Object3d* object3d = new Object3d();
-	object3d->Initialize(object3dCommon);
-	object3d->SetModel("plane.obj");
-	
+	// ---------- 複数モデル用に変更 ----------
+	const int kModelCount = 3;
+	std::vector<Object3d*> modelInstances;
+	modelInstances.reserve(kModelCount);
+	for (int i = 0; i < kModelCount; ++i)
+	{
+		Object3d* obj = new Object3d();
+		obj->Initialize(object3dCommon);
+		obj->SetModel("plane.obj");
+		// 位置を少しずらして並べる（見やすさのため）
+		obj->SetTranslate(Vector3(float(i) * 2.5f, 0.0f, 0.0f));
+		obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
+		obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+		modelInstances.push_back(obj);
+	}
 
-	// UI 用の編集状態を保持（初期値は object3d の現在値から）
-	Vector3 editTranslate = object3d->GetTranslate();
-	Vector3 editRotation = object3d->GetRotation();
-	Vector3 editScale = object3d->GetScale();
-
-	// 描画/同期フラグ
-	bool drawSecondInstance = true;
-	bool syncTransforms = true;
-
+	// UI 用の編集状態は各インスタンスの現在値を直接取得して編集する方式にする
+	bool syncTransforms = false; // 編集を他インスタンスに同期するか
+	// ---------- /複数モデル用ここまで ----------
 #pragma endregion
 
 
@@ -268,8 +272,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	/*---メインループ---*/
 
-
-	////ゲームループ
+	//ゲームループ
 	while (true)
 	{
 		//Windowsのメッセージ処理
@@ -290,9 +293,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		/*-------------- ↓更新処理ここから↓ --------------*/
 
 
-		/*--- Plane.objの更新処理 ---*/
-
-		object3d->Update();
+		/*--- 各モデルの更新処理 ---*/
+		for (auto obj : modelInstances)
+		{
+			obj->Update();
+		}
 
 		/*--- Spriteの更新処理 ---*/
 		for (uint32_t i = 0; i < 5; i++)
@@ -304,7 +309,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//開発用UIの処理
 
 		ImGui::Begin("window");
-
 
 
 
@@ -394,19 +398,50 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		ImGui::Separator();
 		if (ImGui::CollapsingHeader("Model Controls"))
 		{
-			ImGui::Text("Edit primary instance transform:");
+			ImGui::Text("Instances: %d", (int)modelInstances.size());
+			// 選択
+			ImGui::SliderInt("Selected Model", &selectedModel, 0, (int)modelInstances.size() - 1);
 
-			if (ImGui::DragFloat3("Position (X,Y,Z)", &editTranslate.x, 0.1f, -10000.0f, 10000.0f))
+			// 同期フラグ
+			ImGui::Checkbox("Sync transforms to other instances", &syncTransforms);
+
+			// 選択中インスタンスの編集（現在値を取得して編集）
+			if (selectedModel >= 0 && selectedModel < (int)modelInstances.size())
 			{
-				object3d->SetTranslate(editTranslate);
-			}
-			if (ImGui::DragFloat3("Rotation (X,Y,Z deg)", &editRotation.x, 0.5f, -360.0f, 360.0f))
-			{
-				object3d->SetRotation(editRotation);
-			}
-			if (ImGui::DragFloat3("Scale (X,Y,Z)", &editScale.x, 0.01f, 0.001f, 100.0f))
-			{
-				object3d->SetScale(editScale);
+				Object3d* curModel = modelInstances[selectedModel];
+
+				Vector3 editTranslate = curModel->GetTranslate();
+				Vector3 editRotation = curModel->GetRotation();
+				Vector3 editScale = curModel->GetScale();
+
+				bool changed = false;
+				if (ImGui::DragFloat3("Position (X,Y,Z)", &editTranslate.x, 0.1f, -10000.0f, 10000.0f))
+				{
+					curModel->SetTranslate(editTranslate);
+					changed = true;
+				}
+				if (ImGui::DragFloat3("Rotation (X,Y,Z deg)", &editRotation.x, 0.5f, -360.0f, 360.0f))
+				{
+					curModel->SetRotation(editRotation);
+					changed = true;
+				}
+				if (ImGui::DragFloat3("Scale (X,Y,Z)", &editScale.x, 0.01f, 0.001f, 100.0f))
+				{
+					curModel->SetScale(editScale);
+					changed = true;
+				}
+
+				// 変更があれば同期処理（オンの場合）
+				if (changed && syncTransforms)
+				{
+					for (int i = 0; i < (int)modelInstances.size(); ++i)
+					{
+						if (i == selectedModel) continue;
+						modelInstances[i]->SetTranslate(editTranslate);
+						modelInstances[i]->SetRotation(editRotation);
+						modelInstances[i]->SetScale(editScale);
+					}
+				}
 			}
 		}
 
@@ -422,7 +457,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		object3dCommon->SetCommonDrawSetting();
 
-		object3d->Draw();
+		// 複数インスタンスの描画
+		for (auto obj : modelInstances)
+		{
+			obj->Draw();
+		}
 
 		spriteCommon->SetCommonDrawSetting();
 
@@ -481,7 +520,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		delete sprites[i];
 	}
 
-	delete object3d;
+	// モデルインスタンスの解放
+	for (auto obj : modelInstances)
+	{
+		delete obj;
+	}
+	modelInstances.clear();
 
 	delete object3dCommon;
 
