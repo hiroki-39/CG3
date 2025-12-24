@@ -9,34 +9,38 @@
 
 class SpriteCommon;
 
-// 頂点データ
-struct vertexData
-{
-	Vector4 position;  //xyz：座標　w：画面外判定用
-	Vector2 texcoord;  //uv：テクスチャ座標
-	Vector3 normal;	   //xyz：法線
-};
 
-// マテリアルデータ
-struct Material
-{
-	Vector4 color;		     // 色RGBA
-	bool enableLighting;     // ライティング有効化フラグ
-	float padding[3];	     // パディング
-	Matrix4x4 uvTransform;   // UV変換行列
-	int32_t selectLightings; // ライティング種類選択
-};
-
-// 座標変換行列データ
-struct TransformationMatrix
-{
-	Matrix4x4 WVP;		// ワールドビュー射影変換行列
-	Matrix4x4 World;	// ワールド変換行列
-};
 
 // スプライト
 class Sprite
 {
+private:
+
+	// 頂点データ
+	struct VertexData
+	{
+		Vector4 position;  //xyz：座標　w：画面外判定用
+		Vector2 texcoord;  //uv：テクスチャ座標
+		Vector3 normal;	   //xyz：法線
+	};
+
+	// マテリアルデータ
+	struct Material
+	{
+		Vector4 color;		     // 色RGBA
+		bool enableLighting;     // ライティング有効化フラグ
+		float padding[3];	     // パディング
+		Matrix4x4 uvTransform;   // UV変換行列
+		int32_t selectLightings; // ライティング種類選択
+	};
+
+	// 座標変換行列データ
+	struct TransformationMatrix
+	{
+		Matrix4x4 WVP;		// ワールドビュー射影変換行列
+		Matrix4x4 World;	// ワールド変換行列
+	};
+
 public://メンバ関数
 
 	/// <summary>
@@ -121,7 +125,7 @@ private://メンバ変数
 	Vector2 anchorPoint = { 0.0f,0.0f };
 
 	// 左右フリップ
-	bool isFlipX_ = false; 
+	bool isFlipX_ = false;
 
 	// 上下フリップ
 	bool isFlipY_ = false;
@@ -141,7 +145,7 @@ private://メンバ変数
 
 
 	// 頂点データの仮想アドレス
-	vertexData* vertexData_ = nullptr;
+	VertexData* vertexData_ = nullptr;
 	// インデックスデータの仮想アドレス
 	uint32_t* indexData_ = nullptr;
 

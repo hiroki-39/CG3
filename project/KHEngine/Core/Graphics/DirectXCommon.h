@@ -161,6 +161,7 @@ public://メンバ関数
 	// --- Getter ---
 	ID3D12Device* GetDevice() { return device.Get(); }
 	ID3D12GraphicsCommandList* GetCommandList() { return commandList.Get(); }
+	WinApp* GetWinApp() const { return winApp; }
 
 private://静的メンバ関数
 

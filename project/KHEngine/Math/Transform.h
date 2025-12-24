@@ -27,16 +27,16 @@ public:
 	/// <returns>ワールド行列</returns>
     Matrix4x4 GetWorldMatrix() const
     {
-        Matrix4x4 s = Matrix4x4::Scale(scale);
-        Matrix4x4 rx = Matrix4x4::RotateX(rotation.x);
-        Matrix4x4 ry = Matrix4x4::RotateY(rotation.y);
-        Matrix4x4 rz = Matrix4x4::RotateZ(rotation.z);
-        Matrix4x4 t = Matrix4x4::Translation(translate);
+        Matrix4x4 scaleMatrix = Matrix4x4::Scale(scale);
+        Matrix4x4 rotateXMatrix = Matrix4x4::RotateX(rotation.x);
+        Matrix4x4 rotateYMatrix = Matrix4x4::RotateY(rotation.y);
+        Matrix4x4 rotateZMatrix = Matrix4x4::RotateZ(rotation.z);
+        Matrix4x4 translationMatrix = Matrix4x4::Translation(translate);
 
-        Matrix4x4 world = Matrix4x4::Multiply(s, rx);
-        world = Matrix4x4::Multiply(world, ry);
-        world = Matrix4x4::Multiply(world, rz);
-        world = Matrix4x4::Multiply(world, t);
+        Matrix4x4 world = Matrix4x4::Multiply(scaleMatrix, rotateXMatrix);
+        world = Matrix4x4::Multiply(world, rotateYMatrix);
+        world = Matrix4x4::Multiply(world, rotateZMatrix);
+        world = Matrix4x4::Multiply(world, translationMatrix);
         return world;
     }
 };
