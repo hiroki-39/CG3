@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
-
+#include "KHEngine/Graphics/3d/Camera/Camera.h"
 
 class Object3dCommon
 {
@@ -18,6 +18,10 @@ public://メンバ関数
 
 	// --- Getter ---
 	DirectXCommon* GetDirectXCommon() const { return dxCommon_; }
+	Camera* GetDefaultCamera() const { return DefaultCamera; }
+
+	// --- Setter ---
+	void SetDefaultCamera(Camera* camera) {this->DefaultCamera = camera; }
 
 private:
 
@@ -33,7 +37,10 @@ private:
 	void CreateGraphicsPipeline();
 
 private:
+
 	DirectXCommon* dxCommon_;
+
+	Camera* DefaultCamera = nullptr;
 
 	//ルートシグネチャ
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;

@@ -16,6 +16,8 @@ void Object3d::Initialize(Object3dCommon* object3dCommon)
 	//平行光源の作成
 	CreateDirectionalLight();
 
+	this->camera = object3dCommon->GetDefaultCamera();
+
 
 	transform.translate = { 0.0f,0.0f,0.0f };
 	transform.rotation = { 0.0f,0.0f,0.0f };
@@ -30,11 +32,24 @@ void Object3d::Update()
 {
 	//Transformの更新
 	Matrix4x4 worldMatrix = transform.GetWorldMatrix();
-	Matrix4x4 cameraMatrix = cameraTransform.GetWorldMatrix();
-	Matrix4x4 viewMatrix = Matrix4x4::Inverse(cameraMatrix);
-	Matrix4x4 projectionMatrix = Matrix4x4::Perspective(0.45f, float(winApp_->kClientWidth) / float(winApp_->kClientHeight), 0.1f, 100.0f);
-	//WVPMatrixの作成
-	Matrix4x4 worldViewProjectionMatrix = Matrix4x4::Multiply(worldMatrix, Matrix4x4::Multiply(viewMatrix, projectionMatrix));
+	
+	Matrix4x4 worldViewProjectionMatrix;
+	if (camera)
+	{
+		const Matrix4x4& ViewProjectionMatrix = camera->GetViewProjectionMatrix();
+		 worldViewProjectionMatrix = Matrix4x4::Multiply(worldMatrix, ViewProjectionMatrix);
+	}
+	else
+	{
+		worldViewProjectionMatrix = worldMatrix;
+	}
+
+	//Matrix4x4 cameraMatrix = cameraTransform.GetWorldMatrix();
+	//Matrix4x4 viewMatrix = Matrix4x4::Inverse(cameraMatrix);
+	//Matrix4x4 projectionMatrix = Matrix4x4::Perspective(0.45f, float(winApp_->kClientWidth) / float(winApp_->kClientHeight), 0.1f, 100.0f);
+	////WVPMatrixの作成
+	//Matrix4x4 worldViewProjectionMatrix = Matrix4x4::Multiply(worldMatrix, Matrix4x4::Multiply(viewMatrix, projectionMatrix));
+	
 	transformationMatrixData_->WVP = worldViewProjectionMatrix;
 	transformationMatrixData_->World = worldMatrix;
 

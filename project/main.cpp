@@ -36,6 +36,7 @@
 #include "KHEngine/Graphics/3d/Model/ModelCommon.h"
 #include "KHEngine/Graphics/3d/Model/Model.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
+#include "KHEngine/Graphics/3d/Camera/Camera.h"
 
 
 
@@ -160,6 +161,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// 3Dオブジェクトの共通部分の初期化
 	object3dCommon = new Object3dCommon();
 	object3dCommon->Initialize(dxCommon);
+
+	Camera* camera = new Camera();
+	camera->SetTranslate({ 0.0f, 0.0f, -20.0f });
+	camera->SetRotation({ 0.0f, 0.0f, 0.0f });
+	object3dCommon->SetDefaultCamera(camera);
 
 #pragma endregion 
 
@@ -292,6 +298,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		/*-------------- ↓更新処理ここから↓ --------------*/
 
+		camera->Update();
 
 		/*--- 各モデルの更新処理 ---*/
 		for (auto obj : modelInstances)
