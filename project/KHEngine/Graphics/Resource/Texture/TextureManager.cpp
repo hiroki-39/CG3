@@ -1,4 +1,4 @@
-﻿#include "KHEngine/Graphics/Resource/TextureManager.h"
+﻿#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 
 TextureManager* TextureManager::instance = nullptr;

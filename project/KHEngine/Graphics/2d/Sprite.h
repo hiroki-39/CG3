@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
-#include "KHEngine/Graphics/Resource/TextureManager.h"
+#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Math/MathCommon.h"
 #include "KHEngine/Core/OS/WinApp.h"
 #include <wrl.h>

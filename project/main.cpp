@@ -32,7 +32,7 @@
 #include "KHEngine/Graphics/2d/Sprite.h"
 #include "KHEngine/Graphics/3d/Object/Object3dCommon.h"
 #include "KHEngine/Graphics/3d/Object/Object3d.h"
-#include "KHEngine/Graphics/Resource/TextureManager.h"
+#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Graphics/3d/Model/ModelCommon.h"
 #include "KHEngine/Graphics/3d/Model/Model.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
