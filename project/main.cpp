@@ -37,6 +37,7 @@
 #include "KHEngine/Graphics/3d/Model/Model.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
 #include "KHEngine/Graphics/3d/Camera/Camera.h"
+#include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 
 
 
@@ -140,9 +141,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//ModelCommonの初期化
 	ModelManager::GetInstance()->Initialize(dxCommon);
 
-	//テクスチャマネージャの初期化
-	TextureManager::GetInstance()->Initialize(dxCommon);
-
 	// 入力のポインタ
 	Input* input = nullptr;
 
@@ -166,6 +164,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	camera->SetTranslate({ 0.0f, 0.0f, -20.0f });
 	camera->SetRotation({ 0.0f, 0.0f, 0.0f });
 	object3dCommon->SetDefaultCamera(camera);
+
+	SrvManager* srvManager = SrvManager::GetInstance();
+	srvManager->Initialize(dxCommon);
+	dxCommon->RegisterSrvManager(srvManager);
+
+	TextureManager::GetInstance()->Initialize(dxCommon,srvManager);
 
 #pragma endregion 
 
@@ -288,9 +292,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			break;
 		}
 
-		ImGui_ImplDX12_NewFrame();
-		ImGui_ImplWin32_NewFrame();
-		ImGui::NewFrame();
+		//ImGui_ImplDX12_NewFrame();
+		//ImGui_ImplWin32_NewFrame();
+		//ImGui::NewFrame();
 
 		//入力の更新
 		input->Update();
@@ -315,150 +319,150 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		//開発用UIの処理
 
-		ImGui::Begin("window");
+		//ImGui::Begin("window");
 
 
 
-		// スプライト表示・編集のグループ
-		if (isDisplaySprite)
-		{
-			if (ImGui::CollapsingHeader("Sprite"))
-			{
-				// スプライト一覧と選択
-				if (ImGui::CollapsingHeader("Sprite Instances"))
-				{
-					// スプライト選択
-					ImGui::SliderInt("Selected Sprite", &selectedSpriteIndex, 0, int(sprites.size()) - 1);
+		//// スプライト表示・編集のグループ
+		//if (isDisplaySprite)
+		//{
+		//	if (ImGui::CollapsingHeader("Sprite"))
+		//	{
+		//		// スプライト一覧と選択
+		//		if (ImGui::CollapsingHeader("Sprite Instances"))
+		//		{
+		//			// スプライト選択
+		//			ImGui::SliderInt("Selected Sprite", &selectedSpriteIndex, 0, int(sprites.size()) - 1);
 
-					// 簡易表示: 各スプライトのテクスチャ名・位置を表示（デバッグ用）
-					for (int i = 0; i < (int)sprites.size(); ++i)
-					{
-						ImGui::Text("Sprite %d: pos=(%.1f,%.1f) size=(%.1f,%.1f) anchor=(%.2f,%.2f) flipX=%d flipY=%d",
-							i,
-							sprites[i]->GetPosition().x, sprites[i]->GetPosition().y,
-							sprites[i]->GetSize().x, sprites[i]->GetSize().y,
-							sprites[i]->GetAnchorPoint().x, sprites[i]->GetAnchorPoint().y,
-							sprites[i]->IsFlipX() ? 1 : 0, sprites[i]->IsFlipY() ? 1 : 0);
-					}
-				}
+		//			// 簡易表示: 各スプライトのテクスチャ名・位置を表示（デバッグ用）
+		//			for (int i = 0; i < (int)sprites.size(); ++i)
+		//			{
+		//				ImGui::Text("Sprite %d: pos=(%.1f,%.1f) size=(%.1f,%.1f) anchor=(%.2f,%.2f) flipX=%d flipY=%d",
+		//					i,
+		//					sprites[i]->GetPosition().x, sprites[i]->GetPosition().y,
+		//					sprites[i]->GetSize().x, sprites[i]->GetSize().y,
+		//					sprites[i]->GetAnchorPoint().x, sprites[i]->GetAnchorPoint().y,
+		//					sprites[i]->IsFlipX() ? 1 : 0, sprites[i]->IsFlipY() ? 1 : 0);
+		//			}
+		//		}
 
-				// 選択中スプライトの詳細編集
-				Sprite* cur = sprites[selectedSpriteIndex];
-				if (cur)
-				{
-					ImGui::Separator();
-					ImGui::Text("Edit Sprite %d", selectedSpriteIndex);
+		//		// 選択中スプライトの詳細編集
+		//		Sprite* cur = sprites[selectedSpriteIndex];
+		//		if (cur)
+		//		{
+		//			ImGui::Separator();
+		//			ImGui::Text("Edit Sprite %d", selectedSpriteIndex);
 
-					// 位置・回転・サイズ（既存のAPIを使う）
-					Vector2 pos = cur->GetPosition();
-					if (ImGui::DragFloat2("Position", &pos.x, 1.0f)) cur->SetPosition(pos);
+		//			// 位置・回転・サイズ（既存のAPIを使う）
+		//			Vector2 pos = cur->GetPosition();
+		//			if (ImGui::DragFloat2("Position", &pos.x, 1.0f)) cur->SetPosition(pos);
 
-					float rot = cur->GetRotation();
-					if (ImGui::SliderAngle("Rotation", &rot)) cur->SetRotation(rot);
+		//			float rot = cur->GetRotation();
+		//			if (ImGui::SliderAngle("Rotation", &rot)) cur->SetRotation(rot);
 
-					Vector2 size = cur->GetSize();
-					if (ImGui::DragFloat2("Size", &size.x, 1.0f, 1.0f, 4096.0f)) cur->SetSize(size);
+		//			Vector2 size = cur->GetSize();
+		//			if (ImGui::DragFloat2("Size", &size.x, 1.0f, 1.0f, 4096.0f)) cur->SetSize(size);
 
-					// アンカーポイント
-					Vector2 anchor = cur->GetAnchorPoint();
-					if (ImGui::DragFloat2("Anchor (0..1)", &anchor.x, 0.01f, 0.0f, 1.0f))
-					{
-						cur->SetAnchorPoint(anchor);
-					}
+		//			// アンカーポイント
+		//			Vector2 anchor = cur->GetAnchorPoint();
+		//			if (ImGui::DragFloat2("Anchor (0..1)", &anchor.x, 0.01f, 0.0f, 1.0f))
+		//			{
+		//				cur->SetAnchorPoint(anchor);
+		//			}
 
-					// フリップ
-					bool flipX = cur->IsFlipX();
-					if (ImGui::Checkbox("Flip X", &flipX)) cur->SetFlipX(flipX);
-					bool flipY = cur->IsFlipY();
-					if (ImGui::Checkbox("Flip Y", &flipY)) cur->SetFlipY(flipY);
+		//			// フリップ
+		//			bool flipX = cur->IsFlipX();
+		//			if (ImGui::Checkbox("Flip X", &flipX)) cur->SetFlipX(flipX);
+		//			bool flipY = cur->IsFlipY();
+		//			if (ImGui::Checkbox("Flip Y", &flipY)) cur->SetFlipY(flipY);
 
-					// テクスチャ範囲（左上ピクセルと幅高さ）
-					Vector2 texLeftTop = cur->GetTextureLeftTop();
-					Vector2 texSize = cur->GetTextureSize();
-					if (ImGui::DragFloat2("Texture LeftTop (px)", &texLeftTop.x, 1.0f, 0.0f, 4096.0f)) cur->SetTextureLeftTop(texLeftTop);
-					if (ImGui::DragFloat2("Texture Size (px)", &texSize.x, 1.0f, 1.0f, 4096.0f)) cur->SetTextureSize(texSize);
+		//			// テクスチャ範囲（左上ピクセルと幅高さ）
+		//			Vector2 texLeftTop = cur->GetTextureLeftTop();
+		//			Vector2 texSize = cur->GetTextureSize();
+		//			if (ImGui::DragFloat2("Texture LeftTop (px)", &texLeftTop.x, 1.0f, 0.0f, 4096.0f)) cur->SetTextureLeftTop(texLeftTop);
+		//			if (ImGui::DragFloat2("Texture Size (px)", &texSize.x, 1.0f, 1.0f, 4096.0f)) cur->SetTextureSize(texSize);
 
-					// テクスチャ切替
-					static int selectedTex = 0;
-					if (ImGui::Combo("Texture", &selectedTex, textureNames.data(), (int)textureNames.size()))
-					{
-						cur->SetTexture(textureIndices[selectedTex]);
-					}
+		//			// テクスチャ切替
+		//			static int selectedTex = 0;
+		//			if (ImGui::Combo("Texture", &selectedTex, textureNames.data(), (int)textureNames.size()))
+		//			{
+		//				cur->SetTexture(textureIndices[selectedTex]);
+		//			}
 
-					// ボタンで次のテクスチャに切り替える
-					if (ImGui::Button("Cycle Texture"))
-					{
-						int currentTex = selectedTex;
-						currentTex = (currentTex + 1) % int(textureIndices.size());
-						selectedTex = currentTex;
-						cur->SetTexture(textureIndices[selectedTex]);
-					}
+		//			// ボタンで次のテクスチャに切り替える
+		//			if (ImGui::Button("Cycle Texture"))
+		//			{
+		//				int currentTex = selectedTex;
+		//				currentTex = (currentTex + 1) % int(textureIndices.size());
+		//				selectedTex = currentTex;
+		//				cur->SetTexture(textureIndices[selectedTex]);
+		//			}
 
-					// 表示中の値（読み取り専用）
-					ImGui::Text("Current texture leftTop=(%.1f,%.1f) size=(%.1f,%.1f)",
-						cur->GetTextureLeftTop().x, cur->GetTextureLeftTop().y,
-						cur->GetTextureSize().x, cur->GetTextureSize().y);
-				}
-			}
-		}
+		//			// 表示中の値（読み取り専用）
+		//			ImGui::Text("Current texture leftTop=(%.1f,%.1f) size=(%.1f,%.1f)",
+		//				cur->GetTextureLeftTop().x, cur->GetTextureLeftTop().y,
+		//				cur->GetTextureSize().x, cur->GetTextureSize().y);
+		//		}
+		//	}
+		//}
 
-		ImGui::Separator();
-		if (ImGui::CollapsingHeader("Model Controls"))
-		{
-			ImGui::Text("Instances: %d", (int)modelInstances.size());
-			// 選択
-			ImGui::SliderInt("Selected Model", &selectedModel, 0, (int)modelInstances.size() - 1);
+		//ImGui::Separator();
+		//if (ImGui::CollapsingHeader("Model Controls"))
+		//{
+		//	ImGui::Text("Instances: %d", (int)modelInstances.size());
+		//	// 選択
+		//	ImGui::SliderInt("Selected Model", &selectedModel, 0, (int)modelInstances.size() - 1);
 
-			// 同期フラグ
-			ImGui::Checkbox("Sync transforms to other instances", &syncTransforms);
+		//	// 同期フラグ
+		//	ImGui::Checkbox("Sync transforms to other instances", &syncTransforms);
 
-			// 選択中インスタンスの編集（現在値を取得して編集）
-			if (selectedModel >= 0 && selectedModel < (int)modelInstances.size())
-			{
-				Object3d* curModel = modelInstances[selectedModel];
+		//	// 選択中インスタンスの編集（現在値を取得して編集）
+		//	if (selectedModel >= 0 && selectedModel < (int)modelInstances.size())
+		//	{
+		//		Object3d* curModel = modelInstances[selectedModel];
 
-				Vector3 editTranslate = curModel->GetTranslate();
-				Vector3 editRotation = curModel->GetRotation();
-				Vector3 editScale = curModel->GetScale();
+		//		Vector3 editTranslate = curModel->GetTranslate();
+		//		Vector3 editRotation = curModel->GetRotation();
+		//		Vector3 editScale = curModel->GetScale();
 
-				bool changed = false;
-				if (ImGui::DragFloat3("Position (X,Y,Z)", &editTranslate.x, 0.1f, -10000.0f, 10000.0f))
-				{
-					curModel->SetTranslate(editTranslate);
-					changed = true;
-				}
-				if (ImGui::DragFloat3("Rotation (X,Y,Z deg)", &editRotation.x, 0.5f, -360.0f, 360.0f))
-				{
-					curModel->SetRotation(editRotation);
-					changed = true;
-				}
-				if (ImGui::DragFloat3("Scale (X,Y,Z)", &editScale.x, 0.01f, 0.001f, 100.0f))
-				{
-					curModel->SetScale(editScale);
-					changed = true;
-				}
+		//		bool changed = false;
+		//		if (ImGui::DragFloat3("Position (X,Y,Z)", &editTranslate.x, 0.1f, -10000.0f, 10000.0f))
+		//		{
+		//			curModel->SetTranslate(editTranslate);
+		//			changed = true;
+		//		}
+		//		if (ImGui::DragFloat3("Rotation (X,Y,Z deg)", &editRotation.x, 0.5f, -360.0f, 360.0f))
+		//		{
+		//			curModel->SetRotation(editRotation);
+		//			changed = true;
+		//		}
+		//		if (ImGui::DragFloat3("Scale (X,Y,Z)", &editScale.x, 0.01f, 0.001f, 100.0f))
+		//		{
+		//			curModel->SetScale(editScale);
+		//			changed = true;
+		//		}
 
-				// 変更があれば同期処理（オンの場合）
-				if (changed && syncTransforms)
-				{
-					for (int i = 0; i < (int)modelInstances.size(); ++i)
-					{
-						if (i == selectedModel) continue;
-						modelInstances[i]->SetTranslate(editTranslate);
-						modelInstances[i]->SetRotation(editRotation);
-						modelInstances[i]->SetScale(editScale);
-					}
-				}
-			}
-		}
+		//		// 変更があれば同期処理（オンの場合）
+		//		if (changed && syncTransforms)
+		//		{
+		//			for (int i = 0; i < (int)modelInstances.size(); ++i)
+		//			{
+		//				if (i == selectedModel) continue;
+		//				modelInstances[i]->SetTranslate(editTranslate);
+		//				modelInstances[i]->SetRotation(editRotation);
+		//				modelInstances[i]->SetScale(editScale);
+		//			}
+		//		}
+		//	}
+		//}
 
-		ImGui::End();
+		//ImGui::End();
 
 
 		/*-------------- ↓描画処理ここから↓ --------------*/
 
 		//ImGuiの内部コマンドを生成
-		ImGui::Render();
+		/*ImGui::Render();*/
 
 		dxCommon->PreDraw();
 
@@ -484,16 +488,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 		//実際のCommandListのImGuiの描画コマンドを積む
-		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), dxCommon->GetCommandList());
+		//ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), dxCommon->GetCommandList());
 
 		dxCommon->PostDraw();
 
 	}
 
 	//ImGuiの終了処理
-	ImGui_ImplDX12_Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
+	//ImGui_ImplDX12_Shutdown();
+	//ImGui_ImplWin32_Shutdown();
+	//ImGui::DestroyContext();
 
 
 	//XAudio2の解放
@@ -535,6 +539,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	modelInstances.clear();
 
 	delete object3dCommon;
+
+	srvManager->Finalize();
 
 	////音声データ解放
 	//SoundUnload(&soundData1);

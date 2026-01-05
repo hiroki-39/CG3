@@ -5,8 +5,6 @@
 
 using namespace Microsoft::WRL;
 
-const uint32_t DirectXCommon::kMaxSRVCount = 512;
-
 void DirectXCommon::Initialize(WinApp* winApp)
 {
 	//FPS固定の初期化
@@ -49,7 +47,7 @@ void DirectXCommon::Initialize(WinApp* winApp)
 	CreateDXCCompiler();
 
 	//ImGuiの初期化
-	InitImGui();
+	/*InitImGui();*/
 }
 
 void DirectXCommon::InitDevice()
@@ -232,15 +230,11 @@ void DirectXCommon::CreateSwapChain()
 void DirectXCommon::CreateDescriptorHeaps()
 {
 	//DescriptorSizeを取得
-	desriptorSizeSRV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	desriptorSizeRTV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	desriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
 	//RTV用のヒープでディスクリプタの数は2。RTVはShader内で触るものではないので、ShaderVisibleはfalse
 	rtvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
-
-	//SRV用のヒープでディスクリプタの数は128。RTVはShader内で触るものではないので、ShaderVisibleはtrue
-	srvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, kMaxSRVCount, true);
 
 	//DSV用のヒープでディスクリプタの数は1。RTVはShader内で触るものではないので、ShaderVisibleはfalse
 	dsvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
@@ -424,21 +418,21 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreatDepthStencilTextureRe
 	return resourece;
 }
 
-void DirectXCommon::InitImGui()
-{
-	//ImGuiの初期化
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGui::StyleColorsDark();
-	ImGui_ImplWin32_Init(winApp->GetHwnd());
-	ImGui_ImplDX12_Init(device.Get(),
-		swapChainDesc.BufferCount,
-		rtvDesc.Format,
-		srvDescriptorHeap.Get(),
-		srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-		srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
-	);
-}
+//void DirectXCommon::InitImGui()
+//{
+//	//ImGuiの初期化
+//	IMGUI_CHECKVERSION();
+//	ImGui::CreateContext();
+//	ImGui::StyleColorsDark();
+//	ImGui_ImplWin32_Init(winApp->GetHwnd());
+//	ImGui_ImplDX12_Init(device.Get(),
+//		swapChainDesc.BufferCount,
+//		rtvDesc.Format,
+//		srvDescriptorHeap.Get(),
+//		srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+//		srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
+//	);
+//}
 
 void DirectXCommon::PreDraw()
 {
@@ -483,9 +477,11 @@ void DirectXCommon::PreDraw()
 	//指定した深度で画面全体をクリア
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-	//描画用のDesciptorHeapを設定
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorheaps[] = { srvDescriptorHeap };
-	commandList->SetDescriptorHeaps(1, descriptorheaps->GetAddressOf());
+	// 描画用のDesciptorHeapを設定
+	if (srvManager)
+	{
+		srvManager->PreDraw();
+	}
 
 	//Viewportを設定
 	commandList->RSSetViewports(1, &viewport);
@@ -548,16 +544,6 @@ void DirectXCommon::PostDraw()
 	hr = commandList->Reset(commandAllocator.Get(), nullptr);
 	//コマンドリストのリセットに失敗した場合起動できない
 	assert(SUCCEEDED(hr));
-}
-
-D3D12_CPU_DESCRIPTOR_HANDLE DirectXCommon::GetSRVCPUDescriptorHandle(uint32_t index)
-{
-	return GetCPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, index);
-}
-
-D3D12_GPU_DESCRIPTOR_HANDLE DirectXCommon::GetSRVGPUDescriptorHandle(uint32_t index)
-{
-	return GetGPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, index);
 }
 
 Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::compileshader(const std::wstring& filePath, const wchar_t* profile)
@@ -832,16 +818,7 @@ void DirectXCommon::ExecuteTextureUploadBatch()
 	textureUploadQueue_.clear();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE DirectXCommon::GetCPUDescriptorHandle(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap, uint32_t descriptorSize, uint32_t index)
+void DirectXCommon::RegisterSrvManager(SrvManager* srv)
 {
-	D3D12_CPU_DESCRIPTOR_HANDLE handleCPU = descriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	handleCPU.ptr += (descriptorSize * index);
-	return handleCPU;
-}
-
-D3D12_GPU_DESCRIPTOR_HANDLE DirectXCommon::GetGPUDescriptorHandle(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap, uint32_t descriptorSize, uint32_t index)
-{
-	D3D12_GPU_DESCRIPTOR_HANDLE handleGPU = descriptorHeap->GetGPUDescriptorHandleForHeapStart();
-	handleGPU.ptr += (descriptorSize * index);
-	return handleGPU;
+	srvManager = srv;
 }

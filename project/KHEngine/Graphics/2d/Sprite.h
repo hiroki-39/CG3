@@ -46,6 +46,8 @@ public://メンバ関数
 	/// <summary>
 	/// 初期化
 	/// </summary>
+	/// <param name="spriteCommon">スプライト共通部分</param>
+	/// <param name="textureIndex">テクスチャインデックス</param>
 	void Initialize(SpriteCommon* spriteCommon, uint32_t textureIndex);
 
 	/// <summary>

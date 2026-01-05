@@ -154,6 +154,8 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="externals\imgui\imgui_tables.cpp" />
     <ClCompile Include="externals\imgui\imgui_widgets.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Camera\Camera.cpp" />
+    <ClCompile Include="KHEngine\Graphics\Resource\Descriptor\SrvManager.cpp" />
+    <ClCompile Include="KHEngine\Graphics\Resource\Texture\TextureManager.cpp" />
     <ClCompile Include="KHEngine\Input\Input.cpp" />
     <ClCompile Include="KHEngine\Core\Utility\Log\Logger.cpp" />
     <ClCompile Include="KHEngine\Math\Matrix4x4.cpp" />
@@ -166,7 +168,6 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="KHEngine\Core\Utility\Timer\Timer.cpp" />
     <ClCompile Include="KHEngine\Graphics\2d\Sprite.cpp" />
     <ClCompile Include="KHEngine\Graphics\2d\SpriteCommon.cpp" />
-    <ClCompile Include="KHEngine\Graphics\Resource\TextureManager.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Object\Object3d.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Object\Object3dCommon.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Model\Model.cpp" />
@@ -185,6 +186,8 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="externals\imgui\imstb_textedit.h" />
     <ClInclude Include="externals\imgui\imstb_truetype.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Camera\Camera.h" />
+    <ClInclude Include="KHEngine\Graphics\Resource\Descriptor\SrvManager.h" />
+    <ClInclude Include="KHEngine\Graphics\Resource\Texture\TextureManager.h" />
     <ClInclude Include="KHEngine\Input\Input.h" />
     <ClInclude Include="KHEngine\Core\Utility\Log\Logger.h" />
     <ClInclude Include="KHEngine\Core\Utility\String\StringUtility.h" />
