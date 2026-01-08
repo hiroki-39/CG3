@@ -171,6 +171,24 @@ Matrix4x4 Matrix4x4::RotateZ(float rad)
     return result;
 }
 
+Matrix4x4 Matrix4x4::MakeAffine(const Vector3& scale, const Vector3& rotate, const Vector3& translate)
+{
+    // スケール行列
+    Matrix4x4 S = Scale(scale);
+
+    // 回転行列（Z * Y * X）
+    Matrix4x4 Rz = RotateZ(rotate.z);
+    Matrix4x4 Ry = RotateY(rotate.y);
+    Matrix4x4 Rx = RotateX(rotate.x);
+    Matrix4x4 R = Multiply(Multiply(Rz, Ry), Rx);
+
+    // 平行移動行列
+    Matrix4x4 T = Translation(translate);
+
+    // 合成: T * R * S
+    return Multiply(Multiply(T, R), S);
+}
+
 /* --- 行列計算 --- */
 
 Matrix4x4 Matrix4x4::Multiply(const Matrix4x4& a, const Matrix4x4& b)

@@ -154,6 +154,8 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="externals\imgui\imgui_tables.cpp" />
     <ClCompile Include="externals\imgui\imgui_widgets.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Camera\Camera.cpp" />
+    <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleEmitter.cpp" />
+    <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleManager.cpp" />
     <ClCompile Include="KHEngine\Graphics\Resource\Descriptor\SrvManager.cpp" />
     <ClCompile Include="KHEngine\Graphics\Resource\Texture\TextureManager.cpp" />
     <ClCompile Include="KHEngine\Input\Input.cpp" />
@@ -173,6 +175,8 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="KHEngine\Graphics\3d\Model\Model.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelCommon.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelManager.cpp" />
+    <ClCompile Include="KHEngine\Graphics\3d\Particle\Particle.cpp" />
+    <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="KHEngine\Core\Graphics\D3DResourceLeakChecker.h" />
@@ -186,6 +190,8 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="externals\imgui\imstb_textedit.h" />
     <ClInclude Include="externals\imgui\imstb_truetype.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Camera\Camera.h" />
+    <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleEmitter.h" />
+    <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleManager.h" />
     <ClInclude Include="KHEngine\Graphics\Resource\Descriptor\SrvManager.h" />
     <ClInclude Include="KHEngine\Graphics\Resource\Texture\TextureManager.h" />
     <ClInclude Include="KHEngine\Input\Input.h" />
@@ -208,6 +214,8 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="KHEngine\Graphics\3d\Model\Model.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Model\ModelCommon.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Model\ModelManager.h" />
+    <ClInclude Include="KHEngine\Graphics\3d\Particle\Particle.h" />
+    <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />
