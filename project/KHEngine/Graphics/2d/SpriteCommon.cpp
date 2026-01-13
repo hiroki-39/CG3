@@ -3,7 +3,7 @@
 
 void SpriteCommon::Initialize(DirectXCommon* dxcommon)
 {
-	dxCommon_ = dxcommon;
+	this->dxCommon_ = dxcommon;
 
 	//グラフィックスパイプライン生成
 	CreateGraphicsPipeline();

@@ -3,6 +3,7 @@
 #include "KHEngine/Math/MathCommon.h"
 #include "KHEngine/Graphics/3d/Model/Model.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
+#include "KHEngine/Graphics/3d/Camera/Camera.h"
 
 class Object3d
 {
@@ -50,9 +51,9 @@ public://メンバ関数
 	void SetScale(const Vector3& scale) { transform.scale = scale; }
 	void SetRotation(const Vector3& rotation) { transform.rotation = rotation; }
 	void SetTranslate(const Vector3& translate) { transform.translate = translate; }
+	void SetCamera(Camera* camera) { this->camera = camera; }
 
 private://メンバ関数
-
 
 	/// <summary>
 	/// 座標変換行列データの作成
@@ -77,6 +78,8 @@ private://メンバ変数
 	WinApp* winApp_ = nullptr;
 
 	Model* model = nullptr;
+
+	Camera* camera = nullptr;
 
 	// 変換行列リソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResource_;

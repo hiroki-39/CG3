@@ -4,7 +4,6 @@
 #include<dbghelp.h>
 #include <strsafe.h>
 #include<dxgidebug.h>
-#include"Math.h"
 #include"externals/DirectXTex/d3dx12.h"
 #include<vector>
 #include <numbers>
@@ -21,7 +20,7 @@
 
 #pragma comment(lib,"xaudio2.lib")
 
-
+#include "KHEngine/Math/MathCommon.h"
 #include "externals/DirectXTex/DirectXTex.h"
 #include "KHEngine/Input/Input.h"
 #include "KHEngine/Core/OS/WinApp.h"
@@ -32,54 +31,82 @@
 #include "KHEngine/Graphics/2d/Sprite.h"
 #include "KHEngine/Graphics/3d/Object/Object3dCommon.h"
 #include "KHEngine/Graphics/3d/Object/Object3d.h"
-#include "KHEngine/Graphics/Resource/TextureManager.h"
+#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Graphics/3d/Model/ModelCommon.h"
 #include "KHEngine/Graphics/3d/Model/Model.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
+#include "KHEngine/Graphics/3d/Camera/Camera.h"
+#include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
+#include <random>
+#include "KHEngine/Graphics/3d/Particle/Particle.h"
+#include "KHEngine/Graphics/3d/Particle/ParticleEmitter.h"
+#include "KHEngine/Graphics/3d/Particle/ParticleSystem.h"
+#include "KHEngine/Graphics/3d/Particle/ParticleRenderer.h"
+#include "KHEngine/Graphics/3d/Particle/ParticleManager.h"
 
-
-
-//チャンクヘッダ
-struct ChunkHeader
+struct VertexData
 {
-	//チャンク前のID
-	char id[4];
 
-	//チャンクサイズ
-	int32_t size;
+	Vector4 position;
+	Vector2 texcoord;
+	Vector3 normal;
+
+	bool operator==(const VertexData& other) const
+	{
+		return position.x == other.position.x && position.y == other.position.y && position.z == other.position.z &&
+			texcoord.x == other.texcoord.x && texcoord.y == other.texcoord.y &&
+			normal.x == other.normal.x && normal.y == other.normal.y && normal.z == other.normal.z;
+	}
 };
 
-//Riffヘッダーチャンク
-struct RiffHeader
+struct Material
 {
-	//RIFF
-	ChunkHeader chunk;
-	//WAVE
-	char type[4];
+	Vector4 color;
+	bool enableLighting;
+	float padding[3];
+	Matrix4x4 uvTransform;
+	int32_t selectLightings;
 };
 
-//FMTチャンク
-struct FormatChunk
+struct MaterialData
 {
-	//fmt
-	ChunkHeader chunk;
-	//波形フォーマット
-	WAVEFORMATEX fmt;
+	std::string textureFilePath;
 };
 
-//音声データ
-struct SoundData
+struct  ModelData
 {
-	//波形フォーマット
-	WAVEFORMATEX wfex;
-
-	//バッファの先頭アドレス
-	BYTE* pBuffer;
-
-	//バッファのサイズ
-	unsigned int buffersize;
+	std::vector<VertexData> vertices;
+	std::vector<uint32_t> indices;
+	MaterialData material;
 };
 
+namespace std
+{
+	template < >
+	struct hash<VertexData>
+	{
+		size_t operator()(const VertexData& v) const
+		{
+			size_t h1 = hash<float>()(v.position.x) ^ hash<float>()(v.position.y) ^ hash<float>()(v.position.z);
+			size_t h2 = hash<float>()(v.texcoord.x) ^ hash<float>()(v.texcoord.y);
+			size_t h3 = hash<float>()(v.normal.x) ^ hash<float>()(v.normal.y) ^ hash<float>()(v.normal.z);
+			return h1 ^ (h2 << 1) ^ (h3 << 2);
+		}
+	};
+}
+
+
+enum class BlendMode
+{
+	Alpha = 0,
+	Additive,
+	Multiply,
+	PreMultiplied,
+	None,
+	Count
+};
+
+// 以下のユーティリティ／プロトタイプは main 内で使用するものだけ保持
 void Log(std::ostream& os, const std::string& message);
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
@@ -87,14 +114,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
 
 void CreateWhiteTexture(DirectX::ScratchImage& outImage);
-
-//SoundData SoundLoadWave(const char* filename);
-//
-////音声データ解放
-//void SoundUnload(SoundData* soundData);
-//
-////音声再生
-//void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData);
 
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
@@ -139,9 +158,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//ModelCommonの初期化
 	ModelManager::GetInstance()->Initialize(dxCommon);
 
-	//テクスチャマネージャの初期化
-	TextureManager::GetInstance()->Initialize(dxCommon);
-
 	// 入力のポインタ
 	Input* input = nullptr;
 
@@ -161,8 +177,37 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	object3dCommon = new Object3dCommon();
 	object3dCommon->Initialize(dxCommon);
 
+	Camera* camera = new Camera();
+	camera->SetTranslate({ 0.0f, 0.0f, -20.0f });
+	camera->SetRotation({ 0.0f, 0.0f, 0.0f });
+	object3dCommon->SetDefaultCamera(camera);
+
+	SrvManager* srvManager = SrvManager::GetInstance();
+	srvManager->Initialize(dxCommon);
+	dxCommon->RegisterSrvManager(srvManager);
+
+	TextureManager::GetInstance()->Initialize(dxCommon, srvManager);
+
 #pragma endregion 
 
+#pragma region パーティクル（Rendererへ移植）
+
+	const uint32_t kNumMaxInstance = 100;
+
+	ParticleRenderer particleRenderer;
+
+	// アセット登録
+	ParticleManager::GetInstance()->RegisterQuad("quad", "resources/circle.png");
+
+	// インスタンシング配列などのポインタは renderer 初期化後に取得する（後で設定）
+	ParticleForGPU* instancingData = nullptr;
+	uint32_t instancingSrvIndex = UINT32_MAX;
+
+	// 現在選択しているブレンドモード（UIで操作）
+	int currentBlendModeIndex = static_cast<int>(BlendMode::Additive);
+
+
+#pragma endregion 
 
 	TextureManager* texManager = TextureManager::GetInstance();
 
@@ -175,6 +220,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	texManager->LoadTexture("resources/uvChecker.png");
 	texManager->LoadTexture("resources/monsterBall.png");
 	texManager->LoadTexture("resources/checkerBoard.png");
+	texManager->LoadTexture("resources/circle.png");
 
 	// テクスチャアップロードの実行
 	texManager->ExecuteUploadCommands();
@@ -183,6 +229,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/uvChecker.png");
 	uint32_t monsterBallTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/monsterBall.png");
 	uint32_t checkerBoardTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/checkerBoard.png");
+
+	// パーティクル用テクスチャのインデックス
+	uint32_t particleSrvIndex = TextureManager::GetInstance()->GetSrvIndex("resources/circle.png");
+
+	// ParticleRenderer を登録済みアセットからセットアップ
+	ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "quad", dxCommon, srvManager, kNumMaxInstance);
+	instancingData = particleRenderer.GetInstancingData();
+	instancingSrvIndex = particleRenderer.GetInstancingSrvIndex();
 
 	// 中間リソースをまとめて解放
 	texManager->ClearIntermediateResources();
@@ -253,17 +307,54 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		Object3d* obj = new Object3d();
 		obj->Initialize(object3dCommon);
 		obj->SetModel("plane.obj");
-		// 位置を少しずらして並べる（見やすさのため）
 		obj->SetTranslate(Vector3(float(i) * 2.5f, 0.0f, 0.0f));
 		obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
 		obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 		modelInstances.push_back(obj);
 	}
 
-	// UI 用の編集状態は各インスタンスの現在値を直接取得して編集する方式にする
-	bool syncTransforms = false; // 編集を他インスタンスに同期するか
-	// ---------- /複数モデル用ここまで ----------
 #pragma endregion
+
+	//乱数生成器の初期化
+	std::random_device seedGenerator;
+	std::mt19937 randomEngine(seedGenerator());
+
+	std::uniform_real_distribution<float> distribution(-1.0f, 1.0f);
+	std::uniform_real_distribution<float> distColor(0.0f, 1.0f);
+	std::uniform_real_distribution<float> distTime(1.0f, 3.0f);
+
+	// ParticleSystem のセットアップ（Emitter 設定は ParticleSystem 経由で行う）
+	ParticleSystem particleSystem;
+	particleSystem.GetEmitter().GetEmitter().count = 3;
+	particleSystem.GetEmitter().GetEmitter().frequency = 0.5f;
+	particleSystem.GetEmitter().GetEmitter().frequencyTime = 0.0f;
+	particleSystem.GetEmitter().GetEmitter().transform.translate = { 0.0f,-2.0f,0.0f };
+	particleSystem.GetEmitter().GetEmitter().transform.rotation = { 0.0f,0.0f,0.0f };
+	particleSystem.GetEmitter().GetEmitter().transform.scale = { 1.0f,1.0f,1.0f };
+
+	// 現在のエフェクト選択（UIで変更可能）
+	ParticleEffect currentEffect = ParticleEffect::Wind;
+	particleSystem.SetEffect(currentEffect);
+
+	// 初期パーティクルを生成（main の旧ループと同等数を生成）
+	particleSystem.AddInitialParticles(randomEngine, kNumMaxInstance);
+
+	const float kDeltaTime = 1.0f / 60.0f;
+
+	//裏面回転行列
+	Matrix4x4 baccktoFrontMatrix = Matrix4x4::RotateY(std::numbers::pi_v<float>);
+
+
+	AccelerationField accelerationField;
+	accelerationField.accleration = { -15.0f, 0.0f, 0.0f };
+	accelerationField.area.min = { -1.0f, -1.0f, -1.0f };
+	accelerationField.area.max = { 1.0f, 1.0f, 1.0f };
+
+	particleSystem.SetAccelerationField(accelerationField);
+
+	bool update = true;
+	// ビルボード（カメラ目線）
+	bool useBillboard = true;
 
 
 	int32_t selectedModel = 0;
@@ -282,9 +373,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			break;
 		}
 
-		ImGui_ImplDX12_NewFrame();
-		ImGui_ImplWin32_NewFrame();
-		ImGui::NewFrame();
+		//ImGui_ImplDX12_NewFrame();
+		//ImGui_ImplWin32_NewFrame();
+		//ImGui::NewFrame();
 
 		//入力の更新
 		input->Update();
@@ -292,6 +383,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		/*-------------- ↓更新処理ここから↓ --------------*/
 
+		camera->Update();
 
 		/*--- 各モデルの更新処理 ---*/
 		for (auto obj : modelInstances)
@@ -306,152 +398,49 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 
 
+		// カメラ行列・ビュー・射影は Camera の getter を使う
+		Matrix4x4 cameraMatrix = camera->GetWorldMatrix();
+		Matrix4x4 viewMatrix = camera->GetViewMatrix();
+		Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
+
+		// ビルボード行列の計算（共通）
+		Matrix4x4 billboardMatrix = Matrix4x4::Identity();
+
+		if (useBillboard)
+		{
+			// カメラの回転成分のみを取り出して逆行列を使う（位置は除外）
+			Matrix4x4 camRotOnly = cameraMatrix;
+			camRotOnly.m[3][0] = 0.0f;
+			camRotOnly.m[3][1] = 0.0f;
+			camRotOnly.m[3][2] = 0.0f;
+			Matrix4x4 invCam = Matrix4x4::Inverse(camRotOnly);
+			billboardMatrix = baccktoFrontMatrix * invCam;
+			billboardMatrix.m[3][0] = 0.0f;
+			billboardMatrix.m[3][1] = 0.0f;
+			billboardMatrix.m[3][2] = 0.0f;
+		}
+		else
+		{
+			billboardMatrix = Matrix4x4::Identity();
+		}
+
+		// ParticleSystem を更新（Emitter の生成も内部で行う）
+		if (update)
+		{
+			particleSystem.Update(kDeltaTime);
+		}
+
+		// Instancing バッファへ書き込み（GPU に転送するための CPU 側配列は Renderer が管理）
+		uint32_t numInstance = particleSystem.FillInstancingBuffer(instancingData, kNumMaxInstance, viewMatrix, projectionMatrix, billboardMatrix, false);
+
+
 		//開発用UIの処理
-
-		ImGui::Begin("window");
-
-
-
-		// スプライト表示・編集のグループ
-		if (isDisplaySprite)
-		{
-			if (ImGui::CollapsingHeader("Sprite"))
-			{
-				// スプライト一覧と選択
-				if (ImGui::CollapsingHeader("Sprite Instances"))
-				{
-					// スプライト選択
-					ImGui::SliderInt("Selected Sprite", &selectedSpriteIndex, 0, int(sprites.size()) - 1);
-
-					// 簡易表示: 各スプライトのテクスチャ名・位置を表示（デバッグ用）
-					for (int i = 0; i < (int)sprites.size(); ++i)
-					{
-						ImGui::Text("Sprite %d: pos=(%.1f,%.1f) size=(%.1f,%.1f) anchor=(%.2f,%.2f) flipX=%d flipY=%d",
-							i,
-							sprites[i]->GetPosition().x, sprites[i]->GetPosition().y,
-							sprites[i]->GetSize().x, sprites[i]->GetSize().y,
-							sprites[i]->GetAnchorPoint().x, sprites[i]->GetAnchorPoint().y,
-							sprites[i]->IsFlipX() ? 1 : 0, sprites[i]->IsFlipY() ? 1 : 0);
-					}
-				}
-
-				// 選択中スプライトの詳細編集
-				Sprite* cur = sprites[selectedSpriteIndex];
-				if (cur)
-				{
-					ImGui::Separator();
-					ImGui::Text("Edit Sprite %d", selectedSpriteIndex);
-
-					// 位置・回転・サイズ（既存のAPIを使う）
-					Vector2 pos = cur->GetPosition();
-					if (ImGui::DragFloat2("Position", &pos.x, 1.0f)) cur->SetPosition(pos);
-
-					float rot = cur->GetRotation();
-					if (ImGui::SliderAngle("Rotation", &rot)) cur->SetRotation(rot);
-
-					Vector2 size = cur->GetSize();
-					if (ImGui::DragFloat2("Size", &size.x, 1.0f, 1.0f, 4096.0f)) cur->SetSize(size);
-
-					// アンカーポイント
-					Vector2 anchor = cur->GetAnchorPoint();
-					if (ImGui::DragFloat2("Anchor (0..1)", &anchor.x, 0.01f, 0.0f, 1.0f))
-					{
-						cur->SetAnchorPoint(anchor);
-					}
-
-					// フリップ
-					bool flipX = cur->IsFlipX();
-					if (ImGui::Checkbox("Flip X", &flipX)) cur->SetFlipX(flipX);
-					bool flipY = cur->IsFlipY();
-					if (ImGui::Checkbox("Flip Y", &flipY)) cur->SetFlipY(flipY);
-
-					// テクスチャ範囲（左上ピクセルと幅高さ）
-					Vector2 texLeftTop = cur->GetTextureLeftTop();
-					Vector2 texSize = cur->GetTextureSize();
-					if (ImGui::DragFloat2("Texture LeftTop (px)", &texLeftTop.x, 1.0f, 0.0f, 4096.0f)) cur->SetTextureLeftTop(texLeftTop);
-					if (ImGui::DragFloat2("Texture Size (px)", &texSize.x, 1.0f, 1.0f, 4096.0f)) cur->SetTextureSize(texSize);
-
-					// テクスチャ切替
-					static int selectedTex = 0;
-					if (ImGui::Combo("Texture", &selectedTex, textureNames.data(), (int)textureNames.size()))
-					{
-						cur->SetTexture(textureIndices[selectedTex]);
-					}
-
-					// ボタンで次のテクスチャに切り替える
-					if (ImGui::Button("Cycle Texture"))
-					{
-						int currentTex = selectedTex;
-						currentTex = (currentTex + 1) % int(textureIndices.size());
-						selectedTex = currentTex;
-						cur->SetTexture(textureIndices[selectedTex]);
-					}
-
-					// 表示中の値（読み取り専用）
-					ImGui::Text("Current texture leftTop=(%.1f,%.1f) size=(%.1f,%.1f)",
-						cur->GetTextureLeftTop().x, cur->GetTextureLeftTop().y,
-						cur->GetTextureSize().x, cur->GetTextureSize().y);
-				}
-			}
-		}
-
-		ImGui::Separator();
-		if (ImGui::CollapsingHeader("Model Controls"))
-		{
-			ImGui::Text("Instances: %d", (int)modelInstances.size());
-			// 選択
-			ImGui::SliderInt("Selected Model", &selectedModel, 0, (int)modelInstances.size() - 1);
-
-			// 同期フラグ
-			ImGui::Checkbox("Sync transforms to other instances", &syncTransforms);
-
-			// 選択中インスタンスの編集（現在値を取得して編集）
-			if (selectedModel >= 0 && selectedModel < (int)modelInstances.size())
-			{
-				Object3d* curModel = modelInstances[selectedModel];
-
-				Vector3 editTranslate = curModel->GetTranslate();
-				Vector3 editRotation = curModel->GetRotation();
-				Vector3 editScale = curModel->GetScale();
-
-				bool changed = false;
-				if (ImGui::DragFloat3("Position (X,Y,Z)", &editTranslate.x, 0.1f, -10000.0f, 10000.0f))
-				{
-					curModel->SetTranslate(editTranslate);
-					changed = true;
-				}
-				if (ImGui::DragFloat3("Rotation (X,Y,Z deg)", &editRotation.x, 0.5f, -360.0f, 360.0f))
-				{
-					curModel->SetRotation(editRotation);
-					changed = true;
-				}
-				if (ImGui::DragFloat3("Scale (X,Y,Z)", &editScale.x, 0.01f, 0.001f, 100.0f))
-				{
-					curModel->SetScale(editScale);
-					changed = true;
-				}
-
-				// 変更があれば同期処理（オンの場合）
-				if (changed && syncTransforms)
-				{
-					for (int i = 0; i < (int)modelInstances.size(); ++i)
-					{
-						if (i == selectedModel) continue;
-						modelInstances[i]->SetTranslate(editTranslate);
-						modelInstances[i]->SetRotation(editRotation);
-						modelInstances[i]->SetScale(editScale);
-					}
-				}
-			}
-		}
-
-		ImGui::End();
 
 
 		/*-------------- ↓描画処理ここから↓ --------------*/
 
 		//ImGuiの内部コマンドを生成
-		ImGui::Render();
+		/*ImGui::Render();*/
 
 		dxCommon->PreDraw();
 
@@ -475,18 +464,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 		}
 
+		// 描画は完全に ParticleRenderer に委譲
+		particleRenderer.Draw(numInstance, particleSrvIndex, currentBlendModeIndex);
 
 		//実際のCommandListのImGuiの描画コマンドを積む
-		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), dxCommon->GetCommandList());
+		//ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), dxCommon->GetCommandList());
 
 		dxCommon->PostDraw();
 
 	}
 
 	//ImGuiの終了処理
-	ImGui_ImplDX12_Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
+	//ImGui_ImplDX12_Shutdown();
+	//ImGui_ImplWin32_Shutdown();
+	//ImGui::DestroyContext();
 
 
 	//XAudio2の解放
@@ -529,12 +520,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	delete object3dCommon;
 
-	////音声データ解放
-	//SoundUnload(&soundData1);
-
-	////解放処理
-	//CloseHandle(fenceEvent);
-
+	srvManager->Finalize();
 
 	return 0;
 }
@@ -573,8 +559,6 @@ void Log(std::ostream& os, const std::string& message)
 	OutputDebugStringA(message.c_str());
 }
 
-
-
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 {
 	//時刻を取得して、時刻を名前に入れたファイルを作成
@@ -609,9 +593,6 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 
 }
 
-
-
-
 void CreateWhiteTexture(DirectX::ScratchImage& outImage)
 {
 	//白色
@@ -634,129 +615,3 @@ void CreateWhiteTexture(DirectX::ScratchImage& outImage)
 
 	outImage.InitializeFromImage(img);
 }
-
-
-//SoundData SoundLoadWave(const char* filename)
-//{
-//	HRESULT result = {};
-//
-//	/*---　1. ファイルを開く ---*/
-//	//ファイル入力ストリームのインスタンス
-//	std::ifstream file;
-//
-//	//.wavファイルをバイナリモードで開く
-//	file.open(filename, std::ios_base::binary);
-//
-//	//とりあえず開かなかったら止める
-//	assert(file.is_open());
-//
-//	/*---　2. .wavデータ読み込み ---*/
-//	//RIFFヘッダーの読み込み
-//	RiffHeader riff;
-//
-//	//チャンクヘッダーの確認
-//	file.read((char*)&riff, sizeof(riff));
-//
-//	//ファイルがRIFFかチェックする
-//	if (strncmp(riff.chunk.id, "RIFF", 4) != 0)
-//	{
-//		assert(0);
-//	}
-//
-//	//ファイルがWAVEかチェックする
-//	if (strncmp(riff.type, "WAVE", 4) != 0)
-//	{
-//		assert(0);
-//	}
-//
-//	//Formatチャンクの読み込み
-//	FormatChunk format = {};
-//
-//	//チャンクヘッダーの確認
-//	file.read((char*)&format, sizeof(ChunkHeader));
-//
-//	//ファイルがfmtかチェックする
-//	if (strncmp(format.chunk.id, "fmt ", 4) != 0)
-//	{
-//		assert(0);
-//	}
-//
-//	//チャンク本体の読み込み
-//	assert(format.chunk.size <= sizeof(format.fmt));
-//	file.read((char*)&format.fmt, format.chunk.size);
-//
-//	//Dataチャンクの読み込み
-//	ChunkHeader data;
-//
-//	//チャンクヘッダーの確認
-//	file.read((char*)&data, sizeof(data));
-//
-//	//JUNKチャンクを検出した場合
-//	if (strncmp(data.id, "JUNK", 4) == 0)
-//	{
-//		//読み取り位置をJUNKチャンクの終わりまで進める
-//		file.seekg(data.size, std::ios_base::cur);
-//
-//		//再読み込み
-//		file.read((char*)&data, sizeof(data));
-//	}
-//
-//	if (strncmp(data.id, "data", 4) != 0)
-//	{
-//		assert(0);
-//	}
-//
-//	//Dataチャンクのデータ部(波形データ)の読み込み
-//	char* pBuffer = new char[data.size];
-//	file.read(pBuffer, data.size);
-//
-//	/*---　3. ファイルを閉じる ---*/
-//	//Waveファイルを閉じる
-//	file.close();
-//
-//	/*--- 4. 読み込んだ音声データをreturnする ---*/
-//	//returnするための音声データ
-//	SoundData soundData = {};
-//
-//	//波形フォーマット
-//	soundData.wfex = format.fmt;
-//	//波形データ
-//	soundData.pBuffer = reinterpret_cast<BYTE*>(pBuffer);
-//	//波形データのサイズ
-//	soundData.buffersize = data.size;
-//
-//	return soundData;
-//}
-//
-////音声データ解放
-//void SoundUnload(SoundData* soundData)
-//{
-//	//バッファのメモリーを解放
-//	delete[] soundData->pBuffer;
-//
-//	soundData->pBuffer = 0;
-//	soundData->buffersize = 0;
-//	soundData->wfex = {};
-//}
-//
-////音声再生
-//void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData)
-//{
-//	HRESULT result;
-//
-//	//波形フォーマットを元にSourceVoiceを生成
-//	IXAudio2SourceVoice* pSourceVoice = nullptr;
-//
-//	result = xAudio2->CreateSourceVoice(&pSourceVoice, &soundData.wfex);
-//	assert(SUCCEEDED(result));
-//
-//	//再生する波形データの設定
-//	XAUDIO2_BUFFER buf{};
-//	buf.pAudioData = soundData.pBuffer;
-//	buf.AudioBytes = soundData.buffersize;
-//	buf.Flags = XAUDIO2_END_OF_STREAM;
-//
-//	//波形データの再生
-//	result = pSourceVoice->SubmitSourceBuffer(&buf);
-//	result = pSourceVoice->Start();
-//}

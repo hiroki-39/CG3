@@ -23,7 +23,7 @@ ConstantBuffer<Material> gMaterial : register(b0);
 
 ConstantBuffer<DirectionlLight> gDirectionlLight : register(b1);
 
-Texture2D<float32_t4> gTexture : register(t0);
+Texture2D<float32_t4> gTexture : register(t1);
 SamplerState gSampler : register(s0);
 
 struct PixelShaderOutput
@@ -34,13 +34,20 @@ struct PixelShaderOutput
 PixelShaderOutput main(VertexShaderOutput input)
 {
     PixelShaderOutput output;
-    float4 transformedUV = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
+    float32_t4 transformedUV = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float32_t4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
+    output.color = gMaterial.color * textureColor * input.color;
+    
+    if (textureColor.a <= 0.5f)
+    {
+        discard;
+    }
     
     if (output.color.a == 0.0f)
     {
         discard;
     }
-   
+    
+    
     return output;
 }

@@ -1,5 +1,6 @@
 ﻿#include "Model.h"
-#include "KHEngine/Graphics/Resource/TextureManager.h"
+#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
+#include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 #include <fstream>
 #include <sstream>
 
@@ -42,7 +43,7 @@ void Model::Draw()
 	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
 
 	//SRVのDescriptorTableの先頭を設定
-	dxCommon->GetCommandList()->SetGraphicsRootDescriptorTable(2, TextureManager::GetInstance()->GetSrvHandleGPU(modelData.material.textureIndex));
+	SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(2, modelData.material.textureIndex);
 
 	//描画！
 	dxCommon->GetCommandList()->DrawIndexedInstanced(UINT(modelData.indices.size()), 1, 0, 0, 0);

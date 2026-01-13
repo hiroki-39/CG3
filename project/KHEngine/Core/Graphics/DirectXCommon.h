@@ -17,16 +17,24 @@
 #include "KHEngine/Core/OS/WinApp.h"
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_dx12.h"
+#include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 
-struct UploadBatch
-{
-	Microsoft::WRL::ComPtr<ID3D12Resource> dst;
-	Microsoft::WRL::ComPtr<ID3D12Resource> interm;
-	std::vector<D3D12_SUBRESOURCE_DATA> sub;
-};
+class SrvManager;
+
+
 
 class DirectXCommon
 {
+public:
+
+	// テクスチャアップロードバッチ用構造体
+	struct UploadBatch
+	{
+		Microsoft::WRL::ComPtr<ID3D12Resource> dst;
+		Microsoft::WRL::ComPtr<ID3D12Resource> interm;
+		std::vector<D3D12_SUBRESOURCE_DATA> sub;
+	};
+
 public://メンバ関数
 
 	/// <summary>
@@ -95,7 +103,7 @@ public://メンバ関数
 	/// <summary>
 	///　ImGuiの初期化
 	/// </summary>
-	void InitImGui();
+	/*void InitImGui();*/
 
 	/// <summary>
 	/// 描画前処理
@@ -106,17 +114,6 @@ public://メンバ関数
 	/// 描画後処理
 	/// </summary>
 	void PostDraw();
-
-	/// <summary>
-	/// SRVの指定番号のCPUデスクリプタハンドルを取得
-	/// </summary>
-	D3D12_CPU_DESCRIPTOR_HANDLE GetSRVCPUDescriptorHandle(uint32_t index);
-
-	/// <summary>
-	/// SRVの指定番号のGPUデスクリプタハンドルを取得
-	/// </summary>
-	D3D12_GPU_DESCRIPTOR_HANDLE GetSRVGPUDescriptorHandle(uint32_t index);
-
 
 	/// <summary>
 	/// シェーダーのコンパイル
@@ -158,32 +155,20 @@ public://メンバ関数
 	/// </summary>
 	void ExecuteTextureUploadBatch();
 
+	void RegisterSrvManager(class SrvManager* srv);
+
 	// --- Getter ---
 	ID3D12Device* GetDevice() { return device.Get(); }
 	ID3D12GraphicsCommandList* GetCommandList() { return commandList.Get(); }
 	WinApp* GetWinApp() const { return winApp; }
 
-private://静的メンバ関数
-
-	/// <summary>
-	/// 指定番号のCPUデスクリプタハンドルを取得
-	/// </summary>
-	static D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap, uint32_t descriptorSize, uint32_t index);
-
-	/// <summary>
-	/// 指定番号のGPUデスクリプタハンドルを取得
-	/// </summary>
-	static D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap, uint32_t descriptorSize, uint32_t index);
-
-public:
-	
-	// 最大SRV数　(最大テクスチャ枚数)
-	static const uint32_t kMaxSRVCount;
-
 private://メンバ変数
 
 	WinApp* winApp = nullptr;
 
+	SrvManager* srvManager = nullptr;
+
+	// FPS制御タイマー
 	Timer timer;
 
 	// DirectX12のデバイス
@@ -207,9 +192,6 @@ private://メンバ変数
 
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
 
-	// SRV用のDescriptorSize
-	uint32_t desriptorSizeSRV;
-
 	// RTV用のDescriptorSize
 	uint32_t desriptorSizeRTV;
 
@@ -218,9 +200,6 @@ private://メンバ変数
 
 	// RTVのヒープ
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap;
-
-	// SRVのヒープ
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap;
 
 	// DSVのヒープ
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap;

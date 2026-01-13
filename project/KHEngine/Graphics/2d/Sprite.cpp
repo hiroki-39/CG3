@@ -1,5 +1,6 @@
 ﻿#include "Sprite.h"
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
+#include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 
 void Sprite::Initialize(SpriteCommon* spriteCommon, uint32_t textureIndex)
 {
@@ -47,8 +48,7 @@ void Sprite::Update()
 		bottom = -bottom;
 	}
 
-	const DirectX::TexMetadata& metadata =
-		TextureManager::GetInstance()->GetMetaData(textureIndex);
+	const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetaData(textureIndex);
 
 	float tex_left = textureLeftTop.x / static_cast<float>(metadata.width);
 	float tex_right = (textureLeftTop.x + textureSize.x) / static_cast<float>(metadata.width);
@@ -116,7 +116,7 @@ void Sprite::Draw()
 	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResource_->GetGPUVirtualAddress());
 
 	// SRVのDescriptorTableの先頭の設定
-	dxCommon->GetCommandList()->SetGraphicsRootDescriptorTable(2, TextureManager::GetInstance()->GetSrvHandleGPU(textureIndex));
+	SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(2, textureIndex);
 
 	// 描画
 	dxCommon->GetCommandList()->DrawIndexedInstanced(6, 1, 0, 0, 0);
@@ -210,8 +210,7 @@ void Sprite::CreateTransformationMatrixResource()
 void Sprite::AdjustTextureSize()
 {
 	// テクスチャメタデータを取得
-	const DirectX::TexMetadata& metadata =
-		TextureManager::GetInstance()->GetMetaData(textureIndex);
+	const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetaData(textureIndex);
 
 	textureSize.x = static_cast<float>(metadata.width);
 	textureSize.y = static_cast<float>(metadata.height);

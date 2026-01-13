@@ -4,7 +4,7 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon)
 {
 	dxCommon_ = dxCommon;
 
-	//グラフィックスパイプライン生成
+	// グラフィックスパイプライン生成
 	CreateGraphicsPipeline();
 }
 

@@ -50,6 +50,11 @@ public:
 	/// <returns>Z軸回転行列</returns>
 	static Matrix4x4 RotateZ(float rad);
 
+	/// <summary>
+	/// アフェイン変換行列
+	/// </summary>
+	static Matrix4x4 MakeAffine(const Vector3& scale, const Vector3& rotate, const Vector3& translate);
+
 	// --- 行列計算 ---
 
 	/// <summary>
@@ -109,4 +114,85 @@ public:
 	/// <param name="maxDepth">最大深度値</param>
 	/// <returns>ビューポート変換行列</returns>
 	static Matrix4x4 Viewport(float left, float top, float width, float height, float minDepth, float maxDepth);
+
+	// --- 演算子オーバーロード ---
+
+	/// <summary>
+	/// 行列乗算 (this * rhs)
+	/// </summary>
+	Matrix4x4 operator*(const Matrix4x4& rhs) const
+	{
+		return Multiply(*this, rhs);
+	}
+
+	/// <summary>
+	/// 行列自己代入乗算 (this = this * rhs)
+	/// </summary>
+	Matrix4x4& operator*=(const Matrix4x4& rhs)
+	{
+		*this = (*this) * rhs;
+		return *this;
+	}
+
+	/// <summary>
+	/// スカラー乗算 (this * s)
+	/// </summary>
+	Matrix4x4 operator*(float s) const
+	{
+		Matrix4x4 r;
+		for (int i = 0; i < 4; ++i)
+			for (int j = 0; j < 4; ++j)
+				r.m[i][j] = m[i][j] * s;
+		return r;
+	}
+
+	/// <summary>
+	/// ベクトル変換 (同次座標 w=1 として扱う)
+	/// w によって正規化（w != 0 の場合）
+	/// </summary>
+	Vector3 operator*(const Vector3& v) const
+	{
+		float x = m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z + m[0][3] * 1.0f;
+		float y = m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z + m[1][3] * 1.0f;
+		float z = m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z + m[2][3] * 1.0f;
+		float w = m[3][0] * v.x + m[3][1] * v.y + m[3][2] * v.z + m[3][3] * 1.0f;
+
+		constexpr float EPS = 1e-6f;
+		if (std::fabs(w) > EPS)
+		{
+			return Vector3(x / w, y / w, z / w);
+		}
+		else
+		{
+			// w が 0 に近い場合は方向ベクトル扱いとして正規化を行わずそのまま返す
+			return Vector3(x, y, z);
+		}
+	}
+
+	/// <summary>
+	/// 等価比較（小さな誤差を許容）
+	/// </summary>
+	bool operator==(const Matrix4x4& rhs) const
+	{
+		constexpr float EPS = 1e-6f;
+		for (int i = 0; i < 4; ++i)
+			for (int j = 0; j < 4; ++j)
+				if (std::fabs(m[i][j] - rhs.m[i][j]) > EPS)
+					return false;
+		return true;
+	}
+
+	/// <summary>
+	/// 非等価
+	/// </summary>
+	bool operator!=(const Matrix4x4& rhs) const
+	{
+		return !(*this == rhs);
+	}
 };
+
+// スカラー左乗算 (s * m)
+inline Matrix4x4 operator*(float s, const Matrix4x4& m)
+{
+	return m * s;
+}

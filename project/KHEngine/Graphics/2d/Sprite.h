@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
-#include "KHEngine/Graphics/Resource/TextureManager.h"
+#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Math/MathCommon.h"
 #include "KHEngine/Core/OS/WinApp.h"
 #include <wrl.h>
@@ -46,6 +46,8 @@ public://メンバ関数
 	/// <summary>
 	/// 初期化
 	/// </summary>
+	/// <param name="spriteCommon">スプライト共通部分</param>
+	/// <param name="textureIndex">テクスチャインデックス</param>
 	void Initialize(SpriteCommon* spriteCommon, uint32_t textureIndex);
 
 	/// <summary>
