@@ -44,15 +44,19 @@ public://メンバ関数
 	/// <summary>
 	/// メタデータを取得
 	/// </summary>
-	/// <param name="textureIndex">テクスチャインデックス</param>
-	const DirectX::TexMetadata& GetMetaData(uint32_t TextureIndex);
+	/// <param name="textureIndex">SRVの生インデックス（0始まり）</param>
+	const DirectX::TexMetadata& GetMetaData(uint32_t textureIndex);
 
-	// SRVインデックスの開始番号
+	// SRVインデックスの開始番号（UI用表示オフセット）
+	static uint32_t kSRVIndexTop;
+
+	// テクスチャ番号をファイルパスから取得（生インデックスを返す）
 	uint32_t GetTextureIndexByFilePath(const std::string& filePath);
 
 	// テクスチャ番号からGPUハンドルを取得
 	D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandleGPU(const std::string& filePath);
 
+	// ファイルパスから生インデックスを返す（同じく生インデックス）
 	uint32_t GetSrvIndex(const std::string& filePath);
 
 private://静的メンバ関数
@@ -81,7 +85,7 @@ private:
 		DirectX::TexMetadata metadata;								 // テクスチャメタデータ
 		Microsoft::WRL::ComPtr<ID3D12Resource> resource;			 // テクスチャリソース
 		Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource; // 転送用中間リソース
-		uint32_t srvIndex;											 // SRVインデックス
+		uint32_t srvIndex;											 // SRVインデックス（生インデックス）
 		std::vector<D3D12_SUBRESOURCE_DATA> subresources;			 // サブリソースデータ群
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandleCPU;					 // SRVハンドル(CPU)
 		D3D12_GPU_DESCRIPTOR_HANDLE srvHandleGPU;					 // SRVハンドル(GPU)
@@ -92,15 +96,14 @@ private:
 	// シングルトンインスタンス
 	static TextureManager* instance;
 
-	// SRVインデックスの開始番号
-	static uint32_t kSRVIndexTop;
-
 	// DirectXCommon
 	DirectXCommon* dxCommon_ = nullptr;
 
-	// テクスチャデータ群
+	// テクスチャデータ群（filePath -> data）
 	std::unordered_map<std::string, TextureData> textureDatas;
+
+	// SRVインデックス -> filePath マッピング（srvIndex を使って metadata 等にアクセスするため）
+	std::vector<std::string> textureIndexToFilePath;
 
 	SrvManager* srvManager = nullptr;
 };
-

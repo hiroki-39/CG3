@@ -3,7 +3,7 @@
 
 TextureManager* TextureManager::instance = nullptr;
 
-// ImGuiで0番目を使うためSRVインデックスを1から始める
+// UI表示用に 1 を足すための定数（内部は生インデックスを使う）
 uint32_t TextureManager::kSRVIndexTop = 1;
 
 
@@ -30,8 +30,9 @@ void TextureManager::Initialize(DirectXCommon* dxCommon, SrvManager* srvManager)
 	// メンバ変数として記録する
 	this->srvManager = srvManager;
 
-	// SRVの数と同数
+	// 事前確保（ヒープの最大数に合わせて）
 	textureDatas.reserve(srvManager->kMaxSRVCount);
+	textureIndexToFilePath.reserve(srvManager->kMaxSRVCount);
 }
 
 void TextureManager::LoadTexture(const std::string& filePath)
@@ -45,7 +46,7 @@ void TextureManager::LoadTexture(const std::string& filePath)
 	}
 
 	// テクスチャ枚数上限チェック
-	assert(textureDatas.size() + kSRVIndexTop < DirectXCommon::kMaxSRVCount);
+	assert(textureDatas.size() + 1 < DirectXCommon::kMaxSRVCount);
 
 	// ファイルからテクスチャデータを読み込む
 	DirectX::ScratchImage image{};
@@ -57,7 +58,7 @@ void TextureManager::LoadTexture(const std::string& filePath)
 	);
 
 	assert(SUCCEEDED(hr));
-
+	
 
 	//ミップマップの作成
 	DirectX::ScratchImage mipImages{};
@@ -70,7 +71,7 @@ void TextureManager::LoadTexture(const std::string& filePath)
 		mipImages);
 
 	assert(SUCCEEDED(hr));
-
+	
 
 	// テクスチャデータを追加
 	textureDatas.emplace(filePath, TextureData{});
@@ -82,8 +83,15 @@ void TextureManager::LoadTexture(const std::string& filePath)
 	textureData.metadata = mipImages.GetMetadata();
 	textureData.resource = dxCommon_->CreateTextureResource(textureData.metadata);
 
-	// テクスチャデータの要素数番号をSRVのインデックスにする
+	// テクスチャデータの要素数番号をSRVのインデックスにする（生インデックス）
 	textureData.srvIndex = srvManager->Allocate();
+
+	// インデックス -> ファイルパス マッピングを追加（srvIndex と配列インデックスを一致させる）
+	if (textureIndexToFilePath.size() <= textureData.srvIndex) {
+		textureIndexToFilePath.resize(textureData.srvIndex + 1);
+	}
+	textureIndexToFilePath[textureData.srvIndex] = filePath;
+
 	textureData.srvHandleCPU = srvManager->GetSRVCPUDescriptorHandle(textureData.srvIndex);
 	textureData.srvHandleGPU = srvManager->GetSRVGPUDescriptorHandle(textureData.srvIndex);
 
@@ -94,22 +102,6 @@ void TextureManager::LoadTexture(const std::string& filePath)
 		textureData.metadata.format,
 		static_cast<UINT>(textureData.metadata.mipLevels)
 	);
-
-	//D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-	//srvDesc.Format = textureData.metadata.format;
-	//srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	//srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	//srvDesc.Texture2D.MostDetailedMip = 0;
-	//srvDesc.Texture2D.MipLevels = static_cast<UINT>(textureData.metadata.mipLevels);
-	//srvDesc.Texture2D.PlaneSlice = 0;
-	//srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-
-	//// 設定をもとにSRVの生成
-	//dxCommon_->GetDevice()->CreateShaderResourceView(
-	//	textureData.resource.Get(),
-	//	&srvDesc,
-	//	textureData.srvHandleCPU
-	//);
 
 	// ローカルで作成したサブリソース情報（ここをtextureDataへ保存する）
 	std::vector<D3D12_SUBRESOURCE_DATA> subresources = CreateSubresources(mipImages);
@@ -154,9 +146,9 @@ uint32_t TextureManager::GetTextureIndexByFilePath(const std::string& filePath)
 	// 読み込み済みテクスチャを検索
 	if (textureDatas.contains(filePath))
 	{
-		// 見つかったらSRVインデックスを返す
+		// 見つかったらSRVインデックス（生インデックス）を返す
 		TextureData& textureData = textureDatas[filePath];
-		return textureData.srvIndex + kSRVIndexTop;
+		return textureData.srvIndex;
 	}
 
 	// テクスチャ条件をチェック
@@ -200,16 +192,16 @@ std::vector<D3D12_SUBRESOURCE_DATA> TextureManager::CreateSubresources(const Dir
 
 const DirectX::TexMetadata& TextureManager::GetMetaData(uint32_t TextureIndex)
 {
-	// 範囲外指定違反チェック
-	assert(textureIndex >= kSRVIndexTop && textureIndex < textureDatas.size() + kSRVIndexTop);
+	// 生インデックス（0始まり）でチェック
+	assert(TextureIndex < textureIndexToFilePath.size());
 
-	// テクスチャデータの参照を取得
-	auto it = textureDatas.begin();
-	std::advance(it, TextureIndex - kSRVIndexTop);
-	TextureData& textureData = it->second;
-	
+	// インデックス -> ファイルパス経由で参照
+	const std::string& filePath = textureIndexToFilePath[TextureIndex];
+	auto it = textureDatas.find(filePath);
+	assert(it != textureDatas.end());
+
 	// メタデータを返す
-	return textureData.metadata;
+	return it->second.metadata;
 }
 
 uint32_t TextureManager::GetSrvIndex(const std::string& filePath)
@@ -217,7 +209,7 @@ uint32_t TextureManager::GetSrvIndex(const std::string& filePath)
 	// 読み込み済みテクスチャを検索
 	if (textureDatas.contains(filePath))
 	{
-		// 見つかったらSRVインデックスを返す
+		// 見つかったらSRVインデックスを返す（生インデックス）
 		TextureData& textureData = textureDatas[filePath];
 		return textureData.srvIndex;
 	}

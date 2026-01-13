@@ -38,8 +38,6 @@
 #include "KHEngine/Graphics/3d/Camera/Camera.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 #include <random>
-
-// Particle system headers (移植済みのクラスを使用)
 #include "KHEngine/Graphics/3d/Particle/Particle.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleEmitter.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleSystem.h"
@@ -140,7 +138,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 #ifdef _DEBUG
 
 	Microsoft::WRL::ComPtr<ID3D12Debug1> debugController = nullptr;
-	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))){
+	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+	{
 		//デバックレイヤーの有効化
 		debugController->EnableDebugLayer();
 		//GPU側でもチェックを行うようにする
@@ -187,7 +186,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	srvManager->Initialize(dxCommon);
 	dxCommon->RegisterSrvManager(srvManager);
 
-	TextureManager::GetInstance()->Initialize(dxCommon,srvManager);
+	TextureManager::GetInstance()->Initialize(dxCommon, srvManager);
 
 #pragma endregion 
 
@@ -221,6 +220,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	texManager->LoadTexture("resources/uvChecker.png");
 	texManager->LoadTexture("resources/monsterBall.png");
 	texManager->LoadTexture("resources/checkerBoard.png");
+	texManager->LoadTexture("resources/circle.png");
 
 	// テクスチャアップロードの実行
 	texManager->ExecuteUploadCommands();
