@@ -44,58 +44,6 @@
 #include "KHEngine/Graphics/3d/Particle/ParticleRenderer.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleManager.h"
 
-struct VertexData
-{
-
-	Vector4 position;
-	Vector2 texcoord;
-	Vector3 normal;
-
-	bool operator==(const VertexData& other) const
-	{
-		return position.x == other.position.x && position.y == other.position.y && position.z == other.position.z &&
-			texcoord.x == other.texcoord.x && texcoord.y == other.texcoord.y &&
-			normal.x == other.normal.x && normal.y == other.normal.y && normal.z == other.normal.z;
-	}
-};
-
-struct Material
-{
-	Vector4 color;
-	bool enableLighting;
-	float padding[3];
-	Matrix4x4 uvTransform;
-	int32_t selectLightings;
-};
-
-struct MaterialData
-{
-	std::string textureFilePath;
-};
-
-struct  ModelData
-{
-	std::vector<VertexData> vertices;
-	std::vector<uint32_t> indices;
-	MaterialData material;
-};
-
-namespace std
-{
-	template < >
-	struct hash<VertexData>
-	{
-		size_t operator()(const VertexData& v) const
-		{
-			size_t h1 = hash<float>()(v.position.x) ^ hash<float>()(v.position.y) ^ hash<float>()(v.position.z);
-			size_t h2 = hash<float>()(v.texcoord.x) ^ hash<float>()(v.texcoord.y);
-			size_t h3 = hash<float>()(v.normal.x) ^ hash<float>()(v.normal.y) ^ hash<float>()(v.normal.z);
-			return h1 ^ (h2 << 1) ^ (h3 << 2);
-		}
-	};
-}
-
-
 enum class BlendMode
 {
 	Alpha = 0,
