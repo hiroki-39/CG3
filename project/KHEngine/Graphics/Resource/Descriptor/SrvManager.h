@@ -1,7 +1,9 @@
 ﻿#pragma once
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
+#include <vector>
+#include <cstdint>
 
-class DirectXCommon; 
+class DirectXCommon;
 
 class SrvManager
 {
@@ -20,6 +22,11 @@ public:// メンバ関数
 	///　確保用
 	/// </summary>
 	uint32_t Allocate();
+
+	/// <summary>
+	/// 解放
+	/// </summary>
+	void Free(uint32_t index);
 
 	/// <summary>
 	/// SRVの指定番号のCPUデスクリプタハンドルを取得
@@ -47,7 +54,7 @@ public:// メンバ関数
 	void PreDraw();
 
 	/// <summary>
-	///
+	/// コマンドリストにSRVをセット
 	/// </summary>
 	void SetGraphicsRootDescriptorTable(UINT rootParameterIndex, uint32_t srvIndex);
 
@@ -55,6 +62,11 @@ public:// メンバ関数
 	/// 確保可能かチェック
 	/// </summary>
 	bool CanAllocate();
+
+	/// <summary>
+	/// CPUデスクリプタハンドルからSRVインデックスを取得
+	/// </summary>
+	uint32_t GetIndexFromCPUDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle);
 
 public:
 
@@ -73,5 +85,8 @@ private:
 
 	// 次に使用するSRVインデックス
 	uint32_t useIndex = 0;
+
+	// 解放されたインデックスを再利用するためのスタック
+	std::vector<uint32_t> freeList;
 };
 

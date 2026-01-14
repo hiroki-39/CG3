@@ -1,4 +1,6 @@
 ﻿#include "SrvManager.h"
+#include <algorithm>
+#include <cassert>
 
 const uint32_t SrvManager::kMaxSRVCount = 512;
 
@@ -26,16 +28,36 @@ void SrvManager::Initialize(DirectXCommon* dxCommon)
 
 uint32_t SrvManager::Allocate()
 {
+	// まず解放済みリストをチェックして再利用
+	if (!freeList.empty())
+	{
+		uint32_t idx = freeList.back();
+		freeList.pop_back();
+		return idx;
+	}
+
 	// 上限チェックしてassertをかける
 	assert(useIndex < kMaxSRVCount);
 
 	// 使用する番号を退避
-	int index = useIndex;
+	uint32_t index = useIndex;
 
 	// 次回のために番号を1進める
 	useIndex++;
 
 	return index;
+}
+
+void SrvManager::Free(uint32_t index)
+{
+	// 範囲外は無視
+	if (index >= kMaxSRVCount) return;
+
+	// 二重解放は無視
+	if (std::find(freeList.begin(), freeList.end(), index) != freeList.end()) return;
+
+	// 解放リストに追加（後入れ先出しで再利用）
+	freeList.push_back(index);
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE SrvManager::GetSRVCPUDescriptorHandle(uint32_t index)
@@ -50,6 +72,13 @@ D3D12_GPU_DESCRIPTOR_HANDLE SrvManager::GetSRVGPUDescriptorHandle(uint32_t index
 	D3D12_GPU_DESCRIPTOR_HANDLE handleGPU = descriptorHeap->GetGPUDescriptorHandleForHeapStart();
 	handleGPU.ptr += (descriptorSize * index);
 	return handleGPU;
+}
+
+uint32_t SrvManager::GetIndexFromCPUDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle)
+{
+	D3D12_CPU_DESCRIPTOR_HANDLE start = descriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	size_t offset = static_cast<size_t>(handle.ptr - start.ptr);
+	return static_cast<uint32_t>(offset / descriptorSize);
 }
 
 void SrvManager::CreateSRVforTexture2D(uint32_t srvIndex, ID3D12Resource* pResource, DXGI_FORMAT Format, UINT MipLevels)
@@ -97,11 +126,11 @@ void SrvManager::PreDraw()
 
 void SrvManager::SetGraphicsRootDescriptorTable(UINT rootParameterIndex, uint32_t srvIndex)
 {
-	directXCommon->GetCommandList()->SetGraphicsRootDescriptorTable(rootParameterIndex,GetSRVGPUDescriptorHandle(srvIndex));
+	directXCommon->GetCommandList()->SetGraphicsRootDescriptorTable(rootParameterIndex, GetSRVGPUDescriptorHandle(srvIndex));
 }
 
 bool SrvManager::CanAllocate()
 {
 	//上限に足していればtrueを返す、そうでなければfalseを返す
-	return useIndex < kMaxSRVCount;
+	return useIndex < kMaxSRVCount || !freeList.empty();
 }

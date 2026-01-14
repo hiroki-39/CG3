@@ -160,7 +160,10 @@ public://メンバ関数
 	// --- Getter ---
 	ID3D12Device* GetDevice() { return device.Get(); }
 	ID3D12GraphicsCommandList* GetCommandList() { return commandList.Get(); }
+	ID3D12CommandQueue* GetCommandQueue() { return commandQueue.Get(); }
 	WinApp* GetWinApp() const { return winApp; }
+	size_t GetSwapChainResourceNum() const { return swapChainResources.size(); }
+
 
 private://メンバ変数
 

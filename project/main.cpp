@@ -43,6 +43,7 @@
 #include "KHEngine/Graphics/3d/Particle/ParticleSystem.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleRenderer.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleManager.h"
+#include "KHEngine/Debug/Imgui/ImGuiManager.h"
 
 enum class BlendMode
 {
@@ -135,6 +136,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	dxCommon->RegisterSrvManager(srvManager);
 
 	TextureManager::GetInstance()->Initialize(dxCommon, srvManager);
+
+	// ImGuiの初期化
+	ImGuiManager* imguiManager = new ImGuiManager();
+	imguiManager->Initialize(dxCommon, winApp);
 
 #pragma endregion 
 
@@ -383,12 +388,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 		//開発用UIの処理
+		imguiManager->Begin();
 
 
 		/*-------------- ↓描画処理ここから↓ --------------*/
 
 		//ImGuiの内部コマンドを生成
-		/*ImGui::Render();*/
+		imguiManager->End();
 
 		dxCommon->PreDraw();
 
@@ -416,16 +422,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		particleRenderer.Draw(numInstance, particleSrvIndex, currentBlendModeIndex);
 
 		//実際のCommandListのImGuiの描画コマンドを積む
-		//ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), dxCommon->GetCommandList());
+		imguiManager->Draw();
 
 		dxCommon->PostDraw();
 
 	}
 
-	//ImGuiの終了処理
-	//ImGui_ImplDX12_Shutdown();
-	//ImGui_ImplWin32_Shutdown();
-	//ImGui::DestroyContext();
+	// ImGuiの終了処理
+	imguiManager->Finalize();
 
 
 	//XAudio2の解放
@@ -440,6 +444,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//入力の解放
 	delete input;
 
+	delete imguiManager;
+
 	//WindowsAPIの終了処理
 	winApp->Finalize();
 
@@ -452,6 +458,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//スプライトの解放
 	delete spriteCommon;
+
+
 
 	//スプライトの解放
 	for (uint32_t i = 0; i < 5; i++)
@@ -469,6 +477,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	delete object3dCommon;
 
 	srvManager->Finalize();
+
+
 
 	return 0;
 }
