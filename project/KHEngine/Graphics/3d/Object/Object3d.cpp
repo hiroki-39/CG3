@@ -32,24 +32,18 @@ void Object3d::Update()
 {
 	//Transformの更新
 	Matrix4x4 worldMatrix = transform.GetWorldMatrix();
-	
+
 	Matrix4x4 worldViewProjectionMatrix;
 	if (camera)
 	{
 		const Matrix4x4& ViewProjectionMatrix = camera->GetViewProjectionMatrix();
-		 worldViewProjectionMatrix = Matrix4x4::Multiply(worldMatrix, ViewProjectionMatrix);
+		worldViewProjectionMatrix = Matrix4x4::Multiply(worldMatrix, ViewProjectionMatrix);
 	}
 	else
 	{
 		worldViewProjectionMatrix = worldMatrix;
 	}
 
-	//Matrix4x4 cameraMatrix = cameraTransform.GetWorldMatrix();
-	//Matrix4x4 viewMatrix = Matrix4x4::Inverse(cameraMatrix);
-	//Matrix4x4 projectionMatrix = Matrix4x4::Perspective(0.45f, float(winApp_->kClientWidth) / float(winApp_->kClientHeight), 0.1f, 100.0f);
-	////WVPMatrixの作成
-	//Matrix4x4 worldViewProjectionMatrix = Matrix4x4::Multiply(worldMatrix, Matrix4x4::Multiply(viewMatrix, projectionMatrix));
-	
 	transformationMatrixData_->WVP = worldViewProjectionMatrix;
 	transformationMatrixData_->World = worldMatrix;
 
@@ -70,12 +64,21 @@ void Object3d::Draw()
 	{
 		model->Draw();
 	}
-
 }
 
 void Object3d::SetModel(const std::string& filePath)
 {
+	// 指定ファイルが未ロードならモデルをロードする（安全策）
+	if (ModelManager::GetInstance()->FindModel(filePath) == nullptr)
+	{
+		ModelManager::GetInstance()->LoadModel(filePath);
+	}
+
+	// モデルポインタを取得
 	model = ModelManager::GetInstance()->FindModel(filePath);
+
+	// デバッグ用にアサート（実運用ならログ出力に変更してもよい）
+	assert(model != nullptr);
 }
 
 void Object3d::CreateTransformationMatrixResource()
@@ -105,4 +108,37 @@ void Object3d::CreateDirectionalLight()
 	directionalLightData_->direction = { 1.0f,0.0f,0.0f };
 	//輝度
 	directionalLightData_->intensity = 1.0f;
+}
+
+Vector4 Object3d::GetDirectionalLightColor() const
+{
+	if (directionalLightData_) return directionalLightData_->color;
+	return Vector4{1.0f,1.0f,1.0f,1.0f};
+}
+
+Vector3 Object3d::GetDirectionalLightDirection() const
+{
+	if (directionalLightData_) return directionalLightData_->direction;
+	return Vector3{1.0f,0.0f,0.0f};
+}
+
+float Object3d::GetDirectionalLightIntensity() const
+{
+	if (directionalLightData_) return directionalLightData_->intensity;
+	return 1.0f;
+}
+
+void Object3d::SetDirectionalLightColor(const Vector4& color)
+{
+	if (directionalLightData_) directionalLightData_->color = color;
+}
+
+void Object3d::SetDirectionalLightDirection(const Vector3& direction)
+{
+	if (directionalLightData_) directionalLightData_->direction = direction;
+}
+
+void Object3d::SetDirectionalLightIntensity(float intensity)
+{
+	if (directionalLightData_) directionalLightData_->intensity = intensity;
 }
