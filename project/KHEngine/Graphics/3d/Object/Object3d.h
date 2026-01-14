@@ -44,6 +44,9 @@ public://メンバ関数
 	const Vector3& GetScale() const { return transform.scale; }
 	const Vector3& GetRotation() const { return transform.rotation; }
 	const Vector3& GetTranslate() const { return transform.translate; }
+	Vector4 GetDirectionalLightColor() const;
+	Vector3 GetDirectionalLightDirection() const;
+	float GetDirectionalLightIntensity() const;
 
 	// --- Setter ---
 	void SetModel(Model* model) { this->model = model; }
@@ -52,6 +55,9 @@ public://メンバ関数
 	void SetRotation(const Vector3& rotation) { transform.rotation = rotation; }
 	void SetTranslate(const Vector3& translate) { transform.translate = translate; }
 	void SetCamera(Camera* camera) { this->camera = camera; }
+	void SetDirectionalLightColor(const Vector4& color);
+	void SetDirectionalLightDirection(const Vector3& direction);
+	void SetDirectionalLightIntensity(float intensity);
 
 private://メンバ関数
 

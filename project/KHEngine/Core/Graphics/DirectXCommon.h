@@ -15,13 +15,10 @@
 #include "KHEngine/Core/Utility/Timer/Timer.h"
 
 #include "KHEngine/Core/OS/WinApp.h"
-#include "externals/imgui/imgui.h"
-#include "externals/imgui/imgui_impl_dx12.h"
+
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 
 class SrvManager;
-
-
 
 class DirectXCommon
 {
@@ -160,7 +157,10 @@ public://メンバ関数
 	// --- Getter ---
 	ID3D12Device* GetDevice() { return device.Get(); }
 	ID3D12GraphicsCommandList* GetCommandList() { return commandList.Get(); }
+	ID3D12CommandQueue* GetCommandQueue() { return commandQueue.Get(); }
 	WinApp* GetWinApp() const { return winApp; }
+	size_t GetSwapChainResourceNum() const { return swapChainResources.size(); }
+
 
 private://メンバ変数
 

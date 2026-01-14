@@ -43,58 +43,7 @@
 #include "KHEngine/Graphics/3d/Particle/ParticleSystem.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleRenderer.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleManager.h"
-
-struct VertexData
-{
-
-	Vector4 position;
-	Vector2 texcoord;
-	Vector3 normal;
-
-	bool operator==(const VertexData& other) const
-	{
-		return position.x == other.position.x && position.y == other.position.y && position.z == other.position.z &&
-			texcoord.x == other.texcoord.x && texcoord.y == other.texcoord.y &&
-			normal.x == other.normal.x && normal.y == other.normal.y && normal.z == other.normal.z;
-	}
-};
-
-struct Material
-{
-	Vector4 color;
-	bool enableLighting;
-	float padding[3];
-	Matrix4x4 uvTransform;
-	int32_t selectLightings;
-};
-
-struct MaterialData
-{
-	std::string textureFilePath;
-};
-
-struct  ModelData
-{
-	std::vector<VertexData> vertices;
-	std::vector<uint32_t> indices;
-	MaterialData material;
-};
-
-namespace std
-{
-	template < >
-	struct hash<VertexData>
-	{
-		size_t operator()(const VertexData& v) const
-		{
-			size_t h1 = hash<float>()(v.position.x) ^ hash<float>()(v.position.y) ^ hash<float>()(v.position.z);
-			size_t h2 = hash<float>()(v.texcoord.x) ^ hash<float>()(v.texcoord.y);
-			size_t h3 = hash<float>()(v.normal.x) ^ hash<float>()(v.normal.y) ^ hash<float>()(v.normal.z);
-			return h1 ^ (h2 << 1) ^ (h3 << 2);
-		}
-	};
-}
-
+#include "KHEngine/Debug/Imgui/ImGuiManager.h"
 
 enum class BlendMode
 {
@@ -108,8 +57,6 @@ enum class BlendMode
 
 // 以下のユーティリティ／プロトタイプは main 内で使用するものだけ保持
 void Log(std::ostream& os, const std::string& message);
-
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
 
@@ -188,6 +135,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	TextureManager::GetInstance()->Initialize(dxCommon, srvManager);
 
+	// ImGuiの初期化
+	ImGuiManager* imguiManager = new ImGuiManager();
+	imguiManager->Initialize(dxCommon, winApp);
+
 #pragma endregion 
 
 #pragma region パーティクル（Rendererへ移植）
@@ -244,70 +195,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 #pragma region 最初のシーンの初期化
 
-	//スプライトのポインタ
+	// スプライト
 	std::vector<Sprite*> sprites;
-
-	//スプライトの初期化（5個作ってそれぞれ挫折を見られるように設定）
-	const int kSpriteCount = 5;
-	std::array<uint32_t, 3> textureIndices = { uvCheckerTex, monsterBallTex, checkerBoardTex };
-	std::array<const char*, 3> textureNames = { "uvChecker.png", "monsterBall.png", "checkerBoard.png" };
-
-	// 作成して初期設定
-	for (int i = 0; i < kSpriteCount; ++i)
 	{
 		Sprite* s = new Sprite();
-		// テクスチャは順繰りに割り当て
-		s->Initialize(spriteCommon, textureIndices[i % textureIndices.size()]);
-
-		// 初期位置を見やすく分散
-		s->SetPosition(Vector2(50.0f + i * 140.0f, 120.0f + (i % 2) * 140.0f));
-		// サイズを共通に（必要に応じて変えてください）
+		// テクスチャはuvChecker
+		s->Initialize(spriteCommon, uvCheckerTex);
+		// 初期位置を(100,100)
+		s->SetPosition(Vector2(100.0f, 100.0f));
+		// サイズ
 		s->SetSize(Vector2(128.0f, 128.0f));
-
-		// アンカーポイントをバリエーション付与
-		switch (i)
-		{
-		case 0: s->SetAnchorPoint(Vector2(0.0f, 0.0f)); break;   // 左上
-		case 1: s->SetAnchorPoint(Vector2(0.5f, 0.5f)); break;   // 中央
-		case 2: s->SetAnchorPoint(Vector2(1.0f, 1.0f)); break;   // 右下
-		case 3: s->SetAnchorPoint(Vector2(0.0f, 0.5f)); break;   // 左中央
-		case 4: s->SetAnchorPoint(Vector2(0.5f, 0.0f)); break;   // 上中央
-		}
-
-		// フリップを一部のスプライトで有効化して確認しやすくする
-		s->SetFlipX(i == 2 || i == 4);
-		s->SetFlipY(i == 1 || i == 3);
-
-		// テクスチャの範囲指定（左上とサイズ）を一部に設定
-		// ここではピクセル単位として指定している想定（Spriteの実装に合わせて必要なら正規化値に変更）
-		if (i == 3)
-		{
-			s->SetTextureLeftTop(Vector2(0.0f, 0.0f));
-			s->SetTextureSize(Vector2(64.0f, 64.0f));
-		}
-		else if (i == 4)
-		{
-			s->SetTextureLeftTop(Vector2(64.0f, 64.0f));
-			s->SetTextureSize(Vector2(64.0f, 64.0f));
-		}
-		// その他はデフォルト（全体）を使用
-
+		// アンカーポイントを中央に
+		s->SetAnchorPoint(Vector2(0.5f, 0.5f));
+		// 色
+		s->SetColor(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		sprites.push_back(s);
 	}
 
-	// 選択用インデックス（ImGuiで操作するための状態）
-	int selectedSpriteIndex = 0;
-
-	// ---------- 複数モデル用に変更 ----------
-	const int kModelCount = 3;
+	// モデル
 	std::vector<Object3d*> modelInstances;
-	modelInstances.reserve(kModelCount);
-	for (int i = 0; i < kModelCount; ++i)
 	{
 		Object3d* obj = new Object3d();
 		obj->Initialize(object3dCommon);
-		obj->SetModel("plane.obj");
-		obj->SetTranslate(Vector3(float(i) * 2.5f, 0.0f, 0.0f));
+		obj->SetModel("teapot.obj");
+		obj->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
 		obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
 		obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 		modelInstances.push_back(obj);
@@ -315,7 +226,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 #pragma endregion
 
-	//乱数生成器の初期化
+	// 乱数生成器の初期化
 	std::random_device seedGenerator;
 	std::mt19937 randomEngine(seedGenerator());
 
@@ -341,7 +252,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	const float kDeltaTime = 1.0f / 60.0f;
 
-	//裏面回転行列
+	// 裏面回転行列
 	Matrix4x4 baccktoFrontMatrix = Matrix4x4::RotateY(std::numbers::pi_v<float>);
 
 
@@ -356,46 +267,40 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// ビルボード（カメラ目線）
 	bool useBillboard = true;
 
-
-	int32_t selectedModel = 0;
-
 	bool isDisplaySprite = true;
 
 	/*---メインループ---*/
 
-	//ゲームループ
+	// ゲームループ
 	while (true)
 	{
-		//Windowsのメッセージ処理
+		// Windowsのメッセージ処理
 		if (winApp->ProcessMessage())
 		{
-			//ゲームループを抜ける
+			// ゲームループを抜ける
 			break;
 		}
 
-		//ImGui_ImplDX12_NewFrame();
-		//ImGui_ImplWin32_NewFrame();
-		//ImGui::NewFrame();
-
-		//入力の更新
-		input->Update();
-
-
 		/*-------------- ↓更新処理ここから↓ --------------*/
 
+		// 入力の更新
+		input->Update();
+
+		// カメラの更新
 		camera->Update();
 
 		/*--- 各モデルの更新処理 ---*/
-		for (auto obj : modelInstances)
+		for (auto model : modelInstances)
 		{
-			obj->Update();
+			model->Update();
 		}
 
 		/*--- Spriteの更新処理 ---*/
-		for (uint32_t i = 0; i < 5; i++)
+		for (auto sprite : sprites)
 		{
-			sprites[i]->Update();
+			sprite->Update();
 		}
+		
 
 
 		// カメラ行列・ビュー・射影は Camera の getter を使う
@@ -434,53 +339,193 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		uint32_t numInstance = particleSystem.FillInstancingBuffer(instancingData, kNumMaxInstance, viewMatrix, projectionMatrix, billboardMatrix, false);
 
 
-		//開発用UIの処理
+		// 開発用UIの処理
+		imguiManager->Begin();
 
+
+#ifdef USE_IMGUI
+		
+		ImGui::Begin("Scene Controls");
+
+		// Sprite
+		if (ImGui::CollapsingHeader("Sprite"))
+		{
+			if (!sprites.empty())
+			{
+				Sprite* s = sprites[0];
+
+				bool display = isDisplaySprite;
+				ImGui::Checkbox("Display Sprite", &display);
+				isDisplaySprite = display;
+
+				Vector2 pos = s->GetPosition();
+				float posArr[2] = { pos.x, pos.y };
+				if (ImGui::DragFloat2("Position", posArr, 1.0f))
+				{
+					s->SetPosition(Vector2(posArr[0], posArr[1]));
+				}
+
+				Vector2 size = s->GetSize();
+				float sizeArr[2] = { size.x, size.y };
+				if (ImGui::DragFloat2("Size", sizeArr, 1.0f, 1.0f, 4096.0f))
+				{
+					s->SetSize(Vector2(sizeArr[0], sizeArr[1]));
+				}
+
+				float rotation = s->GetRotation();
+				if (ImGui::DragFloat("Rotation", &rotation, 0.5f))
+				{
+					s->SetRotation(rotation);
+				}
+
+				Vector4 col = s->GetColor();
+				float colArr[4] = { col.x, col.y, col.z, col.w };
+				if (ImGui::ColorEdit4("Color", colArr))
+				{
+					s->SetColor(Vector4(colArr[0], colArr[1], colArr[2], colArr[3]));
+				}
+			}
+		}
+
+		// Model
+		if (ImGui::CollapsingHeader("Model"))
+		{
+			if (!modelInstances.empty())
+			{
+				Object3d* obj = modelInstances[0];
+				// Translate / Rotation / Scale
+				Vector3 t = obj->GetTranslate();
+				float tArr[3] = { t.x, t.y, t.z };
+				if (ImGui::DragFloat3("Translate", tArr, 0.05f))
+				{
+					obj->SetTranslate(Vector3(tArr[0], tArr[1], tArr[2]));
+				}
+
+				Vector3 r = obj->GetRotation();
+				float rArr[3] = { r.x, r.y, r.z };
+				if (ImGui::DragFloat3("Rotation", rArr, 0.5f))
+				{
+					obj->SetRotation(Vector3(rArr[0], rArr[1], rArr[2]));
+				}
+
+				Vector3 s = obj->GetScale();
+				float sArr[3] = { s.x, s.y, s.z };
+				if (ImGui::DragFloat3("Scale", sArr, 0.01f, 0.001f, 100.0f))
+				{
+					obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
+				}
+
+				// Light (directional)
+				Vector4 lightCol = obj->GetDirectionalLightColor();
+				float lightColArr[4] = { lightCol.x, lightCol.y, lightCol.z, lightCol.w };
+				if (ImGui::ColorEdit4("Light Color", lightColArr))
+				{
+					obj->SetDirectionalLightColor(Vector4(lightColArr[0], lightColArr[1], lightColArr[2], lightColArr[3]));
+				}
+
+				Vector3 lightDir = obj->GetDirectionalLightDirection();
+				float lightDirArr[3] = { lightDir.x, lightDir.y, lightDir.z };
+				if (ImGui::DragFloat3("Light Direction", lightDirArr, 0.1f))
+				{
+					obj->SetDirectionalLightDirection(Vector3(lightDirArr[0], lightDirArr[1], lightDirArr[2]));
+				}
+
+				float lightIntensity = obj->GetDirectionalLightIntensity();
+				if (ImGui::DragFloat("Light Intensity", &lightIntensity, 0.01f, 0.0f, 10.0f))
+				{
+					obj->SetDirectionalLightIntensity(lightIntensity);
+				}
+			}
+		}
+
+		// Camera
+		if (ImGui::CollapsingHeader("Camera"))
+		{
+			// Camera position / rotation via direct reference getters
+			Vector3& camPosRef = camera->GetTranslate();
+			float camPosArr[3] = { camPosRef.x, camPosRef.y, camPosRef.z };
+			if (ImGui::DragFloat3("Cam Translate", camPosArr, 0.1f))
+			{
+				camera->SetTranslate(Vector3(camPosArr[0], camPosArr[1], camPosArr[2]));
+			}
+
+			Vector3& camRotRef = camera->GetRotation();
+			float camRotArr[3] = { camRotRef.x, camRotRef.y, camRotRef.z };
+			if (ImGui::DragFloat3("Cam Rotation", camRotArr, 0.5f))
+			{
+				camera->SetRotation(Vector3(camRotArr[0], camRotArr[1], camRotArr[2]));
+			}
+
+			// FOV / aspect / near / far (getters added)
+			float fov = camera->GetFovY();
+			if (ImGui::DragFloat("FOV Y", &fov, 0.01f, 0.01f, 3.14f))
+			{
+				camera->SetFovY(fov);
+			}
+
+			float aspect = camera->GetAspectRatio();
+			if (ImGui::DragFloat("Aspect", &aspect, 0.01f, 0.1f, 10.0f))
+			{
+				camera->SetAspectRatio(aspect);
+			}
+
+			float nearC = camera->GetNearClip();
+			if (ImGui::DragFloat("Near Clip", &nearC, 0.001f, 0.001f, 100.0f))
+			{
+				camera->SetNearClip(nearC);
+			}
+
+			float farC = camera->GetFarClip();
+			if (ImGui::DragFloat("Far Clip", &farC, 0.1f, 1.0f, 1000.0f))
+			{
+				camera->SetFarClip(farC);
+			}
+		}
+
+		ImGui::End();
+
+#endif // USE_IMGUI
+
+		// ImGuiの内部コマンドを生成
+		imguiManager->End();
 
 		/*-------------- ↓描画処理ここから↓ --------------*/
-
-		//ImGuiの内部コマンドを生成
-		/*ImGui::Render();*/
 
 		dxCommon->PreDraw();
 
 		object3dCommon->SetCommonDrawSetting();
 
 		// 複数インスタンスの描画
-		for (auto obj : modelInstances)
+		for (auto model : modelInstances)
 		{
-			obj->Draw();
+			model->Draw();
 		}
 
 		spriteCommon->SetCommonDrawSetting();
 
 		if (isDisplaySprite)
 		{
-			/*--- Sprite ---*/
-
-			for (uint32_t i = 0; i < 5; i++)
+			for (auto sprite : sprites)
 			{
-				sprites[i]->Draw();
+				sprite->Draw();
 			}
 		}
 
 		// 描画は完全に ParticleRenderer に委譲
 		particleRenderer.Draw(numInstance, particleSrvIndex, currentBlendModeIndex);
 
-		//実際のCommandListのImGuiの描画コマンドを積む
-		//ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), dxCommon->GetCommandList());
+		// 実際のCommandListのImGuiの描画コマンドを積む
+		imguiManager->Draw();
 
 		dxCommon->PostDraw();
 
 	}
 
-	//ImGuiの終了処理
-	//ImGui_ImplDX12_Shutdown();
-	//ImGui_ImplWin32_Shutdown();
-	//ImGui::DestroyContext();
+	// ImGuiの終了処理
+	imguiManager->Finalize();
 
 
-	//XAudio2の解放
+	// XAudio2の解放
 	/*xAudio2.Reset();*/
 
 	// モデルマネージャーの解放
@@ -489,26 +534,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// テクスチャマネージャの解放
 	TextureManager::GetInstance()->Finalize();
 
-	//入力の解放
+	// 入力の解放
 	delete input;
 
-	//WindowsAPIの終了処理
+	delete imguiManager;
+
+	// WindowsAPIの終了処理
 	winApp->Finalize();
 
-	//WindowsAPIの解放
+	// WindowsAPIの解放
 	delete winApp;
 	winApp = nullptr;
 
-	//DirectX12の解放
+	// DirectX12の解放
 	delete dxCommon;
 
-	//スプライトの解放
+	// スプライト共通部分の解放
 	delete spriteCommon;
 
-	//スプライトの解放
-	for (uint32_t i = 0; i < 5; i++)
+
+	// スプライトインスタンスの解放
+	for (auto s : sprites)
 	{
-		delete sprites[i];
+		delete s;
 	}
 
 	// モデルインスタンスの解放
@@ -516,8 +564,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	{
 		delete obj;
 	}
+
 	modelInstances.clear();
 
+	// 3Dオブジェクト共通部分の解放
 	delete object3dCommon;
 
 	srvManager->Finalize();
@@ -526,29 +576,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 }
 
 //---ここから下は関数の実装---//
-
-//ウィンドウプロシージャ
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-
-	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
-	{
-		return true;
-	}
-
-	//メッセージに応じてゲーム固有の処理を行う
-	switch (msg)
-	{
-		//ウィンドウが破棄された
-	case WM_DESTROY:
-	//OSに対して、アプリの終了を伝える
-	PostQuitMessage(0);
-	return 0;
-	}
-
-	//標準のメッセージ処理を行う
-	return DefWindowProc(hwnd, msg, wparam, lparam);
-}
 
 //出力ウィンドウにメッセージを出力する
 void Log(std::ostream& os, const std::string& message)

@@ -34,6 +34,12 @@ public:
 	void SetNearClip(float nearClip) { this->nearClip = nearClip; }
 	void SetFarClip(float farClip) { this->farClip = farClip; }
 
+	// --- getter ---
+	float GetFovY() const { return fovY; }
+	float GetAspectRatio() const { return aspectRatio; }
+	float GetNearClip() const { return nearClip; }
+	float GetFarClip() const { return farClip; }
+
 private:
 	Transform transform;
 	Matrix4x4 worldMatrix;
