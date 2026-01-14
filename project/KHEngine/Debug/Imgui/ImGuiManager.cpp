@@ -1,8 +1,10 @@
 ﻿#include "ImGuiManager.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 
-void ImGuiManager::Initialize(DirectXCommon* dxcommon, WinApp* winApp)
+void ImGuiManager::Initialize([[maybe_unused]]DirectXCommon* dxcommon, [[maybe_unused]] WinApp* winApp)
 {
+#ifdef USE_IMGUI
+
 	this->dxCommon_ = dxcommon;
 	winApp_ = winApp;
 
@@ -49,38 +51,57 @@ void ImGuiManager::Initialize(DirectXCommon* dxcommon, WinApp* winApp)
 
 	// ImGui の DX12 初期化
 	ImGui_ImplDX12_Init(&init_info);
+
+#endif // USE_IMGUI
 }
 
 void ImGuiManager::Begin()
 {
+#ifdef USE_IMGUI
+
 	// ImGui のフレーム開始処理
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 	ImGui::ShowDemoWindow();
 
+#endif // USE_IMGUI
 }
 
 void ImGuiManager::End()
 {
+#ifdef USE_IMGUI
+
 	// 描画前準備
 	ImGui::Render();
+
+#endif // USE_IMGUI
+
+
 }
 
 void ImGuiManager::Draw()
 {
+#ifdef USE_IMGUI
+
 	// デスクリプタヒープの設定
 	//ID3D12DescriptorHeap* ppHeaps[] = { srvHeap_.get()};
 	//dxCommon_->GetCommandList()->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), dxCommon_->GetCommandList());
+
+#endif // USE_IMGUI
 }
 
 void ImGuiManager::Finalize()
 {
+#ifdef USE_IMGUI
+
 	// ImGuiのDX12終了処理
 	ImGui_ImplDX12_Shutdown();
 	// ImGuiのWin32終了処理
 	ImGui_ImplWin32_Shutdown();
 	// ImGuiコンテキストの破棄
 	ImGui::DestroyContext();
+
+#endif // USE_IMGUI
 }

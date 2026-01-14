@@ -1,7 +1,10 @@
 ﻿#pragma once
+
+#ifdef USE_IMGUI
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
 #include "imgui/imgui_impl_dx12.h"
+#endif // USE_IMGUI
 #include "KHEngine/Core/OS/WinApp.h"
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
