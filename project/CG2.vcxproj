@@ -202,6 +202,8 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelCommon.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelManager.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleSystem.cpp" />
+    <ClCompile Include="KHEngine\Sound\Core\Sound.cpp" />
+    <ClCompile Include="KHEngine\Sound\Core\SoundManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imconfig.h" />
@@ -243,6 +245,8 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="KHEngine\Graphics\3d\Particle\Particle.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleSystem.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleRenderer.h" />
+    <ClInclude Include="KHEngine\Sound\Core\Sound.h" />
+    <ClInclude Include="KHEngine\Sound\Core\SoundManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
