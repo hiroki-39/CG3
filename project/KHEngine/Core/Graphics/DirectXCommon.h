@@ -15,8 +15,8 @@
 #include "KHEngine/Core/Utility/Timer/Timer.h"
 
 #include "KHEngine/Core/OS/WinApp.h"
-#include "externals/imgui/imgui.h"
-#include "externals/imgui/imgui_impl_dx12.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_dx12.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 
 class SrvManager;
