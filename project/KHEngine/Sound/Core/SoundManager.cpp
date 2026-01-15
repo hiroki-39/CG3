@@ -1,1 +1,143 @@
 #include "SoundManager.h"
+
+SoundManager* SoundManager::GetInstance()
+{
+	static SoundManager instance;
+	return &instance;
+}
+
+// 初期化
+void SoundManager::Initialize()
+{
+	HRESULT result;
+	// XAudio2の初期化
+	result = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
+	assert(SUCCEEDED(result));
+	
+	// マスターボイスの生成
+	result = xAudio2.Get()->CreateMasteringVoice(&masteringVoice);
+	assert(SUCCEEDED(result));
+
+}
+
+// 終了処理
+void SoundManager::Finalize()
+{
+	// マスターボイスの破棄
+	if (masteringVoice)
+	{
+		masteringVoice->DestroyVoice();
+		masteringVoice = nullptr;
+	}
+
+	// XAudio2の解放
+	xAudio2.Reset();
+}
+
+SoundManager::SoundData SoundManager::SoundLoadWave(const char* filename)
+{
+	HRESULT result = {};
+
+	/*---　1. ファイルを開く ---*/
+	//ファイル入力ストリームのインスタンス
+	std::ifstream file;
+
+	//.wavファイルをバイナリモードで開く
+	file.open(filename, std::ios_base::binary);
+
+	//とりあえず開かなかったら止める
+	assert(file.is_open());
+
+	/*---　2. .wavデータ読み込み ---*/
+	//RIFFヘッダーの読み込み
+	RiffHeader riff;
+
+	//チャンクヘッダーの確認
+	file.read((char*)&riff, sizeof(riff));
+
+	//ファイルがRIFFかチェックする
+	if (strncmp(riff.chunk.id, "RIFF", 4) != 0)
+	{
+		assert(0);
+	}
+
+	//ファイルがWAVEかチェックする
+	if (strncmp(riff.type, "WAVE", 4) != 0)
+	{
+		assert(0);
+	}
+
+	//Formatチャンクの読み込み
+	FormatChunk format = {};
+
+	//チャンクヘッダーの確認
+	file.read((char*)&format, sizeof(ChunkHeader));
+
+	//ファイルがfmtかチェックする
+	if (strncmp(format.chunk.id, "fmt ", 4) != 0)
+	{
+		assert(0);
+	}
+
+	//チャンク本体の読み込み
+	assert(format.chunk.size <= sizeof(format.fmt));
+	file.read((char*)&format.fmt, format.chunk.size);
+
+	//Dataチャンクの読み込み
+	ChunkHeader data;
+
+	//チャンクヘッダーの確認
+	file.read((char*)&data, sizeof(data));
+
+	//JUNKチャンクを検出した場合
+	if (strncmp(data.id, "JUNK", 4) == 0)
+	{
+		//読み取り位置をJUNKチャンクの終わりまで進める
+		file.seekg(data.size, std::ios_base::cur);
+
+		//再読み込み
+		file.read((char*)&data, sizeof(data));
+	}
+
+	if (strncmp(data.id, "data", 4) != 0)
+	{
+		assert(0);
+	}
+
+	//Dataチャンクのデータ部(波形データ)の読み込み
+	char* pBuffer = new char[data.size];
+	file.read(pBuffer, data.size);
+
+	/*---　3. ファイルを閉じる ---*/
+	//Waveファイルを閉じる
+	file.close();
+
+	/*--- 4. 読み込んだ音声データをreturnする ---*/
+	//returnするための音声データ
+	SoundData soundData = {};
+
+	//波形フォーマット
+	soundData.wfex = format.fmt;
+	//波形データ
+	soundData.pBuffer = reinterpret_cast<BYTE*>(pBuffer);
+	//波形データのサイズ
+	soundData.buffersize = data.size;
+
+	return soundData;
+}
+
+void SoundManager::SoundUnload(SoundData* soundData)
+{
+	//バッファのメモリーを解放
+	delete[] soundData->pBuffer;
+
+	soundData->pBuffer = 0;
+	soundData->buffersize = 0;
+	soundData->wfex = {};
+
+}
+
+IXAudio2* SoundManager::GetXAudio2() const
+{
+	return xAudio2.Get();
+}
