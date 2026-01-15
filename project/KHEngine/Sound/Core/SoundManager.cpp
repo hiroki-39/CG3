@@ -1,5 +1,10 @@
 #include "SoundManager.h"
+#include "KHEngine/Core/Utility/String/StringUtility.h"
+#include <mfapi.h>
 
+#pragma comment(lib, "mfplat.lib")
+
+// シングルトンインスタンスの取得
 SoundManager* SoundManager::GetInstance()
 {
 	static SoundManager instance;
@@ -10,6 +15,7 @@ SoundManager* SoundManager::GetInstance()
 void SoundManager::Initialize()
 {
 	HRESULT result;
+
 	// XAudio2の初期化
 	result = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
 	assert(SUCCEEDED(result));
@@ -18,11 +24,20 @@ void SoundManager::Initialize()
 	result = xAudio2.Get()->CreateMasteringVoice(&masteringVoice);
 	assert(SUCCEEDED(result));
 
+	// Media Foundationの初期化
+	result = MFStartup(MF_VERSION , MFSTARTUP_NOSOCKET);
+	assert(SUCCEEDED(result));
 }
 
 // 終了処理
 void SoundManager::Finalize()
 {
+	HRESULT result;
+
+	// Media Foundationの終了処理
+	result = MFShutdown();
+	assert(SUCCEEDED(result));
+
 	// マスターボイスの破棄
 	if (masteringVoice)
 	{

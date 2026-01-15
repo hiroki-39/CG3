@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "KHEngine/Sound/Core/SoundManager.h"
 #include <xaudio2.h>
 #include <cassert>
@@ -7,11 +7,11 @@ class Sound
 {
 public:
 
-	// ƒTƒEƒ“ƒh‚ÌÄ¶
+	// ã‚µã‚¦ãƒ³ãƒ‰ã®å†ç”Ÿ
 	void SoundPlayWave(IXAudio2* xAudio2, const SoundManager::SoundData& soundData);
 
 	///<summary>
-	// ƒTƒEƒ“ƒh‚Ì’â~
+	// ã‚µã‚¦ãƒ³ãƒ‰ã®åœæ­¢
 	///</summary>
 	void Stop();
 
