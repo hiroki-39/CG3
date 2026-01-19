@@ -104,6 +104,7 @@ void Object3d::CreateTransformationMatrixResource()
 	//単位行列を書き込む
 	transformationMatrixData_->WVP = Matrix4x4::Identity();
 	transformationMatrixData_->World = Matrix4x4::Identity();
+	transformationMatrixData_->WorldInverseTranspose = Matrix4x4::Identity();
 
 	// カメラ用CBufferを作成 
 	cameraResource_ = dxCommon->CreateBufferResource(sizeof(CameraForGPU));
