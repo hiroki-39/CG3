@@ -49,6 +49,13 @@ void Object3d::Update()
 
 	// 平行光源の向きの正規化
 	directionalLightData_->direction = directionalLightData_->direction.Normalize();
+
+	if (camera && cameraData_)
+	{
+		// カメラのワールド位置を CameraGpu に書く（GetTranslate は参照を返す）
+		Vector3 camPos = camera->GetTranslate();
+		cameraData_->worldPosition = camPos;
+	}
 }
 
 void Object3d::Draw()
@@ -58,6 +65,11 @@ void Object3d::Draw()
 
 	//平行光源用のCBufferの場所を設定
 	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(3, directionalLightResouerce_->GetGPUVirtualAddress());
+
+	if (cameraResource_)
+	{
+		dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(4, cameraResource_->GetGPUVirtualAddress());
+	}
 
 	//モデルの描画
 	if (model)
@@ -92,6 +104,16 @@ void Object3d::CreateTransformationMatrixResource()
 	//単位行列を書き込む
 	transformationMatrixData_->WVP = Matrix4x4::Identity();
 	transformationMatrixData_->World = Matrix4x4::Identity();
+
+	// カメラ用CBufferを作成 
+	cameraResource_ = dxCommon->CreateBufferResource(sizeof(CameraForGPU));
+	cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
+
+	if (cameraData_)
+	{
+		cameraData_->worldPosition = Vector3{ 0.0f, 0.0f, 0.0f };
+		cameraData_->padding = 0.0f;
+	}
 }
 
 void Object3d::CreateDirectionalLight()

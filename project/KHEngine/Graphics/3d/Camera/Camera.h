@@ -55,4 +55,3 @@ private:
 	// ファークリップ距離
 	float farClip;
 };
-

@@ -457,6 +457,42 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 		}
 
+		// Dedicated Light パネル（Model に依らずライトを操作したい場合はこちらを使用）
+		if (ImGui::CollapsingHeader("Light"))
+		{
+			if (!modelInstances.empty())
+			{
+				Object3d* obj = modelInstances[0];
+
+				// Color
+				Vector4 lc = obj->GetDirectionalLightColor();
+				float lcArr[4] = { lc.x, lc.y, lc.z, lc.w };
+				if (ImGui::ColorEdit4("Directional Color", lcArr))
+				{
+					obj->SetDirectionalLightColor(Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]));
+				}
+
+				// Direction (normalized on update inside Object3d)
+				Vector3 ld = obj->GetDirectionalLightDirection();
+				float ldArr[3] = { ld.x, ld.y, ld.z };
+				if (ImGui::DragFloat3("Directional Direction", ldArr, 0.05f, -10.0f, 10.0f))
+				{
+					obj->SetDirectionalLightDirection(Vector3(ldArr[0], ldArr[1], ldArr[2]));
+				}
+
+				// Intensity
+				float lint = obj->GetDirectionalLightIntensity();
+				if (ImGui::DragFloat("Directional Intensity", &lint, 0.01f, 0.0f, 100.0f))
+				{
+					obj->SetDirectionalLightIntensity(lint);
+				}
+			}
+			else
+			{
+				ImGui::Text("No model instances available to control light.");
+			}
+		}
+
 		// Camera
 		if (ImGui::CollapsingHeader("Camera"))
 		{

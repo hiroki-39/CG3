@@ -23,6 +23,13 @@ public:// 構造体
 		float intensity; //輝度
 	};
 
+	// GPU用カメラ構造体
+	struct CameraForGPU
+	{
+		Vector3 worldPosition;
+		float padding;
+	};
+
 public://メンバ関数
 
 	/// <summary>
@@ -96,8 +103,10 @@ private://メンバ変数
 	//平行光源用のリソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResouerce_;
 	//データを書き込む
-
 	DirectionlLight* directionalLightData_ = nullptr;
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
+	CameraForGPU* cameraData_ = nullptr;
 
 	Transform transform;
 

@@ -44,7 +44,7 @@ void SpriteCommon::CreateRootSignature()
 
 
 	/*---RootSignature作成---*/
-	D3D12_ROOT_PARAMETER rootPrameters[4] = {};
+	D3D12_ROOT_PARAMETER rootPrameters[5] = {};
 	//CBVを使う
 	rootPrameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	//prixelShederを使う
@@ -74,6 +74,13 @@ void SpriteCommon::CreateRootSignature()
 	rootPrameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	//レジスタ番号1を使う
 	rootPrameters[3].Descriptor.ShaderRegister = 1;
+
+	// CBVを使う(カメラ用)
+	rootPrameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	// PixelShaderで使う
+	rootPrameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	// レジスタ番号2とバインド
+	rootPrameters[4].Descriptor.ShaderRegister = 2;
 
 	//ルートパラメータ配列へのポインタ
 	descripitionRootSignature.pParameters = rootPrameters;

@@ -103,10 +103,17 @@ void Model::CreateMaterialResource()
 	materialData_->enableLighting = true;
 
 	//Lightingの種類の設定
-	materialData_->selectLightings = 2;
+	materialData_->selectLightings = 3;
 
 	//単位行列を書き込む
 	materialData_->uvTransform = Matrix4x4::Identity();
+
+	//鏡面反射の強さ
+	materialData_->shininess = 40.0f;
+
+	materialData_->specularColor[0] = 1.0f;
+	materialData_->specularColor[1] = 1.0f;
+	materialData_->specularColor[2] = 1.0f;
 }
 
 Model::ModelData Model::LoadObjFile(const std::string& directoryPath, const std::string& filename)
