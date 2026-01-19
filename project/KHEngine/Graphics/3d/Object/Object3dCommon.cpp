@@ -1,4 +1,6 @@
 ﻿#include "Object3dCommon.h"
+#include <Windows.h> // OutputDebugStringA
+#include <cstdio>
 
 void Object3dCommon::Initialize(DirectXCommon* dxCommon)
 {
@@ -41,22 +43,24 @@ void Object3dCommon::CreateRootSignature()
 
 
 	/*---RootSignature作成---*/
-	D3D12_ROOT_PARAMETER rootPrameters[4] = {};
-	//CBVを使う
+	D3D12_ROOT_PARAMETER rootPrameters[5] = {};
+	
+	//CBVを使う(マテリアル用)
 	rootPrameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	//prixelShederを使う
 	rootPrameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	//レジスタ番号0とバインド
 	rootPrameters[0].Descriptor.ShaderRegister = 0;
 
-	//CBVを使う
+	//CBVを使う(行列用)
 	rootPrameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	//VertexShederを使う
 	rootPrameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 	//レジスタ番号0とバインド
 	rootPrameters[1].Descriptor.ShaderRegister = 0;
 
-	//DescriptorTableを使う
+	
+	//DescriptorTableを使う(テクスチャ用)
 	rootPrameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	//PixelShaderで使う
 	rootPrameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
@@ -65,12 +69,21 @@ void Object3dCommon::CreateRootSignature()
 	//Tableで利用する数
 	rootPrameters[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
 
-	//CBVを使う
+	//CBVを使う(ライト用)
 	rootPrameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	//Pixelshaderで使う
 	rootPrameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	//レジスタ番号1を使う
 	rootPrameters[3].Descriptor.ShaderRegister = 1;
+
+	//CBVを使う(カメラ用)
+	rootPrameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	//PixelShaderで使う
+	rootPrameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	//レジスタ番号2を使う 
+	rootPrameters[4].Descriptor.ShaderRegister = 2;
+
+
 
 	//ルートパラメータ配列へのポインタ
 	descripitionRootSignature.pParameters = rootPrameters;
@@ -104,17 +117,11 @@ void Object3dCommon::CreateRootSignature()
 	hr = D3D12SerializeRootSignature(&descripitionRootSignature,
 		D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
 
-	if (FAILED(hr))
-	{
-		/*Log(logStream, reinterpret_cast<char*>(errorBlob->GetBufferPointer()));*/
-		assert(false);
-	}
 
 	//バイナリを元に生成
 	hr = dxCommon_->GetDevice()->CreateRootSignature(0,
 		signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(),
 		IID_PPV_ARGS(&rootSignature));
-	assert(SUCCEEDED(hr));
 }
 
 void Object3dCommon::CreateGraphicsPipeline()
@@ -168,14 +175,10 @@ void Object3dCommon::CreateGraphicsPipeline()
 	//三角形の中を塗りつぶす
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
-
-
 	//shaderをコンパイルする
 	Microsoft::WRL::ComPtr <IDxcBlob> vertexShaderBlob = dxCommon_->compileshader(L"resources/shaders/object3D.VS.hlsl", L"vs_6_0");
-	assert(vertexShaderBlob != nullptr);
 
 	Microsoft::WRL::ComPtr <IDxcBlob> pixelShaderBlob = dxCommon_->compileshader(L"resources/shaders/object3D.PS.hlsl", L"ps_6_0");
-	assert(pixelShaderBlob != nullptr);
 
 	//PSOを生成
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineStateDesc{};
@@ -226,6 +229,5 @@ void Object3dCommon::CreateGraphicsPipeline()
 
 	//実際に作成
 	hr = dxCommon_->GetDevice()->CreateGraphicsPipelineState(&graphicsPipelineStateDesc, IID_PPV_ARGS(&graphicsPipelineState));
-
-	assert(SUCCEEDED(hr));
+	
 }

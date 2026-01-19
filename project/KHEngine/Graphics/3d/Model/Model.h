@@ -23,11 +23,14 @@ public: //構造体
 
 	struct Material
 	{
-		Vector4 color;
-		bool enableLighting;
-		float padding[3];
-		Matrix4x4 uvTransform;
-		int32_t selectLightings;
+		Vector4 color;                 
+		uint32_t enableLighting;       
+		uint32_t padding0[3];          
+		Matrix4x4 uvTransform;       
+		int32_t selectLightings;       
+		float shininess;              
+		float specularColor[3];      
+		float padding1;               
 	};
 
 	struct MaterialData

@@ -13,6 +13,7 @@ public:// 構造体
 	{
 		Matrix4x4 WVP;
 		Matrix4x4 World;
+		Matrix4x4 WorldInverseTranspose;
 	};
 
 
@@ -21,6 +22,13 @@ public:// 構造体
 		Vector4 color; // ライトの色
 		Vector3 direction; //ライトの向き
 		float intensity; //輝度
+	};
+
+	// GPU用カメラ構造体
+	struct CameraForGPU
+	{
+		Vector3 worldPosition;
+		float padding;
 	};
 
 public://メンバ関数
@@ -96,8 +104,10 @@ private://メンバ変数
 	//平行光源用のリソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResouerce_;
 	//データを書き込む
-
 	DirectionlLight* directionalLightData_ = nullptr;
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
+	CameraForGPU* cameraData_ = nullptr;
 
 	Transform transform;
 
