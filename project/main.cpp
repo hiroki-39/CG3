@@ -220,7 +220,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	{
 		Object3d* obj = new Object3d();
 		obj->Initialize(object3dCommon);
-		obj->SetModel("teapot.obj");
+		obj->SetModel("monsterBall.obj");
 		obj->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
 		obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
 		obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));

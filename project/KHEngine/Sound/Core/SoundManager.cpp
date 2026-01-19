@@ -1,10 +1,10 @@
 #include "SoundManager.h"
 #include "KHEngine/Core/Utility/String/StringUtility.h"
 #include <mfapi.h>
-#include <mfreadwrite.h>
+
 
 #pragma comment(lib, "mfplat.lib")
-#pragma comment(lib, "Mfreadwrite.lib")
+
 
 // シングルトンインスタンスの取得
 SoundManager* SoundManager::GetInstance()
