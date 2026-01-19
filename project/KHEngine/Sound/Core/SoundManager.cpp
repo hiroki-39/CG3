@@ -1,8 +1,10 @@
 #include "SoundManager.h"
 #include "KHEngine/Core/Utility/String/StringUtility.h"
 #include <mfapi.h>
+#include <mfreadwrite.h>
 
 #pragma comment(lib, "mfplat.lib")
+#pragma comment(lib, "Mfreadwrite.lib")
 
 // シングルトンインスタンスの取得
 SoundManager* SoundManager::GetInstance()
@@ -139,6 +141,10 @@ SoundManager::SoundData SoundManager::SoundLoadWave(const char* filename)
 	soundData.buffersize = data.size;
 
 	return soundData;
+}
+
+void SoundManager::SoundLoadFile(const std::string& filename)
+{
 }
 
 void SoundManager::SoundUnload(SoundData* soundData)

@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <xaudio2.h>
 #include <wrl.h>
 #include <unordered_map>
@@ -13,17 +13,17 @@ class SoundManager
 {
 public:
 
-	//ƒ`ƒƒƒ“ƒNƒwƒbƒ_
+	//ãƒãƒ£ãƒ³ã‚¯ãƒ˜ãƒƒãƒ€
 	struct ChunkHeader
 	{
-		//ƒ`ƒƒƒ“ƒN‘O‚ÌID
+		//ãƒãƒ£ãƒ³ã‚¯å‰ã®ID
 		char id[4];
 
-		//ƒ`ƒƒƒ“ƒNƒTƒCƒY
+		//ãƒãƒ£ãƒ³ã‚¯ã‚µã‚¤ã‚º
 		int32_t size;
 	};
 
-	//Riffƒwƒbƒ_[ƒ`ƒƒƒ“ƒN
+	//Riffãƒ˜ãƒƒãƒ€ãƒ¼ãƒãƒ£ãƒ³ã‚¯
 	struct RiffHeader
 	{
 		//RIFF
@@ -32,60 +32,66 @@ public:
 		char type[4];
 	};
 
-	//FMTƒ`ƒƒƒ“ƒN
+	//FMTãƒãƒ£ãƒ³ã‚¯
 	struct FormatChunk
 	{
 		//fmt
 		ChunkHeader chunk;
-		//”gŒ`ƒtƒH[ƒ}ƒbƒg
+		//æ³¢å½¢ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆ
 		WAVEFORMATEX fmt;
 	};
 
-	//‰¹ºƒf[ƒ^
+	//éŸ³å£°ãƒ‡ãƒ¼ã‚¿
 	struct SoundData
 	{
-		//”gŒ`ƒtƒH[ƒ}ƒbƒg
+		//æ³¢å½¢ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆ
 		WAVEFORMATEX wfex;
 
-		//ƒoƒbƒtƒ@‚Ìæ“ªƒAƒhƒŒƒX
+		//ãƒãƒƒãƒ•ã‚¡ã®å…ˆé ­ã‚¢ãƒ‰ãƒ¬ã‚¹
 		BYTE* pBuffer;
 
-		//ƒoƒbƒtƒ@‚ÌƒTƒCƒY
+		//ãƒãƒƒãƒ•ã‚¡ã®ã‚µã‚¤ã‚º
 		unsigned int buffersize;
 	};
 
 public:
-		// ƒTƒEƒ“ƒhƒ}ƒl[ƒWƒƒ[‚Ìæ“¾
+		// ã‚µã‚¦ãƒ³ãƒ‰ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼ã®å–å¾—
 		static SoundManager* GetInstance();
 		
 		///<summary>
-		/// ‰Šú‰»
+		/// åˆæœŸåŒ–
 		///</summary>
 		void Initialize();
 
 		///<summary>
-		/// I—¹ˆ—
+		/// çµ‚äº†å‡¦ç†
 		///</summary>
 		void Finalize();
 
 		///<summary>
-		/// ‰¹ºƒf[ƒ^“Ç‚İ‚İ
+		/// éŸ³å£°ãƒ‡ãƒ¼ã‚¿èª­ã¿è¾¼ã¿
 		///</summary>
 		SoundData SoundLoadWave(const char* filename);
 
+		/// <summary>
+		/// éŸ³å£°ãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿ 
+		/// </summary>
+		/// <param name="filename">éŸ³å£°ãƒ•ã‚¡ã‚¤ãƒ«å</param>
+		void SoundLoadFile(const std::string& filename);
+
 		///<summary>
-		/// ‰¹ºƒf[ƒ^‰ğ•ú
+		/// éŸ³å£°ãƒ‡ãƒ¼ã‚¿è§£æ”¾
 		///</summary>
 		void SoundUnload(SoundData* soundData);
 
 		///<summary>
-		/// XAudio2‚Ìæ“¾
+		/// XAudio2ã®å–å¾—
 		/// </summary>
 		IXAudio2* GetXAudio2() const;
 
 private:
 
-	// ŠO•”‚©‚çƒCƒ“ƒXƒ^ƒ“ƒX¶¬‚³‚¹‚È‚¢
+	// å¤–éƒ¨ã‹ã‚‰ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ç”Ÿæˆã•ã›ãªã„
 	SoundManager() = default;
 	~SoundManager() = default;
 	SoundManager(const SoundManager&) = delete;
