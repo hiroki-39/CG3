@@ -1,4 +1,4 @@
-﻿#include<Windows.h>
+#include<Windows.h>
 #include <string>
 #include <format>
 #include<dbghelp.h>
@@ -230,10 +230,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// サウンドマネージャーの初期化
 	SoundManager::GetInstance()->Initialize();
 
-	// WAVを読み込む
-	static SoundManager::SoundData Data = SoundManager::GetInstance()->SoundLoadWave("Resources/Alarm01.wav");
+	// mp3を読み込む
+	static SoundManager::SoundData Data = SoundManager::GetInstance()->SoundLoadFile("resources/bgm.mp3");
 
-	// 再生用オブジェクト（メインループ内でトリガーするならここで変数を持つ）
+	// 再生用オブジェクト
 	Sound sound;
 
 
