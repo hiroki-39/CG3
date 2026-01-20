@@ -187,6 +187,8 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="KHEngine\Input\Input.cpp" />
     <ClCompile Include="KHEngine\Core\Utility\Log\Logger.cpp" />
     <ClCompile Include="KHEngine\Math\Matrix4x4.cpp" />
+    <ClCompile Include="KHEngine\Graphics\Light\Light.cpp" />
+    <ClCompile Include="KHEngine\Graphics\Light\LightManager.cpp" />
     <ClCompile Include="main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
@@ -247,6 +249,8 @@ copy "$(windowsSdkDir)Bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleRenderer.h" />
     <ClInclude Include="KHEngine\Sound\Core\Sound.h" />
     <ClInclude Include="KHEngine\Sound\Core\SoundManager.h" />
+    <ClInclude Include="KHEngine\Graphics\Light\Light.h" />
+    <ClInclude Include="KHEngine\Graphics\Light\LightManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
