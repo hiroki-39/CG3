@@ -1,53 +1,57 @@
 #include "SoundManager.h"
 #include "KHEngine/Core/Utility/String/StringUtility.h"
 #include <mfapi.h>
-
+#include <mfobjects.h>
+#include <mfidl.h>
+#include <mfreadwrite.h>
 
 #pragma comment(lib, "mfplat.lib")
+#pragma comment(lib, "mfreadwrite.lib")
+#pragma comment(lib, "mfuuid.lib")
 
 
-// ƒVƒ“ƒOƒ‹ƒgƒ“ƒCƒ“ƒXƒ^ƒ“ƒX‚Ìæ“¾
+// ã‚·ãƒ³ã‚°ãƒ«ãƒˆãƒ³ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã®å–å¾—
 SoundManager* SoundManager::GetInstance()
 {
 	static SoundManager instance;
 	return &instance;
 }
 
-// ‰Šú‰»
+// åˆæœŸåŒ–
 void SoundManager::Initialize()
 {
 	HRESULT result;
 
-	// XAudio2‚Ì‰Šú‰»
+	// XAudio2ã®åˆæœŸåŒ–
 	result = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
 	assert(SUCCEEDED(result));
-	
-	// ƒ}ƒXƒ^[ƒ{ƒCƒX‚Ì¶¬
+
+	// ãƒã‚¹ã‚¿ãƒ¼ãƒœã‚¤ã‚¹ã®ç”Ÿæˆ
 	result = xAudio2.Get()->CreateMasteringVoice(&masteringVoice);
 	assert(SUCCEEDED(result));
 
-	// Media Foundation‚Ì‰Šú‰»
-	result = MFStartup(MF_VERSION , MFSTARTUP_NOSOCKET);
+	// Media Foundationã®åˆæœŸåŒ–
+	result = MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET);
 	assert(SUCCEEDED(result));
 }
 
-// I—¹ˆ—
+// çµ‚äº†å‡¦ç†
 void SoundManager::Finalize()
 {
 	HRESULT result;
 
-	// Media Foundation‚ÌI—¹ˆ—
+	// Media Foundationã®çµ‚äº†å‡¦ç†
 	result = MFShutdown();
 	assert(SUCCEEDED(result));
 
-	// ƒ}ƒXƒ^[ƒ{ƒCƒX‚Ì”jŠü
+	// ãƒã‚¹ã‚¿ãƒ¼ãƒœã‚¤ã‚¹ã®ç ´æ£„
 	if (masteringVoice)
 	{
 		masteringVoice->DestroyVoice();
 		masteringVoice = nullptr;
 	}
 
-	// XAudio2‚Ì‰ğ•ú
+	// XAudio2ã®è§£æ”¾
 	xAudio2.Reset();
 }
 
@@ -55,64 +59,64 @@ SoundManager::SoundData SoundManager::SoundLoadWave(const char* filename)
 {
 	HRESULT result = {};
 
-	/*---@1. ƒtƒ@ƒCƒ‹‚ğŠJ‚­ ---*/
-	//ƒtƒ@ƒCƒ‹“ü—ÍƒXƒgƒŠ[ƒ€‚ÌƒCƒ“ƒXƒ^ƒ“ƒX
+	/*---ã€€1. ãƒ•ã‚¡ã‚¤ãƒ«ã‚’é–‹ã ---*/
+	//ãƒ•ã‚¡ã‚¤ãƒ«å…¥åŠ›ã‚¹ãƒˆãƒªãƒ¼ãƒ ã®ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹
 	std::ifstream file;
 
-	//.wavƒtƒ@ƒCƒ‹‚ğƒoƒCƒiƒŠƒ‚[ƒh‚ÅŠJ‚­
+	//.wavãƒ•ã‚¡ã‚¤ãƒ«ã‚’ãƒã‚¤ãƒŠãƒªãƒ¢ãƒ¼ãƒ‰ã§é–‹ã
 	file.open(filename, std::ios_base::binary);
 
-	//‚Æ‚è‚ ‚¦‚¸ŠJ‚©‚È‚©‚Á‚½‚ç~‚ß‚é
+	//ã¨ã‚Šã‚ãˆãšé–‹ã‹ãªã‹ã£ãŸã‚‰æ­¢ã‚ã‚‹
 	assert(file.is_open());
 
-	/*---@2. .wavƒf[ƒ^“Ç‚İ‚İ ---*/
-	//RIFFƒwƒbƒ_[‚Ì“Ç‚İ‚İ
+	/*---ã€€2. .wavãƒ‡ãƒ¼ã‚¿èª­ã¿è¾¼ã¿ ---*/
+	//RIFFãƒ˜ãƒƒãƒ€ãƒ¼ã®èª­ã¿è¾¼ã¿
 	RiffHeader riff;
 
-	//ƒ`ƒƒƒ“ƒNƒwƒbƒ_[‚ÌŠm”F
+	//ãƒãƒ£ãƒ³ã‚¯ãƒ˜ãƒƒãƒ€ãƒ¼ã®ç¢ºèª
 	file.read((char*)&riff, sizeof(riff));
 
-	//ƒtƒ@ƒCƒ‹‚ªRIFF‚©ƒ`ƒFƒbƒN‚·‚é
+	//ãƒ•ã‚¡ã‚¤ãƒ«ãŒRIFFã‹ãƒã‚§ãƒƒã‚¯ã™ã‚‹
 	if (strncmp(riff.chunk.id, "RIFF", 4) != 0)
 	{
 		assert(0);
 	}
 
-	//ƒtƒ@ƒCƒ‹‚ªWAVE‚©ƒ`ƒFƒbƒN‚·‚é
+	//ãƒ•ã‚¡ã‚¤ãƒ«ãŒWAVEã‹ãƒã‚§ãƒƒã‚¯ã™ã‚‹
 	if (strncmp(riff.type, "WAVE", 4) != 0)
 	{
 		assert(0);
 	}
 
-	//Formatƒ`ƒƒƒ“ƒN‚Ì“Ç‚İ‚İ
+	//Formatãƒãƒ£ãƒ³ã‚¯ã®èª­ã¿è¾¼ã¿
 	FormatChunk format = {};
 
-	//ƒ`ƒƒƒ“ƒNƒwƒbƒ_[‚ÌŠm”F
+	//ãƒãƒ£ãƒ³ã‚¯ãƒ˜ãƒƒãƒ€ãƒ¼ã®ç¢ºèª
 	file.read((char*)&format, sizeof(ChunkHeader));
 
-	//ƒtƒ@ƒCƒ‹‚ªfmt‚©ƒ`ƒFƒbƒN‚·‚é
+	//ãƒ•ã‚¡ã‚¤ãƒ«ãŒfmtã‹ãƒã‚§ãƒƒã‚¯ã™ã‚‹
 	if (strncmp(format.chunk.id, "fmt ", 4) != 0)
 	{
 		assert(0);
 	}
 
-	//ƒ`ƒƒƒ“ƒN–{‘Ì‚Ì“Ç‚İ‚İ
+	//ãƒãƒ£ãƒ³ã‚¯æœ¬ä½“ã®èª­ã¿è¾¼ã¿
 	assert(format.chunk.size <= sizeof(format.fmt));
 	file.read((char*)&format.fmt, format.chunk.size);
 
-	//Dataƒ`ƒƒƒ“ƒN‚Ì“Ç‚İ‚İ
+	//Dataãƒãƒ£ãƒ³ã‚¯ã®èª­ã¿è¾¼ã¿
 	ChunkHeader data;
 
-	//ƒ`ƒƒƒ“ƒNƒwƒbƒ_[‚ÌŠm”F
+	//ãƒãƒ£ãƒ³ã‚¯ãƒ˜ãƒƒãƒ€ãƒ¼ã®ç¢ºèª
 	file.read((char*)&data, sizeof(data));
 
-	//JUNKƒ`ƒƒƒ“ƒN‚ğŒŸo‚µ‚½ê‡
+	//JUNKãƒãƒ£ãƒ³ã‚¯ã‚’æ¤œå‡ºã—ãŸå ´åˆ
 	if (strncmp(data.id, "JUNK", 4) == 0)
 	{
-		//“Ç‚İæ‚èˆÊ’u‚ğJUNKƒ`ƒƒƒ“ƒN‚ÌI‚í‚è‚Ü‚Åi‚ß‚é
+		//èª­ã¿å–ã‚Šä½ç½®ã‚’JUNKãƒãƒ£ãƒ³ã‚¯ã®çµ‚ã‚ã‚Šã¾ã§é€²ã‚ã‚‹
 		file.seekg(data.size, std::ios_base::cur);
 
-		//Ä“Ç‚İ‚İ
+		//å†èª­ã¿è¾¼ã¿
 		file.read((char*)&data, sizeof(data));
 	}
 
@@ -121,41 +125,111 @@ SoundManager::SoundData SoundManager::SoundLoadWave(const char* filename)
 		assert(0);
 	}
 
-	//Dataƒ`ƒƒƒ“ƒN‚Ìƒf[ƒ^•”(”gŒ`ƒf[ƒ^)‚Ì“Ç‚İ‚İ
+	//Dataãƒãƒ£ãƒ³ã‚¯ã®ãƒ‡ãƒ¼ã‚¿éƒ¨(æ³¢å½¢ãƒ‡ãƒ¼ã‚¿)ã®èª­ã¿è¾¼ã¿
 	char* pBuffer = new char[data.size];
 	file.read(pBuffer, data.size);
 
-	/*---@3. ƒtƒ@ƒCƒ‹‚ğ•Â‚¶‚é ---*/
-	//Waveƒtƒ@ƒCƒ‹‚ğ•Â‚¶‚é
+	/*---ã€€3. ãƒ•ã‚¡ã‚¤ãƒ«ã‚’é–‰ã˜ã‚‹ ---*/
+	//Waveãƒ•ã‚¡ã‚¤ãƒ«ã‚’é–‰ã˜ã‚‹
 	file.close();
 
-	/*--- 4. “Ç‚İ‚ñ‚¾‰¹ºƒf[ƒ^‚ğreturn‚·‚é ---*/
-	//return‚·‚é‚½‚ß‚Ì‰¹ºƒf[ƒ^
+	/*--- 4. èª­ã¿è¾¼ã‚“ã éŸ³å£°ãƒ‡ãƒ¼ã‚¿ã‚’returnã™ã‚‹ ---*/
+	//returnã™ã‚‹ãŸã‚ã®éŸ³å£°ãƒ‡ãƒ¼ã‚¿
 	SoundData soundData = {};
 
-	//”gŒ`ƒtƒH[ƒ}ƒbƒg
+	//æ³¢å½¢ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆ
 	soundData.wfex = format.fmt;
-	//”gŒ`ƒf[ƒ^
-	soundData.pBuffer = reinterpret_cast<BYTE*>(pBuffer);
-	//”gŒ`ƒf[ƒ^‚ÌƒTƒCƒY
-	soundData.buffersize = data.size;
+	////æ³¢å½¢ãƒ‡ãƒ¼ã‚¿
+	//soundData.pBuffer = reinterpret_cast<BYTE*>(pBuffer);
+	////æ³¢å½¢ãƒ‡ãƒ¼ã‚¿ã®ã‚µã‚¤ã‚º
+	//soundData.buffersize = data.size;
 
 	return soundData;
 }
 
-void SoundManager::SoundLoadFile(const std::string& filename)
+SoundManager::SoundData SoundManager::SoundLoadFile(const std::string& filename)
 {
+	// ãƒ•ãƒ«ãƒ‘ã‚¹ã‚’ãƒ¯ã‚¤ãƒ‰æ–‡å­—åˆ—ã«å¤‰æ›
+	std::wstring wfilename = StringUtility::ConvertString(filename);
+	HRESULT result;
+
+	// SourceReaderã®ä½œæˆ
+	Microsoft::WRL::ComPtr<IMFSourceReader> pReader;
+	result = MFCreateSourceReaderFromURL(wfilename.c_str(), nullptr, &pReader);
+	assert(SUCCEEDED(result));
+
+	// PCMå½¢å¼ã«ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆæŒ‡å®šã™ã‚‹
+	Microsoft::WRL::ComPtr<IMFMediaType> pPCMType;
+	MFCreateMediaType(&pPCMType);
+	pPCMType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+	pPCMType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+	result = pReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, nullptr, pPCMType.Get());
+	assert(SUCCEEDED(result));
+
+	// å®Ÿéš›ã«ã‚»ãƒƒãƒˆã•ã‚ŒãŸãƒ¡ãƒ‡ã‚£ã‚¢ã‚¿ã‚¤ãƒ—ã‚’å–å¾—ã™ã‚‹
+	Microsoft::WRL::ComPtr<IMFMediaType> pCurrentType;
+	result = pReader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, &pCurrentType);
+
+	// Waveãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆã‚’å–å¾—ã™ã‚‹
+	WAVEFORMATEX* waveFormat = nullptr;
+	MFCreateWaveFormatExFromMFMediaType(pCurrentType.Get(), &waveFormat, nullptr);
+
+	// ã‚³ãƒ³ãƒ†ãƒŠã«æ ¼ç´ã™ã‚‹éŸ³å£°ãƒ‡ãƒ¼ã‚¿
+	SoundData soundData = {};
+	if (waveFormat)
+	{
+		soundData.wfex = *waveFormat;
+		CoTaskMemFree(waveFormat);
+	}
+
+	// PCMãƒ‡ãƒ¼ã‚¿ã®ãƒãƒƒãƒ•ã‚¡ã‚’æ§‹ç¯‰
+	while (true)
+	{
+		Microsoft::WRL::ComPtr<IMFSample> pSample;
+		DWORD streamIndex = 0;
+		DWORD flags = 0;
+		LONGLONG llTimestamp = 0;
+
+		// ã‚µãƒ³ãƒ—ãƒ«ã®èª­ã¿è¾¼ã¿
+		result = pReader->ReadSample(
+			MF_SOURCE_READER_FIRST_AUDIO_STREAM,
+			0,
+			&streamIndex,
+			&flags,
+			&llTimestamp,
+			&pSample);
+
+		if (flags & MF_SOURCE_READERF_ENDOFSTREAM)
+		{
+			break;
+		}
+
+		if (pSample)
+		{
+			Microsoft::WRL::ComPtr<IMFMediaBuffer> pBuffer;
+			// ã‚µãƒ³ãƒ—ãƒ«ã«å«ã¾ã‚Œã‚‹ã‚µã‚¦ãƒ³ãƒ‰ãƒ‡ãƒ¼ã‚¿ã®ãƒãƒƒãƒ•ã‚¡ã‚’ä¸€ç¹‹ãã«ã—ã¦å–å¾—
+			pSample->ConvertToContiguousBuffer(&pBuffer);
+
+			// ãƒ‡ãƒ¼ã‚¿èª­ã¿å–ã‚Šç”¨ãƒã‚¤ãƒ³ã‚¿
+			BYTE* pData = nullptr;
+			DWORD maxLength = 0;
+			DWORD currentLength = 0;
+			// ãƒãƒƒãƒ•ã‚¡èª­ã¿è¾¼ã¿ç”¨ã«ãƒ­ãƒƒã‚¯
+			pBuffer->Lock(&pData, &maxLength, &currentLength);
+
+			// ãƒãƒƒãƒ•ã‚¡ã®æœ«å°¾ã«ãƒ‡ãƒ¼ã‚¿ã‚’è¿½åŠ 
+			soundData.buffer.insert(soundData.buffer.end(), pData, pData + currentLength);
+			pBuffer->Unlock();
+		}
+	}
+
+	return soundData;
 }
 
 void SoundManager::SoundUnload(SoundData* soundData)
 {
-	//ƒoƒbƒtƒ@‚Ìƒƒ‚ƒŠ[‚ğ‰ğ•ú
-	delete[] soundData->pBuffer;
-
-	soundData->pBuffer = 0;
-	soundData->buffersize = 0;
+	soundData->buffer.clear();
 	soundData->wfex = {};
-
 }
 
 IXAudio2* SoundManager::GetXAudio2() const
