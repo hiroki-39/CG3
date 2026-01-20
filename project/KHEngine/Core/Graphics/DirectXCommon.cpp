@@ -1,4 +1,4 @@
-﻿#include "DirectXCommon.h"
+#include "DirectXCommon.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -46,8 +46,6 @@ void DirectXCommon::Initialize(WinApp* winApp)
 	//DXCコンパイラの生成
 	CreateDXCCompiler();
 
-	//ImGuiの初期化
-	/*InitImGui();*/
 }
 
 void DirectXCommon::InitDevice()
@@ -417,22 +415,6 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreatDepthStencilTextureRe
 
 	return resourece;
 }
-
-//void DirectXCommon::InitImGui()
-//{
-//	//ImGuiの初期化
-//	IMGUI_CHECKVERSION();
-//	ImGui::CreateContext();
-//	ImGui::StyleColorsDark();
-//	ImGui_ImplWin32_Init(winApp->GetHwnd());
-//	ImGui_ImplDX12_Init(device.Get(),
-//		swapChainDesc.BufferCount,
-//		rtvDesc.Format,
-//		srvDescriptorHeap.Get(),
-//		srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-//		srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
-//	);
-//}
 
 void DirectXCommon::PreDraw()
 {

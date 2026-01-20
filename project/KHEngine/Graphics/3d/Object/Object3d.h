@@ -1,9 +1,12 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Graphics/3d/Object/Object3dCommon.h"
 #include "KHEngine/Math/MathCommon.h"
 #include "KHEngine/Graphics/3d/Model/Model.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
 #include "KHEngine/Graphics/3d/Camera/Camera.h"
+
+// LightManager を参照するためのヘッダ
+#include "KHEngine/Graphics/Light/LightManager.h"
 
 class Object3d
 {
@@ -16,13 +19,6 @@ public:// 構造体
 		Matrix4x4 WorldInverseTranspose;
 	};
 
-
-	struct DirectionlLight
-	{
-		Vector4 color; // ライトの色
-		Vector3 direction; //ライトの向き
-		float intensity; //輝度
-	};
 
 	// GPU用カメラ構造体
 	struct CameraForGPU
@@ -52,6 +48,8 @@ public://メンバ関数
 	const Vector3& GetScale() const { return transform.scale; }
 	const Vector3& GetRotation() const { return transform.rotation; }
 	const Vector3& GetTranslate() const { return transform.translate; }
+
+	// ライトは LightManager の Directional を参照するように切り替え
 	Vector4 GetDirectionalLightColor() const;
 	Vector3 GetDirectionalLightDirection() const;
 	float GetDirectionalLightIntensity() const;
@@ -74,13 +72,6 @@ private://メンバ関数
 	///	</summary>
 	void CreateTransformationMatrixResource();
 
-	/// <summary>
-	/// 平行光源の作成
-	/// </summary>
-	void CreateDirectionalLight();
-
-
-
 private://メンバ変数
 
 	// 共通部分
@@ -99,12 +90,6 @@ private://メンバ変数
 	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResource_;
 	// 変換行列データの仮想アドレス
 	TransformationMatrix* transformationMatrixData_ = nullptr;
-
-
-	//平行光源用のリソース
-	Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResouerce_;
-	//データを書き込む
-	DirectionlLight* directionalLightData_ = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
 	CameraForGPU* cameraData_ = nullptr;
