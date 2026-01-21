@@ -48,9 +48,6 @@
 #include "KHEngine/Sound/Core/SoundManager.h"
 #include "KHEngine/Sound/Core/Sound.h"
 
-// 追加
-#include "KHEngine/Graphics/Light/LightManager.h"
-
 enum class BlendMode
 {
 	Alpha = 0,
@@ -129,16 +126,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// 3Dオブジェクトの共通部分の初期化
 	object3dCommon = new Object3dCommon();
 	object3dCommon->Initialize(dxCommon);
-
-	using namespace KHEngine::Graphics::LightSystem;
-	LightManager* lightManager = new LightManager();
-	object3dCommon->SetLightManager(lightManager);
-	// シーン初期化時に必要ならライトを作成（初期値）
-	auto dir = lightManager->CreateDirectionalLight();
-	dir->name = "SceneDir0";
-	dir->color = Vector4{ 1,1,1,1 };
-	dir->direction = Vector3{ 1,0,0 };
-	dir->intensity = 1.0f;
 
 	Camera* camera = new Camera();
 	camera->SetTranslate({ 0.0f, 0.0f, -20.0f });
@@ -239,7 +226,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 		modelInstances.push_back(obj);
 	}
-
 
 	// サウンドマネージャーの初期化
 	SoundManager::GetInstance()->Initialize();
@@ -447,38 +433,63 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				{
 					obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
 				}
+
+				// Light (directional)
+				Vector4 lightCol = obj->GetDirectionalLightColor();
+				float lightColArr[4] = { lightCol.x, lightCol.y, lightCol.z, lightCol.w };
+				if (ImGui::ColorEdit4("Light Color", lightColArr))
+				{
+					obj->SetDirectionalLightColor(Vector4(lightColArr[0], lightColArr[1], lightColArr[2], lightColArr[3]));
+				}
+
+				Vector3 lightDir = obj->GetDirectionalLightDirection();
+				float lightDirArr[3] = { lightDir.x, lightDir.y, lightDir.z };
+				if (ImGui::DragFloat3("Light Direction", lightDirArr, 0.1f))
+				{
+					obj->SetDirectionalLightDirection(Vector3(lightDirArr[0], lightDirArr[1], lightDirArr[2]));
+				}
+
+				float lightIntensity = obj->GetDirectionalLightIntensity();
+				if (ImGui::DragFloat("Light Intensity", &lightIntensity, 0.01f, 0.0f, 10.0f))
+				{
+					obj->SetDirectionalLightIntensity(lightIntensity);
+				}
 			}
 		}
 
-		// Dedicated Light パネル
+		// Dedicated Light パネル（Model に依らずライトを操作したい場合はこちらを使用）
 		if (ImGui::CollapsingHeader("Light"))
 		{
-			auto dir = lightManager->GetFirstDirectional();
-			if (dir)
+			if (!modelInstances.empty())
 			{
-				Vector4 lc = dir->color;
+				Object3d* obj = modelInstances[0];
+
+				// Color
+				Vector4 lc = obj->GetDirectionalLightColor();
 				float lcArr[4] = { lc.x, lc.y, lc.z, lc.w };
 				if (ImGui::ColorEdit4("Directional Color", lcArr))
 				{
-					dir->color = Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]);
+					obj->SetDirectionalLightColor(Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]));
 				}
 
-				Vector3 ld = dir->direction;
+				// Direction (normalized on update inside Object3d)
+				Vector3 ld = obj->GetDirectionalLightDirection();
 				float ldArr[3] = { ld.x, ld.y, ld.z };
 				if (ImGui::DragFloat3("Directional Direction", ldArr, 0.05f, -10.0f, 10.0f))
 				{
-					dir->direction = Vector3(ldArr[0], ldArr[1], ldArr[2]);
+					obj->SetDirectionalLightDirection(Vector3(ldArr[0], ldArr[1], ldArr[2]));
 				}
 
-				float lint = dir->intensity;
+				// Intensity
+				float lint = obj->GetDirectionalLightIntensity();
 				if (ImGui::DragFloat("Directional Intensity", &lint, 0.01f, 0.0f, 100.0f))
 				{
-					dir->intensity = lint;
+					obj->SetDirectionalLightIntensity(lint);
 				}
 			}
 			else
 			{
-				ImGui::Text("No directional lights in scene.");
+				ImGui::Text("No model instances available to control light.");
 			}
 		}
 
@@ -610,9 +621,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	// 3Dオブジェクト共通部分の解放
 	delete object3dCommon;
-
-	//　LightManagerの解放
-	delete lightManager;
 
 	sound.Stop();
 	SoundManager::GetInstance()->SoundUnload(&Data);
