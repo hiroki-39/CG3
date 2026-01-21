@@ -1,9 +1,13 @@
 #include "SoundManager.h"
 #include "KHEngine/Core/Utility/String/StringUtility.h"
 #include <mfapi.h>
-
+#include <mfobjects.h>
+#include <mfidl.h>
+#include <mfreadwrite.h>
 
 #pragma comment(lib, "mfplat.lib")
+#pragma comment(lib, "mfreadwrite.lib")
+#pragma comment(lib, "mfuuid.lib")
 
 
 // シングルトンインスタンスの取得
@@ -21,13 +25,13 @@ void SoundManager::Initialize()
 	// XAudio2の初期化
 	result = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
 	assert(SUCCEEDED(result));
-	
+
 	// マスターボイスの生成
 	result = xAudio2.Get()->CreateMasteringVoice(&masteringVoice);
 	assert(SUCCEEDED(result));
 
 	// Media Foundationの初期化
-	result = MFStartup(MF_VERSION , MFSTARTUP_NOSOCKET);
+	result = MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET);
 	assert(SUCCEEDED(result));
 }
 
@@ -135,27 +139,97 @@ SoundManager::SoundData SoundManager::SoundLoadWave(const char* filename)
 
 	//波形フォーマット
 	soundData.wfex = format.fmt;
-	//波形データ
-	soundData.pBuffer = reinterpret_cast<BYTE*>(pBuffer);
-	//波形データのサイズ
-	soundData.buffersize = data.size;
+	////波形データ
+	//soundData.pBuffer = reinterpret_cast<BYTE*>(pBuffer);
+	////波形データのサイズ
+	//soundData.buffersize = data.size;
 
 	return soundData;
 }
 
-void SoundManager::SoundLoadFile(const std::string& filename)
+SoundManager::SoundData SoundManager::SoundLoadFile(const std::string& filename)
 {
+	// フルパスをワイド文字列に変換
+	std::wstring wfilename = StringUtility::ConvertString(filename);
+	HRESULT result;
+
+	// SourceReaderの作成
+	Microsoft::WRL::ComPtr<IMFSourceReader> pReader;
+	result = MFCreateSourceReaderFromURL(wfilename.c_str(), nullptr, &pReader);
+	assert(SUCCEEDED(result));
+
+	// PCM形式にフォーマット指定する
+	Microsoft::WRL::ComPtr<IMFMediaType> pPCMType;
+	MFCreateMediaType(&pPCMType);
+	pPCMType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+	pPCMType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+	result = pReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, nullptr, pPCMType.Get());
+	assert(SUCCEEDED(result));
+
+	// 実際にセットされたメディアタイプを取得する
+	Microsoft::WRL::ComPtr<IMFMediaType> pCurrentType;
+	result = pReader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, &pCurrentType);
+
+	// Waveフォーマットを取得する
+	WAVEFORMATEX* waveFormat = nullptr;
+	MFCreateWaveFormatExFromMFMediaType(pCurrentType.Get(), &waveFormat, nullptr);
+
+	// コンテナに格納する音声データ
+	SoundData soundData = {};
+	if (waveFormat)
+	{
+		soundData.wfex = *waveFormat;
+		CoTaskMemFree(waveFormat);
+	}
+
+	// PCMデータのバッファを構築
+	while (true)
+	{
+		Microsoft::WRL::ComPtr<IMFSample> pSample;
+		DWORD streamIndex = 0;
+		DWORD flags = 0;
+		LONGLONG llTimestamp = 0;
+
+		// サンプルの読み込み
+		result = pReader->ReadSample(
+			MF_SOURCE_READER_FIRST_AUDIO_STREAM,
+			0,
+			&streamIndex,
+			&flags,
+			&llTimestamp,
+			&pSample);
+
+		if (flags & MF_SOURCE_READERF_ENDOFSTREAM)
+		{
+			break;
+		}
+
+		if (pSample)
+		{
+			Microsoft::WRL::ComPtr<IMFMediaBuffer> pBuffer;
+			// サンプルに含まれるサウンドデータのバッファを一繋ぎにして取得
+			pSample->ConvertToContiguousBuffer(&pBuffer);
+
+			// データ読み取り用ポインタ
+			BYTE* pData = nullptr;
+			DWORD maxLength = 0;
+			DWORD currentLength = 0;
+			// バッファ読み込み用にロック
+			pBuffer->Lock(&pData, &maxLength, &currentLength);
+
+			// バッファの末尾にデータを追加
+			soundData.buffer.insert(soundData.buffer.end(), pData, pData + currentLength);
+			pBuffer->Unlock();
+		}
+	}
+
+	return soundData;
 }
 
 void SoundManager::SoundUnload(SoundData* soundData)
 {
-	//バッファのメモリーを解放
-	delete[] soundData->pBuffer;
-
-	soundData->pBuffer = 0;
-	soundData->buffersize = 0;
+	soundData->buffer.clear();
 	soundData->wfex = {};
-
 }
 
 IXAudio2* SoundManager::GetXAudio2() const

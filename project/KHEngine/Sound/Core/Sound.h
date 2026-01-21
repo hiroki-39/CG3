@@ -20,7 +20,6 @@ private:
 	const SoundManager::SoundData* soundData_ = nullptr;
 
 	IXAudio2SourceVoice* sourceVoice_ = nullptr;
-	
+
 	bool loaded_ = false;
 };
-
