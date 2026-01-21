@@ -433,27 +433,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				{
 					obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
 				}
-
-				// Light (directional)
-				Vector4 lightCol = obj->GetDirectionalLightColor();
-				float lightColArr[4] = { lightCol.x, lightCol.y, lightCol.z, lightCol.w };
-				if (ImGui::ColorEdit4("Light Color", lightColArr))
-				{
-					obj->SetDirectionalLightColor(Vector4(lightColArr[0], lightColArr[1], lightColArr[2], lightColArr[3]));
-				}
-
-				Vector3 lightDir = obj->GetDirectionalLightDirection();
-				float lightDirArr[3] = { lightDir.x, lightDir.y, lightDir.z };
-				if (ImGui::DragFloat3("Light Direction", lightDirArr, 0.1f))
-				{
-					obj->SetDirectionalLightDirection(Vector3(lightDirArr[0], lightDirArr[1], lightDirArr[2]));
-				}
-
-				float lightIntensity = obj->GetDirectionalLightIntensity();
-				if (ImGui::DragFloat("Light Intensity", &lightIntensity, 0.01f, 0.0f, 10.0f))
-				{
-					obj->SetDirectionalLightIntensity(lightIntensity);
-				}
 			}
 		}
 
