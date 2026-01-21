@@ -89,24 +89,24 @@ void SpriteCommon::CreateRootSignature()
 
 
 	D3D12_STATIC_SAMPLER_DESC staticSamplers[1]{};
-	
+
 	//バイリニアフィルタ
 	staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-	
+
 	//0~1の範囲外をリピート
 	staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	staticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	
+
 	//比較しない
 	staticSamplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-	
+
 	//ありったけのMipMapを使う
 	staticSamplers[0].MaxLOD = D3D12_FLOAT32_MAX;
-	
+
 	//レジスタ番号0を使う
 	staticSamplers[0].ShaderRegister = 0;
-	
+
 	//PixelShaderで使う
 	staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
@@ -141,10 +141,10 @@ void SpriteCommon::CreateRootSignature()
 void SpriteCommon::CreateGraphicsPipeline()
 {
 	HRESULT hr;
-	
+
 	//ルートシグネチャ作成
 	CreateRootSignature();
-	
+
 	/* ---- inputLayoutの設定 ---- */
 
 	D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
@@ -171,10 +171,10 @@ void SpriteCommon::CreateGraphicsPipeline()
 	/* ---- BlenderStateの設定 ---- */
 
 	D3D12_BLEND_DESC blendDesc{};
-	
+
 	//全ての色要素を書き込む
 	blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-	
+
 	//ブレンディングを有効化
 	blendDesc.RenderTarget[0].BlendEnable = true;
 	blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
@@ -188,10 +188,10 @@ void SpriteCommon::CreateGraphicsPipeline()
 	/* ---- RasterizerStateの設定 ---- */
 
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
-	
+
 	//裏面を表示しない
 	rasterizerDesc.CullMode = /*D3D12_CULL_MODE_BACK*/ D3D12_CULL_MODE_NONE;
-	
+
 	//三角形の中を塗りつぶす
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
@@ -205,7 +205,7 @@ void SpriteCommon::CreateGraphicsPipeline()
 
 
 	/* ---- PSOを生成　 ---- */
-	
+
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineStateDesc{};
 
 	//RootSignature

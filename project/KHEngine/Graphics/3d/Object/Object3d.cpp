@@ -1,5 +1,4 @@
 #include "Object3d.h"
-#include "KHEngine/Graphics/Light/LightManager.h" ｘ
 
 void Object3d::Initialize(Object3dCommon* object3dCommon)
 {
@@ -14,9 +13,8 @@ void Object3d::Initialize(Object3dCommon* object3dCommon)
 	//座標変換行列データの作成
 	CreateTransformationMatrixResource();
 
-	// NOTE:
-	// 平行光の作成は Object3d 側で行わず、LightManager に任せる。
-	// LightManager はシーン側（main 等）で生成して Object3dCommon::SetLightManager() に渡してください。
+	//平行光源の作成
+	CreateDirectionalLight();
 
 	this->camera = object3dCommon->GetDefaultCamera();
 
@@ -49,23 +47,8 @@ void Object3d::Update()
 	transformationMatrixData_->WVP = worldViewProjectionMatrix;
 	transformationMatrixData_->World = worldMatrix;
 
-	// 平行光源の向きの正規化（LightManager の最初の Directional を使用）
-	auto lm = object3dCommon ? object3dCommon->GetLightManager() : nullptr;
-	if (lm)
-	{
-		auto dir = lm->GetFirstDirectional();
-		if (dir)
-		{
-			// Normalize 実装が Vector3::Normalize() でない場合は適宜変えてください
-			Vector3 d = dir->direction;
-			// 正規化（簡易）
-			float len = std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
-			if (len > 1e-6f)
-			{
-				dir->direction = Vector3{ d.x / len, d.y / len, d.z / len };
-			}
-		}
-	}
+	// 平行光源の向きの正規化
+	directionalLightData_->direction = directionalLightData_->direction.Normalize();
 
 	if (camera && cameraData_)
 	{
@@ -80,9 +63,8 @@ void Object3d::Draw()
 	//wvp用のCBufferの場所を設定
 	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResource_->GetGPUVirtualAddress());
 
-	// NOTE:
-	// 平行光源の CBV は Object3d ではセットしない（ライトのアップロード／バインドは別責務へ移行）
-	// もし既存シェーダが root 3 にライトを期待しているなら、レンダラ側で LightManager のデータを GPU バッファへ詰めて root 3 をセットしてください。
+	//平行光源用のCBufferの場所を設定
+	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(3, directionalLightResouerce_->GetGPUVirtualAddress());
 
 	if (cameraResource_)
 	{
@@ -135,67 +117,51 @@ void Object3d::CreateTransformationMatrixResource()
 	}
 }
 
-// --- ライトの getter/setter は LightManager を参照する実装 ---
+void Object3d::CreateDirectionalLight()
+{
+	//平行光源用のリソースを作成
+	directionalLightResouerce_ = dxCommon->CreateBufferResource(sizeof(DirectionlLight));
+
+	//書き込むためのアドレス取得
+	directionalLightResouerce_->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData_));
+
+	//ライトの色
+	directionalLightData_->color = { 1.0f,1.0f,1.0f,1.0f };
+	//向き
+	directionalLightData_->direction = { 1.0f,0.0f,0.0f };
+	//輝度
+	directionalLightData_->intensity = 1.0f;
+}
 
 Vector4 Object3d::GetDirectionalLightColor() const
 {
-	auto lm = object3dCommon ? object3dCommon->GetLightManager() : nullptr;
-	if (lm)
-	{
-		auto dir = lm->GetFirstDirectional();
-		if (dir) return dir->color;
-	}
-	return Vector4{1.0f,1.0f,1.0f,1.0f};
+	if (directionalLightData_) return directionalLightData_->color;
+	return Vector4{ 1.0f,1.0f,1.0f,1.0f };
 }
 
 Vector3 Object3d::GetDirectionalLightDirection() const
 {
-	auto lm = object3dCommon ? object3dCommon->GetLightManager() : nullptr;
-	if (lm)
-	{
-		auto dir = lm->GetFirstDirectional();
-		if (dir) return dir->direction;
-	}
-	return Vector3{1.0f,0.0f,0.0f};
+	if (directionalLightData_) return directionalLightData_->direction;
+	return Vector3{ 1.0f,0.0f,0.0f };
 }
 
 float Object3d::GetDirectionalLightIntensity() const
 {
-	auto lm = object3dCommon ? object3dCommon->GetLightManager() : nullptr;
-	if (lm)
-	{
-		auto dir = lm->GetFirstDirectional();
-		if (dir) return dir->intensity;
-	}
+	if (directionalLightData_) return directionalLightData_->intensity;
 	return 1.0f;
 }
 
 void Object3d::SetDirectionalLightColor(const Vector4& color)
 {
-	auto lm = object3dCommon ? object3dCommon->GetLightManager() : nullptr;
-	if (lm)
-	{
-		auto dir = lm->GetFirstDirectional();
-		if (dir) dir->color = color;
-	}
+	if (directionalLightData_) directionalLightData_->color = color;
 }
 
 void Object3d::SetDirectionalLightDirection(const Vector3& direction)
 {
-	auto lm = object3dCommon ? object3dCommon->GetLightManager() : nullptr;
-	if (lm)
-	{
-		auto dir = lm->GetFirstDirectional();
-		if (dir) dir->direction = direction;
-	}
+	if (directionalLightData_) directionalLightData_->direction = direction;
 }
 
 void Object3d::SetDirectionalLightIntensity(float intensity)
 {
-	auto lm = object3dCommon ? object3dCommon->GetLightManager() : nullptr;
-	if (lm)
-	{
-		auto dir = lm->GetFirstDirectional();
-		if (dir) dir->intensity = intensity;
-	}
+	if (directionalLightData_) directionalLightData_->intensity = intensity;
 }
