@@ -5,7 +5,7 @@ VisualStudioVersion = 17.13.35931.197
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CG2", "CG2.vcxproj", "{FD3BF511-81FA-496A-9DAB-6614603FB1B5}"
 	ProjectSection(ProjectDependencies) = postProject
-		{AE005647-6302-4904-BB0C-57612F8F25D8} = {AE005647-6302-4904-BB0C-57612F8F25D8}
+		{36CACA08-D725-411A-BEAD-34A401E405E1} = {36CACA08-D725-411A-BEAD-34A401E405E1}
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ソリューション項目", "ソリューション項目", "{2022CB0F-8BAF-F49E-0C48-8EF4C96EC109}"
@@ -15,7 +15,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ソリューション項目
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectXTex", "externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj", "{371B9FA9-4C90-4AC6-A123-ACED756D6C77}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "imgui", "externals\imgui\imgui.vcxproj", "{AE005647-6302-4904-BB0C-57612F8F25D8}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "imgui", "externals\imgui\imgui.vcxproj", "{36CACA08-D725-411A-BEAD-34A401E405E1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,12 +36,12 @@ Global
 		{371B9FA9-4C90-4AC6-A123-ACED756D6C77}.Development|x64.Build.0 = Development|x64
 		{371B9FA9-4C90-4AC6-A123-ACED756D6C77}.Release|x64.ActiveCfg = Release|x64
 		{371B9FA9-4C90-4AC6-A123-ACED756D6C77}.Release|x64.Build.0 = Release|x64
-		{AE005647-6302-4904-BB0C-57612F8F25D8}.Debug|x64.ActiveCfg = Debug|x64
-		{AE005647-6302-4904-BB0C-57612F8F25D8}.Debug|x64.Build.0 = Debug|x64
-		{AE005647-6302-4904-BB0C-57612F8F25D8}.Development|x64.ActiveCfg = Release|x64
-		{AE005647-6302-4904-BB0C-57612F8F25D8}.Development|x64.Build.0 = Release|x64
-		{AE005647-6302-4904-BB0C-57612F8F25D8}.Release|x64.ActiveCfg = Release|x64
-		{AE005647-6302-4904-BB0C-57612F8F25D8}.Release|x64.Build.0 = Release|x64
+		{36CACA08-D725-411A-BEAD-34A401E405E1}.Debug|x64.ActiveCfg = Debug|x64
+		{36CACA08-D725-411A-BEAD-34A401E405E1}.Debug|x64.Build.0 = Debug|x64
+		{36CACA08-D725-411A-BEAD-34A401E405E1}.Development|x64.ActiveCfg = Release|x64
+		{36CACA08-D725-411A-BEAD-34A401E405E1}.Development|x64.Build.0 = Release|x64
+		{36CACA08-D725-411A-BEAD-34A401E405E1}.Release|x64.ActiveCfg = Release|x64
+		{36CACA08-D725-411A-BEAD-34A401E405E1}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
