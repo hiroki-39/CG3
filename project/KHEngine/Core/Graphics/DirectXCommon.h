@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include<Windows.h>
 #include<d3d12.h>
 #include<dxgi1_6.h>
@@ -96,11 +96,6 @@ public://メンバ関数
 	/// 深度ステンシルテクスチャリソースを生成
 	/// </summary>
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreatDepthStencilTextureResource(int32_t width, int32_t height);
-
-	/// <summary>
-	///　ImGuiの初期化
-	/// </summary>
-	/*void InitImGui();*/
 
 	/// <summary>
 	/// 描画前処理
