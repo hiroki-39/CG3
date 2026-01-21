@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <xaudio2.h>
 #include <wrl.h>
 #include <unordered_map>
@@ -47,8 +47,11 @@ public:
 		//波形フォーマット
 		WAVEFORMATEX wfex;
 
-		// バッファ
-		std::vector<BYTE> buffer;
+		//バッファの先頭アドレス
+		BYTE* pBuffer;
+
+		//バッファのサイズ
+		unsigned int buffersize;
 	};
 
 public:
@@ -66,15 +69,15 @@ public:
 		void Finalize();
 
 		///<summary>
-		/// 音声データ読み込み（WAV 用・未使用）
+		/// 音声データ読み込み
 		///</summary>
 		SoundData SoundLoadWave(const char* filename);
 
 		/// <summary>
-		/// 音声ファイル読み込み（MP3 等を PCM に変換して返す）
+		/// 音声ファイル読み込み 
 		/// </summary>
 		/// <param name="filename">音声ファイル名</param>
-		SoundData SoundLoadFile(const std::string& filename);
+		void SoundLoadFile(const std::string& filename);
 
 		///<summary>
 		/// 音声データ解放
