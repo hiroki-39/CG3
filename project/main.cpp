@@ -447,35 +447,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				{
 					obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
 				}
-
-				// --- ライトは Object3d 内の値ではなく LightManager のライトを編集する ---
-				auto dir = lightManager->GetFirstDirectional();
-				if (dir)
-				{
-					Vector4 lightCol = dir->color;
-					float lightColArr[4] = { lightCol.x, lightCol.y, lightCol.z, lightCol.w };
-					if (ImGui::ColorEdit4("Light Color", lightColArr))
-					{
-						dir->color = Vector4(lightColArr[0], lightColArr[1], lightColArr[2], lightColArr[3]);
-					}
-
-					Vector3 lightDir = dir->direction;
-					float lightDirArr[3] = { lightDir.x, lightDir.y, lightDir.z };
-					if (ImGui::DragFloat3("Light Direction", lightDirArr, 0.1f))
-					{
-						dir->direction = Vector3(lightDirArr[0], lightDirArr[1], lightDirArr[2]);
-					}
-
-					float lightIntensity = dir->intensity;
-					if (ImGui::DragFloat("Light Intensity", &lightIntensity, 0.01f, 0.0f, 10.0f))
-					{
-						dir->intensity = lightIntensity;
-					}
-				}
 			}
 		}
 
-		// Dedicated Light パネル（Model に依らずライトを操作したい場合はこちらを使用）
+		// Dedicated Light パネル
 		if (ImGui::CollapsingHeader("Light"))
 		{
 			auto dir = lightManager->GetFirstDirectional();
