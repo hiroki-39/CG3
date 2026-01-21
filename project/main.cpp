@@ -63,8 +63,6 @@ void Log(std::ostream& os, const std::string& message);
 
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
 
-void CreateWhiteTexture(DirectX::ScratchImage& outImage);
-
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
