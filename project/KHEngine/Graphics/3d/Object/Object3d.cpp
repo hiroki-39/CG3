@@ -47,6 +47,11 @@ void Object3d::Update()
 	transformationMatrixData_->WVP = worldViewProjectionMatrix;
 	transformationMatrixData_->World = worldMatrix;
 
+	// ここで World の逆転置行列を計算して書き込む
+	// （法線変換に正しい行列を渡すため）
+	transformationMatrixData_->WorldInverseTranspose =
+		Matrix4x4::Transpose(Matrix4x4::Inverse(worldMatrix));
+
 	// 平行光源の向きの正規化
 	directionalLightData_->direction = directionalLightData_->direction.Normalize();
 
@@ -136,13 +141,13 @@ void Object3d::CreateDirectionalLight()
 Vector4 Object3d::GetDirectionalLightColor() const
 {
 	if (directionalLightData_) return directionalLightData_->color;
-	return Vector4{1.0f,1.0f,1.0f,1.0f};
+	return Vector4{ 1.0f,1.0f,1.0f,1.0f };
 }
 
 Vector3 Object3d::GetDirectionalLightDirection() const
 {
 	if (directionalLightData_) return directionalLightData_->direction;
-	return Vector3{1.0f,0.0f,0.0f};
+	return Vector3{ 1.0f,0.0f,0.0f };
 }
 
 float Object3d::GetDirectionalLightIntensity() const
