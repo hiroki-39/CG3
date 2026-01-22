@@ -1,4 +1,4 @@
-#include "Sound.h"
+ï»¿#include "Sound.h"
 #include <cstring>
 
 void Sound::SoundPlayWave(IXAudio2* xAudio2, const SoundManager::SoundData& soundData)
@@ -10,13 +10,13 @@ void Sound::SoundPlayWave(IXAudio2* xAudio2, const SoundManager::SoundData& soun
 	result = xAudio2->CreateSourceVoice(&sourceVoice_, &soundData.wfex);
 	assert(SUCCEEDED(result));
 
-	//Ä¶‚·‚é”gŒ`ƒf[ƒ^‚ÌÝ’è
+	//å†ç”Ÿã™ã‚‹æ³¢å½¢ãƒ‡ãƒ¼ã‚¿ã®è¨­å®š
 	XAUDIO2_BUFFER buf{};
 	buf.pAudioData = soundData.pBuffer;
 	buf.AudioBytes = soundData.buffersize;
 	buf.Flags = XAUDIO2_END_OF_STREAM;
 
-	//”gŒ`ƒf[ƒ^‚ÌÄ¶
+	//æ³¢å½¢ãƒ‡ãƒ¼ã‚¿ã®å†ç”Ÿ
 	sourceVoice_->SubmitSourceBuffer(&buf);
 	sourceVoice_->Start();
 
