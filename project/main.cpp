@@ -219,7 +219,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	{
 		Object3d* obj = new Object3d();
 		obj->Initialize(object3dCommon);
-		obj->SetModel("terrain.obj");
+		obj->SetModel("monsterBall.obj");
 		obj->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
 		obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
 		obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
@@ -227,7 +227,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		Object3d* terrain = new Object3d();
 		terrain->Initialize(object3dCommon);
-		terrain->SetModel("monsterBall.obj");
+		terrain->SetModel("terrain.obj");
 		terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
 		terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
 		terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
@@ -467,82 +467,109 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 
 		// Dedicated Light パネル（Model に依らずライトを操作したい場合はこちらを使用）
-		if (ImGui::CollapsingHeader("Light"))
+if (ImGui::CollapsingHeader("Light"))
+{
+	// Directional 用（既存の挙動を残す）
+	static bool sharedLightInit = false;
+	// デフォルトを明示的に白にする
+	static Vector4 sharedLightColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+	static Vector3 sharedLightDirectionTarget = { 1.0f, 0.0f, 0.0f };
+	static Vector3 sharedLightDirectionCurrent = { 1.0f, 0.0f, 0.0f };
+	static float sharedLightIntensity = 1.0f;
+	const float smoothingSpeed = 12.0f;
+
+	if (!sharedLightInit && !modelInstances.empty())
+	{
+		// モデル側の値を取りに行くが、ライト色は白に固定しておく
+		sharedLightColor = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+		sharedLightDirectionTarget = modelInstances[0]->GetDirectionalLightDirection();
+		sharedLightDirectionCurrent = sharedLightDirectionTarget;
+		sharedLightIntensity = modelInstances[0]->GetDirectionalLightIntensity();
+		sharedLightInit = true;
+	}
+
+	// Directional controls
+	if (ImGui::TreeNode("Directional"))
+	{
+		float lcArr[4] = { sharedLightColor.x, sharedLightColor.y, sharedLightColor.z, sharedLightColor.w };
+		if (ImGui::ColorEdit4("Color", lcArr))
 		{
-			// 共有ライト値（UI 用）
-			static bool sharedLightInit = false;
-			static Vector4 sharedLightColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-			static Vector3 sharedLightDirectionTarget = { 1.0f, 0.0f, 0.0f }; // UI が書き込む目標値
-			static Vector3 sharedLightDirectionCurrent = { 1.0f, 0.0f, 0.0f }; // 実際に毎フレーム適用する現在値（補間）
-			static float sharedLightIntensity = 1.0f;
-			static float smoothingSpeed = 12.0f; // 調整可能。大きいほど速く追従。
-
-			// 初期化：最初のモデルから既存値を取ってくる（存在すれば）
-			if (!sharedLightInit && !modelInstances.empty())
-			{
-				sharedLightColor = modelInstances[0]->GetDirectionalLightColor();
-				sharedLightDirectionTarget = modelInstances[0]->GetDirectionalLightDirection();
-				sharedLightDirectionCurrent = sharedLightDirectionTarget;
-				sharedLightIntensity = modelInstances[0]->GetDirectionalLightIntensity();
-				sharedLightInit = true;
-			}
-
-			// Color
-			float lcArr[4] = { sharedLightColor.x, sharedLightColor.y, sharedLightColor.z, sharedLightColor.w };
-			if (ImGui::ColorEdit4("Directional Color", lcArr))
-			{
-				sharedLightColor = Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]);
-				// 全モデルに即座に反映
-				for (auto m : modelInstances) if (m) m->SetDirectionalLightColor(sharedLightColor);
-			}
-
-			// Direction (UI は target を更新するのみ)
-			float ldArr[3] = { sharedLightDirectionTarget.x, sharedLightDirectionTarget.y, sharedLightDirectionTarget.z };
-			ImGui::PushID("DirDrag");
-			bool directionChanged = ImGui::DragFloat3("Directional Direction", ldArr, 0.01f, -10.0f, 10.0f);
-			// DragFloat3 呼び出し直後に IsItemActive()/IsItemDeactivatedAfterEdit() を使って状態を判定
-			bool itemActive = ImGui::IsItemActive();
-			bool itemDeactivatedAfterEdit = ImGui::IsItemDeactivatedAfterEdit();
-			ImGui::PopID();
-			if (directionChanged)
-			{
-				sharedLightDirectionTarget = Vector3(ldArr[0], ldArr[1], ldArr[2]);
-			}
-
-			// Intensity
-			if (ImGui::DragFloat("Directional Intensity", &sharedLightIntensity, 0.01f, 0.0f, 100.0f))
-			{
-				for (auto m : modelInstances) if (m) m->SetDirectionalLightIntensity(sharedLightIntensity);
-			}
-
-			if (modelInstances.empty())
-			{
-				ImGui::Text("No model instances available to control light.");
-			}
-
-			// フレーム時間（ImGui の DeltaTime を使う。ゼロなら kDeltaTime を代替）
-			float frameDt = ImGui::GetIO().DeltaTime;
-			if (frameDt <= 0.0f) frameDt = kDeltaTime;
-
-			// ユーザーがドラッグ中は「即時反映」してレスポンスを良くする
-			if (itemActive)
-			{
-				sharedLightDirectionCurrent = sharedLightDirectionTarget;
-			}
-			else
-			{
-				// 補間：alpha = 1 - exp(-speed * dt) を近似してスムーズ追従
-				float alpha = 1.0f - std::expf(-smoothingSpeed * frameDt);
-				// LERP
-				sharedLightDirectionCurrent.x = sharedLightDirectionCurrent.x + (sharedLightDirectionTarget.x - sharedLightDirectionCurrent.x) * alpha;
-				sharedLightDirectionCurrent.y = sharedLightDirectionCurrent.y + (sharedLightDirectionTarget.y - sharedLightDirectionCurrent.y) * alpha;
-				sharedLightDirectionCurrent.z = sharedLightDirectionCurrent.z + (sharedLightDirectionTarget.z - sharedLightDirectionCurrent.z) * alpha;
-			}
-
-			// 正規化して全モデルに反映（シェーダ側でも normalize するのが望ましい）
-			sharedLightDirectionCurrent = sharedLightDirectionCurrent.Normalize();
-			for (auto m : modelInstances) if (m) m->SetDirectionalLightDirection(sharedLightDirectionCurrent);
+			sharedLightColor = Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]);
+			for (auto m : modelInstances) if (m) m->SetDirectionalLightColor(sharedLightColor);
 		}
+
+		float ldArr[3] = { sharedLightDirectionTarget.x, sharedLightDirectionTarget.y, sharedLightDirectionTarget.z };
+		ImGui::PushID("DirDrag");
+		bool dirChanged = ImGui::DragFloat3("Direction", ldArr, 0.01f, -10.0f, 10.0f);
+		bool itemActive = ImGui::IsItemActive();
+		ImGui::PopID();
+		if (dirChanged) sharedLightDirectionTarget = Vector3(ldArr[0], ldArr[1], ldArr[2]);
+
+		if (ImGui::DragFloat("Intensity", &sharedLightIntensity, 0.01f, 0.0f, 100.0f))
+		{
+			for (auto m : modelInstances) if (m) m->SetDirectionalLightIntensity(sharedLightIntensity);
+		}
+
+		// 補間・適用
+		float frameDt = ImGui::GetIO().DeltaTime;
+		if (frameDt <= 0.0f) frameDt = kDeltaTime;
+		if (itemActive)
+		{
+			sharedLightDirectionCurrent = sharedLightDirectionTarget;
+		}
+		else
+		{
+			float alpha = 1.0f - std::expf(-smoothingSpeed * frameDt);
+			sharedLightDirectionCurrent.x += (sharedLightDirectionTarget.x - sharedLightDirectionCurrent.x) * alpha;
+			sharedLightDirectionCurrent.y += (sharedLightDirectionTarget.y - sharedLightDirectionCurrent.y) * alpha;
+			sharedLightDirectionCurrent.z += (sharedLightDirectionTarget.z - sharedLightDirectionCurrent.z) * alpha;
+		}
+		sharedLightDirectionCurrent = sharedLightDirectionCurrent.Normalize();
+		for (auto m : modelInstances) if (m) m->SetDirectionalLightDirection(sharedLightDirectionCurrent);
+
+		ImGui::TreePop();
+	}
+
+	// Point Light 用コントロールを追加（デフォルト色を白に設定）
+	static bool pointInit = false;
+	static Vector4 pointColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // デフォルト白
+	static Vector3 pointPosition = { 0.0f, 5.0f, 0.0f };
+	static float pointIntensity = 1.0f;
+
+	if (!pointInit && !modelInstances.empty())
+	{
+		// モデル側の値がある場合は位置/強度を取得するが色は白を優先しておく
+		pointColor = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+		pointPosition = modelInstances[0]->GetPointLightPosition();
+		pointIntensity = modelInstances[0]->GetPointLightIntensity();
+		pointInit = true;
+	}
+
+	if (ImGui::TreeNode("Point Light"))
+	{
+		float pcArr[4] = { pointColor.x, pointColor.y, pointColor.z, pointColor.w };
+		if (ImGui::ColorEdit4("Color##Point", pcArr))
+		{
+			pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
+			for (auto m : modelInstances) if (m) m->SetPointLightColor(pointColor);
+		}
+
+		float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
+		if (ImGui::DragFloat3("Position##Point", ppArr, 0.05f, -100.0f, 100.0f))
+		{
+			pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
+			for (auto m : modelInstances) if (m) m->SetPointLightPosition(pointPosition);
+		}
+
+		if (ImGui::DragFloat("Intensity##Point", &pointIntensity, 0.01f, 0.0f, 100.0f))
+		{
+			for (auto m : modelInstances) if (m) m->SetPointLightIntensity(pointIntensity);
+		}
+
+		ImGui::TextWrapped("Note: current materials default to PointLight (selectLightings=4). Move this point or change color to see effect.");
+		ImGui::TreePop();
+	}
+}
 
 		// Camera
 		if (ImGui::CollapsingHeader("Camera"))

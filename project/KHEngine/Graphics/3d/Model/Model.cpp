@@ -104,13 +104,21 @@ void Model::CreateMaterialResource()
 	materialData_->enableLighting = true;
 
 	//Lightingの種類の設定
-	materialData_->selectLightings = 3;
+	materialData_->selectLightings = 4;
+
+	{
+		char buf[256];
+		sprintf_s(buf, "Model CreateMaterialResource: selectLightings=%d texture=%s\n",
+			materialData_->selectLightings,
+			modelData.material.textureFilePath.c_str());
+		OutputDebugStringA(buf);
+	}
 
 	//単位行列を書き込む
 	materialData_->uvTransform = Matrix4x4::Identity();
 
 	//鏡面反射の強さ
-	materialData_->shininess = 40.0f;
+	materialData_->shininess = 10.0f;
 
 	materialData_->specularColor[0] = 1.0f;
 	materialData_->specularColor[1] = 1.0f;

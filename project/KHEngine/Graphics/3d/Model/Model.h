@@ -59,6 +59,8 @@ public: //メンバ関数
 	/// </summary>
 	void Draw();
 
+	// --- getter ---
+	Microsoft::WRL::ComPtr<ID3D12Resource> GetMaterialResource() const { return materialResource_; }
 private: //メンバ関数
 
 	/// <summary>
@@ -80,6 +82,7 @@ private: //メンバ関数
 	/// mtlファイルの読み込み
 	/// </summary>
 	static MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
+
 
 private: //メンバ変数
 

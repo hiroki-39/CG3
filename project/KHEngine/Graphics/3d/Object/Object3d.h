@@ -24,6 +24,14 @@ public:// 構造体
 		float intensity; //輝度
 	};
 
+	// PointLight を追加（既存の HLSL 定義に合わせる）
+	struct PointLight
+	{
+		Vector4 color;     // ライトの色
+		Vector3 direction; // HLSL 側では direction フィールドを使って位置として扱っているのでここも同名で保持
+		float intensity;   // 輝度
+	};
+
 	// GPU用カメラ構造体
 	struct CameraForGPU
 	{
@@ -56,6 +64,11 @@ public://メンバ関数
 	Vector3 GetDirectionalLightDirection() const;
 	float GetDirectionalLightIntensity() const;
 
+	// PointLight getters
+	Vector4 GetPointLightColor() const;
+	Vector3 GetPointLightPosition() const;
+	float GetPointLightIntensity() const;
+
 	// --- Setter ---
 	void SetModel(Model* model) { this->model = model; }
 	void SetModel(const std::string& filePath);
@@ -66,6 +79,11 @@ public://メンバ関数
 	void SetDirectionalLightColor(const Vector4& color);
 	void SetDirectionalLightDirection(const Vector3& direction);
 	void SetDirectionalLightIntensity(float intensity);
+
+	// PointLight setters
+	void SetPointLightColor(const Vector4& color);
+	void SetPointLightPosition(const Vector3& position);
+	void SetPointLightIntensity(float intensity);
 
 private://メンバ関数
 
@@ -79,7 +97,10 @@ private://メンバ関数
 	/// </summary>
 	void CreateDirectionalLight();
 
-
+	/// <summary>
+	/// 点光源の作成（追加）
+	/// </summary>
+	void CreatePointLight();
 
 private://メンバ変数
 
@@ -105,6 +126,10 @@ private://メンバ変数
 	Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResouerce_;
 	//データを書き込む
 	DirectionlLight* directionalLightData_ = nullptr;
+
+	// 点光源用のリソース（追加）
+	Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
+	PointLight* pointLightData_ = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
 	CameraForGPU* cameraData_ = nullptr;

@@ -1,4 +1,10 @@
 #include "Object3d.h"
+#include "Object3dCommon.h"
+#include "KHEngine/Graphics/3d/Model/ModelManager.h"
+#include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
+#include <cassert>
+
+// 既存の実装はそのまま残し、PointLight 関連を追加しています。
 
 void Object3d::Initialize(Object3dCommon* object3dCommon)
 {
@@ -15,6 +21,9 @@ void Object3d::Initialize(Object3dCommon* object3dCommon)
 
 	//平行光源の作成
 	CreateDirectionalLight();
+
+	// 点光源を作成（追加）
+	CreatePointLight();
 
 	this->camera = object3dCommon->GetDefaultCamera();
 
@@ -48,7 +57,12 @@ void Object3d::Update()
 	transformationMatrixData_->World = worldMatrix;
 
 	// 平行光源の向きの正規化
-	directionalLightData_->direction = directionalLightData_->direction.Normalize();
+	if (directionalLightData_)
+	{
+		directionalLightData_->direction = directionalLightData_->direction.Normalize();
+	}
+
+	// 点光源のデータ（必要ならここで更新。現状は位置は外部で SetPointLightPosition から設定される想定）
 
 	if (camera && cameraData_)
 	{
@@ -65,6 +79,12 @@ void Object3d::Draw()
 
 	//平行光源用のCBufferの場所を設定
 	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(3, directionalLightResouerce_->GetGPUVirtualAddress());
+
+	// 点光源用のCBufferの場所を設定（ルートインデックスは既存のバインド規則に合わせて 5 を使用）
+	if (pointLightResource_)
+	{
+		dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(5, pointLightResource_->GetGPUVirtualAddress());
+	}
 
 	if (cameraResource_)
 	{
@@ -133,6 +153,31 @@ void Object3d::CreateDirectionalLight()
 	directionalLightData_->intensity = 1.0f;
 }
 
+void Object3d::CreatePointLight()
+{
+	// 点光源用のリソースを作成
+	pointLightResource_ = dxCommon->CreateBufferResource(sizeof(PointLight));
+
+	// 書き込むためのアドレス取得
+	pointLightResource_->Map(0, nullptr, reinterpret_cast<void**>(&pointLightData_));
+
+	// デフォルト値を設定（透明化の原因を防ぐため必ず初期化）
+	if (pointLightData_)
+	{
+		pointLightData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+		pointLightData_->direction = { 0.0f, 5.0f, 0.0f };
+		pointLightData_->intensity = 1.0f;
+
+		// デバッグ出力
+		char buf[256];
+		sprintf_s(buf, "PointLight init: color=(%f,%f,%f,%f) pos=(%f,%f,%f) intensity=%f\n",
+			pointLightData_->color.x, pointLightData_->color.y, pointLightData_->color.z, pointLightData_->color.w,
+			pointLightData_->direction.x, pointLightData_->direction.y, pointLightData_->direction.z,
+			pointLightData_->intensity);
+		OutputDebugStringA(buf);
+	}
+}
+
 Vector4 Object3d::GetDirectionalLightColor() const
 {
 	if (directionalLightData_) return directionalLightData_->color;
@@ -164,4 +209,48 @@ void Object3d::SetDirectionalLightDirection(const Vector3& direction)
 void Object3d::SetDirectionalLightIntensity(float intensity)
 {
 	if (directionalLightData_) directionalLightData_->intensity = intensity;
+}
+
+// --- PointLight getters / setters ---
+
+Vector4 Object3d::GetPointLightColor() const
+{
+	if (pointLightData_) return pointLightData_->color;
+	return Vector4{ 1.0f,1.0f,1.0f,1.0f };
+}
+
+Vector3 Object3d::GetPointLightPosition() const
+{
+	if (pointLightData_) return pointLightData_->direction; // HLSL 側フィールド名に合わせる
+	return Vector3{ 0.0f, 0.0f, 0.0f };
+}
+
+float Object3d::GetPointLightIntensity() const
+{
+	if (pointLightData_) return pointLightData_->intensity;
+	return 1.0f;
+}
+
+void Object3d::SetPointLightColor(const Vector4& color)
+{
+	if (pointLightData_) pointLightData_->color = color;
+
+	if (pointLightData_)
+	{
+		pointLightData_->color = color;
+		// デバッグ出力
+		char buf[128];
+		sprintf_s(buf, "SetPointLightColor: (%f,%f,%f,%f)\n", color.x, color.y, color.z, color.w);
+		OutputDebugStringA(buf);
+	}
+}
+
+void Object3d::SetPointLightPosition(const Vector3& position)
+{
+	if (pointLightData_) pointLightData_->direction = position; // HLSL 側フィールド名に合わせる
+}
+
+void Object3d::SetPointLightIntensity(float intensity)
+{
+	if (pointLightData_) pointLightData_->intensity = intensity;
 }
