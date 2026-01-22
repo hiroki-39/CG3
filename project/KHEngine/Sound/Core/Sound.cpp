@@ -7,21 +7,23 @@ void Sound::SoundPlayWave(IXAudio2* xAudio2, const SoundManager::SoundData& soun
 
 	soundData_ = &soundData;
 
-	// source voice ‚Ì¶¬iƒtƒH[ƒ}ƒbƒg‚ğw’èj
+	// source voice ã®ç”Ÿæˆï¼ˆãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆã‚’æŒ‡å®šï¼‰
 	result = xAudio2->CreateSourceVoice(&sourceVoice_, &soundData.wfex);
 	assert(SUCCEEDED(result));
 
-	// Ä¶‚·‚é”gŒ`ƒf[ƒ^‚Ìİ’è
+
+	// å†ç”Ÿã™ã‚‹æ³¢å½¢ãƒ‡ãƒ¼ã‚¿ã®è¨­å®š
 	XAUDIO2_BUFFER buf{};
-	// std::vector ‚ğg‚Á‚Ä‚¢‚é‚Ì‚Å data() / size() ‚ğg‚¤
+	// std::vector ã‚’ä½¿ã£ã¦ã„ã‚‹ã®ã§ data() / size() ã‚’ä½¿ã†
 	buf.pAudioData = soundData.buffer.empty() ? nullptr : soundData.buffer.data();
 	buf.AudioBytes = static_cast<UINT32>(soundData.buffer.size());
 	buf.Flags = XAUDIO2_END_OF_STREAM;
 
-	// ƒoƒbƒtƒ@‚ª–³‚¯‚ê‚ÎÄ¶‚µ‚È‚¢
+
+	// ãƒãƒƒãƒ•ã‚¡ãŒç„¡ã‘ã‚Œã°å†ç”Ÿã—ãªã„
 	assert(buf.pAudioData != nullptr && buf.AudioBytes > 0);
 
-	// ”gŒ`ƒf[ƒ^‚ÌÄ¶
+	// æ³¢å½¢ãƒ‡ãƒ¼ã‚¿ã®å†ç”Ÿ
 	sourceVoice_->SubmitSourceBuffer(&buf);
 	sourceVoice_->Start();
 

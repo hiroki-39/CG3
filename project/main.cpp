@@ -473,7 +473,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				// Direction (normalized on update inside Object3d)
 				Vector3 ld = obj->GetDirectionalLightDirection();
 				float ldArr[3] = { ld.x, ld.y, ld.z };
-				if (ImGui::DragFloat3("Directional Direction", ldArr, 0.05f, -10.0f, 10.0f))
+				if (ImGui::DragFloat3("Directional Direction", ldArr, 0.01f, -10.0f, 10.0f))
 				{
 					obj->SetDirectionalLightDirection(Vector3(ldArr[0], ldArr[1], ldArr[2]));
 				}

@@ -47,6 +47,11 @@ void Object3d::Update()
 	transformationMatrixData_->WVP = worldViewProjectionMatrix;
 	transformationMatrixData_->World = worldMatrix;
 
+	// ここで World の逆転置行列を計算して書き込む
+	// （法線変換に正しい行列を渡すため）
+	transformationMatrixData_->WorldInverseTranspose =
+		Matrix4x4::Transpose(Matrix4x4::Inverse(worldMatrix));
+
 	// 平行光源の向きの正規化
 	directionalLightData_->direction = directionalLightData_->direction.Normalize();
 
