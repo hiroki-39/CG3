@@ -3,6 +3,7 @@
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 #include <fstream>
 #include <sstream>
+#include <Windows.h>
 
 void Model::Initialize(ModelCommon* modelCommon, const std::string& directoryPath, const std::string& filename)
 {
@@ -367,3 +368,26 @@ Model::MaterialData Model::LoadMaterialTemplateFile(const std::string& directory
 
 	return  materialData;
 }
+
+// デバッグ用にモデル情報を出力するヘルパー
+static void DebugDumpModelInfo(const Model::ModelData& modelData, const Model::Material* materialData)
+{
+    std::ostringstream ss;
+    ss << "[Model Debug] vertex count: " << modelData.vertices.size() << "\n";
+    if (!modelData.vertices.empty())
+    {
+        const auto& v = modelData.vertices[0];
+        ss << "[Model Debug] first vertex normal: (" << v.normal.x << ", " << v.normal.y << ", " << v.normal.z << ")\n";
+    }
+    if (materialData)
+    {
+        ss << "[Model Debug] material.enableLighting: " << materialData->enableLighting
+           << ", selectLightings: " << materialData->selectLightings
+           << ", shininess: " << materialData->shininess << "\n";
+    }
+    std::string s = ss.str();
+    OutputDebugStringA(s.c_str());
+}
+
+// 呼び出し箇所の例：LoadObjFile の戻り値を modelData にコピーした直後、または CreateMaterialResource 後で呼んでください。
+// DebugDumpModelInfo(modelData, materialData_);
