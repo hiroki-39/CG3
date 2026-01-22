@@ -15,6 +15,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <cassert>
+#include <algorithm> // 追加: std::clamp 等
 
 #pragma comment(lib, "Dbghelp.lib")
 #pragma comment(lib,"dxcompiler.lib")
@@ -167,6 +168,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	dxCommon->BeginTextureUploadBatch();
 
 	ModelManager::GetInstance()->LoadModel("plane.obj");
+	ModelManager::GetInstance()->LoadModel("terrain.obj");
 
 	// 既存スプライト用テクスチャの読み込み
 	texManager->LoadTexture("resources/uvChecker.png");
@@ -223,6 +225,49 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
 		obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 		modelInstances.push_back(obj);
+
+		Object3d* terrain = new Object3d();
+		terrain->Initialize(object3dCommon);
+		terrain->SetModel("terrain.obj");
+		terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
+		terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
+		terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+		modelInstances.push_back(terrain);
+	}
+
+	// --- ここで各モデルごとのライト目標値/current値を作成 ---
+	std::vector<Vector4> targetLightColor;
+	std::vector<Vector3> targetLightDir;
+	std::vector<float> targetLightIntensity;
+
+	std::vector<Vector4> currentLightColor;
+	std::vector<Vector3> currentLightDir;
+	std::vector<float> currentLightIntensity;
+
+	// 補間速度（大きいほど速く追従）
+	float lightSmoothSpeed = 8.0f;
+
+	{
+		size_t cnt = modelInstances.size();
+		targetLightColor.resize(cnt);
+		targetLightDir.resize(cnt);
+		targetLightIntensity.resize(cnt);
+
+		currentLightColor.resize(cnt);
+		currentLightDir.resize(cnt);
+		currentLightIntensity.resize(cnt);
+
+		for (size_t i = 0; i < cnt; ++i)
+		{
+			// 初期値を各モデルから取得
+			targetLightColor[i] = modelInstances[i]->GetDirectionalLightColor();
+			targetLightDir[i] = modelInstances[i]->GetDirectionalLightDirection();
+			targetLightIntensity[i] = modelInstances[i]->GetDirectionalLightIntensity();
+
+			currentLightColor[i] = targetLightColor[i];
+			currentLightDir[i] = targetLightDir[i];
+			currentLightIntensity[i] = targetLightIntensity[i];
+		}
 	}
 
 	// サウンドマネージャーの初期化
@@ -319,6 +364,32 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		}
 
+		// --- ライト補間処理: target -> current を滑らかに更新し、モデルに反映 ---
+		{
+			float t = std::clamp(lightSmoothSpeed * kDeltaTime, 0.0f, 1.0f);
+
+			for (size_t i = 0; i < modelInstances.size(); ++i)
+			{
+				// Vector4 lerp
+				currentLightColor[i].x += (targetLightColor[i].x - currentLightColor[i].x) * t;
+				currentLightColor[i].y += (targetLightColor[i].y - currentLightColor[i].y) * t;
+				currentLightColor[i].z += (targetLightColor[i].z - currentLightColor[i].z) * t;
+				currentLightColor[i].w += (targetLightColor[i].w - currentLightColor[i].w) * t;
+
+				// Vector3 lerp
+				currentLightDir[i].x += (targetLightDir[i].x - currentLightDir[i].x) * t;
+				currentLightDir[i].y += (targetLightDir[i].y - currentLightDir[i].y) * t;
+				currentLightDir[i].z += (targetLightDir[i].z - currentLightDir[i].z) * t;
+
+				// intensity lerp
+				currentLightIntensity[i] += (targetLightIntensity[i] - currentLightIntensity[i]) * t;
+
+				// モデルに反映
+				modelInstances[i]->SetDirectionalLightColor(currentLightColor[i]);
+				modelInstances[i]->SetDirectionalLightDirection(currentLightDir[i]);
+				modelInstances[i]->SetDirectionalLightIntensity(currentLightIntensity[i]);
+			}
+		}
 
 		// カメラ行列・ビュー・射影は Camera の getter を使う
 		Matrix4x4 cameraMatrix = camera->GetWorldMatrix();
@@ -432,7 +503,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
 				}
 
-				// Light (directional)
+				// Light (directional) -- このパネルは最初のモデルの編集（残しました）
 				Vector4 lightCol = obj->GetDirectionalLightColor();
 				float lightColArr[4] = { lightCol.x, lightCol.y, lightCol.z, lightCol.w };
 				if (ImGui::ColorEdit4("Light Color", lightColArr))
@@ -455,34 +526,44 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 		}
 
-		// Dedicated Light パネル（Model に依らずライトを操作したい場合はこちらを使用）
+		// Dedicated Light パネル（モデルごとにライトを個別に操作できるように変更）
 		if (ImGui::CollapsingHeader("Light"))
 		{
 			if (!modelInstances.empty())
 			{
-				Object3d* obj = modelInstances[0];
-
-				// Color
-				Vector4 lc = obj->GetDirectionalLightColor();
-				float lcArr[4] = { lc.x, lc.y, lc.z, lc.w };
-				if (ImGui::ColorEdit4("Directional Color", lcArr))
+				for (size_t i = 0; i < modelInstances.size(); ++i)
 				{
-					obj->SetDirectionalLightColor(Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]));
-				}
+					std::string nodeName = "Model " + std::to_string(i);
+					if (ImGui::TreeNode(nodeName.c_str()))
+					{
+						// 色（ターゲット）
+						Vector4 tlc = targetLightColor[i];
+						float lcArr[4] = { tlc.x, tlc.y, tlc.z, tlc.w };
+						std::string colorLabel = "Directional Color##col" + std::to_string(i);
+						if (ImGui::ColorEdit4(colorLabel.c_str(), lcArr))
+						{
+							targetLightColor[i] = Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]);
+						}
 
-				// Direction (normalized on update inside Object3d)
-				Vector3 ld = obj->GetDirectionalLightDirection();
-				float ldArr[3] = { ld.x, ld.y, ld.z };
-				if (ImGui::DragFloat3("Directional Direction", ldArr, 0.01f, -10.0f, 10.0f))
-				{
-					obj->SetDirectionalLightDirection(Vector3(ldArr[0], ldArr[1], ldArr[2]));
-				}
+						// 方向（ターゲット）
+						Vector3 tld = targetLightDir[i];
+						float ldArr[3] = { tld.x, tld.y, tld.z };
+						std::string dirLabel = "Directional Direction##dir" + std::to_string(i);
+						if (ImGui::DragFloat3(dirLabel.c_str(), ldArr, 0.01f, -10.0f, 10.0f))
+						{
+							targetLightDir[i] = Vector3(ldArr[0], ldArr[1], ldArr[2]);
+						}
 
-				// Intensity
-				float lint = obj->GetDirectionalLightIntensity();
-				if (ImGui::DragFloat("Directional Intensity", &lint, 0.01f, 0.0f, 100.0f))
-				{
-					obj->SetDirectionalLightIntensity(lint);
+						// 強度（ターゲット）
+						float lint = targetLightIntensity[i];
+						std::string intLabel = "Directional Intensity##int" + std::to_string(i);
+						if (ImGui::DragFloat(intLabel.c_str(), &lint, 0.01f, 0.0f, 100.0f))
+						{
+							targetLightIntensity[i] = lint;
+						}
+
+						ImGui::TreePop();
+					}
 				}
 			}
 			else
