@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Graphics/3d/Object/Object3dCommon.h"
 #include "KHEngine/Math/MathCommon.h"
 #include "KHEngine/Graphics/3d/Model/Model.h"

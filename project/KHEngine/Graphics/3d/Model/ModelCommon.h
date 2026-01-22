@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 
 class ModelCommon

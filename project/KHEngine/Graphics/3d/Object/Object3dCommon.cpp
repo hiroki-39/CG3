@@ -1,4 +1,4 @@
-﻿#include "Object3dCommon.h"
+#include "Object3dCommon.h"
 #include <Windows.h> // OutputDebugStringA
 #include <cstdio>
 
@@ -44,7 +44,7 @@ void Object3dCommon::CreateRootSignature()
 
 	/*---RootSignature作成---*/
 	D3D12_ROOT_PARAMETER rootPrameters[5] = {};
-	
+
 	//CBVを使う(マテリアル用)
 	rootPrameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	//prixelShederを使う
@@ -59,7 +59,7 @@ void Object3dCommon::CreateRootSignature()
 	//レジスタ番号0とバインド
 	rootPrameters[1].Descriptor.ShaderRegister = 0;
 
-	
+
 	//DescriptorTableを使う(テクスチャ用)
 	rootPrameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	//PixelShaderで使う
@@ -229,5 +229,5 @@ void Object3dCommon::CreateGraphicsPipeline()
 
 	//実際に作成
 	hr = dxCommon_->GetDevice()->CreateGraphicsPipelineState(&graphicsPipelineStateDesc, IID_PPV_ARGS(&graphicsPipelineState));
-	
+
 }

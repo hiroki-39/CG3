@@ -19,9 +19,9 @@ public:
 	const Matrix4x4& GetWorldMatrix() const { return worldMatrix; }
 	const Matrix4x4& GetViewMatrix() const { return viewMatrix; }
 	const Matrix4x4& GetProjectionMatrix() const { return projectionMatrix; }
-	const Matrix4x4 GetViewProjectionMatrix() const 
-	{ 
-		return Matrix4x4::Multiply(viewMatrix, projectionMatrix); 
+	const Matrix4x4 GetViewProjectionMatrix() const
+	{
+		return Matrix4x4::Multiply(viewMatrix, projectionMatrix);
 	}
 	Vector3& GetTranslate() { return transform.translate; }
 	Vector3& GetRotation() { return transform.rotation; }

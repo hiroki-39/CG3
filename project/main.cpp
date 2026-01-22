@@ -63,8 +63,6 @@ void Log(std::ostream& os, const std::string& message);
 
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
 
-void CreateWhiteTexture(DirectX::ScratchImage& outImage);
-
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
@@ -230,10 +228,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// サウンドマネージャーの初期化
 	SoundManager::GetInstance()->Initialize();
 
-	// WAVを読み込む
-	static SoundManager::SoundData Data = SoundManager::GetInstance()->SoundLoadWave("Resources/Alarm01.wav");
+	// mp3を読み込む
+	static SoundManager::SoundData Data = SoundManager::GetInstance()->SoundLoadFile("resources/bgm.mp3");
 
-	// 再生用オブジェクト（メインループ内でトリガーするならここで変数を持つ）
+	// 再生用オブジェクト
 	Sound sound;
 
 
@@ -674,27 +672,4 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 
 	return EXCEPTION_EXECUTE_HANDLER;
 
-}
-
-void CreateWhiteTexture(DirectX::ScratchImage& outImage)
-{
-	//白色
-	constexpr uint8_t whitePixel[4] = { 255, 255, 255, 255 };
-
-	DirectX::Image img{};
-
-	//Textureの幅
-	img.width = 1;
-	//Textureの高さ
-	img.height = 1;
-
-	img.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	img.pixels = const_cast<uint8_t*>(whitePixel);
-
-	img.rowPitch = 4;
-
-	img.slicePitch = 4;
-
-	outImage.InitializeFromImage(img);
 }

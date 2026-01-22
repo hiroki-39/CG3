@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 #include "KHEngine/Graphics/3d/Camera/Camera.h"
 
@@ -21,7 +21,7 @@ public://メンバ関数
 	Camera* GetDefaultCamera() const { return DefaultCamera; }
 
 	// --- Setter ---
-	void SetDefaultCamera(Camera* camera) {this->DefaultCamera = camera; }
+	void SetDefaultCamera(Camera* camera) { this->DefaultCamera = camera; }
 
 private:
 
@@ -48,4 +48,3 @@ private:
 	//グラフィックスパイプラインステート
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineState;
 };
-

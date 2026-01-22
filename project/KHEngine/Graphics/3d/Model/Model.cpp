@@ -15,7 +15,7 @@ void Model::Initialize(ModelCommon* modelCommon, const std::string& directoryPat
 
 	//モデルの読み込み(Plane.ogj)
 	modelData = LoadObjFile(directoryPath, filename);
-	
+
 
 	// 頂点データ・インデックスデータの作成
 	CreateBufferResource();
