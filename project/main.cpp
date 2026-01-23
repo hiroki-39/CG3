@@ -3,7 +3,6 @@
 #include <format>
 #include<dbghelp.h>
 #include <strsafe.h>
-#include<dxgidebug.h>
 #include"externals/DirectXTex/d3dx12.h"
 #include<vector>
 #include <numbers>
@@ -15,7 +14,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <cassert>
-#include <algorithm> // 追加: std::clamp 等
+#include <algorithm>
 
 #pragma comment(lib, "Dbghelp.lib")
 #pragma comment(lib,"dxcompiler.lib")
@@ -127,8 +126,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	object3dCommon->Initialize(dxCommon);
 
 	Camera* camera = new Camera();
-	camera->SetTranslate({ 0.0f, 0.0f, -20.0f });
-	camera->SetRotation({ 0.0f, 0.0f, 0.0f });
+	camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
+	camera->SetRotation({ 0.3f, 0.0f, 0.0f });
 	object3dCommon->SetDefaultCamera(camera);
 
 	SrvManager* srvManager = SrvManager::GetInstance();
@@ -221,7 +220,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		Object3d* obj = new Object3d();
 		obj->Initialize(object3dCommon);
 		obj->SetModel("monsterBall.obj");
-		obj->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
+		obj->SetTranslate(Vector3(0.0f, 1.0f, -4.0f));
 		obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
 		obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 		modelInstances.push_back(obj);
@@ -503,66 +502,60 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
 				}
 
-				// Light (directional) -- このパネルは最初のモデルの編集（残しました）
-				Vector4 lightCol = obj->GetDirectionalLightColor();
-				float lightColArr[4] = { lightCol.x, lightCol.y, lightCol.z, lightCol.w };
-				if (ImGui::ColorEdit4("Light Color", lightColArr))
-				{
-					obj->SetDirectionalLightColor(Vector4(lightColArr[0], lightColArr[1], lightColArr[2], lightColArr[3]));
-				}
-
-				Vector3 lightDir = obj->GetDirectionalLightDirection();
-				float lightDirArr[3] = { lightDir.x, lightDir.y, lightDir.z };
-				if (ImGui::DragFloat3("Light Direction", lightDirArr, 0.1f))
-				{
-					obj->SetDirectionalLightDirection(Vector3(lightDirArr[0], lightDirArr[1], lightDirArr[2]));
-				}
-
-				float lightIntensity = obj->GetDirectionalLightIntensity();
-				if (ImGui::DragFloat("Light Intensity", &lightIntensity, 0.01f, 0.0f, 10.0f))
-				{
-					obj->SetDirectionalLightIntensity(lightIntensity);
-				}
 			}
 		}
 
-		// Dedicated Light パネル（モデルごとにライトを個別に操作できるように変更）
+		// Light
 		if (ImGui::CollapsingHeader("Light"))
 		{
 			if (!modelInstances.empty())
 			{
-				for (size_t i = 0; i < modelInstances.size(); ++i)
+				// 編集対象モデルの選択（保持するため static）
+				static int editModelIndex = 0;
+				int maxIndex = static_cast<int>(modelInstances.size()) - 1;
+				ImGui::SliderInt("Model Index", &editModelIndex, 0, maxIndex);
+
+				size_t idx = static_cast<size_t>(editModelIndex);
+
+				// 即時反映トグル
+				static bool instantApply = false;
+				ImGui::Checkbox("Instant Apply", &instantApply);
+
+				// Directional Color (target を編集)
+				float lcArr[4] = { targetLightColor[idx].x, targetLightColor[idx].y, targetLightColor[idx].z, targetLightColor[idx].w };
+				if (ImGui::ColorEdit4("Directional Color", lcArr))
 				{
-					std::string nodeName = "Model " + std::to_string(i);
-					if (ImGui::TreeNode(nodeName.c_str()))
+					targetLightColor[idx] = Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]);
+					if (instantApply)
 					{
-						// 色（ターゲット）
-						Vector4 tlc = targetLightColor[i];
-						float lcArr[4] = { tlc.x, tlc.y, tlc.z, tlc.w };
-						std::string colorLabel = "Directional Color##col" + std::to_string(i);
-						if (ImGui::ColorEdit4(colorLabel.c_str(), lcArr))
-						{
-							targetLightColor[i] = Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]);
-						}
+						// current に即時反映してモデルへセット
+						currentLightColor[idx] = targetLightColor[idx];
+						modelInstances[idx]->SetDirectionalLightColor(currentLightColor[idx]);
+					}
+				}
 
-						// 方向（ターゲット）
-						Vector3 tld = targetLightDir[i];
-						float ldArr[3] = { tld.x, tld.y, tld.z };
-						std::string dirLabel = "Directional Direction##dir" + std::to_string(i);
-						if (ImGui::DragFloat3(dirLabel.c_str(), ldArr, 0.01f, -10.0f, 10.0f))
-						{
-							targetLightDir[i] = Vector3(ldArr[0], ldArr[1], ldArr[2]);
-						}
+				// Direction (target を編集)
+				float ldArr[3] = { targetLightDir[idx].x, targetLightDir[idx].y, targetLightDir[idx].z };
+				if (ImGui::DragFloat3("Directional Direction", ldArr, 0.01f, -1.0f, 1.0f))
+				{
+					targetLightDir[idx] = Vector3(ldArr[0], ldArr[1], ldArr[2]);
+					if (instantApply)
+					{
+						// current に即時反映してモデルへセット
+						currentLightDir[idx] = targetLightDir[idx];
+						modelInstances[idx]->SetDirectionalLightDirection(currentLightDir[idx]);
+					}
+				}
 
-						// 強度（ターゲット）
-						float lint = targetLightIntensity[i];
-						std::string intLabel = "Directional Intensity##int" + std::to_string(i);
-						if (ImGui::DragFloat(intLabel.c_str(), &lint, 0.01f, 0.0f, 100.0f))
-						{
-							targetLightIntensity[i] = lint;
-						}
-
-						ImGui::TreePop();
+				// Intensity (target を編集)
+				float lint = targetLightIntensity[idx];
+				if (ImGui::DragFloat("Directional Intensity", &lint, 0.01f, 0.0f, 100.0f))
+				{
+					targetLightIntensity[idx] = lint;
+					if (instantApply)
+					{
+						currentLightIntensity[idx] = targetLightIntensity[idx];
+						modelInstances[idx]->SetDirectionalLightIntensity(currentLightIntensity[idx]);
 					}
 				}
 			}
