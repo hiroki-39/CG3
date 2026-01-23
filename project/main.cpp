@@ -234,41 +234,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		modelInstances.push_back(terrain);
 	}
 
-	// --- ここで各モデルごとのライト目標値/current値を作成 ---
-	std::vector<Vector4> targetLightColor;
-	std::vector<Vector3> targetLightDir;
-	std::vector<float> targetLightIntensity;
-
-	std::vector<Vector4> currentLightColor;
-	std::vector<Vector3> currentLightDir;
-	std::vector<float> currentLightIntensity;
-
-	// 補間速度（大きいほど速く追従）
-	float lightSmoothSpeed = 8.0f;
-
-	{
-		size_t cnt = modelInstances.size();
-		targetLightColor.resize(cnt);
-		targetLightDir.resize(cnt);
-		targetLightIntensity.resize(cnt);
-
-		currentLightColor.resize(cnt);
-		currentLightDir.resize(cnt);
-		currentLightIntensity.resize(cnt);
-
-		for (size_t i = 0; i < cnt; ++i)
-		{
-			// 初期値を各モデルから取得
-			targetLightColor[i] = modelInstances[i]->GetDirectionalLightColor();
-			targetLightDir[i] = modelInstances[i]->GetDirectionalLightDirection();
-			targetLightIntensity[i] = modelInstances[i]->GetDirectionalLightIntensity();
-
-			currentLightColor[i] = targetLightColor[i];
-			currentLightDir[i] = targetLightDir[i];
-			currentLightIntensity[i] = targetLightIntensity[i];
-		}
-	}
-
 	// サウンドマネージャーの初期化
 	SoundManager::GetInstance()->Initialize();
 
@@ -363,32 +328,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		}
 
-		// --- ライト補間処理: target -> current を滑らかに更新し、モデルに反映 ---
-		{
-			float t = std::clamp(lightSmoothSpeed * kDeltaTime, 0.0f, 1.0f);
-
-			for (size_t i = 0; i < modelInstances.size(); ++i)
-			{
-				// Vector4 lerp
-				currentLightColor[i].x += (targetLightColor[i].x - currentLightColor[i].x) * t;
-				currentLightColor[i].y += (targetLightColor[i].y - currentLightColor[i].y) * t;
-				currentLightColor[i].z += (targetLightColor[i].z - currentLightColor[i].z) * t;
-				currentLightColor[i].w += (targetLightColor[i].w - currentLightColor[i].w) * t;
-
-				// Vector3 lerp
-				currentLightDir[i].x += (targetLightDir[i].x - currentLightDir[i].x) * t;
-				currentLightDir[i].y += (targetLightDir[i].y - currentLightDir[i].y) * t;
-				currentLightDir[i].z += (targetLightDir[i].z - currentLightDir[i].z) * t;
-
-				// intensity lerp
-				currentLightIntensity[i] += (targetLightIntensity[i] - currentLightIntensity[i]) * t;
-
-				// モデルに反映
-				modelInstances[i]->SetDirectionalLightColor(currentLightColor[i]);
-				modelInstances[i]->SetDirectionalLightDirection(currentLightDir[i]);
-				modelInstances[i]->SetDirectionalLightIntensity(currentLightIntensity[i]);
-			}
-		}
 
 		// カメラ行列・ビュー・射影は Camera の getter を使う
 		Matrix4x4 cameraMatrix = camera->GetWorldMatrix();
@@ -510,53 +449,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		{
 			if (!modelInstances.empty())
 			{
-				// 編集対象モデルの選択（保持するため static）
-				static int editModelIndex = 0;
-				int maxIndex = static_cast<int>(modelInstances.size()) - 1;
-				ImGui::SliderInt("Model Index", &editModelIndex, 0, maxIndex);
+				Object3d* obj = modelInstances[0];
 
-				size_t idx = static_cast<size_t>(editModelIndex);
-
-				// 即時反映トグル
-				static bool instantApply = false;
-				ImGui::Checkbox("Instant Apply", &instantApply);
-
-				// Directional Color (target を編集)
-				float lcArr[4] = { targetLightColor[idx].x, targetLightColor[idx].y, targetLightColor[idx].z, targetLightColor[idx].w };
+				// Color
+				Vector4 lc = obj->GetDirectionalLightColor();
+				float lcArr[4] = { lc.x, lc.y, lc.z, lc.w };
 				if (ImGui::ColorEdit4("Directional Color", lcArr))
 				{
-					targetLightColor[idx] = Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]);
-					if (instantApply)
-					{
-						// current に即時反映してモデルへセット
-						currentLightColor[idx] = targetLightColor[idx];
-						modelInstances[idx]->SetDirectionalLightColor(currentLightColor[idx]);
-					}
+					obj->SetDirectionalLightColor(Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]));
 				}
 
-				// Direction (target を編集)
-				float ldArr[3] = { targetLightDir[idx].x, targetLightDir[idx].y, targetLightDir[idx].z };
+				// Direction (normalized on update inside Object3d)
+				Vector3 ld = obj->GetDirectionalLightDirection();
+				float ldArr[3] = { ld.x, ld.y, ld.z };
 				if (ImGui::DragFloat3("Directional Direction", ldArr, 0.01f, -1.0f, 1.0f))
 				{
-					targetLightDir[idx] = Vector3(ldArr[0], ldArr[1], ldArr[2]);
-					if (instantApply)
-					{
-						// current に即時反映してモデルへセット
-						currentLightDir[idx] = targetLightDir[idx];
-						modelInstances[idx]->SetDirectionalLightDirection(currentLightDir[idx]);
-					}
+					obj->SetDirectionalLightDirection(Vector3(ldArr[0], ldArr[1], ldArr[2]));
 				}
 
-				// Intensity (target を編集)
-				float lint = targetLightIntensity[idx];
+				// Intensity
+				float lint = obj->GetDirectionalLightIntensity();
 				if (ImGui::DragFloat("Directional Intensity", &lint, 0.01f, 0.0f, 100.0f))
 				{
-					targetLightIntensity[idx] = lint;
-					if (instantApply)
-					{
-						currentLightIntensity[idx] = targetLightIntensity[idx];
-						modelInstances[idx]->SetDirectionalLightIntensity(currentLightIntensity[idx]);
-					}
+					obj->SetDirectionalLightIntensity(lint);
 				}
 			}
 			else
