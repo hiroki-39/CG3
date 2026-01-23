@@ -3,7 +3,6 @@
 #include <format>
 #include<dbghelp.h>
 #include <strsafe.h>
-#include<dxgidebug.h>
 #include"externals/DirectXTex/d3dx12.h"
 #include<vector>
 #include <numbers>
@@ -15,6 +14,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <cassert>
+#include <algorithm>
 
 #pragma comment(lib, "Dbghelp.lib")
 #pragma comment(lib,"dxcompiler.lib")
@@ -126,8 +126,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	object3dCommon->Initialize(dxCommon);
 
 	Camera* camera = new Camera();
-	camera->SetTranslate({ 0.0f, 0.0f, -20.0f });
-	camera->SetRotation({ 0.0f, 0.0f, 0.0f });
+	camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
+	camera->SetRotation({ 0.3f, 0.0f, 0.0f });
 	object3dCommon->SetDefaultCamera(camera);
 
 	SrvManager* srvManager = SrvManager::GetInstance();
@@ -167,6 +167,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	dxCommon->BeginTextureUploadBatch();
 
 	ModelManager::GetInstance()->LoadModel("plane.obj");
+	ModelManager::GetInstance()->LoadModel("terrain.obj");
 
 	// 既存スプライト用テクスチャの読み込み
 	texManager->LoadTexture("resources/uvChecker.png");
@@ -219,10 +220,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		Object3d* obj = new Object3d();
 		obj->Initialize(object3dCommon);
 		obj->SetModel("monsterBall.obj");
-		obj->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
+		obj->SetTranslate(Vector3(0.0f, 1.0f, -4.0f));
 		obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
 		obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 		modelInstances.push_back(obj);
+
+		Object3d* terrain = new Object3d();
+		terrain->Initialize(object3dCommon);
+		terrain->SetModel("terrain.obj");
+		terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
+		terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
+		terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+		modelInstances.push_back(terrain);
 	}
 
 	// サウンドマネージャーの初期化
@@ -432,30 +441,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
 				}
 
-				// Light (directional)
-				Vector4 lightCol = obj->GetDirectionalLightColor();
-				float lightColArr[4] = { lightCol.x, lightCol.y, lightCol.z, lightCol.w };
-				if (ImGui::ColorEdit4("Light Color", lightColArr))
-				{
-					obj->SetDirectionalLightColor(Vector4(lightColArr[0], lightColArr[1], lightColArr[2], lightColArr[3]));
-				}
-
-				Vector3 lightDir = obj->GetDirectionalLightDirection();
-				float lightDirArr[3] = { lightDir.x, lightDir.y, lightDir.z };
-				if (ImGui::DragFloat3("Light Direction", lightDirArr, 0.1f))
-				{
-					obj->SetDirectionalLightDirection(Vector3(lightDirArr[0], lightDirArr[1], lightDirArr[2]));
-				}
-
-				float lightIntensity = obj->GetDirectionalLightIntensity();
-				if (ImGui::DragFloat("Light Intensity", &lightIntensity, 0.01f, 0.0f, 10.0f))
-				{
-					obj->SetDirectionalLightIntensity(lightIntensity);
-				}
 			}
 		}
 
-		// Dedicated Light パネル（Model に依らずライトを操作したい場合はこちらを使用）
+		// Light
 		if (ImGui::CollapsingHeader("Light"))
 		{
 			if (!modelInstances.empty())
@@ -473,7 +462,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				// Direction (normalized on update inside Object3d)
 				Vector3 ld = obj->GetDirectionalLightDirection();
 				float ldArr[3] = { ld.x, ld.y, ld.z };
-				if (ImGui::DragFloat3("Directional Direction", ldArr, 0.01f, -10.0f, 10.0f))
+				if (ImGui::DragFloat3("Directional Direction", ldArr, 0.01f, -1.0f, 1.0f))
 				{
 					obj->SetDirectionalLightDirection(Vector3(ldArr[0], ldArr[1], ldArr[2]));
 				}

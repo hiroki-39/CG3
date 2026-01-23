@@ -11,14 +11,12 @@ void Sound::SoundPlayWave(IXAudio2* xAudio2, const SoundManager::SoundData& soun
 	result = xAudio2->CreateSourceVoice(&sourceVoice_, &soundData.wfex);
 	assert(SUCCEEDED(result));
 
-
 	// 再生する波形データの設定
 	XAUDIO2_BUFFER buf{};
 	// std::vector を使っているので data() / size() を使う
 	buf.pAudioData = soundData.buffer.empty() ? nullptr : soundData.buffer.data();
 	buf.AudioBytes = static_cast<UINT32>(soundData.buffer.size());
 	buf.Flags = XAUDIO2_END_OF_STREAM;
-
 
 	// バッファが無ければ再生しない
 	assert(buf.pAudioData != nullptr && buf.AudioBytes > 0);
