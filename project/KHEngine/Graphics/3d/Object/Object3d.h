@@ -31,6 +31,15 @@ public:// 構造体
 		float padding;
 	};
 
+	struct PointLight
+	{
+		Vector4 color; // ライトの色
+		Vector3 direction; //ライトの向き
+		float intensity; //輝度
+		float radius;    // 光の届く範囲
+		float decry;     // 減衰率
+	};
+
 public://メンバ関数
 
 	/// <summary>
@@ -56,6 +65,13 @@ public://メンバ関数
 	Vector3 GetDirectionalLightDirection() const;
 	float GetDirectionalLightIntensity() const;
 
+	// PointLight getters
+	Vector4 GetPointLightColor() const;
+	Vector3 GetPointLightPosition() const;
+	float GetPointLightIntensity() const;
+	float GetPointLightRadius() const;
+	float GetPointLightDecry() const;
+	
 	// --- Setter ---
 	void SetModel(Model* model) { this->model = model; }
 	void SetModel(const std::string& filePath);
@@ -66,6 +82,15 @@ public://メンバ関数
 	void SetDirectionalLightColor(const Vector4& color);
 	void SetDirectionalLightDirection(const Vector3& direction);
 	void SetDirectionalLightIntensity(float intensity);
+
+
+
+	// PointLight setters
+	void SetPointLightColor(const Vector4& color);
+	void SetPointLightPosition(const Vector3& position);
+	void SetPointLightIntensity(float intensity);
+	void SetPointLightRadius(float radius);
+	void SetPointLightDecry(float decry);
 
 private://メンバ関数
 
@@ -79,7 +104,10 @@ private://メンバ関数
 	/// </summary>
 	void CreateDirectionalLight();
 
-
+	/// <summary>
+	/// ポイントライトの作成
+	/// </summary>
+	void CreatePointLight();
 
 private://メンバ変数
 
@@ -108,6 +136,11 @@ private://メンバ変数
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
 	CameraForGPU* cameraData_ = nullptr;
+
+	// ポイントライト用のリソース
+	Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
+	// データを書き込む
+	PointLight* pointLightData_ = nullptr;
 
 	Transform transform;
 

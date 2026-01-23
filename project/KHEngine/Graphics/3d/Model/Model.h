@@ -29,7 +29,7 @@ public: //構造体
 		Matrix4x4 uvTransform;
 		int32_t selectLightings;
 		float shininess;
-		float specularColor[3];
+		Vector3 specularColor;
 		float padding1;
 	};
 
