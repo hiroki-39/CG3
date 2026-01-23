@@ -444,52 +444,111 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 		}
 
+
 		// Light
 		if (ImGui::CollapsingHeader("Light"))
 		{
 			if (!modelInstances.empty())
 			{
-				// Directional Light を全インスタンスに適用できるように UI を改善
-				static bool dirInit = false;
-				static Vector4 dirColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-				static Vector3 dirDirection = { 0.0f, -1.0f, 0.0f };
-				static float dirIntensity = 1.0f;
-				static float prevDirIntensity = 1.0f;
-				static bool dirEnabled = true;
+				// 選択対象は最初のインスタンス（必要なら選択UIを追加可）
+				Object3d* obj = modelInstances[0];
 
-				if (!dirInit)
+				// --- Directional Light: 選択モデル個別編集 ---
+				ImGui::Text("Directional Light (monsterBall Model)");
+				// Color (個別)
+				Vector4 lc = obj->GetDirectionalLightColor();
+				float lcArr[4] = { lc.x, lc.y, lc.z, lc.w };
+				if (ImGui::ColorEdit4("Directional Color", lcArr))
 				{
-					// 最初のモデルから初期値を取得して UI を初期化
-					Object3d* base = modelInstances[0];
-					dirColor = base->GetDirectionalLightColor();
-					dirDirection = base->GetDirectionalLightDirection();
-					dirIntensity = base->GetDirectionalLightIntensity();
-					prevDirIntensity = dirIntensity;
-					dirInit = true;
+					obj->SetDirectionalLightColor(Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]));
 				}
 
+				// Direction (個別) - Object3d 側で正規化しているなら UI の入力範囲を広めに取る
+				Vector3 ld = obj->GetDirectionalLightDirection();
+				float ldArr[3] = { ld.x, ld.y, ld.z };
+				if (ImGui::DragFloat3("Directional Direction", ldArr, 0.01f, -10.0f, 10.0f))
+				{
+					obj->SetDirectionalLightDirection(Vector3(ldArr[0], ldArr[1], ldArr[2]));
+				}
+
+				// Intensity (個別)
+				float lint = obj->GetDirectionalLightIntensity();
+				if (ImGui::DragFloat("Directional Intensity", &lint, 0.01f, 0.0f, 100.0f))
+				{
+					obj->SetDirectionalLightIntensity(lint);
+				}
+
+				// --- Directional Light: 全体操作パネル（ON/OFF / 全モデルへ適用） ---
 				ImGui::Separator();
 				ImGui::Text("Directional Light");
 
-				// ON/OFF チェックボックス
-				if (ImGui::Checkbox("Enable Directional Light", &dirEnabled))
+				// グローバル ON/OFF（最後に設定していた強度を復元する単純な実装）
+				static bool dirEnabledGlobal = true;
+				static float dirPrevIntensityGlobal = 1.0f;
+				if (ImGui::Checkbox("Enable Directional Light(global)", &dirEnabledGlobal))
 				{
-					// 切り替え時の動作：無効化では強度を 0 にする（復帰時に prev を復元）
-					if (!dirEnabled)
+					if (!dirEnabledGlobal)
 					{
-						prevDirIntensity = dirIntensity;
+						// 無効化: 現在選択モデルの強度を保存して全モデル強度を 0 にする
+						dirPrevIntensityGlobal = obj->GetDirectionalLightIntensity();
 						for (auto m : modelInstances) if (m) m->SetDirectionalLightIntensity(0.0f);
 					}
 					else
 					{
-						for (auto m : modelInstances) if (m) m->SetDirectionalLightIntensity(prevDirIntensity);
+						// 有効化: 保存値で全モデル復元
+						for (auto m : modelInstances) if (m) m->SetDirectionalLightIntensity(dirPrevIntensityGlobal);
 					}
 				}
 
+				// Point Light 用コントロールは既存のものを維持（UI 内でまとまっている）
+				static bool pointInit = false;
+				static Vector4 pointColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // デフォルト白
+				static Vector3 pointPosition = { 0.0f, 5.0f, 0.0f };
+				static float pointIntensity = 1.0f;
+				static float prevPointIntensity = 1.0f;
+				static float pointRadius = 1.0f;
+				static float pointRange = 10.0f;
+				// ON/OFF 用フラグ
+				static bool pointLightEnabled = true;
+
+				if (!pointInit && !modelInstances.empty())
+				{
+					// モデル側の値がある場合は位置/強度を取得するが色は白を優先しておく
+					pointColor = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+					pointPosition = modelInstances[0]->GetPointLightPosition();
+					pointIntensity = modelInstances[0]->GetPointLightIntensity();
+					prevPointIntensity = pointIntensity;
+					pointInit = true;
+				}
+
+				// 見やすさのための区切り
+				ImGui::Separator();
+				ImGui::Text("Point Light");
+				// ON/OFF チェックボックス
+				if (ImGui::Checkbox("Enable Point Light", &pointLightEnabled))
+				{
+					// ON/OFF が切り替わったときの処理
+					if (!modelInstances.empty())
+					{
+						if (!pointLightEnabled)
+						{
+							// 無効化する際は現在の強度を保存して 0 にする
+							prevPointIntensity = pointIntensity;
+							for (auto m : modelInstances) if (m) m->SetPointLightIntensity(0.0f);
+						}
+						else
+						{
+							// 有効化する際は保存しておいた強度を復元
+							for (auto m : modelInstances) if (m) m->SetPointLightIntensity(prevPointIntensity);
+						}
+					}
+				}
+
+				// グループ化して、無効時はコントロールを淡く（BeginDisabled を使える場合）
 #if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-				ImGui::BeginDisabled(!dirEnabled);
+				ImGui::BeginDisabled(!pointLightEnabled);
 #else
-				if (!dirEnabled)
+				if (!pointLightEnabled)
 				{
 					ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 					ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
@@ -497,159 +556,58 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 #endif
 
 				// Color
-				float dlcArr[4] = { dirColor.x, dirColor.y, dirColor.z, dirColor.w };
-				if (ImGui::ColorEdit4("Color(DirectionalAll)", dlcArr))
+				float pcArr[4] = { pointColor.x, pointColor.y, pointColor.z, pointColor.w };
+				if (ImGui::ColorEdit4("Color", pcArr))
 				{
-					dirColor = Vector4(dlcArr[0], dlcArr[1], dlcArr[2], dlcArr[3]);
-					for (auto m : modelInstances) if (m) m->SetDirectionalLightColor(dirColor);
+					pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
+					for (auto m : modelInstances) if (m) m->SetPointLightColor(pointColor);
 				}
 
-				// Direction
-				float dldArr[3] = { dirDirection.x, dirDirection.y, dirDirection.z };
-				if (ImGui::DragFloat3("Direction##DirectionalAll", dldArr, 0.01f, -1.0f, 1.0f))
+				// Position
+				float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
+				if (ImGui::DragFloat3("Position", ppArr, 0.05f, -100.0f, 100.0f))
 				{
-					dirDirection = Vector3(dldArr[0], dldArr[1], dldArr[2]);
-					for (auto m : modelInstances) if (m) m->SetDirectionalLightDirection(dirDirection);
+					pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
+					for (auto m : modelInstances) if (m) m->SetPointLightPosition(pointPosition);
 				}
 
 				// Intensity
-				if (ImGui::DragFloat("Intensity(DirectionalAll)", &dirIntensity, 0.01f, 0.0f, 100.0f))
+				if (ImGui::DragFloat("Intensity", &pointIntensity, 0.01f, 0.0f, 100.0f))
 				{
-					// 有効な場合は即時反映、無効なら prev に保存して UI 上の値は維持
-					if (dirEnabled)
+					// 値を更新（ライトが無効なら prev に保存するだけ）
+					if (pointLightEnabled)
 					{
-						for (auto m : modelInstances) if (m) m->SetDirectionalLightIntensity(dirIntensity);
-						prevDirIntensity = dirIntensity;
+						for (auto m : modelInstances) if (m) m->SetPointLightIntensity(pointIntensity);
+						prevPointIntensity = pointIntensity;
 					}
 					else
 					{
-						prevDirIntensity = dirIntensity;
+						// 無効時は強度を保存して UI 上の値は維持
+						prevPointIntensity = pointIntensity;
 					}
+				}
+
+				// radius
+				if (ImGui::DragFloat("Radius", &pointRadius, 0.01f, 0.1f, 100.0f))
+				{
+					for (auto m : modelInstances) if (m) m->SetPointLightRadius(pointRadius);
+				}
+				// range (減衰)
+				if (ImGui::DragFloat("Range(Decay)", &pointRange, 0.01f, 0.1f, 50.0f))
+				{
+					for (auto m : modelInstances) if (m) m->SetPointLightDecry(pointRange);
 				}
 
 #if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
 				ImGui::EndDisabled();
 #else
-				if (!dirEnabled)
+				if (!pointLightEnabled)
 				{
 					ImGui::PopItemFlag();
 					ImGui::PopStyleVar();
 				}
 #endif
-
 			}
-			else
-			{
-				ImGui::Text("No model instances available to control light.");
-			}
-
-			// Point Light 用コントロールは既存のものを維持（UI 内でまとまっている）
-			static bool pointInit = false;
-			static Vector4 pointColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // デフォルト白
-			static Vector3 pointPosition = { 0.0f, 5.0f, 0.0f };
-			static float pointIntensity = 1.0f;
-			static float prevPointIntensity = 1.0f;
-			static float pointRadius = 1.0f;
-			static float pointRange = 10.0f;
-			// ON/OFF 用フラグ
-			static bool pointLightEnabled = true;
-
-			if (!pointInit && !modelInstances.empty())
-			{
-				// モデル側の値がある場合は位置/強度を取得するが色は白を優先しておく
-				pointColor = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-				pointPosition = modelInstances[0]->GetPointLightPosition();
-				pointIntensity = modelInstances[0]->GetPointLightIntensity();
-				prevPointIntensity = pointIntensity;
-				pointInit = true;
-			}
-
-			// 見やすさのための区切り
-			ImGui::Separator();
-			ImGui::Text("Point Light");
-			// ON/OFF チェックボックス
-			if (ImGui::Checkbox("Enable Point Light", &pointLightEnabled))
-			{
-				// ON/OFF が切り替わったときの処理
-				if (!modelInstances.empty())
-				{
-					if (!pointLightEnabled)
-					{
-						// 無効化する際は現在の強度を保存して 0 にする
-						prevPointIntensity = pointIntensity;
-						for (auto m : modelInstances) if (m) m->SetPointLightIntensity(0.0f);
-					}
-					else
-					{
-						// 有効化する際は保存しておいた強度を復元
-						for (auto m : modelInstances) if (m) m->SetPointLightIntensity(prevPointIntensity);
-					}
-				}
-			}
-
-			// グループ化して、無効時はコントロールを淡く（BeginDisabled を使える場合）
-#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-			ImGui::BeginDisabled(!pointLightEnabled);
-#else
-			if (!pointLightEnabled)
-			{
-				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-			}
-#endif
-
-			// Color
-			float pcArr[4] = { pointColor.x, pointColor.y, pointColor.z, pointColor.w };
-			if (ImGui::ColorEdit4("Color", pcArr))
-			{
-				pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
-				for (auto m : modelInstances) if (m) m->SetPointLightColor(pointColor);
-			}
-
-			// Position
-			float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
-			if (ImGui::DragFloat3("Position", ppArr, 0.05f, -100.0f, 100.0f))
-			{
-				pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
-				for (auto m : modelInstances) if (m) m->SetPointLightPosition(pointPosition);
-			}
-
-			// Intensity
-			if (ImGui::DragFloat("Intensity", &pointIntensity, 0.01f, 0.0f, 100.0f))
-			{
-				// 値を更新（ライトが無効なら prev に保存するだけ）
-				if (pointLightEnabled)
-				{
-					for (auto m : modelInstances) if (m) m->SetPointLightIntensity(pointIntensity);
-					prevPointIntensity = pointIntensity;
-				}
-				else
-				{
-					// 無効時は強度を保存して UI 上の値は維持
-					prevPointIntensity = pointIntensity;
-				}
-			}
-
-			// radius
-			if (ImGui::DragFloat("Radius", &pointRadius, 0.01f, 0.1f, 100.0f))
-			{
-				for (auto m : modelInstances) if (m) m->SetPointLightRadius(pointRadius);
-			}
-			// range (減衰)
-			if (ImGui::DragFloat("Range(Decay)", &pointRange, 0.01f, 0.1f, 50.0f))
-			{
-				for (auto m : modelInstances) if (m) m->SetPointLightDecry(pointRange);
-			}
-
-#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-			ImGui::EndDisabled();
-#else
-			if (!pointLightEnabled)
-			{
-				ImGui::PopItemFlag();
-				ImGui::PopStyleVar();
-			}
-#endif
 
 		}
 
