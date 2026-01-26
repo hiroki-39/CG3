@@ -7,6 +7,18 @@
 #include <chrono>
 #include <ctime>
 #include <memory>
+#include <filesystem>
+
+namespace
+{
+	std::filesystem::path GetExeDir()
+	{
+		wchar_t path[MAX_PATH];
+		GetModuleFileNameW(nullptr, path, MAX_PATH);
+		return std::filesystem::path(path).parent_path();
+	}
+}
+
 
 namespace Logger
 {
@@ -17,14 +29,17 @@ namespace Logger
 
 		std::string CreateLogFilePath()
 		{
-			::CreateDirectoryW(L"log", nullptr);
+			// exe のある場所/log
+			auto logDir = GetExeDir() / "log";
+			std::filesystem::create_directories(logDir);
 
 			auto now = std::chrono::system_clock::now();
 			auto now_time_t = std::chrono::system_clock::to_time_t(now);
 			std::tm local_tm;
 			localtime_s(&local_tm, &now_time_t);
 
-			auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+			auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+				now.time_since_epoch()) % 1000;
 
 			std::ostringstream oss;
 			oss << std::put_time(&local_tm, "%Y%m%d_%H%M%S")
@@ -32,8 +47,10 @@ namespace Logger
 				<< '_' << GetCurrentProcessId()
 				<< ".log";
 
-			return std::string("log/") + oss.str();
+			// フルパスで返す
+			return (logDir / oss.str()).string();
 		}
+
 
 		void EnsureStream()
 		{
