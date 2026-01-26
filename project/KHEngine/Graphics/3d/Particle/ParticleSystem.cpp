@@ -9,6 +9,7 @@ ParticleSystem::ParticleSystem()
 
 void ParticleSystem::AddInitialParticles(std::mt19937& engine, uint32_t count)
 {
+	// 指定数分のパーティクルを生成して追加
 	for (uint32_t i = 0; i < count; ++i)
 	{
 		auto list = emitter_.Emit(engine, effect_);
