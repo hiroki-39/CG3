@@ -1,18 +1,18 @@
-#pragma once
+ï»¿#pragma once
 #include "KHEngine/Math/MathCommon.h"
 #include "KHEngine/Graphics/3d/Camera/Camera.h"
 
 class Billboard
 {
 public:
-	// ƒJƒƒ‰‚Ìƒ[ƒ‹ƒhs—ñ‚©‚çƒrƒ‹ƒ{[ƒhs—ñ‚ğì¬‚·‚é
-	// useBillboard == false ‚Ì‚Æ‚«‚Í’PˆÊs—ñ‚ğ•Ô‚·
+	// ã‚«ãƒ¡ãƒ©ã®ãƒ¯ãƒ¼ãƒ«ãƒ‰è¡Œåˆ—ã‹ã‚‰ãƒ“ãƒ«ãƒœãƒ¼ãƒ‰è¡Œåˆ—ã‚’ä½œæˆã™ã‚‹
+	// useBillboard == false ã®ã¨ãã¯å˜ä½è¡Œåˆ—ã‚’è¿”ã™
 	static Matrix4x4 Create(const Matrix4x4& cameraWorld, bool useBillboard);
 
-	// Camera ƒIƒuƒWƒFƒNƒg‚©‚ç’¼Úƒrƒ‹ƒ{[ƒhs—ñ‚ğì‚éƒI[ƒo[ƒ[ƒh
+	// Camera ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‹ã‚‰ç›´æ¥ãƒ“ãƒ«ãƒœãƒ¼ãƒ‰è¡Œåˆ—ã‚’ä½œã‚‹ã‚ªãƒ¼ãƒãƒ¼ãƒ­ãƒ¼ãƒ‰
 	static Matrix4x4 CreateFromCamera(const Camera* camera, bool useBillboard);
 
 private:
-	// — –Ê‰ñ“]i•K—v‚È‚çƒpƒ‰ƒ[ƒ^‰»‰Â”\j
+	// è£é¢å›è»¢ï¼ˆå¿…è¦ãªã‚‰ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿åŒ–å¯èƒ½ï¼‰
 	static Matrix4x4 BackToFrontMatrix();
 };

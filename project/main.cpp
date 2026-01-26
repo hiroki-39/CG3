@@ -49,6 +49,8 @@
 #include "KHEngine/Sound/Core/SoundManager.h"
 #include "KHEngine/Sound/Core/Sound.h"
 #include "KHEngine/Graphics/Billboard/Billboard.h"
+#include "KHEngine/Core/Utility/Log/Logger.h"
+#include "KHEngine/Core/Utility/Crash/CrashDump.h"
 
 enum class BlendMode
 {
@@ -60,10 +62,6 @@ enum class BlendMode
 	Count
 };
 
-// 以下のユーティリティ／プロトタイプは main 内で使用するものだけ保持
-void Log(std::ostream& os, const std::string& message);
-
-static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
 
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
@@ -73,8 +71,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//COMの初期化
 	CoInitializeEx(0, COINIT_MULTITHREADED);
 
-	//例外発生時にコールバックする関数を指定
-	SetUnhandledExceptionFilter(ExportDump);
+	// ロガー初期化（起動時に一度）
+	Logger::Init();
+
+	// 未処理例外ハンドラのインストール（CrashDump を使う）
+	KHEngine::Core::Utility::Crash::CrashDump::Install();
 
 #pragma region 基盤システムの初期化
 
@@ -84,19 +85,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//windowsAPIの初期化
 	winApp = new WinApp();
 	winApp->Initialize();
-
-#ifdef _DEBUG
-
-	Microsoft::WRL::ComPtr<ID3D12Debug1> debugController = nullptr;
-	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
-	{
-		//デバックレイヤーの有効化
-		debugController->EnableDebugLayer();
-		//GPU側でもチェックを行うようにする
-		debugController->SetEnableGPUBasedValidation(TRUE);
-	}
-
-#endif 
 
 	// ポインタ
 	DirectXCommon* dxCommon = nullptr;
@@ -783,50 +771,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	srvManager->Finalize();
 
+	// アンインストール
+	KHEngine::Core::Utility::Crash::CrashDump::Uninstall();
+	// シャットダウン
+	Logger::Shutdown();
+
 	return 0;
-}
-
-//---ここから下は関数の実装---//
-
-//出力ウィンドウにメッセージを出力する
-void Log(std::ostream& os, const std::string& message)
-{
-	os << message << std::endl;
-
-	//標準出力にメッセージを出力
-	OutputDebugStringA(message.c_str());
-}
-
-static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
-{
-	//時刻を取得して、時刻を名前に入れたファイルを作成
-	SYSTEMTIME time;
-	GetLocalTime(&time);
-
-	wchar_t filePath[MAX_PATH] = { 0 };
-	CreateDirectory(L"./Dumps", nullptr);
-	StringCchPrintfW(filePath, MAX_PATH,
-		L"./Dumps/%04d-%02d-%02d-%02d-%02d.dmp",
-		time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute);
-
-	HANDLE dumpFileHandle = CreateFile(filePath, GENERIC_READ |
-		GENERIC_WRITE, FILE_SHARE_WRITE |
-		FILE_SHARE_READ, 0, CREATE_ALWAYS, 0, 0);
-	//processIdとクラッシュの発生したthreadIdを取得
-	DWORD processId = GetCurrentProcessId();
-	DWORD threadId = GetCurrentThreadId();
-
-	//設定情報を入力
-	MINIDUMP_EXCEPTION_INFORMATION minidumpInformation{ 0 };
-	minidumpInformation.ThreadId = threadId;
-	minidumpInformation.ExceptionPointers = exception;
-	minidumpInformation.ClientPointers = true;
-
-	//Dumpを出力
-	MiniDumpWriteDump(GetCurrentProcess(), processId, dumpFileHandle,
-		MiniDumpNormal, &minidumpInformation, nullptr, nullptr);
-
-
-	return EXCEPTION_EXECUTE_HANDLER;
-
 }
