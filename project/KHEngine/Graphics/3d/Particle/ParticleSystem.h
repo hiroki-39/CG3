@@ -23,15 +23,18 @@ public:
 	// 更新（CPU側）
 	void Update(float dt);
 
-	// GPU用のインスタンシング配列へ書き込む（返り値 = 実際に書き込んだインスタンス数）
+	// GPU用のインスタンシング配列へ書き込む
 	uint32_t FillInstancingBuffer(ParticleForGPU* outBuffer, uint32_t maxInstances,
 		const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, const Matrix4x4& billboardMatrix, bool doUpdate = false);
 
 private:
+
 	std::list<Particle> particles_;
 	ParticleEmitter emitter_;
 	AccelerationField accel_;
 	ParticleEffect effect_ = ParticleEffect::Wind;
+	
+	// ビルボード使用フラグ
 	bool useBillboard_ = true;
 
 	// 内部乱数

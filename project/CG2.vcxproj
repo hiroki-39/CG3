@@ -82,7 +82,7 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir)DirectXTex;$(SolutionDir)externals\imgui;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)externals\imgui;$(SolutionDir)externals\DirectXTex;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -154,6 +154,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="KHEngine\Graphics\Billboard\Billboard.cpp" />
     <ClCompile Include="externals\imgui\imgui.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -182,6 +183,7 @@
     <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleEmitter.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleManager.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleRenderer.cpp" />
+    <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleSystem.cpp" />
     <ClCompile Include="KHEngine\Graphics\Resource\Descriptor\SrvManager.cpp" />
     <ClCompile Include="KHEngine\Graphics\Resource\Texture\TextureManager.cpp" />
     <ClCompile Include="KHEngine\Input\Input.cpp" />
@@ -201,11 +203,11 @@
     <ClCompile Include="KHEngine\Graphics\3d\Model\Model.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelCommon.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelManager.cpp" />
-    <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleSystem.cpp" />
     <ClCompile Include="KHEngine\Sound\Core\Sound.cpp" />
     <ClCompile Include="KHEngine\Sound\Core\SoundManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="KHEngine\Graphics\Billboard\Billboard.h" />
     <ClInclude Include="externals\imgui\imconfig.h" />
     <ClInclude Include="externals\imgui\imgui.h" />
     <ClInclude Include="externals\imgui\imgui_impl_dx12.h" />
@@ -220,6 +222,7 @@
     <ClInclude Include="KHEngine\Graphics\3d\Camera\Camera.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleEmitter.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleManager.h" />
+    <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleSystem.h" />
     <ClInclude Include="KHEngine\Graphics\Resource\Descriptor\SrvManager.h" />
     <ClInclude Include="KHEngine\Graphics\Resource\Texture\TextureManager.h" />
     <ClInclude Include="KHEngine\Input\Input.h" />
@@ -243,7 +246,6 @@
     <ClInclude Include="KHEngine\Graphics\3d\Model\ModelCommon.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Model\ModelManager.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Particle\Particle.h" />
-    <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleSystem.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleRenderer.h" />
     <ClInclude Include="KHEngine\Sound\Core\Sound.h" />
     <ClInclude Include="KHEngine\Sound\Core\SoundManager.h" />
