@@ -1,20 +1,21 @@
-﻿#include<Windows.h>
+﻿#define NOMINMAX
+#include <Windows.h>
+#include <algorithm>
 #include <string>
 #include <format>
 #include<dbghelp.h>
 #include <strsafe.h>
-#include"externals/DirectXTex/d3dx12.h"
-#include<vector>
+#include "externals/DirectXTex/d3dx12.h"
+#include <vector>
 #include <numbers>
 #include <iomanip>
-#include<wrl.h>
+#include <wrl.h>
 #include <functional>
-#include<array>
-#include<xaudio2.h>
+#include <array>
+#include <xaudio2.h>
 #include <fstream>
 #include <unordered_map>
 #include <cassert>
-#include <algorithm>
 
 #pragma comment(lib, "Dbghelp.lib")
 #pragma comment(lib,"dxcompiler.lib")
@@ -47,6 +48,7 @@
 #include "KHEngine/Debug/Imgui/ImGuiManager.h"
 #include "KHEngine/Sound/Core/SoundManager.h"
 #include "KHEngine/Sound/Core/Sound.h"
+#include "KHEngine/Graphics/Billboard/Billboard.h"
 
 enum class BlendMode
 {
@@ -272,9 +274,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	const float kDeltaTime = 1.0f / 60.0f;
 
-	// 裏面回転行列
-	Matrix4x4 baccktoFrontMatrix = Matrix4x4::RotateY(std::numbers::pi_v<float>);
-
 
 	AccelerationField accelerationField;
 	accelerationField.accleration = { -15.0f, 0.0f, 0.0f };
@@ -335,25 +334,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
 
 		// ビルボード行列の計算（共通）
-		Matrix4x4 billboardMatrix = Matrix4x4::Identity();
-
-		if (useBillboard)
-		{
-			// カメラの回転成分のみを取り出して逆行列を使う（位置は除外）
-			Matrix4x4 camRotOnly = cameraMatrix;
-			camRotOnly.m[3][0] = 0.0f;
-			camRotOnly.m[3][1] = 0.0f;
-			camRotOnly.m[3][2] = 0.0f;
-			Matrix4x4 invCam = Matrix4x4::Inverse(camRotOnly);
-			billboardMatrix = baccktoFrontMatrix * invCam;
-			billboardMatrix.m[3][0] = 0.0f;
-			billboardMatrix.m[3][1] = 0.0f;
-			billboardMatrix.m[3][2] = 0.0f;
-		}
-		else
-		{
-			billboardMatrix = Matrix4x4::Identity();
-		}
+		// 変更点: ビルボード計算を Billboard クラスへ委譲
+		Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera, useBillboard);
 
 		// ParticleSystem を更新（Emitter の生成も内部で行う）
 		if (update)
@@ -371,250 +353,84 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 #ifdef USE_IMGUI
 
-		ImGui::Begin("Scene Controls");
-
-		// Sprite
-		if (ImGui::CollapsingHeader("Sprite"))
+		// --- Sprite ウィンドウ ---
+		ImGui::Begin("Sprite");
+		if (!sprites.empty())
 		{
-			if (!sprites.empty())
-			{
-				Sprite* s = sprites[0];
+			Sprite* s = sprites[0];
 
-				bool display = isDisplaySprite;
-				ImGui::Checkbox("Display Sprite", &display);
+			bool display = isDisplaySprite;
+			if (ImGui::Checkbox("Display Sprite", &display))
+			{
 				isDisplaySprite = display;
-
-				Vector2 pos = s->GetPosition();
-				float posArr[2] = { pos.x, pos.y };
-				if (ImGui::DragFloat2("Position", posArr, 1.0f))
-				{
-					s->SetPosition(Vector2(posArr[0], posArr[1]));
-				}
-
-				Vector2 size = s->GetSize();
-				float sizeArr[2] = { size.x, size.y };
-				if (ImGui::DragFloat2("Size", sizeArr, 1.0f, 1.0f, 4096.0f))
-				{
-					s->SetSize(Vector2(sizeArr[0], sizeArr[1]));
-				}
-
-				float rotation = s->GetRotation();
-				if (ImGui::DragFloat("Rotation", &rotation, 0.5f))
-				{
-					s->SetRotation(rotation);
-				}
-
-				Vector4 col = s->GetColor();
-				float colArr[4] = { col.x, col.y, col.z, col.w };
-				if (ImGui::ColorEdit4("Color", colArr))
-				{
-					s->SetColor(Vector4(colArr[0], colArr[1], colArr[2], colArr[3]));
-				}
 			}
-		}
 
-		// Model
-		if (ImGui::CollapsingHeader("Model"))
-		{
-			if (!modelInstances.empty())
+			Vector2 pos = s->GetPosition();
+			float posArr[2] = { pos.x, pos.y };
+			if (ImGui::DragFloat2("Position", posArr, 1.0f))
 			{
-				Object3d* obj = modelInstances[0];
-				// Translate / Rotation / Scale
-				Vector3 t = obj->GetTranslate();
-				float tArr[3] = { t.x, t.y, t.z };
-				if (ImGui::DragFloat3("Translate", tArr, 0.05f))
-				{
-					obj->SetTranslate(Vector3(tArr[0], tArr[1], tArr[2]));
-				}
-
-				Vector3 r = obj->GetRotation();
-				float rArr[3] = { r.x, r.y, r.z };
-				if (ImGui::DragFloat3("Rotation", rArr, 0.5f))
-				{
-					obj->SetRotation(Vector3(rArr[0], rArr[1], rArr[2]));
-				}
-
-				Vector3 s = obj->GetScale();
-				float sArr[3] = { s.x, s.y, s.z };
-				if (ImGui::DragFloat3("Scale", sArr, 0.01f, 0.001f, 100.0f))
-				{
-					obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
-				}
-
+				s->SetPosition(Vector2(posArr[0], posArr[1]));
 			}
-		}
 
-
-		// Light
-		if (ImGui::CollapsingHeader("Light"))
-		{
-			if (!modelInstances.empty())
+			Vector2 size = s->GetSize();
+			float sizeArr[2] = { size.x, size.y };
+			if (ImGui::DragFloat2("Size", sizeArr, 1.0f, 1.0f, 4096.0f))
 			{
-				// 選択対象は最初のインスタンス（必要なら選択UIを追加可）
-				Object3d* obj = modelInstances[0];
-
-				// --- Directional Light: 選択モデル個別編集 ---
-				ImGui::Text("Directional Light (monsterBall Model)");
-				// Color (個別)
-				Vector4 lc = obj->GetDirectionalLightColor();
-				float lcArr[4] = { lc.x, lc.y, lc.z, lc.w };
-				if (ImGui::ColorEdit4("Directional Color", lcArr))
-				{
-					obj->SetDirectionalLightColor(Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]));
-				}
-
-				// Direction (個別) - Object3d 側で正規化しているなら UI の入力範囲を広めに取る
-				Vector3 ld = obj->GetDirectionalLightDirection();
-				float ldArr[3] = { ld.x, ld.y, ld.z };
-				if (ImGui::DragFloat3("Directional Direction", ldArr, 0.01f, -10.0f, 10.0f))
-				{
-					obj->SetDirectionalLightDirection(Vector3(ldArr[0], ldArr[1], ldArr[2]));
-				}
-
-				// Intensity (個別)
-				float lint = obj->GetDirectionalLightIntensity();
-				if (ImGui::DragFloat("Directional Intensity", &lint, 0.01f, 0.0f, 100.0f))
-				{
-					obj->SetDirectionalLightIntensity(lint);
-				}
-
-				// --- Directional Light: 全体操作パネル（ON/OFF / 全モデルへ適用） ---
-				ImGui::Separator();
-				ImGui::Text("Directional Light");
-
-				// グローバル ON/OFF（最後に設定していた強度を復元する単純な実装）
-				static bool dirEnabledGlobal = true;
-				static float dirPrevIntensityGlobal = 1.0f;
-				if (ImGui::Checkbox("Enable Directional Light(global)", &dirEnabledGlobal))
-				{
-					if (!dirEnabledGlobal)
-					{
-						// 無効化: 現在選択モデルの強度を保存して全モデル強度を 0 にする
-						dirPrevIntensityGlobal = obj->GetDirectionalLightIntensity();
-						for (auto m : modelInstances) if (m) m->SetDirectionalLightIntensity(0.0f);
-					}
-					else
-					{
-						// 有効化: 保存値で全モデル復元
-						for (auto m : modelInstances) if (m) m->SetDirectionalLightIntensity(dirPrevIntensityGlobal);
-					}
-				}
-
-				// Point Light 用コントロールは既存のものを維持（UI 内でまとまっている）
-				static bool pointInit = false;
-				static Vector4 pointColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // デフォルト白
-				static Vector3 pointPosition = { 0.0f, 5.0f, 0.0f };
-				static float pointIntensity = 1.0f;
-				static float prevPointIntensity = 1.0f;
-				static float pointRadius = 1.0f;
-				static float pointRange = 10.0f;
-				// ON/OFF 用フラグ
-				static bool pointLightEnabled = true;
-
-				if (!pointInit && !modelInstances.empty())
-				{
-					// モデル側の値がある場合は位置/強度を取得するが色は白を優先しておく
-					pointColor = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-					pointPosition = modelInstances[0]->GetPointLightPosition();
-					pointIntensity = modelInstances[0]->GetPointLightIntensity();
-					prevPointIntensity = pointIntensity;
-					pointInit = true;
-				}
-
-				// 見やすさのための区切り
-				ImGui::Separator();
-				ImGui::Text("Point Light");
-				// ON/OFF チェックボックス
-				if (ImGui::Checkbox("Enable Point Light", &pointLightEnabled))
-				{
-					// ON/OFF が切り替わったときの処理
-					if (!modelInstances.empty())
-					{
-						if (!pointLightEnabled)
-						{
-							// 無効化する際は現在の強度を保存して 0 にする
-							prevPointIntensity = pointIntensity;
-							for (auto m : modelInstances) if (m) m->SetPointLightIntensity(0.0f);
-						}
-						else
-						{
-							// 有効化する際は保存しておいた強度を復元
-							for (auto m : modelInstances) if (m) m->SetPointLightIntensity(prevPointIntensity);
-						}
-					}
-				}
-
-				// グループ化して、無効時はコントロールを淡く（BeginDisabled を使える場合）
-#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-				ImGui::BeginDisabled(!pointLightEnabled);
-#else
-				if (!pointLightEnabled)
-				{
-					ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-					ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-				}
-#endif
-
-				// Color
-				float pcArr[4] = { pointColor.x, pointColor.y, pointColor.z, pointColor.w };
-				if (ImGui::ColorEdit4("Color", pcArr))
-				{
-					pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
-					for (auto m : modelInstances) if (m) m->SetPointLightColor(pointColor);
-				}
-
-				// Position
-				float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
-				if (ImGui::DragFloat3("Position", ppArr, 0.05f, -100.0f, 100.0f))
-				{
-					pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
-					for (auto m : modelInstances) if (m) m->SetPointLightPosition(pointPosition);
-				}
-
-				// Intensity
-				if (ImGui::DragFloat("Intensity", &pointIntensity, 0.01f, 0.0f, 100.0f))
-				{
-					// 値を更新（ライトが無効なら prev に保存するだけ）
-					if (pointLightEnabled)
-					{
-						for (auto m : modelInstances) if (m) m->SetPointLightIntensity(pointIntensity);
-						prevPointIntensity = pointIntensity;
-					}
-					else
-					{
-						// 無効時は強度を保存して UI 上の値は維持
-						prevPointIntensity = pointIntensity;
-					}
-				}
-
-				// radius
-				if (ImGui::DragFloat("Radius", &pointRadius, 0.01f, 0.1f, 100.0f))
-				{
-					for (auto m : modelInstances) if (m) m->SetPointLightRadius(pointRadius);
-				}
-				// range (減衰)
-				if (ImGui::DragFloat("Range(Decay)", &pointRange, 0.01f, 0.1f, 50.0f))
-				{
-					for (auto m : modelInstances) if (m) m->SetPointLightDecry(pointRange);
-				}
-
-#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-				ImGui::EndDisabled();
-#else
-				if (!pointLightEnabled)
-				{
-					ImGui::PopItemFlag();
-					ImGui::PopStyleVar();
-				}
-#endif
+				s->SetSize(Vector2(sizeArr[0], sizeArr[1]));
 			}
 
-		}
+			float rotation = s->GetRotation();
+			if (ImGui::DragFloat("Rotation", &rotation, 0.5f))
+			{
+				s->SetRotation(rotation);
+			}
 
+			Vector4 col = s->GetColor();
+			float colArr[4] = { col.x, col.y, col.z, col.w };
+			if (ImGui::ColorEdit4("Color", colArr))
+			{
+				s->SetColor(Vector4(colArr[0], colArr[1], colArr[2], colArr[3]));
+			}
+		}
+		ImGui::End();
+
+
+		// --- Model ウィンドウ ---
+		ImGui::Begin("Model");
+		if (!modelInstances.empty())
+		{
+			Object3d* obj = modelInstances[0];
+			// Translate / Rotation / Scale
+			Vector3 t = obj->GetTranslate();
+			float tArr[3] = { t.x, t.y, t.z };
+			if (ImGui::DragFloat3("Translate", tArr, 0.05f))
+			{
+				obj->SetTranslate(Vector3(tArr[0], tArr[1], tArr[2]));
+			}
+
+			Vector3 r = obj->GetRotation();
+			float rArr[3] = { r.x, r.y, r.z };
+			if (ImGui::DragFloat3("Rotation", rArr, 0.5f))
+			{
+				obj->SetRotation(Vector3(rArr[0], rArr[1], rArr[2]));
+			}
+
+			Vector3 s = obj->GetScale();
+			float sArr[3] = { s.x, s.y, s.z };
+			if (ImGui::DragFloat3("Scale", sArr, 0.01f, 0.001f, 100.0f))
+			{
+				obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
+			}
+		}
+		ImGui::End();
+
+
+		// --- Camera & Light ウィンドウ ---
+		ImGui::Begin("Camera & Light");
 		// Camera
-		if (ImGui::CollapsingHeader("Camera"))
 		{
-			// Camera position / rotation via direct reference getters
+			ImGui::Separator();
+			ImGui::Text("Camera");
 			Vector3& camPosRef = camera->GetTranslate();
 			float camPosArr[3] = { camPosRef.x, camPosRef.y, camPosRef.z };
 			if (ImGui::DragFloat3("Cam Translate", camPosArr, 0.1f))
@@ -624,12 +440,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			Vector3& camRotRef = camera->GetRotation();
 			float camRotArr[3] = { camRotRef.x, camRotRef.y, camRotRef.z };
-			if (ImGui::DragFloat3("Cam Rotation", camRotArr, 0.5f))
+			if (ImGui::DragFloat3("Cam Rotation", camRotArr, 0.1f))
 			{
 				camera->SetRotation(Vector3(camRotArr[0], camRotArr[1], camRotArr[2]));
 			}
 
-			// FOV / aspect / near / far (getters added)
 			float fov = camera->GetFovY();
 			if (ImGui::DragFloat("FOV Y", &fov, 0.01f, 0.01f, 3.14f))
 			{
@@ -653,6 +468,228 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			{
 				camera->SetFarClip(farC);
 			}
+		}
+
+		// Light
+		if (!modelInstances.empty())
+		{
+			ImGui::Separator();
+			ImGui::Text("Model Lighting (first instance)");
+
+			Object3d* obj = modelInstances[0];
+
+			// Directional Light (個別)
+			Vector4 lc = obj->GetDirectionalLightColor();
+			float lcArr[4] = { lc.x, lc.y, lc.z, lc.w };
+			if (ImGui::ColorEdit4("Directional Color", lcArr))
+			{
+				obj->SetDirectionalLightColor(Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]));
+			}
+
+			Vector3 ld = obj->GetDirectionalLightDirection();
+			float ldArr[3] = { ld.x, ld.y, ld.z };
+			if (ImGui::DragFloat3("Directional Direction", ldArr, 0.01f, -10.0f, 10.0f))
+			{
+				obj->SetDirectionalLightDirection(Vector3(ldArr[0], ldArr[1], ldArr[2]));
+			}
+
+			float lint = obj->GetDirectionalLightIntensity();
+			if (ImGui::DragFloat("Directional Intensity", &lint, 0.01f, 0.0f, 100.0f))
+			{
+				obj->SetDirectionalLightIntensity(lint);
+			}
+
+			// グローバル ON/OFF
+			static bool dirEnabledGlobal = true;
+			static float dirPrevIntensityGlobal = 1.0f;
+			if (ImGui::Checkbox("Enable Directional Light(global)", &dirEnabledGlobal))
+			{
+				if (!dirEnabledGlobal)
+				{
+					dirPrevIntensityGlobal = obj->GetDirectionalLightIntensity();
+					for (auto m : modelInstances) if (m) m->SetDirectionalLightIntensity(0.0f);
+				}
+				else
+				{
+					for (auto m : modelInstances) if (m) m->SetDirectionalLightIntensity(dirPrevIntensityGlobal);
+				}
+			}
+
+			ImGui::Separator();
+			ImGui::Text("Point Light");
+
+			static bool pointInit = false;
+			static Vector4 pointColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+			static Vector3 pointPosition = { 0.0f, 5.0f, 0.0f };
+			static float pointIntensity = 1.0f;
+			static float prevPointIntensity = 1.0f;
+			static float pointRadius = 1.0f;
+			static float pointRange = 10.0f;
+			static bool pointLightEnabled = true;
+
+			if (!pointInit && !modelInstances.empty())
+			{
+				pointColor = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+				pointPosition = modelInstances[0]->GetPointLightPosition();
+				pointIntensity = modelInstances[0]->GetPointLightIntensity();
+				prevPointIntensity = pointIntensity;
+				pointInit = true;
+			}
+
+			if (ImGui::Checkbox("Enable Point Light", &pointLightEnabled))
+			{
+				if (!modelInstances.empty())
+				{
+					if (!pointLightEnabled)
+					{
+						prevPointIntensity = pointIntensity;
+						for (auto m : modelInstances) if (m) m->SetPointLightIntensity(0.0f);
+					}
+					else
+					{
+						for (auto m : modelInstances) if (m) m->SetPointLightIntensity(prevPointIntensity);
+					}
+				}
+			}
+
+#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
+			ImGui::BeginDisabled(!pointLightEnabled);
+#else
+			if (!pointLightEnabled)
+			{
+				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+			}
+#endif
+
+			float pcArr[4] = { pointColor.x, pointColor.y, pointColor.z, pointColor.w };
+			if (ImGui::ColorEdit4("Color", pcArr))
+			{
+				pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
+				for (auto m : modelInstances) if (m) m->SetPointLightColor(pointColor);
+			}
+
+			float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
+			if (ImGui::DragFloat3("Position", ppArr, 0.05f, -100.0f, 100.0f))
+			{
+				pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
+				for (auto m : modelInstances) if (m) m->SetPointLightPosition(pointPosition);
+			}
+
+			if (ImGui::DragFloat("Intensity", &pointIntensity, 0.01f, 0.0f, 100.0f))
+			{
+				if (pointLightEnabled)
+				{
+					for (auto m : modelInstances) if (m) m->SetPointLightIntensity(pointIntensity);
+					prevPointIntensity = pointIntensity;
+				}
+				else
+				{
+					prevPointIntensity = pointIntensity;
+				}
+			}
+
+			if (ImGui::DragFloat("Radius", &pointRadius, 0.01f, 0.1f, 100.0f))
+			{
+				for (auto m : modelInstances) if (m) m->SetPointLightRadius(pointRadius);
+			}
+			if (ImGui::DragFloat("Range(Decay)", &pointRange, 0.01f, 0.1f, 50.0f))
+			{
+				for (auto m : modelInstances) if (m) m->SetPointLightDecry(pointRange);
+			}
+
+#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
+			ImGui::EndDisabled();
+#else
+			if (!pointLightEnabled)
+			{
+				ImGui::PopItemFlag();
+				ImGui::PopStyleVar();
+			}
+#endif
+		}
+		ImGui::End();
+
+
+		// --- Particle ウィンドウ ---
+		ImGui::Begin("Particle");
+
+		// パーティクルの動作 ON/OFF
+		if (ImGui::Checkbox("Update Particles", &update))
+		{
+			// フラグ変更のみ（Update の呼び出しは main ループ側で行っている）
+		}
+
+		// ビルボード切替
+		if (ImGui::Checkbox("Use Billboard", &useBillboard))
+		{
+			// 反映は描画側の行列生成で行われる
+		}
+
+		// ブレンドモード選択
+		{
+			const char* blendNames[] = { "Alpha", "Additive", "Multiply", "PreMultiplied", "None" };
+			if (ImGui::Combo("Blend Mode", &currentBlendModeIndex, blendNames, static_cast<int>(BlendMode::Count)))
+			{
+				// currentBlendModeIndex は Draw 呼び出し時に使われる
+			}
+		}
+
+		// パーティクル種類選択（ParticleEffect enum に合わせる）
+		{
+			const char* effectNames[] = { "Wind", "Fire", "Snow", "Explosion", "Smoke", "Confetti" };
+			// currentEffect は ParticleEffect 型だが ImGui 用に int にキャストする
+			int effectIndex = static_cast<int>(currentEffect);
+			if (ImGui::Combo("Effect", &effectIndex, effectNames, static_cast<int>(ParticleEffect::Count)))
+			{
+				currentEffect = static_cast<ParticleEffect>(effectIndex);
+				particleSystem.SetEffect(currentEffect);
+			}
+		}
+
+		// エミッター設定を直接編集
+		{
+			auto& emitter = particleSystem.GetEmitter().GetEmitter();
+
+			int count = static_cast<int>(emitter.count);
+			if (ImGui::DragInt("Emitter Count", &count, 1.0f, 0, 1000))
+			{
+				emitter.count = static_cast<uint32_t>(std::max(0, count));
+			}
+
+			float frequency = emitter.frequency;
+			if (ImGui::DragFloat("Frequency", &frequency, 0.01f, 0.0f, 100.0f))
+			{
+				emitter.frequency = frequency;
+			}
+
+			// transform
+			Vector3 t = emitter.transform.translate;
+			float tArr[3] = { t.x, t.y, t.z };
+			if (ImGui::DragFloat3("Emitter Translate", tArr, 0.05f, -1000.0f, 1000.0f))
+			{
+				emitter.transform.translate = Vector3(tArr[0], tArr[1], tArr[2]);
+			}
+
+			Vector3 rot = emitter.transform.rotation;
+			float rArr[3] = { rot.x, rot.y, rot.z };
+			if (ImGui::DragFloat3("Emitter Rotation", rArr, 0.1f, -360.0f, 360.0f))
+			{
+				emitter.transform.rotation = Vector3(rArr[0], rArr[1], rArr[2]);
+			}
+
+			Vector3 sc = emitter.transform.scale;
+			float sArr[3] = { sc.x, sc.y, sc.z };
+			if (ImGui::DragFloat3("Emitter Scale", sArr, 0.01f, 0.001f, 100.0f))
+			{
+				emitter.transform.scale = Vector3(sArr[0], sArr[1], sArr[2]);
+			}
+		}
+
+		// 初期パーティクルの再生成（任意）
+		if (ImGui::Button("Recreate Initial Particles"))
+		{
+			particleSystem.AddInitialParticles(randomEngine, kNumMaxInstance);
 		}
 
 		ImGui::End();
