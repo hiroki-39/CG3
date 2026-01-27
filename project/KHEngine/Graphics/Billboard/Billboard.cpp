@@ -1,4 +1,4 @@
-#include "KHEngine/Graphics/Billboard/Billboard.h"
+ï»¿#include "KHEngine/Graphics/Billboard/Billboard.h"
 #include <numbers>
 
 Matrix4x4 Billboard::Create(const Matrix4x4& cameraWorld, bool useBillboard)
@@ -8,19 +8,19 @@ Matrix4x4 Billboard::Create(const Matrix4x4& cameraWorld, bool useBillboard)
 		return Matrix4x4::Identity();
 	}
 
-	// ƒJƒƒ‰‚Ì‰ñ“]¬•ª‚Ì‚İ‚ğæ‚èo‚µ‚ÄˆÊ’u‚ğœŠO
+	// ã‚«ãƒ¡ãƒ©ã®å›è»¢æˆåˆ†ã®ã¿ã‚’å–ã‚Šå‡ºã—ã¦ä½ç½®ã‚’é™¤å¤–
 	Matrix4x4 camRotOnly = cameraWorld;
 	camRotOnly.m[3][0] = 0.0f;
 	camRotOnly.m[3][1] = 0.0f;
 	camRotOnly.m[3][2] = 0.0f;
 
-	// ‹ts—ñi‰ñ“]‚Ì‹tj
+	// é€†è¡Œåˆ—ï¼ˆå›è»¢ã®é€†ï¼‰
 	Matrix4x4 invCam = Matrix4x4::Inverse(camRotOnly);
 
-	// — –Ê‰ñ“]‚ğæ‚è“ü‚ê‚ÄŠ®¬
+	// è£é¢å›è»¢ã‚’å–ã‚Šå…¥ã‚Œã¦å®Œæˆ
 	Matrix4x4 billboard = BackToFrontMatrix() * invCam;
 
-	// translation ¬•ª‚ğƒ[ƒ‚É‚µ‚ÄˆÊ’uî•ñ‚ğ‚½‚¹‚È‚¢
+	// translation æˆåˆ†ã‚’ã‚¼ãƒ­ã«ã—ã¦ä½ç½®æƒ…å ±ã‚’æŒãŸã›ãªã„
 	billboard.m[3][0] = 0.0f;
 	billboard.m[3][1] = 0.0f;
 	billboard.m[3][2] = 0.0f;
@@ -36,6 +36,6 @@ Matrix4x4 Billboard::CreateFromCamera(const Camera* camera, bool useBillboard)
 
 Matrix4x4 Billboard::BackToFrontMatrix()
 {
-	// Šù‘¶‚ÌÀ‘•‚Æ‡‚í‚¹‚Ä Y ‰ñ“]‚Å— –Ê‚ğ³–Ê‚ÉŒü‚¯‚é
+	// æ—¢å­˜ã®å®Ÿè£…ã¨åˆã‚ã›ã¦ Y å›è»¢ã§è£é¢ã‚’æ­£é¢ã«å‘ã‘ã‚‹
 	return Matrix4x4::RotateY(std::numbers::pi_v<float>);
 }

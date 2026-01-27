@@ -315,6 +315,9 @@ MigrationBackup/
 DirectXGame/DirectXGame.exe
 DirectXGame/imgui.ini
 
+# Visual Studio / Windows temporary
+*.appmod
+
 # DirectXTex Compiled Shaders
 **/DirectXTex/Shaders/Compiled/
 /Dumps
@@ -325,6 +328,7 @@ DirectXGame/imgui.ini
 
 # Logs
 /logs/
+*.log
 
 # ImGui settings
 imgui.ini
