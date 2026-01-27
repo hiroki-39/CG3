@@ -49,7 +49,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// ゲームループ
 	while (true)
 	{
-	
 		app->Update();
 
 		/*-------------- ↓描画処理ここから↓ --------------*/

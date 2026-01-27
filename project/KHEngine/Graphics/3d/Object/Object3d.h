@@ -33,11 +33,23 @@ public:// 構造体
 
 	struct PointLight
 	{
-		Vector4 color; // ライトの色
-		Vector3 direction; //ライトの向き
-		float intensity; //輝度
-		float radius;    // 光の届く範囲
-		float decry;     // 減衰率
+		Vector4 color;		// ライトの色
+		Vector3 direction;  //ライトの向き
+		float intensity;	//輝度
+		float radius;		// 光の届く範囲
+		float decry;		// 減衰率
+	};
+
+	struct SpotLight
+	{
+		Vector4 color;		// ライトの色
+		Vector3 position;	// ライトの位置
+		float intensity;	// 輝度
+		Vector3 direction;	// ライトの向き
+		float distance;		// 光の届く範囲
+		float decay;		// 減衰率
+		float cosAngle;		// コサイン値(スポットライトの角度)
+		float padding[2];	// パディング
 	};
 
 public://メンバ関数
@@ -71,7 +83,16 @@ public://メンバ関数
 	float GetPointLightIntensity() const;
 	float GetPointLightRadius() const;
 	float GetPointLightDecry() const;
-	
+
+	// SpotLight getters
+	Vector4 GetSpotLightColor() const;
+	Vector3 GetSpotLightPosition() const;
+	Vector3 GetSpotLightDirection() const;
+	float GetSpotLightIntensity() const;
+	float GetSpotLightDistance() const;
+	float GetSpotLightDecay() const;
+	float GetSpotLightAngleDeg() const;
+
 	// --- Setter ---
 	void SetModel(Model* model) { this->model = model; }
 	void SetModel(const std::string& filePath);
@@ -83,14 +104,24 @@ public://メンバ関数
 	void SetDirectionalLightDirection(const Vector3& direction);
 	void SetDirectionalLightIntensity(float intensity);
 
-
-
 	// PointLight setters
 	void SetPointLightColor(const Vector4& color);
 	void SetPointLightPosition(const Vector3& position);
 	void SetPointLightIntensity(float intensity);
 	void SetPointLightRadius(float radius);
 	void SetPointLightDecry(float decry);
+
+	// SpotLight setters
+	void SetSpotLightColor(const Vector4& color);
+	void SetSpotLightPosition(const Vector3& position);
+	void SetSpotLightDirection(const Vector3& direction);
+	void SetSpotLightIntensity(float intensity);
+	void SetSpotLightDistance(float distance);
+	void SetSpotLightDecay(float decay);
+	void SetSpotLightAngleDeg(float angleDeg);
+
+	
+	inline Model* GetModel() const { return model; }
 
 private://メンバ関数
 
@@ -108,6 +139,11 @@ private://メンバ関数
 	/// ポイントライトの作成
 	/// </summary>
 	void CreatePointLight();
+
+	/// <summary>
+	/// スポットライトの作成
+	/// </summary>
+	void CreateSpotLight();
 
 private://メンバ変数
 
@@ -141,6 +177,11 @@ private://メンバ変数
 	Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
 	// データを書き込む
 	PointLight* pointLightData_ = nullptr;
+
+	// スポットライト用のリソース
+	Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
+	// データを書き込む
+	SpotLight* spotLightData_ = nullptr;
 
 	Transform transform;
 

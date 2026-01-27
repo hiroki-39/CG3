@@ -43,7 +43,7 @@ void Object3dCommon::CreateRootSignature()
 
 
 	/*---RootSignature作成---*/
-	D3D12_ROOT_PARAMETER rootPrameters[6] = {};
+	D3D12_ROOT_PARAMETER rootPrameters[7] = {};
 
 	//CBVを使う(マテリアル用)
 	rootPrameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -88,6 +88,13 @@ void Object3dCommon::CreateRootSignature()
 	rootPrameters[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	// レジスタ番号3を使う
 	rootPrameters[5].Descriptor.ShaderRegister = 3;
+
+	// CBVを使う(スポットライト用)
+	rootPrameters[6].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	// PixelShaderで使う
+	rootPrameters[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	// レジスタ番号4を使う
+	rootPrameters[6].Descriptor.ShaderRegister = 4;
 
 	//ルートパラメータ配列へのポインタ
 	descripitionRootSignature.pParameters = rootPrameters;

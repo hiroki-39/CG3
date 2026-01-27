@@ -59,6 +59,9 @@ public: //メンバ関数
 	/// </summary>
 	void Draw();
 
+	inline int32_t GetSelectLightings() const { return materialData_ ? materialData_->selectLightings : 0; }
+	inline void SetSelectLightings(int32_t v) { if (materialData_) materialData_->selectLightings = v; }
+
 private: //メンバ関数
 
 	/// <summary>
