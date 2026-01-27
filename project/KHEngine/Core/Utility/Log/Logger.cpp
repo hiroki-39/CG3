@@ -60,7 +60,7 @@ namespace Logger
 		}
 	}
 
-	void Init()
+	void Initialize()
 	{
 		std::lock_guard<std::mutex> lock(g_mutex);
 		EnsureStream();

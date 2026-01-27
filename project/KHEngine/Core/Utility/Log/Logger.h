@@ -4,7 +4,7 @@
 namespace Logger
 {
 	// 起動時に一度呼ぶ（ログファイル生成）
-	void Init();
+	void Initialize();
 
 	// 終了時に一度呼ぶ（ファイルクローズ）
 	void Shutdown();
