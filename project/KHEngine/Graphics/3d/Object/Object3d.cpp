@@ -1,4 +1,9 @@
 #include "Object3d.h"
+#include <numbers>
+#include <cmath> 
+
+static constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
+static constexpr float kRadToDeg = 180.0f / 3.14159265358979323846f;
 
 void Object3d::Initialize(Object3dCommon* object3dCommon)
 {
@@ -10,14 +15,18 @@ void Object3d::Initialize(Object3dCommon* object3dCommon)
 	this->dxCommon = object3dCommon->GetDirectXCommon();
 	assert(this->dxCommon != nullptr);
 
-	//座標変換行列データの作成
+	// 座標変換行列データの作成
 	CreateTransformationMatrixResource();
 
-	//平行光源の作成
+	// 平行光源の作成
 	CreateDirectionalLight();
 
-	//ポイントライトの作成
+	// ポイントライトの作成
 	CreatePointLight();
+
+	// スポットライトの作成
+	CreateSpotLight();
+
 
 	this->camera = object3dCommon->GetDefaultCamera();
 
@@ -81,6 +90,13 @@ void Object3d::Draw()
 	{
 		dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(5, pointLightResource_->GetGPUVirtualAddress());
 	}
+
+	// スポットライト用のCBufferの場所を設定
+	if (spotLightResource_)
+	{
+		dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(6, spotLightResource_->GetGPUVirtualAddress());
+	}
+
 
 	//モデルの描画
 	if (model)
@@ -162,6 +178,22 @@ void Object3d::CreatePointLight()
 	pointLightData_->decry = 1.0f;
 }
 
+void Object3d::CreateSpotLight()
+{
+	//スポットライト用のリソースを作成
+	spotLightResource_ = dxCommon->CreateBufferResource(sizeof(SpotLight));
+	//書き込むためのアドレス取得
+	spotLightResource_->Map(0, nullptr, reinterpret_cast<void**>(&spotLightData_));
+
+	spotLightData_->color = { 1.0f,1.0f,1.0f,1.0f };
+	spotLightData_->position = { 2.0f,1.25f, 0.0f };
+	spotLightData_->distance = 7.0f;
+	spotLightData_->direction = { -1.0f,-1.0f,0.0f };
+	spotLightData_->intensity = 4.0f;
+	spotLightData_->decay = 2.0f;
+	spotLightData_->cosAngle = std::cos(std::numbers::pi_v<float> / 3.0f);
+}
+
 Vector4 Object3d::GetDirectionalLightColor() const
 {
 	if (directionalLightData_) return directionalLightData_->color;
@@ -235,6 +267,54 @@ void Object3d::SetPointLightDecry(float decry)
 	}
 }
 
+void Object3d::SetSpotLightColor(const Vector4& color)
+{
+	if (spotLightData_) spotLightData_->color = color;
+}
+
+void Object3d::SetSpotLightPosition(const Vector3& position)
+{
+	if (spotLightData_) spotLightData_->position = position;
+}
+
+void Object3d::SetSpotLightDirection(const Vector3& direction)
+{
+	if (!spotLightData_) return;
+	// 正規化して格納
+	float dx = direction.x;
+	float dy = direction.y;
+	float dz = direction.z;
+	float len = std::sqrt(dx * dx + dy * dy + dz * dz);
+	if (len > 1e-6f)
+	{
+		spotLightData_->direction = Vector3{ dx / len, dy / len, dz / len };
+	}
+}
+
+void Object3d::SetSpotLightIntensity(float intensity)
+{
+	if (spotLightData_) spotLightData_->intensity = intensity;
+}
+
+void Object3d::SetSpotLightDistance(float distance)
+{
+	if (spotLightData_) spotLightData_->distance = distance;
+}
+
+void Object3d::SetSpotLightDecay(float decay)
+{
+	if (spotLightData_) spotLightData_->decay = decay;
+}
+
+void Object3d::SetSpotLightAngleDeg(float angleDeg)
+{
+	if (!spotLightData_) return;
+	// clamp angle to sensible range [1, 90]
+	if (angleDeg < 1.0f) angleDeg = 1.0f;
+	if (angleDeg > 90.0f) angleDeg = 90.0f;
+	spotLightData_->cosAngle = std::cos(angleDeg * kDegToRad);
+}
+
 Vector4 Object3d::GetPointLightColor() const
 {
 	if (pointLightData_) return pointLightData_->color;
@@ -270,5 +350,45 @@ float Object3d::GetPointLightDecry() const
 		return pointLightData_->decry;
 	}
 
+	return 0.0f;
+}
+
+Vector4 Object3d::GetSpotLightColor() const
+{
+	if (spotLightData_) return spotLightData_->color;
+	return Vector4{ 0.0f,0.0f,0.0f,1.0f };
+}
+
+Vector3 Object3d::GetSpotLightPosition() const
+{
+	if (spotLightData_) return spotLightData_->position;
+	return Vector3{ 0.0f,0.0f,0.0f };
+}
+
+Vector3 Object3d::GetSpotLightDirection() const
+{
+	if (spotLightData_) return spotLightData_->direction;
+	return Vector3{ 0.0f, -1.0f, 0.0f };
+}
+
+float Object3d::GetSpotLightIntensity() const
+{
+	if (spotLightData_) return spotLightData_->intensity;
+	return 0.0f;
+}
+
+float Object3d::GetSpotLightDistance() const
+{
+	if (spotLightData_) return spotLightData_->distance;
+	return 0.0f;
+}
+
+float Object3d::GetSpotLightDecay() const
+{
+	return 0.0f;
+}
+
+float Object3d::GetSpotLightAngleDeg() const
+{
 	return 0.0f;
 }

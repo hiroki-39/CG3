@@ -422,6 +422,42 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
 			}
 		}
+
+		if (!modelInstances.empty())
+		{
+			// 最初のインスタンスの Model を参照して現在値を取得
+			Model* sampleModel = modelInstances[0]->GetModel();
+			if (sampleModel)
+			{
+				int currentSelect = sampleModel->GetSelectLightings();
+
+				// ラベルは HLSL の case に対応させる（0..5）
+				const char* lightingNames[] = {
+					"0: TextureOnly",
+					"1: Directional (Diffuse)",
+					"2: Directional (Soft)",
+					"3: Directional (Diffuse+Specular)",
+					"4: Directional + Point",
+					"5: Spot"
+				};
+
+				// Combo で選択（HLSL の switch の case に対応）
+				if (ImGui::Combo("Select Lighting Mode", &currentSelect, lightingNames, IM_ARRAYSIZE(lightingNames)))
+				{
+					// 全インスタンスに反映
+					for (auto obj : modelInstances)
+					{
+						if (!obj) continue;
+						Model* m = obj->GetModel();
+						if (m) m->SetSelectLightings(currentSelect);
+					}
+				}
+
+				// 直接数値入力が欲しければ SliderInt に差し替え可能
+				// if (ImGui::SliderInt("Select Lighting (raw)", &currentSelect, 0, 5)) { ... }
+			}
+		}
+
 		ImGui::End();
 
 
@@ -602,6 +638,132 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			ImGui::EndDisabled();
 #else
 			if (!pointLightEnabled)
+			{
+				ImGui::PopItemFlag();
+				ImGui::PopStyleVar();
+			}
+#endif
+
+			// --- Spot Light ---
+			ImGui::Separator();
+			ImGui::Text("Spot Light");
+
+			static bool spotInit = false;
+			static Vector4 spotColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+			static Vector3 spotPosition = { 0.0f, 5.0f, 0.0f };
+			static Vector3 spotDirection = { 0.0f, -1.0f, 0.0f };
+			static float spotIntensity = 1.0f;
+			static float prevSpotIntensity = 1.0f;
+			static float spotDistance = 10.0f;
+			static float spotDecay = 1.0f;
+			static float spotAngleDeg = 45.0f;
+			static bool spotLightEnabled = true;
+
+			if (!spotInit && !modelInstances.empty())
+			{
+				// 初期値を最初のインスタンスから取得（存在すれば）
+				Object3d* o = modelInstances[0];
+				spotColor = o->GetSpotLightColor();
+				spotPosition = o->GetSpotLightPosition();
+				spotDirection = o->GetSpotLightDirection();
+				spotIntensity = o->GetSpotLightIntensity();
+				prevSpotIntensity = spotIntensity;
+				spotDistance = o->GetSpotLightDistance();
+				spotDecay = o->GetSpotLightDecay();
+				spotAngleDeg = o->GetSpotLightAngleDeg();
+				spotInit = true;
+			}
+
+			if (ImGui::Checkbox("Enable Spot Light", &spotLightEnabled))
+			{
+				if (!modelInstances.empty())
+				{
+					if (!spotLightEnabled)
+					{
+						prevSpotIntensity = spotIntensity;
+						for (auto m : modelInstances) if (m) m->SetSpotLightIntensity(0.0f);
+					}
+					else
+					{
+						for (auto m : modelInstances) if (m) m->SetSpotLightIntensity(prevSpotIntensity);
+					}
+				}
+			}
+
+#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
+			ImGui::BeginDisabled(!spotLightEnabled);
+#else
+			if (!spotLightEnabled)
+			{
+				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+			}
+#endif
+
+			// Color
+			{
+				float scArr[4] = { spotColor.x, spotColor.y, spotColor.z, spotColor.w };
+				if (ImGui::ColorEdit4("Spot Color", scArr))
+				{
+					spotColor = Vector4(scArr[0], scArr[1], scArr[2], scArr[3]);
+					for (auto m : modelInstances) if (m) m->SetSpotLightColor(spotColor);
+				}
+			}
+
+			// Position
+			{
+				float spArr[3] = { spotPosition.x, spotPosition.y, spotPosition.z };
+				if (ImGui::DragFloat3("Spot Position", spArr, 0.05f, -100.0f, 100.0f))
+				{
+					spotPosition = Vector3(spArr[0], spArr[1], spArr[2]);
+					for (auto m : modelInstances) if (m) m->SetSpotLightPosition(spotPosition);
+				}
+			}
+
+			// Direction
+			{
+				float sdArr[3] = { spotDirection.x, spotDirection.y, spotDirection.z };
+				if (ImGui::DragFloat3("Spot Direction", sdArr, 0.01f, -10.0f, 10.0f))
+				{
+					spotDirection = Vector3(sdArr[0], sdArr[1], sdArr[2]);
+					for (auto m : modelInstances) if (m) m->SetSpotLightDirection(spotDirection);
+				}
+			}
+
+			// Intensity
+			if (ImGui::DragFloat("Spot Intensity", &spotIntensity, 0.01f, 0.0f, 100.0f))
+			{
+				if (spotLightEnabled)
+				{
+					for (auto m : modelInstances) if (m) m->SetSpotLightIntensity(spotIntensity);
+					prevSpotIntensity = spotIntensity;
+				}
+				else
+				{
+					prevSpotIntensity = spotIntensity;
+				}
+			}
+
+			// Distance / Decay
+			if (ImGui::DragFloat("Spot Distance", &spotDistance, 0.1f, 0.0f, 10000.0f))
+			{
+				for (auto m : modelInstances) if (m) m->SetSpotLightDistance(spotDistance);
+			}
+			if (ImGui::DragFloat("Spot Decay", &spotDecay, 0.01f, 0.0f, 10.0f))
+			{
+				for (auto m : modelInstances) if (m) m->SetSpotLightDecay(spotDecay);
+			}
+
+			// Angle (deg)
+			if (ImGui::SliderFloat("Spot Angle (deg)", &spotAngleDeg, 1.0f, 90.0f))
+			{
+				for (auto m : modelInstances) if (m) m->SetSpotLightAngleDeg(spotAngleDeg);
+			}
+
+#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
+			ImGui::EndDisabled();
+#else
+			if (!spotLightEnabled)
 			{
 				ImGui::PopItemFlag();
 				ImGui::PopStyleVar();

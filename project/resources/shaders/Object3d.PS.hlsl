@@ -30,6 +30,17 @@ struct PointLight
     float decry;
 };
 
+struct SpotLight
+{
+    float32_t4 color;
+    float32_t3 position;
+    float32_t intensity;
+    float32_t3 direction;
+    float32_t distance;
+    float32_t decay;
+    float32_t cosAngle;
+};
+
 struct Camera
 {
    float32_t3 worldPosition;
@@ -39,6 +50,7 @@ ConstantBuffer<Material> gMaterial : register(b0);
 ConstantBuffer<DirectionlLight> gDirectionlLight : register(b1);
 ConstantBuffer<Camera> gCamera : register(b2);
 ConstantBuffer<PointLight> gPointLight : register(b3);
+ConstantBuffer<SpotLight> gSpotLight : register(b4);
 
 Texture2D<float32_t4> gTexture : register(t0);
 SamplerState gSampler : register(s0);
@@ -125,6 +137,45 @@ PixelShaderOutput main(VertexShaderOutput input)
 
                 // ===== 全部足す =====
                 output.color.rgb = diffuseDirectionalLight + specularDirectionalLight + diffusePointLight + specularPointLight;
+
+                output.color.a = gMaterial.color.a * textureColor.a;
+            }
+            break;
+        case 5:
+            {
+             // ===== SpotLight =====
+            
+             // 表面 → 光源方向
+            float32_t3 spotLightDirection = normalize(input.worldPosition - gSpotLight.position);
+
+            // 距離減衰
+            float32_t distance = length(gSpotLight.position - input.worldPosition);
+
+            float32_t attenuation = pow(saturate(-distance / gSpotLight.distance + 1.0f), gSpotLight.decay);
+
+                // 角度（Falloff）
+                float cosAngle = dot(spotLightDirection, gSpotLight.direction);
+
+                float falloffFactor = saturate((cosAngle - gSpotLight.cosAngle) / (1.0f - gSpotLight.cosAngle));
+
+             // ===== Diffuse =====
+                float NdotL = dot(normal, -spotLightDirection);
+
+                float cosDiffuse = pow(NdotL * 0.5f + 0.5f, 2.0f);
+
+           float32_t3 diffuseSpotLight = gMaterial.color.rgb * textureColor.rgb * gSpotLight.color.rgb * cosDiffuse * gSpotLight.intensity * attenuation * falloffFactor;
+
+           // ===== Specular (Blinn-Phong) =====
+           float32_t3 halfVector = normalize(-spotLightDirection + toEye);
+
+                float NdotH = dot(normal, halfVector);
+
+                float specularPow = pow(saturate(NdotH), gMaterial.shininess);
+
+           float32_t3 specularSpotLight = gSpotLight.color.rgb * gSpotLight.intensity * specularPow * float32_t3(1.0f, 1.0f, 1.0f) * attenuation * falloffFactor;
+
+                // ===== 出力 =====
+                output.color.rgb = diffuseSpotLight + specularSpotLight;
 
                 output.color.a = gMaterial.color.a * textureColor.a;
             }
