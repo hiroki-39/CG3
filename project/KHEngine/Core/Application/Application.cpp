@@ -1,7 +1,7 @@
 ﻿#define NOMINMAX
+#include "Application.h"
 #include <Windows.h>
 #include <algorithm>
-#include "Application.h"
 #include <combaseapi.h>
 #include "KHEngine/Core/Graphics/D3DResourceLeakChecker.h"
 #include "KHEngine/Core/Utility/Log/Logger.h"

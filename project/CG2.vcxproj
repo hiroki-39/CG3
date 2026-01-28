@@ -155,7 +155,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="KHEngine\Core\Utility\Crash\CrashDump.cpp" />
-    <ClCompile Include="KHEngine\Application\Application.cpp" />
+    <ClCompile Include="KHEngine\Core\Application\Application.cpp" />
     <ClCompile Include="KHEngine\Graphics\Billboard\Billboard.cpp" />
     <ClCompile Include="externals\imgui\imgui.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -210,7 +210,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="KHEngine\Core\Utility\Crash\CrashDump.h" />
-    <ClInclude Include="KHEngine\Application\Application.h" />
+    <ClInclude Include="KHEngine\Core\Application\Application.h" />
     <ClInclude Include="KHEngine\Graphics\Billboard\Billboard.h" />
     <ClInclude Include="externals\imgui\imconfig.h" />
     <ClInclude Include="externals\imgui\imgui.h" />

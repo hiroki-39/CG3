@@ -1,4 +1,4 @@
-﻿#include "KHEngine/Application/Application.h"
+﻿#include "KHEngine/Core/Application/Application.h"
 
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
