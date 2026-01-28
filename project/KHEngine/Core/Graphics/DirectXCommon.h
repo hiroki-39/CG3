@@ -7,15 +7,12 @@
 #include <dxcapi.h>
 #include <cassert>
 #include <string>
-
 #include "KHEngine/Core/Utility/Log/Logger.h"
 #include "KHEngine/Core/Utility/String/StringUtility.h"
 #include "externals/DirectXTex/d3dx12.h"
 #include "externals/DirectXTex/DirectXTex.h"
 #include "KHEngine/Core/Utility/Timer/Timer.h"
-
 #include "KHEngine/Core/OS/WinApp.h"
-
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 
 class SrvManager;

@@ -1,4 +1,4 @@
-#define NOMINMAX
+ï»¿#define NOMINMAX
 #include <Windows.h>
 #include <algorithm>
 #include "Application.h"
@@ -12,76 +12,73 @@
 #include "KHEngine/Graphics/3d/Particle/Particle.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleRenderer.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleManager.h"
-#include "KHEngine/Sound/Core/SoundManager.h"
 #include "KHEngine/Graphics/Billboard/Billboard.h"
 
-// ‰Šú‰»
+// åˆæœŸåŒ–
 void Application::Initialize()
 {
 	D3DResourceLeakChecker leakcheck;
 
-	//COM‚Ì‰Šú‰»
+	//COMã®åˆæœŸåŒ–
 	CoInitializeEx(0, COINIT_MULTITHREADED);
 
-	// ƒƒK[‰Šú‰»
+	// ãƒ­ã‚¬ãƒ¼åˆæœŸåŒ–
 	Logger::Initialize();
 
-	// –¢ˆ——áŠOƒnƒ“ƒhƒ‰‚ÌƒCƒ“ƒXƒg[ƒ‹
+	// æœªå‡¦ç†ä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ©ã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
 	KHEngine::Core::Utility::Crash::CrashDump::Install();
 
-#pragma region Šî”ÕƒVƒXƒeƒ€‚Ì‰Šú‰»
+#pragma region åŸºç›¤ã‚·ã‚¹ãƒ†ãƒ ã®åˆæœŸåŒ–
 
-	//windowsAPI‚Ì‰Šú‰»
+	//windowsAPIã®åˆæœŸåŒ–
 	winApp = new WinApp();
 	winApp->Initialize();
 
-	// DirectX‰Šú‰»
+	// DirectXåˆæœŸåŒ–
 	dxCommon = new DirectXCommon();
 	dxCommon->Initialize(winApp);
 
-	//ModelCommon‚Ì‰Šú‰»
+	//ModelCommonã®åˆæœŸåŒ–
 	ModelManager::GetInstance()->Initialize(dxCommon);
 
-	// “ü—Í‚Ì‰Šú‰»
+	// å…¥åŠ›ã®åˆæœŸåŒ–
 	input = new Input();
 	input->Initialize(winApp);
 
-	// ƒXƒvƒ‰ƒCƒg‚Ì‹¤’Ê•”•ª‚Ì‰Šú‰»
+	// ã‚¹ãƒ—ãƒ©ã‚¤ãƒˆã®å…±é€šéƒ¨åˆ†ã®åˆæœŸåŒ–
 	spriteCommon = new SpriteCommon();
 	spriteCommon->Initialize(dxCommon);
 
-	// 3DƒIƒuƒWƒFƒNƒg‚Ì‹¤’Ê•”•ª‚Ì‰Šú‰»
+	// 3Dã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®å…±é€šéƒ¨åˆ†ã®åˆæœŸåŒ–
 	object3dCommon = new Object3dCommon();
 	object3dCommon->Initialize(dxCommon);
 
-	SrvManager* srvManager = SrvManager::GetInstance();
+	srvManager = SrvManager::GetInstance();
 	srvManager->Initialize(dxCommon);
 	dxCommon->RegisterSrvManager(srvManager);
 
 	TextureManager::GetInstance()->Initialize(dxCommon, srvManager);
 
-	// ImGui‚Ì‰Šú‰»
+	// ImGuiã®åˆæœŸåŒ–
 	imguiManager = new ImGuiManager();
 	imguiManager->Initialize(dxCommon, winApp);
 
-	Camera* camera = new Camera();
+	camera = new Camera();
 	camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
 	camera->SetRotation({ 0.3f, 0.0f, 0.0f });
 	object3dCommon->SetDefaultCamera(camera);
 
 #pragma endregion 
 
-#pragma region ƒp[ƒeƒBƒNƒ‹
+#pragma region ãƒ‘ãƒ¼ãƒ†ã‚£ã‚¯ãƒ«
 
-	ParticleRenderer particleRenderer;
-
-	// ƒAƒZƒbƒg“o˜^
+	// ã‚¢ã‚»ãƒƒãƒˆç™»éŒ²
 	ParticleManager::GetInstance()->RegisterQuad("quad", "resources/circle.png");
 
-	// ƒCƒ“ƒXƒ^ƒ“ƒVƒ“ƒO”z—ñ‚È‚Ç‚Ìƒ|ƒCƒ“ƒ^‚Í renderer ‰Šú‰»Œã‚Éæ“¾‚·‚éiŒã‚Åİ’èj
+	// ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚·ãƒ³ã‚°é…åˆ—ãªã©ã®ãƒã‚¤ãƒ³ã‚¿ã¯ renderer åˆæœŸåŒ–å¾Œã«å–å¾—ã™ã‚‹ï¼ˆå¾Œã§è¨­å®šï¼‰
 	uint32_t instancingSrvIndex = UINT32_MAX;
 
-	// Œ»İ‘I‘ğ‚µ‚Ä‚¢‚éƒuƒŒƒ“ƒhƒ‚[ƒhiUI‚Å‘€ìj
+	// ç¾åœ¨é¸æŠã—ã¦ã„ã‚‹ãƒ–ãƒ¬ãƒ³ãƒ‰ãƒ¢ãƒ¼ãƒ‰ï¼ˆUIã§æ“ä½œï¼‰
 	currentBlendModeIndex = static_cast<int>(BlendMode::Additive);
 
 
@@ -89,59 +86,58 @@ void Application::Initialize()
 
 	TextureManager* texManager = TextureManager::GetInstance();
 
-	// ƒeƒNƒXƒ`ƒƒƒAƒbƒvƒ[ƒh‚ÌŠJn
+	// ãƒ†ã‚¯ã‚¹ãƒãƒ£ã‚¢ãƒƒãƒ—ãƒ­ãƒ¼ãƒ‰ã®é–‹å§‹
 	dxCommon->BeginTextureUploadBatch();
 
 	ModelManager::GetInstance()->LoadModel("plane.obj");
 	ModelManager::GetInstance()->LoadModel("terrain.obj");
 
-	// Šù‘¶ƒXƒvƒ‰ƒCƒg—pƒeƒNƒXƒ`ƒƒ‚Ì“Ç‚İ‚İ
+	// æ—¢å­˜ã‚¹ãƒ—ãƒ©ã‚¤ãƒˆç”¨ãƒ†ã‚¯ã‚¹ãƒãƒ£ã®èª­ã¿è¾¼ã¿
 	texManager->LoadTexture("resources/uvChecker.png");
 	texManager->LoadTexture("resources/monsterBall.png");
 	texManager->LoadTexture("resources/checkerBoard.png");
 	texManager->LoadTexture("resources/circle.png");
 
-	// ƒeƒNƒXƒ`ƒƒƒAƒbƒvƒ[ƒh‚ÌÀs
+	// ãƒ†ã‚¯ã‚¹ãƒãƒ£ã‚¢ãƒƒãƒ—ãƒ­ãƒ¼ãƒ‰ã®å®Ÿè¡Œ
 	texManager->ExecuteUploadCommands();
 
-	// TextureIndex ‚ğæ“¾
+	// TextureIndex ã‚’å–å¾—
 	uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/uvChecker.png");
 	uint32_t monsterBallTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/monsterBall.png");
 	uint32_t checkerBoardTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/checkerBoard.png");
 
-	// ƒp[ƒeƒBƒNƒ‹—pƒeƒNƒXƒ`ƒƒ‚ÌƒCƒ“ƒfƒbƒNƒX
-	uint32_t particleSrvIndex = TextureManager::GetInstance()->GetSrvIndex("resources/circle.png");
+	// ãƒ‘ãƒ¼ãƒ†ã‚£ã‚¯ãƒ«ç”¨ãƒ†ã‚¯ã‚¹ãƒãƒ£ã®ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹
+	particleSrvIndex = TextureManager::GetInstance()->GetSrvIndex("resources/circle.png");
 
-	// ParticleRenderer ‚ğ“o˜^Ï‚İƒAƒZƒbƒg‚©‚çƒZƒbƒgƒAƒbƒv
+	// ParticleRenderer ã‚’ç™»éŒ²æ¸ˆã¿ã‚¢ã‚»ãƒƒãƒˆã‹ã‚‰ã‚»ãƒƒãƒˆã‚¢ãƒƒãƒ—
 	ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "quad", dxCommon, srvManager, kNumMaxInstance);
 	instancingData = particleRenderer.GetInstancingData();
 	instancingSrvIndex = particleRenderer.GetInstancingSrvIndex();
 
-	// ’†ŠÔƒŠƒ\[ƒX‚ğ‚Ü‚Æ‚ß‚Ä‰ğ•ú
+	// ä¸­é–“ãƒªã‚½ãƒ¼ã‚¹ã‚’ã¾ã¨ã‚ã¦è§£æ”¾
 	texManager->ClearIntermediateResources();
 
 
-#pragma region Å‰‚ÌƒV[ƒ“‚Ì‰Šú‰»
+#pragma region æœ€åˆã®ã‚·ãƒ¼ãƒ³ã®åˆæœŸåŒ–
 
-	// ƒXƒvƒ‰ƒCƒg
-	std::vector<Sprite*> sprites;
+	// ã‚¹ãƒ—ãƒ©ã‚¤ãƒˆ
+	
 	{
 		Sprite* s = new Sprite();
-		// ƒeƒNƒXƒ`ƒƒ‚ÍuvChecker
+		// ãƒ†ã‚¯ã‚¹ãƒãƒ£ã¯uvChecker
 		s->Initialize(spriteCommon, uvCheckerTex);
-		// ‰ŠúˆÊ’u‚ğ(100,100)
+		// åˆæœŸä½ç½®ã‚’(100,100)
 		s->SetPosition(Vector2(100.0f, 100.0f));
-		// ƒTƒCƒY
+		// ã‚µã‚¤ã‚º
 		s->SetSize(Vector2(128.0f, 128.0f));
-		// ƒAƒ“ƒJ[ƒ|ƒCƒ“ƒg‚ğ’†‰›‚É
+		// ã‚¢ãƒ³ã‚«ãƒ¼ãƒã‚¤ãƒ³ãƒˆã‚’ä¸­å¤®ã«
 		s->SetAnchorPoint(Vector2(0.5f, 0.5f));
-		// F
+		// è‰²
 		s->SetColor(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		sprites.push_back(s);
 	}
 
-	// ƒ‚ƒfƒ‹
-	std::vector<Object3d*> modelInstances;
+	// ãƒ¢ãƒ‡ãƒ«
 	{
 		Object3d* obj = new Object3d();
 		obj->Initialize(object3dCommon);
@@ -160,27 +156,23 @@ void Application::Initialize()
 		modelInstances.push_back(terrain);
 	}
 
-	// ƒTƒEƒ“ƒhƒ}ƒl[ƒWƒƒ[‚Ì‰Šú‰»
+	// ã‚µã‚¦ãƒ³ãƒ‰ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼ã®åˆæœŸåŒ–
 	SoundManager::GetInstance()->Initialize();
 
-	// mp3‚ğ“Ç‚İ‚Ş
+	// mp3ã‚’èª­ã¿è¾¼ã‚€
 	Data = SoundManager::GetInstance()->SoundLoadFile("resources/bgm.mp3");
 
-	// Ä¶—pƒIƒuƒWƒFƒNƒg
+	// å†ç”Ÿç”¨ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ
 	Sound sound;
 
 
 #pragma endregion
 
-	// —”¶¬Ší‚Ì‰Šú‰»
-	std::random_device seedGenerator;
-	std::mt19937 randomEngine(seedGenerator());
-
 	std::uniform_real_distribution<float> distribution(-1.0f, 1.0f);
 	std::uniform_real_distribution<float> distColor(0.0f, 1.0f);
 	std::uniform_real_distribution<float> distTime(1.0f, 3.0f);
 
-	// ParticleSystem ‚ÌƒZƒbƒgƒAƒbƒviEmitter İ’è‚Í ParticleSystem Œo—R‚Ås‚¤j
+	// ParticleSystem ã®ã‚»ãƒƒãƒˆã‚¢ãƒƒãƒ—ï¼ˆEmitter è¨­å®šã¯ ParticleSystem çµŒç”±ã§è¡Œã†ï¼‰
 	particleSystem.GetEmitter().GetEmitter().count = 3;
 	particleSystem.GetEmitter().GetEmitter().frequency = 0.5f;
 	particleSystem.GetEmitter().GetEmitter().frequencyTime = 0.0f;
@@ -188,11 +180,11 @@ void Application::Initialize()
 	particleSystem.GetEmitter().GetEmitter().transform.rotation = { 0.0f,0.0f,0.0f };
 	particleSystem.GetEmitter().GetEmitter().transform.scale = { 1.0f,1.0f,1.0f };
 
-	// Œ»İ‚ÌƒGƒtƒFƒNƒg‘I‘ğiUI‚Å•ÏX‰Â”\j
+	// ç¾åœ¨ã®ã‚¨ãƒ•ã‚§ã‚¯ãƒˆé¸æŠï¼ˆUIã§å¤‰æ›´å¯èƒ½ï¼‰
 	currentEffect = ParticleEffect::Wind;
 	particleSystem.SetEffect(currentEffect);
 
-	// ‰Šúƒp[ƒeƒBƒNƒ‹‚ğ¶¬imain ‚Ì‹Œƒ‹[ƒv‚Æ“¯“™”‚ğ¶¬j
+	// åˆæœŸãƒ‘ãƒ¼ãƒ†ã‚£ã‚¯ãƒ«ã‚’ç”Ÿæˆï¼ˆmain ã®æ—§ãƒ«ãƒ¼ãƒ—ã¨åŒç­‰æ•°ã‚’ç”Ÿæˆï¼‰
 	particleSystem.AddInitialParticles(randomEngine, kNumMaxInstance);
 
 	AccelerationField accelerationField;
@@ -204,36 +196,92 @@ void Application::Initialize()
 
 }
 
-// I—¹ˆ—
+// çµ‚äº†å‡¦ç†
 void Application::Finalize()
 {
+	// ImGuiã®çµ‚äº†å‡¦ç†
+	imguiManager->Finalize();
+
+	// ãƒ¢ãƒ‡ãƒ«ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼ã®è§£æ”¾
+	ModelManager::GetInstance()->Finalize();
+
+	// ãƒ†ã‚¯ã‚¹ãƒãƒ£ãƒãƒãƒ¼ã‚¸ãƒ£ã®è§£æ”¾
+	TextureManager::GetInstance()->Finalize();
+
+	// å…¥åŠ›ã®è§£æ”¾
+	delete input;
+
+	delete imguiManager;
+
+	// WindowsAPIã®çµ‚äº†å‡¦ç†
+	winApp->Finalize();
+
+	// WindowsAPIã®è§£æ”¾
+	delete winApp;
+	winApp = nullptr;
+
+	// DirectX12ã®è§£æ”¾
+	delete dxCommon;
+
+	// ã‚¹ãƒ—ãƒ©ã‚¤ãƒˆå…±é€šéƒ¨åˆ†ã®è§£æ”¾
+	delete spriteCommon;
+
+	// ã‚¹ãƒ—ãƒ©ã‚¤ãƒˆã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã®è§£æ”¾
+	for (auto s : sprites)
+	{
+		delete s;
+	}
+
+	// ãƒ¢ãƒ‡ãƒ«ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã®è§£æ”¾
+	for (auto obj : modelInstances)
+	{
+		delete obj;
+	}
+
+	modelInstances.clear();
+
+	// 3Dã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆå…±é€šéƒ¨åˆ†ã®è§£æ”¾
+	delete object3dCommon;
+
+	sound.Stop();
+	SoundManager::GetInstance()->SoundUnload(&Data);
+	SoundManager::GetInstance()->Finalize();
+
+	srvManager->Finalize();
+
+	// ã‚¢ãƒ³ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
+	KHEngine::Core::Utility::Crash::CrashDump::Uninstall();
+	// ã‚·ãƒ£ãƒƒãƒˆãƒ€ã‚¦ãƒ³
+	Logger::Shutdown();
+
 }
 
-// XVˆ—
+// æ›´æ–°å‡¦ç†
 void Application::Update()
 {
-	// Windows‚ÌƒƒbƒZ[ƒWˆ—
+	// Windowsã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸å‡¦ç†
 	if (winApp->ProcessMessage())
 	{
-		// ƒQ[ƒ€ƒ‹[ƒv‚ğ”²‚¯‚é
+		// ã‚²ãƒ¼ãƒ ãƒ«ãƒ¼ãƒ—ã‚’æŠœã‘ã‚‹
+		endRequst_ = true;
 		return;
 	}
 
-	/*-------------- «XVˆ—‚±‚±‚©‚ç« --------------*/
+	/*-------------- â†“æ›´æ–°å‡¦ç†ã“ã“ã‹ã‚‰â†“ --------------*/
 
-	// “ü—Í‚ÌXV
+	// å…¥åŠ›ã®æ›´æ–°
 	input->Update();
 
-	// ƒJƒƒ‰‚ÌXV
+	// ã‚«ãƒ¡ãƒ©ã®æ›´æ–°
 	camera->Update();
 
-	/*--- Šeƒ‚ƒfƒ‹‚ÌXVˆ— ---*/
+	/*--- å„ãƒ¢ãƒ‡ãƒ«ã®æ›´æ–°å‡¦ç† ---*/
 	for (auto model : modelInstances)
 	{
 		model->Update();
 	}
 
-	/*--- Sprite‚ÌXVˆ— ---*/
+	/*--- Spriteã®æ›´æ–°å‡¦ç† ---*/
 	for (auto sprite : sprites)
 	{
 		sprite->Update();
@@ -241,38 +289,38 @@ void Application::Update()
 
 	if (input->TriggerKey(DIK_SPACE))
 	{
-		// ƒTƒEƒ“ƒh‚ÌÄ¶
+		// ã‚µã‚¦ãƒ³ãƒ‰ã®å†ç”Ÿ
 		sound.SoundPlayWave(SoundManager::GetInstance()->GetXAudio2(), Data);
 
 	}
 
 
-	// ƒJƒƒ‰s—ñEƒrƒ…[EË‰e‚Í Camera ‚Ì getter ‚ğg‚¤
+	// ã‚«ãƒ¡ãƒ©è¡Œåˆ—ãƒ»ãƒ“ãƒ¥ãƒ¼ãƒ»å°„å½±ã¯ Camera ã® getter ã‚’ä½¿ã†
 	Matrix4x4 cameraMatrix = camera->GetWorldMatrix();
 	Matrix4x4 viewMatrix = camera->GetViewMatrix();
 	Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
 
-	// ƒrƒ‹ƒ{[ƒhs—ñ‚ÌŒvZi‹¤’Êj
-	// •ÏX“_: ƒrƒ‹ƒ{[ƒhŒvZ‚ğ Billboard ƒNƒ‰ƒX‚ÖˆÏ÷
+	// ãƒ“ãƒ«ãƒœãƒ¼ãƒ‰è¡Œåˆ—ã®è¨ˆç®—ï¼ˆå…±é€šï¼‰
+	// å¤‰æ›´ç‚¹: ãƒ“ãƒ«ãƒœãƒ¼ãƒ‰è¨ˆç®—ã‚’ Billboard ã‚¯ãƒ©ã‚¹ã¸å§”è­²
 	Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera, useBillboard);
 
-	// ParticleSystem ‚ğXViEmitter ‚Ì¶¬‚à“à•”‚Ås‚¤j
+	// ParticleSystem ã‚’æ›´æ–°ï¼ˆEmitter ã®ç”Ÿæˆã‚‚å†…éƒ¨ã§è¡Œã†ï¼‰
 	if (update)
 	{
 		particleSystem.Update(kDeltaTime);
 	}
 
-	// Instancing ƒoƒbƒtƒ@‚Ö‘‚«‚İiGPU ‚É“]‘—‚·‚é‚½‚ß‚Ì CPU ‘¤”z—ñ‚Í Renderer ‚ªŠÇ—j
-	uint32_t numInstance = particleSystem.FillInstancingBuffer(instancingData, kNumMaxInstance, viewMatrix, projectionMatrix, billboardMatrix, false);
+	// Instancing ãƒãƒƒãƒ•ã‚¡ã¸æ›¸ãè¾¼ã¿ï¼ˆGPU ã«è»¢é€ã™ã‚‹ãŸã‚ã® CPU å´é…åˆ—ã¯ Renderer ãŒç®¡ç†ï¼‰
+	numInstance = particleSystem.FillInstancingBuffer(instancingData, kNumMaxInstance, viewMatrix, projectionMatrix, billboardMatrix, false);
 
 
-	// ŠJ”­—pUI‚Ìˆ—
+	// é–‹ç™ºç”¨UIã®å‡¦ç†
 	imguiManager->Begin();
 
 
 #ifdef USE_IMGUI
 
-	// --- Sprite ƒEƒBƒ“ƒhƒE ---
+	// --- Sprite ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ ---
 	ImGui::Begin("Sprite");
 	if (!sprites.empty())
 	{
@@ -314,7 +362,7 @@ void Application::Update()
 	ImGui::End();
 
 
-	// --- Model ƒEƒBƒ“ƒhƒE ---
+	// --- Model ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ ---
 	ImGui::Begin("Model");
 	if (!modelInstances.empty())
 	{
@@ -341,10 +389,47 @@ void Application::Update()
 			obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
 		}
 	}
+
+	if (!modelInstances.empty())
+	{
+		// æœ€åˆã®ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã® Model ã‚’å‚ç…§ã—ã¦ç¾åœ¨å€¤ã‚’å–å¾—
+		Model* sampleModel = modelInstances[0]->GetModel();
+		if (sampleModel)
+		{
+			int currentSelect = sampleModel->GetSelectLightings();
+
+			// ãƒ©ãƒ™ãƒ«ã¯ HLSL ã® case ã«å¯¾å¿œã•ã›ã‚‹ï¼ˆ0..5ï¼‰
+			const char* lightingNames[] = {
+				"0: TextureOnly",
+				"1: Directional (Diffuse)",
+				"2: Directional (Soft)",
+				"3: Directional (Diffuse+Specular)",
+				"4: Directional + Point",
+				"5: Spot"
+			};
+
+			// Combo ã§é¸æŠï¼ˆHLSL ã® switch ã® case ã«å¯¾å¿œï¼‰
+			if (ImGui::Combo("Select Lighting Mode", &currentSelect, lightingNames, IM_ARRAYSIZE(lightingNames)))
+			{
+				// å…¨ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã«åæ˜ 
+				for (auto obj : modelInstances)
+				{
+					if (!obj) continue;
+					Model* m = obj->GetModel();
+					if (m) m->SetSelectLightings(currentSelect);
+				}
+			}
+
+			// ç›´æ¥æ•°å€¤å…¥åŠ›ãŒæ¬²ã—ã‘ã‚Œã° SliderInt ã«å·®ã—æ›¿ãˆå¯èƒ½
+			// if (ImGui::SliderInt("Select Lighting (raw)", &currentSelect, 0, 5)) { ... }
+		}
+	}
+
+
 	ImGui::End();
 
 
-	// --- Camera & Light ƒEƒBƒ“ƒhƒE ---
+	// --- Camera & Light ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ ---
 	ImGui::Begin("Camera & Light");
 	// Camera
 	{
@@ -397,7 +482,7 @@ void Application::Update()
 
 		Object3d* obj = modelInstances[0];
 
-		// Directional Light (ŒÂ•Ê)
+		// Directional Light (å€‹åˆ¥)
 		Vector4 lc = obj->GetDirectionalLightColor();
 		float lcArr[4] = { lc.x, lc.y, lc.z, lc.w };
 		if (ImGui::ColorEdit4("Directional Color", lcArr))
@@ -418,7 +503,7 @@ void Application::Update()
 			obj->SetDirectionalLightIntensity(lint);
 		}
 
-		// ƒOƒ[ƒoƒ‹ ON/OFF
+		// ã‚°ãƒ­ãƒ¼ãƒãƒ« ON/OFF
 		static bool dirEnabledGlobal = true;
 		static float dirPrevIntensityGlobal = 1.0f;
 		if (ImGui::Checkbox("Enable Directional Light(global)", &dirEnabledGlobal))
@@ -526,38 +611,162 @@ void Application::Update()
 			ImGui::PopStyleVar();
 		}
 #endif
+		ImGui::Separator();
+		ImGui::Text("Spot Light");
+
+		static bool spotInit = false;
+		static Vector4 spotColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+		static Vector3 spotPosition = { 0.0f, 5.0f, 0.0f };
+		static Vector3 spotDirection = { 0.0f, -1.0f, 0.0f };
+		static float spotIntensity = 1.0f;
+		static float prevSpotIntensity = 1.0f;
+		static float spotDistance = 10.0f;
+		static float spotDecay = 1.0f;
+		static float spotAngleDeg = 45.0f;
+		static bool spotLightEnabled = true;
+
+		if (!spotInit && !modelInstances.empty())
+		{
+			// åˆæœŸå€¤ã‚’æœ€åˆã®ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‹ã‚‰å–å¾—ï¼ˆå­˜åœ¨ã™ã‚Œã°ï¼‰
+			Object3d* o = modelInstances[0];
+			spotColor = o->GetSpotLightColor();
+			spotPosition = o->GetSpotLightPosition();
+			spotDirection = o->GetSpotLightDirection();
+			spotIntensity = o->GetSpotLightIntensity();
+			prevSpotIntensity = spotIntensity;
+			spotDistance = o->GetSpotLightDistance();
+			spotDecay = o->GetSpotLightDecay();
+			spotAngleDeg = o->GetSpotLightAngleDeg();
+			spotInit = true;
+		}
+
+		if (ImGui::Checkbox("Enable Spot Light", &spotLightEnabled))
+		{
+			if (!modelInstances.empty())
+			{
+				if (!spotLightEnabled)
+				{
+					prevSpotIntensity = spotIntensity;
+					for (auto m : modelInstances) if (m) m->SetSpotLightIntensity(0.0f);
+				}
+				else
+				{
+					for (auto m : modelInstances) if (m) m->SetSpotLightIntensity(prevSpotIntensity);
+				}
+			}
+		}
+
+#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
+		ImGui::BeginDisabled(!spotLightEnabled);
+#else
+		if (!spotLightEnabled)
+		{
+			ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+		}
+#endif
+
+		// Color
+		{
+			float scArr[4] = { spotColor.x, spotColor.y, spotColor.z, spotColor.w };
+			if (ImGui::ColorEdit4("Spot Color", scArr))
+			{
+				spotColor = Vector4(scArr[0], scArr[1], scArr[2], scArr[3]);
+				for (auto m : modelInstances) if (m) m->SetSpotLightColor(spotColor);
+			}
+		}
+
+		// Position
+		{
+			float spArr[3] = { spotPosition.x, spotPosition.y, spotPosition.z };
+			if (ImGui::DragFloat3("Spot Position", spArr, 0.05f, -100.0f, 100.0f))
+			{
+				spotPosition = Vector3(spArr[0], spArr[1], spArr[2]);
+				for (auto m : modelInstances) if (m) m->SetSpotLightPosition(spotPosition);
+			}
+		}
+
+		// Direction
+		{
+			float sdArr[3] = { spotDirection.x, spotDirection.y, spotDirection.z };
+			if (ImGui::DragFloat3("Spot Direction", sdArr, 0.01f, -10.0f, 10.0f))
+			{
+				spotDirection = Vector3(sdArr[0], sdArr[1], sdArr[2]);
+				for (auto m : modelInstances) if (m) m->SetSpotLightDirection(spotDirection);
+			}
+		}
+
+		// Intensity
+		if (ImGui::DragFloat("Spot Intensity", &spotIntensity, 0.01f, 0.0f, 100.0f))
+		{
+			if (spotLightEnabled)
+			{
+				for (auto m : modelInstances) if (m) m->SetSpotLightIntensity(spotIntensity);
+				prevSpotIntensity = spotIntensity;
+			}
+			else
+			{
+				prevSpotIntensity = spotIntensity;
+			}
+		}
+
+		// Distance / Decay
+		if (ImGui::DragFloat("Spot Distance", &spotDistance, 0.1f, 0.0f, 10000.0f))
+		{
+			for (auto m : modelInstances) if (m) m->SetSpotLightDistance(spotDistance);
+		}
+		if (ImGui::DragFloat("Spot Decay", &spotDecay, 0.01f, 0.0f, 10.0f))
+		{
+			for (auto m : modelInstances) if (m) m->SetSpotLightDecay(spotDecay);
+		}
+
+		// Angle (deg)
+		if (ImGui::SliderFloat("Spot Angle (deg)", &spotAngleDeg, 1.0f, 90.0f))
+		{
+			for (auto m : modelInstances) if (m) m->SetSpotLightAngleDeg(spotAngleDeg);
+		}
+
+#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
+		ImGui::EndDisabled();
+#else
+		if (!spotLightEnabled)
+		{
+			ImGui::PopItemFlag();
+			ImGui::PopStyleVar();
+		}
+#endif
 	}
 	ImGui::End();
 
 
-	// --- Particle ƒEƒBƒ“ƒhƒE ---
+	// --- Particle ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ ---
 	ImGui::Begin("Particle");
 
-	// ƒp[ƒeƒBƒNƒ‹‚Ì“®ì ON/OFF
+	// ãƒ‘ãƒ¼ãƒ†ã‚£ã‚¯ãƒ«ã®å‹•ä½œ ON/OFF
 	if (ImGui::Checkbox("Update Particles", &update))
 	{
-		// ƒtƒ‰ƒO•ÏX‚Ì‚İiUpdate ‚ÌŒÄ‚Ño‚µ‚Í main ƒ‹[ƒv‘¤‚Ås‚Á‚Ä‚¢‚éj
+		// ãƒ•ãƒ©ã‚°å¤‰æ›´ã®ã¿ï¼ˆUpdate ã®å‘¼ã³å‡ºã—ã¯ main ãƒ«ãƒ¼ãƒ—å´ã§è¡Œã£ã¦ã„ã‚‹ï¼‰
 	}
 
-	// ƒrƒ‹ƒ{[ƒhØ‘Ö
+	// ãƒ“ãƒ«ãƒœãƒ¼ãƒ‰åˆ‡æ›¿
 	if (ImGui::Checkbox("Use Billboard", &useBillboard))
 	{
-		// ”½‰f‚Í•`‰æ‘¤‚Ìs—ñ¶¬‚Ås‚í‚ê‚é
+		// åæ˜ ã¯æç”»å´ã®è¡Œåˆ—ç”Ÿæˆã§è¡Œã‚ã‚Œã‚‹
 	}
 
-	// ƒuƒŒƒ“ƒhƒ‚[ƒh‘I‘ğ
+	// ãƒ–ãƒ¬ãƒ³ãƒ‰ãƒ¢ãƒ¼ãƒ‰é¸æŠ
 	{
 		const char* blendNames[] = { "Alpha", "Additive", "Multiply", "PreMultiplied", "None" };
 		if (ImGui::Combo("Blend Mode", &currentBlendModeIndex, blendNames, static_cast<int>(BlendMode::Count)))
 		{
-			// currentBlendModeIndex ‚Í Draw ŒÄ‚Ño‚µ‚Ég‚í‚ê‚é
+			// currentBlendModeIndex ã¯ Draw å‘¼ã³å‡ºã—æ™‚ã«ä½¿ã‚ã‚Œã‚‹
 		}
 	}
 
-	// ƒp[ƒeƒBƒNƒ‹í—Ş‘I‘ğiParticleEffect enum ‚É‡‚í‚¹‚éj
+	// ãƒ‘ãƒ¼ãƒ†ã‚£ã‚¯ãƒ«ç¨®é¡é¸æŠï¼ˆParticleEffect enum ã«åˆã‚ã›ã‚‹ï¼‰
 	{
 		const char* effectNames[] = { "Wind", "Fire", "Snow", "Explosion", "Smoke", "Confetti" };
-		// currentEffect ‚Í ParticleEffect Œ^‚¾‚ª ImGui —p‚É int ‚ÉƒLƒƒƒXƒg‚·‚é
+		// currentEffect ã¯ ParticleEffect å‹ã ãŒ ImGui ç”¨ã« int ã«ã‚­ãƒ£ã‚¹ãƒˆã™ã‚‹
 		int effectIndex = static_cast<int>(currentEffect);
 		if (ImGui::Combo("Effect", &effectIndex, effectNames, static_cast<int>(ParticleEffect::Count)))
 		{
@@ -566,7 +775,7 @@ void Application::Update()
 		}
 	}
 
-	// ƒGƒ~ƒbƒ^[İ’è‚ğ’¼Ú•ÒW
+	// ã‚¨ãƒŸãƒƒã‚¿ãƒ¼è¨­å®šã‚’ç›´æ¥ç·¨é›†
 	{
 		auto& emitter = particleSystem.GetEmitter().GetEmitter();
 
@@ -605,7 +814,7 @@ void Application::Update()
 		}
 	}
 
-	// ‰Šúƒp[ƒeƒBƒNƒ‹‚ÌÄ¶¬i”CˆÓj
+	// åˆæœŸãƒ‘ãƒ¼ãƒ†ã‚£ã‚¯ãƒ«ã®å†ç”Ÿæˆï¼ˆä»»æ„ï¼‰
 	if (ImGui::Button("Recreate Initial Particles"))
 	{
 		particleSystem.AddInitialParticles(randomEngine, kNumMaxInstance);
@@ -615,12 +824,41 @@ void Application::Update()
 
 #endif // USE_IMGUI
 
-	// ImGui‚Ì“à•”ƒRƒ}ƒ“ƒh‚ğ¶¬
+	// ImGuiã®å†…éƒ¨ã‚³ãƒãƒ³ãƒ‰ã‚’ç”Ÿæˆ
 	imguiManager->End();
 
 }
 
-// •`‰æˆ—
+// æç”»å‡¦ç†
 void Application::Draw()
 {
+	/*-------------- â†“æç”»å‡¦ç†ã“ã“ã‹ã‚‰â†“ --------------*/
+
+	dxCommon->PreDraw();
+
+	object3dCommon->SetCommonDrawSetting();
+
+	// è¤‡æ•°ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã®æç”»
+	for (auto model : modelInstances)
+	{
+		model->Draw();
+	}
+
+	spriteCommon->SetCommonDrawSetting();
+
+	if (isDisplaySprite)
+	{
+		for (auto sprite : sprites)
+		{
+			sprite->Draw();
+		}
+	}
+
+	// æç”»ã¯å®Œå…¨ã« ParticleRenderer ã«å§”è­²
+	particleRenderer.Draw(numInstance, particleSrvIndex, currentBlendModeIndex);
+
+	// å®Ÿéš›ã®CommandListã®ImGuiã®æç”»ã‚³ãƒãƒ³ãƒ‰ã‚’ç©ã‚€
+	imguiManager->Draw();
+
+	dxCommon->PostDraw();
 }
