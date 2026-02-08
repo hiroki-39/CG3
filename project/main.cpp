@@ -1,29 +1,27 @@
 ﻿#include "KHEngine/Core/Application/Application.h"
+#include "KHEngine/Core/Framework/KHFramework.h"
 
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
-	// アプリケーションの初期化
-	Application app;
+	Application* game = new Application();
 
-	// アプリケーションの初期化
-	app.Initialize();
+	// ゲームの初期化
+	game->Initialize();
 
-	// ゲームループ
-	while (true)
-	{
-		app.Update();
+	while (true) {
+		// 毎フレーム処理
+		game->Update();
 
-		// 終了リクエストが来ていたらループを抜ける
-		if (app.IsEndRequest())
-		{
+		// ゲーム終了要求が来ていたらループを抜ける
+		if (game->IsEndRequest()) {
 			break;
 		}
 
-		app.Draw();
+		game->Draw();
 	}
 
-	app.Finalize();
+	game->Finalize();
 
 	return 0;
 }

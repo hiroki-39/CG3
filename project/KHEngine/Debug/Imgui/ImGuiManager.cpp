@@ -20,6 +20,14 @@ void ImGuiManager::Initialize([[maybe_unused]]DirectXCommon* dxcommon, [[maybe_u
 
 	// スタイル
 	ImGui::StyleColorsDark();
+	// ImGuiのスタイルを設定
+	ImGui::StyleColorsDark();
+	io.Fonts->AddFontFromFileTTF(
+		"Resources/sprite/YuGothR.ttc",   // フォントファイルのパス
+		18.0f,                                // フォントサイズ
+		nullptr,
+		io.Fonts->GetGlyphRangesJapanese()    // 日本語の範囲（ひらがな・カタカナ・漢字）
+	);
 
 	// Win32 側の初期化
 	ImGui_ImplWin32_Init(winApp_->GetHwnd());
