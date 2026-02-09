@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "KHEngine/Graphics/3d/Model/ModelCommon.h"
-
 #include "KHEngine/Math/MathCommon.h"
+#include <assimp/scene.h>
 
 class Model
 {
@@ -39,11 +39,19 @@ public: //構造体
 		uint32_t textureIndex = 0;
 	};
 
+	struct Node
+	{
+		Matrix4x4 localMatrix;
+		std::string name;
+		std::vector<Node> children;
+	};
+
 	struct  ModelData
 	{
 		std::vector<VertexData> vertices;
 		std::vector<uint32_t> indices;
 		MaterialData material;
+		Node rootNode;
 	};
 
 public: //メンバ関数
@@ -58,6 +66,9 @@ public: //メンバ関数
 	/// 描画処理
 	/// </summary>
 	void Draw();
+
+	inline int32_t GetSelectLightings() const { return materialData_ ? materialData_->selectLightings : 0; }
+	inline void SetSelectLightings(int32_t v) { if (materialData_) materialData_->selectLightings = v; }
 
 private: //メンバ関数
 
@@ -80,6 +91,10 @@ private: //メンバ関数
 	/// mtlファイルの読み込み
 	/// </summary>
 	static MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
+
+private:
+
+	Node ReadNode(aiNode* node);
 
 private: //メンバ変数
 

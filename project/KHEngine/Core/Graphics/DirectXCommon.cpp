@@ -2,6 +2,7 @@
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "dxcompiler.lib")
 
 using namespace Microsoft::WRL;
 
@@ -51,6 +52,19 @@ void DirectXCommon::Initialize(WinApp* winApp)
 void DirectXCommon::InitDevice()
 {
 	/*--- DirectXの初期化 ---*/
+
+#ifdef _DEBUG
+
+	Microsoft::WRL::ComPtr<ID3D12Debug1> debugController = nullptr;
+	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+	{
+		//デバックレイヤーの有効化
+		debugController->EnableDebugLayer();
+		//GPU側でもチェックを行うようにする
+		debugController->SetEnableGPUBasedValidation(TRUE);
+	}
+
+#endif 
 
 	/*HRESULTはWindows系のエラーコードであり
 	 関数が成功したかSUCCEEDEDマクロで判定できる*/

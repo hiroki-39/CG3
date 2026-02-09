@@ -82,14 +82,14 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)externals\imgui;$(SolutionDir)externals\DirectXTex;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)KHEngine\Graphics;$(ProjectDir)KHEngine\OS;$(ProjectDir)KHEngine\Utility\Log;$(ProjectDir)KHEngine\Utility\String;$(ProjectDir)KHEngine\Utility\Timer;$(ProjectDir)KHEngine\Debug\Imgui;$(ProjectDir)KHEngine\Graphics\2d;$(ProjectDir)KHEngine\Graphics\3d\Camera;$(ProjectDir)KHEngine\Graphics\3d\Model;$(ProjectDir)KHEngine\Graphics\3d\Object;$(ProjectDir)KHEngine\Graphics\3d\Particle;$(ProjectDir)KHEngine\Graphics\Billboard;$(ProjectDir)KHEngine\Graphics\Resource\Descriptor;$(ProjectDir)KHEngine\Graphics\Resource\Texture;$(ProjectDir)KHEngine\Input;$(ProjectDir)KHEngine\Math;$(ProjectDir)KHEngine\Sound\Core;$(SolutionDir)externals\DirectXTex;$(SolutionDir)externals\imgui;$(SolutionDir)externals\assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);imgui.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\generated\outputs\$(Configuratuon)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);imgui.lib;assimp-vc143-mtd.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\generated\outputs\$(Configuratuon)\;$(SolutionDir)externals\assimp\lib\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>copy "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\dxcompiler.dll" "$(OutDir)" /Y
@@ -108,15 +108,15 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir)DirectXTex;$(SolutionDir)externals\imgui;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)KHEngine\Graphics;$(ProjectDir)KHEngine\OS;$(ProjectDir)KHEngine\Utility\Log;$(ProjectDir)KHEngine\Utility\String;$(ProjectDir)KHEngine\Utility\Timer;$(ProjectDir)KHEngine\Debug\Imgui;$(ProjectDir)KHEngine\Graphics\2d;$(ProjectDir)KHEngine\Graphics\3d\Camera;$(ProjectDir)KHEngine\Graphics\3d\Model;$(ProjectDir)KHEngine\Graphics\3d\Object;$(ProjectDir)KHEngine\Graphics\3d\Particle;$(ProjectDir)KHEngine\Graphics\Billboard;$(ProjectDir)KHEngine\Graphics\Resource\Descriptor;$(ProjectDir)KHEngine\Graphics\Resource\Texture;$(ProjectDir)KHEngine\Input;$(ProjectDir)KHEngine\Math;$(ProjectDir)KHEngine\Sound\Core;$(SolutionDir)externals\DirectXTex;$(SolutionDir)externals\imgui;$(SolutionDir)externals\assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\generated\outputs\$(Configuratuon)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CoreLibraryDependencies);assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\generated\outputs\$(Configuratuon)\;$(SolutionDir)externals\assimp\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>copy "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\dxcompiler.dll" "$(OutDir)" /Y
@@ -137,7 +137,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)DirectXTex;$(SolutionDir)externals\imgui;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)KHEngine\Graphics;$(ProjectDir)KHEngine\OS;$(ProjectDir)KHEngine\Utility\Log;$(ProjectDir)KHEngine\Utility\String;$(ProjectDir)KHEngine\Utility\Timer;$(ProjectDir)KHEngine\Debug\Imgui;$(ProjectDir)KHEngine\Graphics\2d;$(ProjectDir)KHEngine\Graphics\3d\Camera;$(ProjectDir)KHEngine\Graphics\3d\Model;$(ProjectDir)KHEngine\Graphics\3d\Object;$(ProjectDir)KHEngine\Graphics\3d\Particle;$(ProjectDir)KHEngine\Graphics\Billboard;$(ProjectDir)KHEngine\Graphics\Resource\Descriptor;$(ProjectDir)KHEngine\Graphics\Resource\Texture;$(ProjectDir)KHEngine\Input;$(ProjectDir)KHEngine\Math;$(ProjectDir)KHEngine\Sound\Core;$(SolutionDir)externals\DirectXTex;$(SolutionDir)externals\imgui;$(SolutionDir)externals\assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -145,8 +145,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <LinkTimeCodeGeneration />
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);imgui.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\generated\outputs\$(Configuratuon)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);imgui.lib;assimp-vc143-mt.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\generated\outputs\$(Configuratuon)\;$(SolutionDir)externals\assimp\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>copy "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\dxcompiler.dll" "$(OutDir)" /Y
@@ -154,6 +154,8 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="KHEngine\Core\Utility\Crash\CrashDump.cpp" />
+    <ClCompile Include="KHEngine\Core\Application\Application.cpp" />
     <ClCompile Include="KHEngine\Graphics\Billboard\Billboard.cpp" />
     <ClCompile Include="externals\imgui\imgui.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -189,6 +191,7 @@
     <ClCompile Include="KHEngine\Input\Input.cpp" />
     <ClCompile Include="KHEngine\Core\Utility\Log\Logger.cpp" />
     <ClCompile Include="KHEngine\Math\Matrix4x4.cpp" />
+    <ClCompile Include="KHEngine\Core\Framework\KHFramework.cpp" />
     <ClCompile Include="main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
@@ -207,6 +210,8 @@
     <ClCompile Include="KHEngine\Sound\Core\SoundManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="KHEngine\Core\Utility\Crash\CrashDump.h" />
+    <ClInclude Include="KHEngine\Core\Application\Application.h" />
     <ClInclude Include="KHEngine\Graphics\Billboard\Billboard.h" />
     <ClInclude Include="externals\imgui\imconfig.h" />
     <ClInclude Include="externals\imgui\imgui.h" />
@@ -249,6 +254,7 @@
     <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleRenderer.h" />
     <ClInclude Include="KHEngine\Sound\Core\Sound.h" />
     <ClInclude Include="KHEngine\Sound\Core\SoundManager.h" />
+    <ClInclude Include="KHEngine\Core\Framework\KHFramework.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
