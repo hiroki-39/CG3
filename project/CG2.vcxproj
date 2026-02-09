@@ -137,7 +137,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)KHEngine\Graphics;$(ProjectDir)KHEngine\OS;$(ProjectDir)KHEngine\Utility\Log;$(ProjectDir)KHEngine\Utility\String;$(ProjectDir)KHEngine\Utility\Timer;$(ProjectDir)KHEngine\Debug\Imgui;$(ProjectDir)KHEngine\Graphics\2d;$(ProjectDir)KHEngine\Graphics\3d\Camera;$(ProjectDir)KHEngine\Graphics\3d\Model;$(ProjectDir)KHEngine\Graphics\3d\Object;$(ProjectDir)KHEngine\Graphics\3d\Particle;$(ProjectDir)KHEngine\Graphics\Billboard;$(ProjectDir)KHEngine\Graphics\Resource\Descriptor;$(ProjectDir)KHEngine\Graphics\Resource\Texture;$(ProjectDir)KHEngine\Input;$(ProjectDir)KHEngine\Math;$(ProjectDir)KHEngine\Sound\Core;$(SolutionDir)externals\DirectXTex;$(SolutionDir)externals\imgui;$(SolutionDir)externals\assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)KHEngine\Graphics;$(ProjectDir)KHEngine\OS;$(ProjectDir)KHEngine\Utility\Log;$(ProjectDir)KHEngine\Utility\String;$(ProjectDir)KHEngine\Utility\Timer;$(ProjectDir)KHEngine\Debug\Imgui;$(ProjectDir)KHEngine\Graphics\2d;$(ProjectDir)KHEngine\Graphics\3d\Camera;$(ProjectDir)KHEngine\Graphics\3d\Model;$(ProjectDir)KHEngine\Graphics\3d\Object;$(ProjectDir)KHEngine\Graphics\3d\Particle;$(ProjectDir)KHEngine\Graphics\Billboard;$(ProjectDir)KHEngine\Graphics\Resource\Descriptor;$(ProjectDir)KHEngine\Graphics\Resource\Texture;$(ProjectDir)KHEngine\Input;$(ProjectDir)KHEngine\Math;$(ProjectDir)KHEngine\Sound\Core;$(SolutionDir)externals\DirectXTex;$(SolutionDir)externals\imgui;$(SolutionDir)externals\assimp\include;$(ProjectDir)KHEngine\Core\Framework;$(ProjectDir)KHEngine\Scene;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -154,6 +154,10 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="KHEngine\Scene\AbstractSceneFactory.cpp" />
+    <ClCompile Include="KHEngine\Core\Framework\BaseScene.cpp" />
+    <ClCompile Include="KHEngine\Core\Services\EngineServices.cpp" />
+    <ClCompile Include="KHEngine\Scene\GamePlayScene.cpp" />
     <ClCompile Include="KHEngine\Core\Utility\Crash\CrashDump.cpp" />
     <ClCompile Include="KHEngine\Core\Application\Application.cpp" />
     <ClCompile Include="KHEngine\Graphics\Billboard\Billboard.cpp" />
@@ -208,8 +212,15 @@
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelManager.cpp" />
     <ClCompile Include="KHEngine\Sound\Core\Sound.cpp" />
     <ClCompile Include="KHEngine\Sound\Core\SoundManager.cpp" />
+    <ClCompile Include="KHEngine\Scene\TitleScene.cpp" />
+    <ClCompile Include="KHEngine\Scene\SceneManager.cpp" />
+    <ClCompile Include="KHEngine\Scene\SceneFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="KHEngine\Scene\AbstractSceneFactory.h" />
+    <ClInclude Include="KHEngine\Core\Framework\BaseScene.h" />
+    <ClInclude Include="KHEngine\Core\Services\EngineServices.h" />
+    <ClInclude Include="KHEngine\Scene\GamePlayScene.h" />
     <ClInclude Include="KHEngine\Core\Utility\Crash\CrashDump.h" />
     <ClInclude Include="KHEngine\Core\Application\Application.h" />
     <ClInclude Include="KHEngine\Graphics\Billboard\Billboard.h" />
@@ -255,6 +266,9 @@
     <ClInclude Include="KHEngine\Sound\Core\Sound.h" />
     <ClInclude Include="KHEngine\Sound\Core\SoundManager.h" />
     <ClInclude Include="KHEngine\Core\Framework\KHFramework.h" />
+    <ClInclude Include="KHEngine\Scene\TitleScene.h" />
+    <ClInclude Include="KHEngine\Scene\SceneManager.h" />
+    <ClInclude Include="KHEngine\Scene\SceneFactory.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
