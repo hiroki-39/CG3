@@ -154,6 +154,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="KHEngine\Core\Framework\BaseScene.cpp" />
     <ClCompile Include="KHEngine\Core\Services\EngineServices.cpp" />
     <ClCompile Include="KHEngine\Scene\GamePlayScene.cpp" />
     <ClCompile Include="KHEngine\Core\Utility\Crash\CrashDump.cpp" />
@@ -210,8 +211,10 @@
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelManager.cpp" />
     <ClCompile Include="KHEngine\Sound\Core\Sound.cpp" />
     <ClCompile Include="KHEngine\Sound\Core\SoundManager.cpp" />
+    <ClCompile Include="KHEngine\Scene\TitleScene.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="KHEngine\Core\Framework\BaseScene.h" />
     <ClInclude Include="KHEngine\Core\Services\EngineServices.h" />
     <ClInclude Include="KHEngine\Scene\GamePlayScene.h" />
     <ClInclude Include="KHEngine\Core\Utility\Crash\CrashDump.h" />
@@ -259,6 +262,7 @@
     <ClInclude Include="KHEngine\Sound\Core\Sound.h" />
     <ClInclude Include="KHEngine\Sound\Core\SoundManager.h" />
     <ClInclude Include="KHEngine\Core\Framework\KHFramework.h" />
+    <ClInclude Include="KHEngine\Scene\TitleScene.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

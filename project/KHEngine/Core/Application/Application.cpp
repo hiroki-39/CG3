@@ -9,7 +9,7 @@
 // 初期化
 void Application::Initialize()
 {
-    // 基底クラスの初期化（ウィンドウ・DirectX 等）
+    // 基底クラスの初期化
     KHFramework::Initialize();
 
     // フレームワークの共通オブジェクトを EngineServices に登録
@@ -22,14 +22,15 @@ void Application::Initialize()
     services->SetImGuiManager(imguiManager_);
 
     // ゲーム固有の初期化はシーンへ
-    gameplayScene_.Initialize();
+	Scene_ = new TitleScene();
+    Scene_->Initialize();
 }
 
 // 終了処理
 void Application::Finalize()
 {
     // シーン側の終了処理
-    gameplayScene_.Finalize();
+    Scene_->Finalize();
 
     // 基底クラスの終了処理
     KHFramework::Finalize();
@@ -42,7 +43,7 @@ void Application::Update()
     KHFramework::Update();
 
     // シーン更新
-    gameplayScene_.Update();
+    Scene_->Update();
 
     // ImGui の描画受付終了（Framework が Begin している想定）
     if (imguiManager_)
@@ -55,5 +56,5 @@ void Application::Update()
 void Application::Draw()
 {
     // シーンがゲーム固有の描画を行う
-    gameplayScene_.Draw();
+    Scene_->Draw();
 }

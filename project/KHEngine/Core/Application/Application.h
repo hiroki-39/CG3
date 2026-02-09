@@ -5,6 +5,7 @@
 #include "KHEngine/Debug/Imgui/ImGuiManager.h"
 #include "KHEngine/Core/Framework/KHFramework.h"
 #include "KHEngine/Scene/GamePlayScene.h"
+#include "KHEngine/Scene/TitleScene.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 
 class Application : public KHFramework
@@ -34,5 +35,5 @@ public:
 
 private:
     // ゲーム固有処理は GamePlayScene に移譲
-    GamePlayScene gameplayScene_;
+   TitleScene* Scene_ = nullptr;
 };
