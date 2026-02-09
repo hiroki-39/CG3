@@ -16,8 +16,8 @@ void Model::Initialize(ModelCommon* modelCommon, const std::string& directoryPat
 	assert(dxCommon != nullptr);
 
 	//モデルの読み込み
-	//modelData = LoadObjFile(directoryPath, filename);
-	modelData = LoadObjFile("./resources", "plane.gltf");
+	modelData = LoadObjFile(directoryPath, filename);
+	/*modelData = LoadObjFile("./resources", "plane.gltf");*/
 
 	// 頂点データ・インデックスデータの作成
 	CreateBufferResource();

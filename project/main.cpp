@@ -4,24 +4,11 @@
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
-	Application* game = new Application();
+	KHFramework* game = new Application();
 
-	// ゲームの初期化
-	game->Initialize();
+	game->Run();
 
-	while (true) {
-		// 毎フレーム処理
-		game->Update();
-
-		// ゲーム終了要求が来ていたらループを抜ける
-		if (game->IsEndRequest()) {
-			break;
-		}
-
-		game->Draw();
-	}
-
-	game->Finalize();
+	delete game;
 
 	return 0;
 }

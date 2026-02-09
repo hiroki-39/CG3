@@ -1,95 +1,88 @@
 ﻿#pragma once
-
-#include <vector>
-#include <random>
 #include <cstdint>
+#include <memory>
 
 #include "KHEngine/Core/OS/WinApp.h"
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 #include "KHEngine/Input/Input.h"
+#include "KHEngine/Debug/Imgui/ImGuiManager.h"
+
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
 #include "KHEngine/Graphics/3d/Object/Object3dCommon.h"
-#include "KHEngine/Graphics/2d/Sprite.h"
-#include "KHEngine/Graphics/3d/Object/Object3d.h"
-#include "KHEngine/Sound/Core/Sound.h"
+#include "KHEngine/Graphics/3d/Model/ModelManager.h"
+#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
+#include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 #include "KHEngine/Sound/Core/SoundManager.h"
-#include "KHEngine/Debug/Imgui/ImGuiManager.h"
 
 class KHFramework
 {
-public: // メンバ関数
-	
-	virtual ~KHFramework() = default;
+public:
+    virtual ~KHFramework() = default;
 
-	/// <summary>
-	/// 初期化処理
-	/// </summary>
-	virtual void Initialize();
+    /// <summary>
+    /// フレームワーク実行
+    /// </summary>
+    void Run();
 
-	/// <summary>
-	/// 終了処理
-	/// </summary>
-	virtual void Finalize();
+protected:
 
-	/// <summary>
-	/// 毎フレーム更新処理
-	/// </summary>
-	virtual void Update();
+    /// <summary>
+    /// ゲーム初期化
+    /// </summary>
+    virtual void Initialize() {}
 
-	/// <summary>
-	/// 描画処理
-	/// </summary>
-	virtual void Draw() = 0;
+    /// <summary>
+    /// ゲーム更新
+    /// </summary>
+    virtual void Update() {}
 
-	void Run();
+    /// <summary>
+    /// ゲーム描画
+    /// </summary>
+    virtual void Draw() = 0;
 
-	// 終了チェック
-	virtual bool IsEndRequest() { return endRequst_; };
+    /// <summary>
+    /// ゲーム終了処理
+    /// </summary>
+    virtual void Finalize() {}
 
-protected: // フレームワーク共通で使うメンバ（派生クラスから利用可能）
-	// windowsアプリケーションのポインタ
-	WinApp* winApp = nullptr;
+protected:
 
-	// DirectX共通部分のポインタ
-	DirectXCommon* dxCommon = nullptr;
+    WinApp* winApp_ = nullptr;
 
-	// 入力のポインタ
-	Input* input = nullptr;
+    DirectXCommon* dxCommon_ = nullptr;
+    
+    Input* input_ = nullptr;
+    
+    ImGuiManager* imguiManager_ = nullptr;
 
-	// スプライトの共通部分のポインタ
-	SpriteCommon* spriteCommon = nullptr;
+    SpriteCommon* spriteCommon_ = nullptr;
+    
+    Object3dCommon* object3dCommon_ = nullptr;
+    
+    SrvManager* srvManager_ = nullptr;
 
-	// 3Dオブジェクトの共通部分のポインタ
-	Object3dCommon* object3dCommon = nullptr;
+    // フレーム関連設定（デフォルト 60fps）
+    float kDeltaTime_ = 1.0f / 60.0f;
 
-	// スプライト配列
-	std::vector<Sprite*> sprites;
-
-	// 3Dモデルインスタンス配列
-	std::vector<Object3d*> modelInstances;
-
-	// SRVマネージャー
-	SrvManager* srvManager = nullptr;
-
-	// 再生用オブジェクト（簡易）
-	Sound sound;
-
-	// サウンドデータ
-	SoundManager::SoundData SoundData = {};
-
-	// ImGuiマネージャー
-	ImGuiManager* imguiManager = nullptr;
-
-	// フレーム時間（60fps 固定想定）
-	const float kDeltaTime = 1.0f / 60.0f;
-
-	// 乱数生成器の初期化
-	std::random_device seedGenerator;
-	std::mt19937 randomEngine{ seedGenerator() };
+    // 終了要求
+    bool endRequest_ = false;
 
 private:
+    // ===== Framework 内部処理 =====
+    void FrameworkInitialize();
+    void FrameworkUpdate(float deltaTime);
+    void FrameworkDrawBegin();
+    void FrameworkDrawEnd();
+    void FrameworkFinalize();
 
-	// ゲーム終了要求フラグ
-	bool endRequst_ = false;
+    // ------- ヘルパー -------
+
+    // エンジンサブシステムの初期化／終了（Application ではなく Framework が責務）
+    void InitializeEngineSubsystems();
+    void FinalizeEngineSubsystems();
+
+    // 1フレームの描画前後の共通処理（dxCommon の Pre/Post と ImGui の Begin/End をまとめる）
+    void BeginFrameCommon();
+    void EndFrameCommon();
 };
-

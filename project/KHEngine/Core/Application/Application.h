@@ -11,9 +11,10 @@
 #include "KHEngine/Graphics/3d/Particle/ParticleSystem.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleRenderer.h"
 #include "KHEngine/Sound/Core/SoundManager.h"
+#include "KHEngine/Core/Framework/KHFramework.h"
 #include <random>
 
-class Application
+class Application : public KHFramework
 {
 public:
 
@@ -32,38 +33,24 @@ public:
 	/// <summary>
 	/// 初期化
 	/// </summary>
-	void Initialize();
+	void Initialize() override;
 
 	/// <summary>
 	/// 終了処理
 	/// </summary>
-	void Finalize();
+	void Finalize() override;
 
 	/// <summary>
 	/// 毎フレーム更新処理
 	/// </summary>
-	void Update();
+	void Update() override;
 
 	/// <summary>
 	/// 描画処理
 	/// </summary>
-	void Draw();
-
-	/// <summary>
-	/// ゲーム終了要求の取得
-	/// </summary>
-	bool IsEndRequest() const { return endRequst_; }
+	void Draw() override;
 
 private:
-
-	// windowsアプリケーションのポインタ
-	WinApp* winApp = nullptr;
-
-	// DirectX共通部分のポインタ
-	DirectXCommon* dxCommon = nullptr;
-
-	// 入力のポインタ
-	Input* input = nullptr;
 
 	// スプライトの共通部分のポインタ
 	SpriteCommon* spriteCommon = nullptr;
@@ -88,9 +75,6 @@ private:
 
 	// パーティクルシステム
 	ParticleSystem particleSystem;
-
-	// ImGuiマネージャー
-	ImGuiManager* imguiManager = nullptr;
 
 	// GPU用パーティクルインスタンス配列
 	ParticleForGPU* instancingData = nullptr;
