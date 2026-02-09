@@ -6,13 +6,14 @@
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 #include "KHEngine/Input/Input.h"
 #include "KHEngine/Debug/Imgui/ImGuiManager.h"
-
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
 #include "KHEngine/Graphics/3d/Object/Object3dCommon.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 #include "KHEngine/Sound/Core/SoundManager.h"
+#include "KHEngine/Scene/SceneFactory.h"
+#include "KHEngine/Scene/AbstractSceneFactory.h"
 
 class KHFramework
 {
@@ -67,6 +68,11 @@ protected:
 
     // 終了要求
     bool endRequest_ = false;
+
+private:
+
+    // シーンファクトリー
+	AbstractSceneFactory* sceneFactory_ = nullptr;
 
 private:
     // ===== Framework 内部処理 =====

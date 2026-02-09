@@ -6,6 +6,8 @@
 #include "KHEngine/Core/Framework/KHFramework.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Scene/SceneManager.h"
+#include "KHEngine/Scene/AbstractSceneFactory.h"
+#include "KHEngine/Scene/SceneFactory.h"
 
 class Application : public KHFramework
 {
@@ -35,4 +37,7 @@ public:
 private:
     // シーン管理器
     SceneManager* sceneManager_ = nullptr;
+
+    // シーンファクトリー（抽象型で保持）
+    AbstractSceneFactory* sceneFactory_ = nullptr;
 };

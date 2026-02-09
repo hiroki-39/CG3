@@ -5,7 +5,7 @@
 #include "KHEngine/Core/Utility/Log/Logger.h"
 #include "KHEngine/Core/Utility/Crash/CrashDump.h"
 #include "KHEngine/Core/Services/EngineServices.h"
-#include "KHEngine/Scene/TitleScene.h"
+#include "KHEngine/Scene/SceneFactory.h"
 
 // 初期化
 void Application::Initialize()
@@ -22,12 +22,18 @@ void Application::Initialize()
     services->SetInput(input_);
     services->SetImGuiManager(imguiManager_);
 
-    // シーンマネージャーの生成と初期シーン予約
+    // シーンマネージャーとシーンファクトリーの生成と初期設定
+    sceneFactory_ = new SceneFactory();
+    services->SetSceneFactory(sceneFactory_);
+
+    // SceneManager を生成してファクトリーを設定
     sceneManager_ = new SceneManager();
-    sceneManager_->SetNextScene(new TitleScene());
+    sceneManager_->SetSceneFactory(sceneFactory_);
+
+    // 起動時はタイトルシーンを予約してから Update を呼ぶ
+    sceneManager_->ChangeScene("TITLE");
 
     // 予約された初期シーンを即時切替・初期化する
-    // （元の実装は Initialize 内で Scene_->Initialize() を呼んでいたため同等にする）
     if (sceneManager_)
     {
         sceneManager_->Update();
@@ -37,11 +43,18 @@ void Application::Initialize()
 // 終了処理
 void Application::Finalize()
 {
-    // シーンマネージャーを破棄すると内部で現在シーンの Finalize/Delete を行う
+    // シーンマネージーの破棄（内部で現在シーンの Finalize/Delete を行う）
     if (sceneManager_)
     {
         delete sceneManager_;
         sceneManager_ = nullptr;
+    }
+
+    // シーンファクトリーの破棄
+    if (sceneFactory_)
+    {
+        delete sceneFactory_;
+        sceneFactory_ = nullptr;
     }
 
     // 基底クラスの終了処理

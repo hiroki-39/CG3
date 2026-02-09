@@ -6,6 +6,8 @@
 #include "KHEngine/Input/Input.h"
 #include "KHEngine/Debug/Imgui/ImGuiManager.h"
 
+class AbstractSceneFactory;
+
 class EngineServices
 {
 public:
@@ -21,6 +23,10 @@ public:
 	void SetSpriteCommon(SpriteCommon* sprite) { spriteCommon_ = sprite; }
 	void SetInput(Input* input) { input_ = input; }
 	void SetImGuiManager(ImGuiManager* imgui) { imguiManager_ = imgui; }
+
+	// シーンファクトリーの Setter/Getter を追加
+	void SetSceneFactory(AbstractSceneFactory* factory) { sceneFactory_ = factory; }
+	AbstractSceneFactory* GetSceneFactory() const { return sceneFactory_; }
 
 	Object3dCommon* GetObject3dCommon() const { return object3dCommon_; }
 	DirectXCommon* GetDirectXCommon() const { return dxCommon_; }
@@ -40,4 +46,7 @@ private:
 	SpriteCommon* spriteCommon_ = nullptr;
 	Input* input_ = nullptr;
 	ImGuiManager* imguiManager_ = nullptr;
+
+	// 追加: シーンファクトリー参照
+	AbstractSceneFactory* sceneFactory_ = nullptr;
 };

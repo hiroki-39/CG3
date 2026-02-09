@@ -5,9 +5,7 @@
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
 #include "KHEngine/Scene/SceneManager.h"
-#include "KHEngine/Scene/GamePlayScene.h"
 #include <limits>
-#include <Windows.h> // VK_RETURN
 
 void TitleScene::Initialize()
 {
@@ -58,18 +56,17 @@ void TitleScene::Update()
     // BaseScene のヘルパーで共通更新
     UpdateSprites();
 
-    // Enter が押されたら GamePlayScene へ遷移（トリガー検出）
+    // GamePlaySceneへ遷移（トリガー検出）
     auto services = Services();
     if (!services) return;
 
     auto input = services->GetInput();
     if (input && input->TriggerKey(DIK_SPACE))
     {
-        // SceneManager を取得して次シーンを予約
-        auto mgr = GetSceneManager();
-        if (mgr)
+        auto sceneManager = GetSceneManager();
+        if (sceneManager)
         {
-            mgr->SetNextScene(new GamePlayScene());
+            sceneManager->ChangeScene("GAMEPLAY");
         }
     }
 }

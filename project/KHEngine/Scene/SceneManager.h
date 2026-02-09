@@ -1,5 +1,6 @@
 #pragma once
 #include "KHEngine/Core/Framework/BaseScene.h"
+#include "KHEngine/Scene/AbstractSceneFactory.h"
 
 class SceneManager
 {
@@ -11,12 +12,20 @@ public:
 
 	void Draw();
 
-	// 次シーン予約
-	void SetNextScene(BaseScene* NextScene) { nextScene_ = NextScene; }
+	/// <summary>
+	/// 次のシーン予約
+	/// </summary>
+	/// <param name="sceneName">シーン名</param>
+	void ChangeScene(const std::string& sceneName);
+
+	// シーンファクトリーのSetter
+	void SetSceneFactory(AbstractSceneFactory* factory) { sceneFactory_ = factory; }
 
 private:
 	// 次のシーン
 	BaseScene* nextScene_ = nullptr;
 	BaseScene* scene_ = nullptr;
+
+	AbstractSceneFactory* sceneFactory_ = nullptr;
 };
 
