@@ -137,7 +137,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)KHEngine\Graphics;$(ProjectDir)KHEngine\OS;$(ProjectDir)KHEngine\Utility\Log;$(ProjectDir)KHEngine\Utility\String;$(ProjectDir)KHEngine\Utility\Timer;$(ProjectDir)KHEngine\Debug\Imgui;$(ProjectDir)KHEngine\Graphics\2d;$(ProjectDir)KHEngine\Graphics\3d\Camera;$(ProjectDir)KHEngine\Graphics\3d\Model;$(ProjectDir)KHEngine\Graphics\3d\Object;$(ProjectDir)KHEngine\Graphics\3d\Particle;$(ProjectDir)KHEngine\Graphics\Billboard;$(ProjectDir)KHEngine\Graphics\Resource\Descriptor;$(ProjectDir)KHEngine\Graphics\Resource\Texture;$(ProjectDir)KHEngine\Input;$(ProjectDir)KHEngine\Math;$(ProjectDir)KHEngine\Sound\Core;$(SolutionDir)externals\DirectXTex;$(SolutionDir)externals\imgui;$(SolutionDir)externals\assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)KHEngine\Graphics;$(ProjectDir)KHEngine\OS;$(ProjectDir)KHEngine\Utility\Log;$(ProjectDir)KHEngine\Utility\String;$(ProjectDir)KHEngine\Utility\Timer;$(ProjectDir)KHEngine\Debug\Imgui;$(ProjectDir)KHEngine\Graphics\2d;$(ProjectDir)KHEngine\Graphics\3d\Camera;$(ProjectDir)KHEngine\Graphics\3d\Model;$(ProjectDir)KHEngine\Graphics\3d\Object;$(ProjectDir)KHEngine\Graphics\3d\Particle;$(ProjectDir)KHEngine\Graphics\Billboard;$(ProjectDir)KHEngine\Graphics\Resource\Descriptor;$(ProjectDir)KHEngine\Graphics\Resource\Texture;$(ProjectDir)KHEngine\Input;$(ProjectDir)KHEngine\Math;$(ProjectDir)KHEngine\Sound\Core;$(SolutionDir)externals\DirectXTex;$(SolutionDir)externals\imgui;$(SolutionDir)externals\assimp\include;$(ProjectDir)KHEngine\Core\Framework;$(ProjectDir)KHEngine\Scene;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -212,6 +212,7 @@
     <ClCompile Include="KHEngine\Sound\Core\Sound.cpp" />
     <ClCompile Include="KHEngine\Sound\Core\SoundManager.cpp" />
     <ClCompile Include="KHEngine\Scene\TitleScene.cpp" />
+    <ClCompile Include="KHEngine\Scene\SceneManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="KHEngine\Core\Framework\BaseScene.h" />
@@ -263,6 +264,7 @@
     <ClInclude Include="KHEngine\Sound\Core\SoundManager.h" />
     <ClInclude Include="KHEngine\Core\Framework\KHFramework.h" />
     <ClInclude Include="KHEngine\Scene\TitleScene.h" />
+    <ClInclude Include="KHEngine\Scene\SceneManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

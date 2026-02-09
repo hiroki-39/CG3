@@ -5,6 +5,7 @@
 #include "KHEngine/Core/Utility/Log/Logger.h"
 #include "KHEngine/Core/Utility/Crash/CrashDump.h"
 #include "KHEngine/Core/Services/EngineServices.h"
+#include "KHEngine/Scene/TitleScene.h"
 
 // 初期化
 void Application::Initialize()
@@ -21,16 +22,27 @@ void Application::Initialize()
     services->SetInput(input_);
     services->SetImGuiManager(imguiManager_);
 
-    // ゲーム固有の初期化はシーンへ
-	Scene_ = new TitleScene();
-    Scene_->Initialize();
+    // シーンマネージャーの生成と初期シーン予約
+    sceneManager_ = new SceneManager();
+    sceneManager_->SetNextScene(new TitleScene());
+
+    // 予約された初期シーンを即時切替・初期化する
+    // （元の実装は Initialize 内で Scene_->Initialize() を呼んでいたため同等にする）
+    if (sceneManager_)
+    {
+        sceneManager_->Update();
+    }
 }
 
 // 終了処理
 void Application::Finalize()
 {
-    // シーン側の終了処理
-    Scene_->Finalize();
+    // シーンマネージャーを破棄すると内部で現在シーンの Finalize/Delete を行う
+    if (sceneManager_)
+    {
+        delete sceneManager_;
+        sceneManager_ = nullptr;
+    }
 
     // 基底クラスの終了処理
     KHFramework::Finalize();
@@ -42,8 +54,11 @@ void Application::Update()
     // 基底クラスの更新処理（フレーム開始・ImGui Begin 等を含む）
     KHFramework::Update();
 
-    // シーン更新
-    Scene_->Update();
+    // シーンマネージャー更新（シーンの Update を呼ぶ）
+    if (sceneManager_)
+    {
+        sceneManager_->Update();
+    }
 
     // ImGui の描画受付終了（Framework が Begin している想定）
     if (imguiManager_)
@@ -55,6 +70,9 @@ void Application::Update()
 // 描画処理
 void Application::Draw()
 {
-    // シーンがゲーム固有の描画を行う
-    Scene_->Draw();
+    // シーンマネージャーに描画を委譲
+    if (sceneManager_)
+    {
+        sceneManager_->Draw();
+    }
 }

@@ -4,9 +4,8 @@
 #include "KHEngine/Input/Input.h"
 #include "KHEngine/Debug/Imgui/ImGuiManager.h"
 #include "KHEngine/Core/Framework/KHFramework.h"
-#include "KHEngine/Scene/GamePlayScene.h"
-#include "KHEngine/Scene/TitleScene.h"
 #include "KHEngine/Core/Services/EngineServices.h"
+#include "KHEngine/Scene/SceneManager.h"
 
 class Application : public KHFramework
 {
@@ -34,6 +33,6 @@ public:
     void Draw() override;
 
 private:
-    // ゲーム固有処理は GamePlayScene に移譲
-   TitleScene* Scene_ = nullptr;
+    // シーン管理器
+    SceneManager* sceneManager_ = nullptr;
 };

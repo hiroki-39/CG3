@@ -3,6 +3,8 @@
 #include "KHEngine/Graphics/2d/Sprite.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 
+class SceneManager;
+
 class BaseScene
 {
 public:
@@ -17,9 +19,14 @@ public:
         ClearSprites();
     }
 
+    virtual void SetSceneManager(SceneManager* sceneManager) { sceneManager_ = sceneManager; }
+
+private:
+    SceneManager* sceneManager_ = nullptr;
+
 protected:
     // シーン共通データ（派生クラスからアクセス可能）
-	std::vector<Sprite*> sprites;
+    std::vector<Sprite*> sprites;
     bool isDisplaySprite = true;
     const float kDeltaTime_ = 1.0f / 60.0f;
 
@@ -57,4 +64,7 @@ protected:
     {
         return EngineServices::GetInstance();
     }
+
+    // 派生クラスが SceneManager にアクセスできるようにするアクセサを追加
+    SceneManager* GetSceneManager() const { return sceneManager_; }
 };

@@ -1,67 +1,87 @@
-﻿#include "TitleScene.h"
+﻿#define NOMINMAX
+#include "TitleScene.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
+#include "KHEngine/Graphics/2d/SpriteCommon.h"
+#include "KHEngine/Scene/SceneManager.h"
+#include "KHEngine/Scene/GamePlayScene.h"
+#include <limits>
+#include <Windows.h> // VK_RETURN
 
 void TitleScene::Initialize()
 {
-	// フレームワーク共通オブジェクト取得
-	auto services = EngineServices::GetInstance();
-	auto dxCommon = services->GetDirectXCommon();
-	auto srvManager = services->GetSrvManager();
-	auto spriteCommon = services->GetSpriteCommon();
-	auto texManager = TextureManager::GetInstance();
+    // Framework 共通オブジェクト取得（BaseScene のヘルパーを使用）
+    auto services = Services();
+    if (!services) return;
 
-	// テクスチャ読み込みバッチ開始
-	if (dxCommon) dxCommon->BeginTextureUploadBatch();
+    auto dxCommon = services->GetDirectXCommon();
+    auto spriteCommon = services->GetSpriteCommon();
+    auto texManager = TextureManager::GetInstance();
+    if (!texManager) return;
 
-	// モンスターボールを読み込む
-	texManager->LoadTexture("resources/monsterBall.png");
-	texManager->ExecuteUploadCommands();
+    // テクスチャ読み込みバッチ開始（DirectXCommon があれば）
+    if (dxCommon) dxCommon->BeginTextureUploadBatch();
 
-	// 生インデックス取得
-	uint32_t monsterTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/monsterBall.png");
+    // モンスターボールを読み込む
+    texManager->LoadTexture("resources/monsterBall.png");
+    texManager->ExecuteUploadCommands();
 
-	// 中間リソース解放
-	texManager->ClearIntermediateResources();
+    // 生インデックス取得（失敗チェック）
+    uint32_t monsterTex = texManager->GetTextureIndexByFilePath("resources/monsterBall.png");
+    // 取得に失敗した場合の保険（実際の失敗値に合わせて調整）
+    if (monsterTex == std::numeric_limits<uint32_t>::max())
+    {
+        // 中間リソースは解放して早期リターン
+        texManager->ClearIntermediateResources();
+        return;
+    }
 
-	// スプライト作成（中央に表示する例）
-	if (spriteCommon)
-	{
-		Sprite* s = new Sprite();
-		s->Initialize(spriteCommon, monsterTex);
-		// 画面中央付近に配置（必要なら位置は調整）
-		s->SetPosition(Vector2(400.0f, 300.0f));
-		s->SetSize(Vector2(256.0f, 256.0f));
-		s->SetAnchorPoint(Vector2(0.5f, 0.5f));
-		s->SetColor(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-		sprites.push_back(s);
-	}
+    // 中間リソース解放
+    texManager->ClearIntermediateResources();
+
+    // スプライト作成（spriteCommon が有効ならば追加）
+    if (spriteCommon)
+    {
+        Sprite* s = new Sprite();
+        s->Initialize(spriteCommon, monsterTex);
+        s->SetPosition(Vector2(400.0f, 300.0f));
+        s->SetSize(Vector2(256.0f, 256.0f));
+        s->SetAnchorPoint(Vector2(0.5f, 0.5f));
+        s->SetColor(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        AddSprite(s); // BaseScene のヘルパーを使用
+    }
 }
 
 void TitleScene::Update()
 {
-	// スプライト更新
-	for (auto s : sprites) if (s) s->Update();
+    // BaseScene のヘルパーで共通更新
+    UpdateSprites();
+
+    // Enter が押されたら GamePlayScene へ遷移（トリガー検出）
+    auto services = Services();
+    if (!services) return;
+
+    auto input = services->GetInput();
+    if (input && input->TriggerKey(DIK_SPACE))
+    {
+        // SceneManager を取得して次シーンを予約
+        auto mgr = GetSceneManager();
+        if (mgr)
+        {
+            mgr->SetNextScene(new GamePlayScene());
+        }
+    }
 }
 
 void TitleScene::Draw()
 {
-	auto services = EngineServices::GetInstance();
-	auto spriteCommon = services->GetSpriteCommon();
-
-	// スプライト共通設定
-	if (spriteCommon) spriteCommon->SetCommonDrawSetting();
-
-	// スプライトのみ描画
-	if (isDisplaySprite)
-	{
-		for (auto s : sprites) if (s) s->Draw();
-	}
+    // BaseScene のヘルパーで共通描画（内部で spriteCommon の設定を行う）
+    DrawSprites();
 }
 
 void TitleScene::Finalize()
 {
-	for (auto s : sprites) delete s;
-	sprites.clear();
+    // 必要なら派生で追加処理を行った上でベース処理を呼ぶ
+    BaseScene::Finalize();
 }
