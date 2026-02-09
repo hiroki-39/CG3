@@ -154,6 +154,8 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="KHEngine\Core\Services\EngineServices.cpp" />
+    <ClCompile Include="KHEngine\Scene\GamePlayScene.cpp" />
     <ClCompile Include="KHEngine\Core\Utility\Crash\CrashDump.cpp" />
     <ClCompile Include="KHEngine\Core\Application\Application.cpp" />
     <ClCompile Include="KHEngine\Graphics\Billboard\Billboard.cpp" />
@@ -210,6 +212,8 @@
     <ClCompile Include="KHEngine\Sound\Core\SoundManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="KHEngine\Core\Services\EngineServices.h" />
+    <ClInclude Include="KHEngine\Scene\GamePlayScene.h" />
     <ClInclude Include="KHEngine\Core\Utility\Crash\CrashDump.h" />
     <ClInclude Include="KHEngine\Core\Application\Application.h" />
     <ClInclude Include="KHEngine\Graphics\Billboard\Billboard.h" />
