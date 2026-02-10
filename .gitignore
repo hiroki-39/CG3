@@ -333,4 +333,7 @@ DirectXGame/imgui.ini
 # ImGui settings
 imgui.ini
 
+# Visual Studio debug symbols
+*.pdb
+
 
