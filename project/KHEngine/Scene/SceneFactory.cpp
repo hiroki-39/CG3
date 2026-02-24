@@ -1,20 +1,18 @@
 ﻿#include "SceneFactory.h"
 #include "KHEngine/Scene/TitleScene.h"
 #include "KHEngine/Scene/GamePlayScene.h"
+#include <memory>
 
-BaseScene* SceneFactory::CreateScene(const std::string& sceneName)
+std::unique_ptr<BaseScene> SceneFactory::CreateScene(const std::string& sceneName)
 {
-	// 次のシーンを生成
-	BaseScene* newScene = nullptr;
-
 	if (sceneName == "TITLE")
 	{
-		newScene = new TitleScene();
+		return std::make_unique<TitleScene>();
 	}
 	else if (sceneName == "GAMEPLAY")
 	{
-		newScene = new GamePlayScene();
+		return std::make_unique<GamePlayScene>();
 	}
 
-	return newScene;
+	return nullptr;
 }

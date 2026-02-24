@@ -54,20 +54,20 @@ void KHFramework::FrameworkInitialize()
     KHEngine::Core::Utility::Crash::CrashDump::Install();
 
     // --- Window ---
-    winApp_ = new WinApp();
+    winApp_ = std::make_unique<WinApp>();
     winApp_->Initialize();
 
     // --- DirectX ---
-    dxCommon_ = new DirectXCommon();
-    dxCommon_->Initialize(winApp_);
+    dxCommon_ = std::make_unique<DirectXCommon>();
+    dxCommon_->Initialize(winApp_.get());
 
     // --- Input ---
-    input_ = new Input();
-    input_->Initialize(winApp_);
+    input_ = std::make_unique<Input>();
+    input_->Initialize(winApp_.get());
 
     // --- ImGui ---
-    imguiManager_ = new ImGuiManager();
-    imguiManager_->Initialize(dxCommon_, winApp_);
+    imguiManager_ = std::make_unique<ImGuiManager>();
+    imguiManager_->Initialize(dxCommon_.get(), winApp_.get());
 
     // --- エンジンサブシステムの初期化 ---
     InitializeEngineSubsystems();
@@ -76,7 +76,7 @@ void KHFramework::FrameworkInitialize()
 void KHFramework::FrameworkUpdate(float /*deltaTime*/)
 {
     // Windows メッセージ処理
-    if (winApp_->ProcessMessage())
+    if (winApp_ && winApp_->ProcessMessage())
     {
         endRequest_ = true;
         return;
@@ -126,30 +126,26 @@ void KHFramework::FrameworkFinalize()
     if (imguiManager_)
     {
         imguiManager_->Finalize();
-        delete imguiManager_;
-        imguiManager_ = nullptr;
+        imguiManager_.reset();
     }
 
     // --- Input ---
     if (input_)
     {
-        delete input_;
-        input_ = nullptr;
+        input_.reset();
     }
 
     // --- DirectX ---
     if (dxCommon_)
     {
-        delete dxCommon_;
-        dxCommon_ = nullptr;
+        dxCommon_.reset();
     }
 
     // --- Window ---
     if (winApp_)
     {
         winApp_->Finalize();
-        delete winApp_;
-        winApp_ = nullptr;
+        winApp_.reset();
     }
 
     // クラッシュダンプ解除
@@ -170,23 +166,23 @@ void KHFramework::InitializeEngineSubsystems()
     srvManager_ = SrvManager::GetInstance();
     if (srvManager_ && dxCommon_)
     {
-        srvManager_->Initialize(dxCommon_);
+        srvManager_->Initialize(dxCommon_.get());
         // DirectXCommon に SRV 管理者を登録（必要なら）
         dxCommon_->RegisterSrvManager(srvManager_);
     }
 
     // Model 共通 / モデルマネージャ初期化
-    ModelManager::GetInstance()->Initialize(dxCommon_);
+    ModelManager::GetInstance()->Initialize(dxCommon_.get());
 
     // SpriteCommon / Object3dCommon の初期化（描画設定や共通リソース）
-    spriteCommon_ = new SpriteCommon();
-    spriteCommon_->Initialize(dxCommon_);
+    spriteCommon_ = std::make_unique<SpriteCommon>();
+    spriteCommon_->Initialize(dxCommon_.get());
 
-    object3dCommon_ = new Object3dCommon();
-    object3dCommon_->Initialize(dxCommon_);
+    object3dCommon_ = std::make_unique<Object3dCommon>();
+    object3dCommon_->Initialize(dxCommon_.get());
 
     // TextureManager 初期化（SrvManager を渡す）
-    TextureManager::GetInstance()->Initialize(dxCommon_, srvManager_);
+    TextureManager::GetInstance()->Initialize(dxCommon_.get(), srvManager_);
 
     // SoundManager 初期化
     SoundManager::GetInstance()->Initialize();
@@ -203,21 +199,18 @@ void KHFramework::FinalizeEngineSubsystems()
     // SpriteCommon / Object3dCommon の解放（確保順の逆で安全に）
     if (spriteCommon_)
     {
-        delete spriteCommon_;
-        spriteCommon_ = nullptr;
+        spriteCommon_.reset();
     }
 
     if (object3dCommon_)
     {
-        delete object3dCommon_;
-        object3dCommon_ = nullptr;
+        object3dCommon_.reset();
     }
 
     // SRVマネージャのファイナライズ（シングルトンのFinalize）
     if (srvManager_)
     {
         srvManager_->Finalize();
-        // srvManager_ はシングルトンなので delete しない
         srvManager_ = nullptr;
     }
 
@@ -228,11 +221,9 @@ void KHFramework::FinalizeEngineSubsystems()
 void KHFramework::BeginFrameCommon()
 {
     // 使う予定があれば補助処理をここへ（現在は FrameworkUpdate で Begin を行っている）
-    // 将来的に BeginFrameCommon() を FrameworkUpdate() 内で呼ぶ設計に移せます。
 }
 
 void KHFramework::EndFrameCommon()
 {
     // 使う予定があれば補助処理をここへ（現在は FrameworkDrawEnd で Draw/PostDraw を行っている）
-    // 将来的に EndFrameCommon() を FrameworkDrawEnd() の内部で呼ぶ設計に移せます。
 }

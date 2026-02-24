@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <vector>
+#include <memory>
 #include "KHEngine/Graphics/2d/Sprite.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 
@@ -25,20 +26,20 @@ private:
     SceneManager* sceneManager_ = nullptr;
 
 protected:
-    // シーン共通データ（派生クラスからアクセス可能）
-    std::vector<Sprite*> sprites;
+    // シーン共通データ
+    std::vector<std::unique_ptr<Sprite>> sprites;
     bool isDisplaySprite = true;
     const float kDeltaTime_ = 1.0f / 60.0f;
 
-    // Sprite 管理ヘルパー
-    void AddSprite(Sprite* s)
+    // AddSprite: unique_ptr 受け取り版（所有権を明確化)
+    void AddSprite(std::unique_ptr<Sprite> s)
     {
-        if (s) sprites.push_back(s);
+        if (s) sprites.emplace_back(std::move(s));
     }
 
     void UpdateSprites()
     {
-        for (auto s : sprites) if (s) s->Update();
+        for (auto& s : sprites) if (s) s->Update();
     }
 
     void DrawSprites()
@@ -49,13 +50,13 @@ protected:
 
         if (isDisplaySprite)
         {
-            for (auto s : sprites) if (s) s->Draw();
+            for (auto& s : sprites) if (s) s->Draw();
         }
     }
 
     void ClearSprites()
     {
-        for (auto s : sprites) delete s;
+        // unique_ptr により自動解放
         sprites.clear();
     }
 

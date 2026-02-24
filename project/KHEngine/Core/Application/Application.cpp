@@ -6,6 +6,7 @@
 #include "KHEngine/Core/Utility/Crash/CrashDump.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Scene/SceneFactory.h"
+#include <memory>
 
 // 初期化
 void Application::Initialize()
@@ -15,20 +16,20 @@ void Application::Initialize()
 
     // フレームワークの共通オブジェクトを EngineServices に登録
     EngineServices* services = EngineServices::GetInstance();
-    services->SetObject3dCommon(object3dCommon_);
-    services->SetDirectXCommon(dxCommon_);
+    services->SetObject3dCommon(object3dCommon_.get());
+    services->SetDirectXCommon(dxCommon_.get());
     services->SetSrvManager(srvManager_);
-    services->SetSpriteCommon(spriteCommon_);
-    services->SetInput(input_);
-    services->SetImGuiManager(imguiManager_);
+    services->SetSpriteCommon(spriteCommon_.get());
+    services->SetInput(input_.get());
+    services->SetImGuiManager(imguiManager_.get());
 
     // シーンマネージャーとシーンファクトリーの生成と初期設定
-    sceneFactory_ = new SceneFactory();
-    services->SetSceneFactory(sceneFactory_);
+    sceneFactory_ = std::make_unique<SceneFactory>();
+    services->SetSceneFactory(sceneFactory_.get());
 
     // SceneManager を生成してファクトリーを設定
-    sceneManager_ = new SceneManager();
-    sceneManager_->SetSceneFactory(sceneFactory_);
+    sceneManager_ = std::make_unique<SceneManager>();
+    sceneManager_->SetSceneFactory(sceneFactory_.get());
 
     // 起動時はタイトルシーンを予約してから Update を呼ぶ
     sceneManager_->ChangeScene("TITLE");
@@ -46,15 +47,13 @@ void Application::Finalize()
     // シーンマネージーの破棄（内部で現在シーンの Finalize/Delete を行う）
     if (sceneManager_)
     {
-        delete sceneManager_;
-        sceneManager_ = nullptr;
+        sceneManager_.reset();
     }
 
     // シーンファクトリーの破棄
     if (sceneFactory_)
     {
-        delete sceneFactory_;
-        sceneFactory_ = nullptr;
+        sceneFactory_.reset();
     }
 
     // 基底クラスの終了処理

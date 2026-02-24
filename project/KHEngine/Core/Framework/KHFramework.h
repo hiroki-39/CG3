@@ -10,7 +10,6 @@
 #include "KHEngine/Graphics/3d/Object/Object3dCommon.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
-#include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 #include "KHEngine/Sound/Core/SoundManager.h"
 #include "KHEngine/Scene/SceneFactory.h"
 #include "KHEngine/Scene/AbstractSceneFactory.h"
@@ -49,17 +48,17 @@ protected:
 
 protected:
 
-    WinApp* winApp_ = nullptr;
+    std::unique_ptr<WinApp> winApp_ = nullptr;
 
-    DirectXCommon* dxCommon_ = nullptr;
+    std::unique_ptr<DirectXCommon> dxCommon_ = nullptr;
     
-    Input* input_ = nullptr;
+    std::unique_ptr<Input> input_ = nullptr;
     
-    ImGuiManager* imguiManager_ = nullptr;
+    std::unique_ptr<ImGuiManager> imguiManager_ = nullptr;
 
-    SpriteCommon* spriteCommon_ = nullptr;
+    std::unique_ptr<SpriteCommon> spriteCommon_ = nullptr;
     
-    Object3dCommon* object3dCommon_ = nullptr;
+    std::unique_ptr<Object3dCommon> object3dCommon_ = nullptr;
     
     SrvManager* srvManager_ = nullptr;
 
@@ -71,10 +70,6 @@ protected:
 
 private:
 
-    // シーンファクトリー
-	AbstractSceneFactory* sceneFactory_ = nullptr;
-
-private:
     // ===== Framework 内部処理 =====
     void FrameworkInitialize();
     void FrameworkUpdate(float deltaTime);
@@ -84,11 +79,11 @@ private:
 
     // ------- ヘルパー -------
 
-    // エンジンサブシステムの初期化／終了（Application ではなく Framework が責務）
+    // エンジンサブシステムの初期化／終了
     void InitializeEngineSubsystems();
     void FinalizeEngineSubsystems();
 
-    // 1フレームの描画前後の共通処理（dxCommon の Pre/Post と ImGui の Begin/End をまとめる）
+    // 1フレームの描画前後の共通処理
     void BeginFrameCommon();
     void EndFrameCommon();
 };
