@@ -8,6 +8,7 @@
 #include "KHEngine/Scene/SceneManager.h"
 #include "KHEngine/Scene/AbstractSceneFactory.h"
 #include "KHEngine/Scene/SceneFactory.h"
+#include <memory>
 
 class Application : public KHFramework
 {
@@ -35,9 +36,9 @@ public:
     void Draw() override;
 
 private:
-    // シーン管理器
-    SceneManager* sceneManager_ = nullptr;
+    // シーン管理器（所有を明示）
+    std::unique_ptr<SceneManager> sceneManager_ = nullptr;
 
-    // シーンファクトリー（抽象型で保持）
-    AbstractSceneFactory* sceneFactory_ = nullptr;
+    // シーンファクトリー（抽象型で保持、所有を明示）
+    std::unique_ptr<AbstractSceneFactory> sceneFactory_ = nullptr;
 };

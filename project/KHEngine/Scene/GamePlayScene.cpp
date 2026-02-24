@@ -11,6 +11,7 @@
 #include "KHEngine/Sound/Core/SoundManager.h"
 #include <algorithm>
 #include <random>
+#include <memory>
 
 void GamePlayScene::Initialize()
 {
@@ -22,13 +23,13 @@ void GamePlayScene::Initialize()
 	auto spriteCommon = services->GetSpriteCommon();
 
 	// カメラ作成（ゲーム固有）
-	camera = new Camera();
-	camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
-	camera->SetRotation({ 0.3f, 0.0f, 0.0f });
+	camera = std::make_unique<Camera>();
 	if (object3dCommon)
 	{
-		object3dCommon->SetDefaultCamera(camera);
+		object3dCommon->SetDefaultCamera(camera.get());
 	}
+	camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
+	camera->SetRotation({ 0.3f, 0.0f, 0.0f });
 
 	// アセット登録
 	ParticleManager::GetInstance()->RegisterQuad("quad", "resources/circle.png");
@@ -64,32 +65,32 @@ void GamePlayScene::Initialize()
 
 	// スプライト作成
 	{
-		Sprite* s = new Sprite();
+		auto s = std::make_unique<Sprite>();
 		s->Initialize(spriteCommon, uvCheckerTex);
 		s->SetPosition(Vector2(100.0f, 100.0f));
 		s->SetSize(Vector2(128.0f, 128.0f));
 		s->SetAnchorPoint(Vector2(0.5f, 0.5f));
 		s->SetColor(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-		sprites.push_back(s);
+		AddSprite(std::move(s));
 	}
 
 	// モデル作成
 	{
-		Object3d* obj = new Object3d();
+		auto obj = std::make_unique<Object3d>();
 		obj->Initialize(object3dCommon);
 		obj->SetModel("monsterBall.obj");
 		obj->SetTranslate(Vector3(0.0f, 1.0f, -4.0f));
 		obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
 		obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
-		modelInstances.push_back(obj);
+		modelInstances.push_back(std::move(obj));
 
-		Object3d* terrain = new Object3d();
+		auto terrain = std::make_unique<Object3d>();
 		terrain->Initialize(object3dCommon);
 		terrain->SetModel("terrain.obj");
 		terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
 		terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
 		terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
-		modelInstances.push_back(terrain);
+		modelInstances.push_back(std::move(terrain));
 	}
 
 	Data = SoundManager::GetInstance()->SoundLoadFile("resources/bgm.mp3");
@@ -115,20 +116,14 @@ void GamePlayScene::Initialize()
 
 void GamePlayScene::Finalize()
 {
-	for (auto s : sprites) delete s;
+	// unique_ptr 管理なので明示的な delete は不要
 	sprites.clear();
-
-	for (auto obj : modelInstances) delete obj;
 	modelInstances.clear();
 
 	sound.Stop();
 	SoundManager::GetInstance()->SoundUnload(&Data);
 
-	if (camera)
-	{
-		delete camera;
-		camera = nullptr;
-	}
+	camera.reset();
 }
 
 void GamePlayScene::Update()
@@ -139,8 +134,8 @@ void GamePlayScene::Update()
 	// カメラ更新
 	if (camera) camera->Update();
 
-	for (auto model : modelInstances) model->Update();
-	for (auto sprite : sprites) sprite->Update();
+	for (auto& model : modelInstances) if (model) model->Update();
+	for (auto& sprite : sprites) if (sprite) sprite->Update();
 
 	if (input && input->TriggerKey(DIK_SPACE))
 	{
@@ -152,8 +147,8 @@ void GamePlayScene::Update()
 	Matrix4x4 viewMatrix = camera->GetViewMatrix();
 	Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
 
-	// ビルボード行列
-	Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera, useBillboard);
+	// ビルボード行列（Camera* を渡す）
+	Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera.get(), useBillboard);
 
 	if (update)
 	{
@@ -168,7 +163,8 @@ void GamePlayScene::Update()
     ImGui::Begin("Sprite");
     if (!sprites.empty())
     {
-        Sprite* s = sprites[0];
+        // unique_ptr から生ポインタを取得
+        Sprite* s = sprites[0].get();
 
         bool display = isDisplaySprite;
         if (ImGui::Checkbox("Display Sprite", &display))
@@ -210,7 +206,7 @@ void GamePlayScene::Update()
     ImGui::Begin("Model");
     if (!modelInstances.empty())
     {
-        Object3d* obj = modelInstances[0];
+        Object3d* obj = modelInstances[0].get();
         // Translate / Rotation / Scale
         Vector3 t = obj->GetTranslate();
         float tArr[3] = { t.x, t.y, t.z };
@@ -256,7 +252,7 @@ void GamePlayScene::Update()
             if (ImGui::Combo("Select Lighting Mode", &currentSelect, lightingNames, IM_ARRAYSIZE(lightingNames)))
             {
                 // 全インスタンスに反映
-                for (auto obj : modelInstances)
+                for (auto& obj : modelInstances)
                 {
                     if (!obj) continue;
                     Model* m = obj->GetModel();
@@ -320,7 +316,7 @@ void GamePlayScene::Update()
         ImGui::Separator();
         ImGui::Text("Model Lighting (first instance)");
 
-        Object3d* obj = modelInstances[0];
+        Object3d* obj = modelInstances[0].get();
 
         // Directional Light (個別)
         Vector4 lc = obj->GetDirectionalLightColor();
@@ -351,11 +347,11 @@ void GamePlayScene::Update()
             if (!dirEnabledGlobal)
             {
                 dirPrevIntensityGlobal = obj->GetDirectionalLightIntensity();
-                for (auto m : modelInstances) if (m) m->SetDirectionalLightIntensity(0.0f);
+                for (auto& m : modelInstances) if (m) m->SetDirectionalLightIntensity(0.0f);
             }
             else
             {
-                for (auto m : modelInstances) if (m) m->SetDirectionalLightIntensity(dirPrevIntensityGlobal);
+                for (auto& m : modelInstances) if (m) m->SetDirectionalLightIntensity(dirPrevIntensityGlobal);
             }
         }
 
@@ -387,11 +383,11 @@ void GamePlayScene::Update()
                 if (!pointLightEnabled)
                 {
                     prevPointIntensity = pointIntensity;
-                    for (auto m : modelInstances) if (m) m->SetPointLightIntensity(0.0f);
+                    for (auto& m : modelInstances) if (m) m->SetPointLightIntensity(0.0f);
                 }
                 else
                 {
-                    for (auto m : modelInstances) if (m) m->SetPointLightIntensity(prevPointIntensity);
+                    for (auto& m : modelInstances) if (m) m->SetPointLightIntensity(prevPointIntensity);
                 }
             }
         }
@@ -410,21 +406,21 @@ void GamePlayScene::Update()
         if (ImGui::ColorEdit4("Color", pcArr))
         {
             pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
-            for (auto m : modelInstances) if (m) m->SetPointLightColor(pointColor);
+            for (auto& m : modelInstances) if (m) m->SetPointLightColor(pointColor);
         }
 
         float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
         if (ImGui::DragFloat3("Position", ppArr, 0.05f, -100.0f, 100.0f))
         {
             pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
-            for (auto m : modelInstances) if (m) m->SetPointLightPosition(pointPosition);
+            for (auto& m : modelInstances) if (m) m->SetPointLightPosition(pointPosition);
         }
 
         if (ImGui::DragFloat("Intensity", &pointIntensity, 0.01f, 0.0f, 100.0f))
         {
             if (pointLightEnabled)
             {
-                for (auto m : modelInstances) if (m) m->SetPointLightIntensity(pointIntensity);
+                for (auto& m : modelInstances) if (m) m->SetPointLightIntensity(pointIntensity);
                 prevPointIntensity = pointIntensity;
             }
             else
@@ -435,11 +431,11 @@ void GamePlayScene::Update()
 
         if (ImGui::DragFloat("Radius", &pointRadius, 0.01f, 0.1f, 100.0f))
         {
-            for (auto m : modelInstances) if (m) m->SetPointLightRadius(pointRadius);
+            for (auto& m : modelInstances) if (m) m->SetPointLightRadius(pointRadius);
         }
         if (ImGui::DragFloat("Range(Decay)", &pointRange, 0.01f, 0.1f, 50.0f))
         {
-            for (auto m : modelInstances) if (m) m->SetPointLightDecry(pointRange);
+            for (auto& m : modelInstances) if (m) m->SetPointLightDecry(pointRange);
         }
 
 #if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
@@ -468,7 +464,7 @@ void GamePlayScene::Update()
         if (!spotInit && !modelInstances.empty())
         {
             // 初期値を最初のインスタンスから取得（存在すれば）
-            Object3d* o = modelInstances[0];
+            Object3d* o = modelInstances[0].get();
             spotColor = o->GetSpotLightColor();
             spotPosition = o->GetSpotLightPosition();
             spotDirection = o->GetSpotLightDirection();
@@ -487,11 +483,11 @@ void GamePlayScene::Update()
                 if (!spotLightEnabled)
                 {
                     prevSpotIntensity = spotIntensity;
-                    for (auto m : modelInstances) if (m) m->SetSpotLightIntensity(0.0f);
+                    for (auto& m : modelInstances) if (m) m->SetSpotLightIntensity(0.0f);
                 }
                 else
                 {
-                    for (auto m : modelInstances) if (m) m->SetSpotLightIntensity(prevSpotIntensity);
+                    for (auto& m : modelInstances) if (m) m->SetSpotLightIntensity(prevSpotIntensity);
                 }
             }
         }
@@ -512,7 +508,7 @@ void GamePlayScene::Update()
             if (ImGui::ColorEdit4("Spot Color", scArr))
             {
                 spotColor = Vector4(scArr[0], scArr[1], scArr[2], scArr[3]);
-                for (auto m : modelInstances) if (m) m->SetSpotLightColor(spotColor);
+                for (auto& m : modelInstances) if (m) m->SetSpotLightColor(spotColor);
             }
         }
 
@@ -522,7 +518,7 @@ void GamePlayScene::Update()
             if (ImGui::DragFloat3("Spot Position", spArr, 0.05f, -100.0f, 100.0f))
             {
                 spotPosition = Vector3(spArr[0], spArr[1], spArr[2]);
-                for (auto m : modelInstances) if (m) m->SetSpotLightPosition(spotPosition);
+                for (auto& m : modelInstances) if (m) m->SetSpotLightPosition(spotPosition);
             }
         }
 
@@ -532,7 +528,7 @@ void GamePlayScene::Update()
             if (ImGui::DragFloat3("Spot Direction", sdArr, 0.01f, -10.0f, 10.0f))
             {
                 spotDirection = Vector3(sdArr[0], sdArr[1], sdArr[2]);
-                for (auto m : modelInstances) if (m) m->SetSpotLightDirection(spotDirection);
+                for (auto& m : modelInstances) if (m) m->SetSpotLightDirection(spotDirection);
             }
         }
 
@@ -541,7 +537,7 @@ void GamePlayScene::Update()
         {
             if (spotLightEnabled)
             {
-                for (auto m : modelInstances) if (m) m->SetSpotLightIntensity(spotIntensity);
+                for (auto& m : modelInstances) if (m) m->SetSpotLightIntensity(spotIntensity);
                 prevSpotIntensity = spotIntensity;
             }
             else
@@ -553,17 +549,17 @@ void GamePlayScene::Update()
         // Distance / Decay
         if (ImGui::DragFloat("Spot Distance", &spotDistance, 0.1f, 0.0f, 10000.0f))
         {
-            for (auto m : modelInstances) if (m) m->SetSpotLightDistance(spotDistance);
+            for (auto& m : modelInstances) if (m) m->SetSpotLightDistance(spotDistance);
         }
         if (ImGui::DragFloat("Spot Decay", &spotDecay, 0.01f, 0.0f, 10.0f))
         {
-            for (auto m : modelInstances) if (m) m->SetSpotLightDecay(spotDecay);
+            for (auto& m : modelInstances) if (m) m->SetSpotLightDecay(spotDecay);
         }
 
         // Angle (deg)
         if (ImGui::SliderFloat("Spot Angle (deg)", &spotAngleDeg, 1.0f, 90.0f))
         {
-            for (auto m : modelInstances) if (m) m->SetSpotLightAngleDeg(spotAngleDeg);
+            for (auto& m : modelInstances) if (m) m->SetSpotLightAngleDeg(spotAngleDeg);
         }
 
 #if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
@@ -654,7 +650,7 @@ void GamePlayScene::Update()
         }
     }
 
-    // 初期パーティクルの再生成（任意）
+    // 初期パーティクルの再生成
     if (ImGui::Button("Recreate Initial Particles"))
     {
         particleSystem.AddInitialParticles(randomEngine, kNumMaxInstance);
@@ -674,13 +670,13 @@ void GamePlayScene::Draw()
 
 	if (object3dCommon) object3dCommon->SetCommonDrawSetting();
 
-	for (auto model : modelInstances) model->Draw();
+	for (auto& model : modelInstances) if (model) model->Draw();
 
 	if (spriteCommon) spriteCommon->SetCommonDrawSetting();
 
 	if (isDisplaySprite)
 	{
-		for (auto sprite : sprites) sprite->Draw();
+		for (auto& sprite : sprites) if (sprite) sprite->Draw();
 	}
 
 	particleRenderer.Draw(numInstance, particleSrvIndex, currentBlendModeIndex);

@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include "KHEngine/Core/Framework/BaseScene.h"
 #include "KHEngine/Scene/AbstractSceneFactory.h"
 
@@ -23,9 +24,11 @@ public:
 
 private:
 	// 次のシーン
-	BaseScene* nextScene_ = nullptr;
-	BaseScene* scene_ = nullptr;
+	std::unique_ptr<BaseScene> nextScene_ = nullptr;
+	// 現在のシーン
+	std::unique_ptr<BaseScene> scene_ = nullptr;
 
+	// シーンファクトリーは所有しない
 	AbstractSceneFactory* sceneFactory_ = nullptr;
 };
 

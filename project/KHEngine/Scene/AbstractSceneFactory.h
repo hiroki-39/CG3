@@ -1,11 +1,12 @@
 ﻿#pragma once
-#include "KHEngine/Core/Framework/BaseScene.h"
+#include <memory>
 #include <string>
+#include "KHEngine/Core/Framework/BaseScene.h"
 
 class AbstractSceneFactory
 {
 public:
 	virtual ~AbstractSceneFactory() = default;
-	virtual BaseScene* CreateScene(const std::string& sceneName) = 0;
+	virtual std::unique_ptr<BaseScene> CreateScene(const std::string& sceneName) = 0;
 };
 

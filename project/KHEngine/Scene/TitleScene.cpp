@@ -6,6 +6,7 @@
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
 #include "KHEngine/Scene/SceneManager.h"
 #include <limits>
+#include <memory>
 
 void TitleScene::Initialize()
 {
@@ -41,13 +42,13 @@ void TitleScene::Initialize()
     // スプライト作成（spriteCommon が有効ならば追加）
     if (spriteCommon)
     {
-        Sprite* s = new Sprite();
+        auto s = std::make_unique<Sprite>();
         s->Initialize(spriteCommon, monsterTex);
         s->SetPosition(Vector2(400.0f, 300.0f));
         s->SetSize(Vector2(256.0f, 256.0f));
         s->SetAnchorPoint(Vector2(0.5f, 0.5f));
         s->SetColor(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-        AddSprite(s); // BaseScene のヘルパーを使用
+        AddSprite(std::move(s)); 
     }
 }
 

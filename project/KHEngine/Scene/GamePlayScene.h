@@ -35,12 +35,12 @@ public:
     void Finalize();
 
 private:
-    // ゲーム固有メンバ（BaseScene に移動した共通メンバは削除）
-    std::vector<Object3d*> modelInstances;
+    // ゲーム固有メンバ
+    std::vector<std::unique_ptr<Object3d>> modelInstances;
 
     Sound sound;
 
-    Camera* camera = nullptr;
+    std::unique_ptr<Camera> camera;
 
     ParticleSystem particleSystem;
     ParticleForGPU* instancingData = nullptr;
