@@ -136,7 +136,7 @@ Model::ModelData Model::LoadObjFile(const std::string& directoryPath, const std:
 		//法線がないmeshは対応しない
 		assert(mesh->HasNormals());
 		//テクスチャ座標がないmeshは対応しない
-		assert(mash->hasTextureCoords(0));
+		assert(mesh->HasTextureCoords(0));
 
 		for (uint32_t faceINdex = 0; faceINdex < mesh->mNumFaces; ++faceINdex)
 		{
