@@ -75,6 +75,9 @@ public:
 
 private:
 
+	// シングルトンインスタンス（Finalizeで delete して nullptr に戻せるようにする）
+	static SrvManager* s_instance;
+
 	DirectXCommon* directXCommon = nullptr;
 
 	// SRV用のDescriptorSize
