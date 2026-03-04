@@ -35,9 +35,6 @@ public:
 
 private:
 
-	// シングルトンインスタンス
-	static ModelManager* instance_;
-
 	// プライベートコンストラクタ
 	ModelManager() = default;
 
@@ -55,6 +52,7 @@ private: // メンバ変数
 	// モデルデータ
 	std::map<std::string, std::unique_ptr<Model>>models;
 	
-	ModelCommon* modelCommon = nullptr;
+	// ModelCommon をスマートポインタで管理
+	std::unique_ptr<ModelCommon> modelCommon = nullptr;
 };
 
