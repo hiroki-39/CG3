@@ -40,7 +40,10 @@ void GamePlayScene::Initialize()
 	auto texManager = TextureManager::GetInstance();
 	dxCommon->BeginTextureUploadBatch();
 
+	// モデル読み込み
 	ModelManager::GetInstance()->LoadModel("plane.obj");
+    ModelManager::GetInstance()->LoadModel("Cube.obj");
+    ModelManager::GetInstance()->LoadModel("monsterBall.obj");
 	ModelManager::GetInstance()->LoadModel("terrain.obj");
 
 	// スプライト用テクスチャ読み込み
@@ -48,6 +51,7 @@ void GamePlayScene::Initialize()
 	texManager->LoadTexture("resources/monsterBall.png");
 	texManager->LoadTexture("resources/checkerBoard.png");
 	texManager->LoadTexture("resources/circle.png");
+    texManager->LoadTexture("resources/Cube.png");
 
 	texManager->ExecuteUploadCommands();
 
@@ -78,7 +82,7 @@ void GamePlayScene::Initialize()
 	{
 		auto obj = std::make_unique<Object3d>();
 		obj->Initialize(object3dCommon);
-		obj->SetModel("monsterBall.obj");
+		obj->SetModel("Cube.obj");
 		obj->SetTranslate(Vector3(0.0f, 1.0f, -4.0f));
 		obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
 		obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
@@ -265,22 +269,20 @@ void GamePlayScene::Update()
     ImGui::End();
 
 
-    // --- Camera & Light ウィンドウ ---
-    ImGui::Begin("Camera & Light");
-    // Camera
+    // --- Camera ウィンドウ (分離) ---
+    ImGui::Begin("Camera");
+    if (camera)
     {
-        ImGui::Separator();
-        ImGui::Text("Camera");
         Vector3& camPosRef = camera->GetTranslate();
         float camPosArr[3] = { camPosRef.x, camPosRef.y, camPosRef.z };
-        if (ImGui::DragFloat3("Cam Translate", camPosArr, 0.1f))
+        if (ImGui::DragFloat3("Translate", camPosArr, 0.1f))
         {
             camera->SetTranslate(Vector3(camPosArr[0], camPosArr[1], camPosArr[2]));
         }
 
         Vector3& camRotRef = camera->GetRotation();
         float camRotArr[3] = { camRotRef.x, camRotRef.y, camRotRef.z };
-        if (ImGui::DragFloat3("Cam Rotation", camRotArr, 0.1f))
+        if (ImGui::DragFloat3("Rotation", camRotArr, 0.1f))
         {
             camera->SetRotation(Vector3(camRotArr[0], camRotArr[1], camRotArr[2]));
         }
@@ -309,80 +311,118 @@ void GamePlayScene::Update()
             camera->SetFarClip(farC);
         }
     }
+    ImGui::End();
 
-    // Light
+
+    // --- Light ウィンドウ (モデルが使っているライトのみ表示) ---
+    ImGui::Begin("Light");
     if (!modelInstances.empty())
     {
-        ImGui::Separator();
-        ImGui::Text("Model Lighting (first instance)");
+        Object3d* firstObj = modelInstances[0].get();
+        Model* sampleModel = firstObj ? firstObj->GetModel() : nullptr;
+        int lightingMode = sampleModel ? sampleModel->GetSelectLightings() : 0;
 
-        Object3d* obj = modelInstances[0].get();
+        // ヘルパー: ライティングモードがどのライトを使うか
+        auto usesDirectional = [](int mode) {
+            return mode == 1 || mode == 2 || mode == 3 || mode == 4;
+        };
+        auto usesPoint = [](int mode) {
+            return mode == 4;
+        };
+        auto usesSpot = [](int mode) {
+            return mode == 5;
+        };
 
-        // Directional Light (個別)
-        Vector4 lc = obj->GetDirectionalLightColor();
-        float lcArr[4] = { lc.x, lc.y, lc.z, lc.w };
-        if (ImGui::ColorEdit4("Directional Color", lcArr))
+        // Directional
+        if (usesDirectional(lightingMode))
         {
-            obj->SetDirectionalLightColor(Vector4(lcArr[0], lcArr[1], lcArr[2], lcArr[3]));
-        }
+            ImGui::Separator();
+            ImGui::Text("Directional Light");
 
-        Vector3 ld = obj->GetDirectionalLightDirection();
-        float ldArr[3] = { ld.x, ld.y, ld.z };
-        if (ImGui::DragFloat3("Directional Direction", ldArr, 0.01f, -10.0f, 10.0f))
-        {
-            obj->SetDirectionalLightDirection(Vector3(ldArr[0], ldArr[1], ldArr[2]));
-        }
+            static bool dirInit = false;
+            static Vector4 dirColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+            static Vector3 dirDirection = { 0.0f, -1.0f, 0.0f };
+            static float dirIntensity = 1.0f;
+            static bool dirEnabledGlobal = true;
+            static float dirPrevIntensityGlobal = 1.0f;
 
-        float lint = obj->GetDirectionalLightIntensity();
-        if (ImGui::DragFloat("Directional Intensity", &lint, 0.01f, 0.0f, 100.0f))
-        {
-            obj->SetDirectionalLightIntensity(lint);
-        }
-
-        // グローバル ON/OFF
-        static bool dirEnabledGlobal = true;
-        static float dirPrevIntensityGlobal = 1.0f;
-        if (ImGui::Checkbox("Enable Directional Light(global)", &dirEnabledGlobal))
-        {
-            if (!dirEnabledGlobal)
+            if (!dirInit)
             {
-                dirPrevIntensityGlobal = obj->GetDirectionalLightIntensity();
-                for (auto& m : modelInstances) if (m) m->SetDirectionalLightIntensity(0.0f);
+                dirColor = firstObj->GetDirectionalLightColor();
+                dirDirection = firstObj->GetDirectionalLightDirection();
+                dirIntensity = firstObj->GetDirectionalLightIntensity();
+                dirPrevIntensityGlobal = dirIntensity;
+                dirInit = true;
             }
-            else
+
+            float dcArr[4] = { dirColor.x, dirColor.y, dirColor.z, dirColor.w };
+            if (ImGui::ColorEdit4("Color##Dir", dcArr))
             {
-                for (auto& m : modelInstances) if (m) m->SetDirectionalLightIntensity(dirPrevIntensityGlobal);
+                dirColor = Vector4(dcArr[0], dcArr[1], dcArr[2], dcArr[3]);
+                for (auto& m : modelInstances) if (m) m->SetDirectionalLightColor(dirColor);
+            }
+
+            float ddArr[3] = { dirDirection.x, dirDirection.y, dirDirection.z };
+            if (ImGui::DragFloat3("Direction##Dir", ddArr, 0.01f, -10.0f, 10.0f))
+            {
+                dirDirection = Vector3(ddArr[0], ddArr[1], ddArr[2]);
+                for (auto& m : modelInstances) if (m) m->SetDirectionalLightDirection(dirDirection);
+            }
+
+            if (ImGui::DragFloat("Intensity##Dir", &dirIntensity, 0.01f, 0.0f, 100.0f))
+            {
+                if (dirEnabledGlobal)
+                {
+                    for (auto& m : modelInstances) if (m) m->SetDirectionalLightIntensity(dirIntensity);
+                    dirPrevIntensityGlobal = dirIntensity;
+                }
+                else
+                {
+                    dirPrevIntensityGlobal = dirIntensity;
+                }
+            }
+
+            if (ImGui::Checkbox("Enable Directional Light (global)", &dirEnabledGlobal))
+            {
+                if (!dirEnabledGlobal)
+                {
+                    for (auto& m : modelInstances) if (m) m->SetDirectionalLightIntensity(0.0f);
+                }
+                else
+                {
+                    for (auto& m : modelInstances) if (m) m->SetDirectionalLightIntensity(dirPrevIntensityGlobal);
+                }
             }
         }
 
-        ImGui::Separator();
-        ImGui::Text("Point Light");
-
-        static bool pointInit = false;
-        static Vector4 pointColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-        static Vector3 pointPosition = { 0.0f, 5.0f, 0.0f };
-        static float pointIntensity = 1.0f;
-        static float prevPointIntensity = 1.0f;
-        static float pointRadius = 1.0f;
-        static float pointRange = 10.0f;
-        static bool pointLightEnabled = true;
-
-        if (!pointInit && !modelInstances.empty())
+        // Point
+        if (usesPoint(lightingMode))
         {
-            pointColor = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-            pointPosition = modelInstances[0]->GetPointLightPosition();
-            pointIntensity = modelInstances[0]->GetPointLightIntensity();
-            prevPointIntensity = pointIntensity;
-            pointInit = true;
-        }
+            ImGui::Separator();
+            ImGui::Text("Point Light");
 
-        if (ImGui::Checkbox("Enable Point Light", &pointLightEnabled))
-        {
-            if (!modelInstances.empty())
+            static bool pointInit = false;
+            static Vector4 pointColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+            static Vector3 pointPosition = { 0.0f, 5.0f, 0.0f };
+            static float pointIntensity = 1.0f;
+            static float prevPointIntensity = 1.0f;
+            static float pointRadius = 1.0f;
+            static float pointRange = 10.0f;
+            static bool pointLightEnabled = true;
+
+            if (!pointInit && firstObj)
+            {
+                pointColor = firstObj->GetPointLightColor();
+                pointPosition = firstObj->GetPointLightPosition();
+                pointIntensity = firstObj->GetPointLightIntensity();
+                prevPointIntensity = pointIntensity;
+                pointInit = true;
+            }
+
+            if (ImGui::Checkbox("Enable Point Light", &pointLightEnabled))
             {
                 if (!pointLightEnabled)
                 {
-                    prevPointIntensity = pointIntensity;
                     for (auto& m : modelInstances) if (m) m->SetPointLightIntensity(0.0f);
                 }
                 else
@@ -390,99 +430,98 @@ void GamePlayScene::Update()
                     for (auto& m : modelInstances) if (m) m->SetPointLightIntensity(prevPointIntensity);
                 }
             }
-        }
 
 #if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-        ImGui::BeginDisabled(!pointLightEnabled);
+            ImGui::BeginDisabled(!pointLightEnabled);
 #else
-        if (!pointLightEnabled)
-        {
-            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-        }
+            if (!pointLightEnabled)
+            {
+                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            }
 #endif
 
-        float pcArr[4] = { pointColor.x, pointColor.y, pointColor.z, pointColor.w };
-        if (ImGui::ColorEdit4("Color", pcArr))
-        {
-            pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
-            for (auto& m : modelInstances) if (m) m->SetPointLightColor(pointColor);
-        }
-
-        float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
-        if (ImGui::DragFloat3("Position", ppArr, 0.05f, -100.0f, 100.0f))
-        {
-            pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
-            for (auto& m : modelInstances) if (m) m->SetPointLightPosition(pointPosition);
-        }
-
-        if (ImGui::DragFloat("Intensity", &pointIntensity, 0.01f, 0.0f, 100.0f))
-        {
-            if (pointLightEnabled)
+            float pcArr[4] = { pointColor.x, pointColor.y, pointColor.z, pointColor.w };
+            if (ImGui::ColorEdit4("Color##Point", pcArr))
             {
-                for (auto& m : modelInstances) if (m) m->SetPointLightIntensity(pointIntensity);
-                prevPointIntensity = pointIntensity;
+                pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
+                for (auto& m : modelInstances) if (m) m->SetPointLightColor(pointColor);
             }
-            else
-            {
-                prevPointIntensity = pointIntensity;
-            }
-        }
 
-        if (ImGui::DragFloat("Radius", &pointRadius, 0.01f, 0.1f, 100.0f))
-        {
-            for (auto& m : modelInstances) if (m) m->SetPointLightRadius(pointRadius);
-        }
-        if (ImGui::DragFloat("Range(Decay)", &pointRange, 0.01f, 0.1f, 50.0f))
-        {
-            for (auto& m : modelInstances) if (m) m->SetPointLightDecry(pointRange);
-        }
+            float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
+            if (ImGui::DragFloat3("Position##Point", ppArr, 0.05f, -100.0f, 100.0f))
+            {
+                pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
+                for (auto& m : modelInstances) if (m) m->SetPointLightPosition(pointPosition);
+            }
+
+            if (ImGui::DragFloat("Intensity##Point", &pointIntensity, 0.01f, 0.0f, 100.0f))
+            {
+                if (pointLightEnabled)
+                {
+                    for (auto& m : modelInstances) if (m) m->SetPointLightIntensity(pointIntensity);
+                    prevPointIntensity = pointIntensity;
+                }
+                else
+                {
+                    prevPointIntensity = pointIntensity;
+                }
+            }
+
+            if (ImGui::DragFloat("Radius##Point", &pointRadius, 0.01f, 0.1f, 100.0f))
+            {
+                for (auto& m : modelInstances) if (m) m->SetPointLightRadius(pointRadius);
+            }
+            if (ImGui::DragFloat("Range(Decay)##Point", &pointRange, 0.01f, 0.1f, 50.0f))
+            {
+                for (auto& m : modelInstances) if (m) m->SetPointLightDecry(pointRange);
+            }
 
 #if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-        ImGui::EndDisabled();
+            ImGui::EndDisabled();
 #else
-        if (!pointLightEnabled)
-        {
-            ImGui::PopItemFlag();
-            ImGui::PopStyleVar();
-        }
+            if (!pointLightEnabled)
+            {
+                ImGui::PopItemFlag();
+                ImGui::PopStyleVar();
+            }
 #endif
-        ImGui::Separator();
-        ImGui::Text("Spot Light");
-
-        static bool spotInit = false;
-        static Vector4 spotColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-        static Vector3 spotPosition = { 0.0f, 5.0f, 0.0f };
-        static Vector3 spotDirection = { 0.0f, -1.0f, 0.0f };
-        static float spotIntensity = 1.0f;
-        static float prevSpotIntensity = 1.0f;
-        static float spotDistance = 10.0f;
-        static float spotDecay = 1.0f;
-        static float spotAngleDeg = 45.0f;
-        static bool spotLightEnabled = true;
-
-        if (!spotInit && !modelInstances.empty())
-        {
-            // 初期値を最初のインスタンスから取得（存在すれば）
-            Object3d* o = modelInstances[0].get();
-            spotColor = o->GetSpotLightColor();
-            spotPosition = o->GetSpotLightPosition();
-            spotDirection = o->GetSpotLightDirection();
-            spotIntensity = o->GetSpotLightIntensity();
-            prevSpotIntensity = spotIntensity;
-            spotDistance = o->GetSpotLightDistance();
-            spotDecay = o->GetSpotLightDecay();
-            spotAngleDeg = o->GetSpotLightAngleDeg();
-            spotInit = true;
         }
 
-        if (ImGui::Checkbox("Enable Spot Light", &spotLightEnabled))
+        // Spot
+        if (usesSpot(lightingMode))
         {
-            if (!modelInstances.empty())
+            ImGui::Separator();
+            ImGui::Text("Spot Light");
+
+            static bool spotInit = false;
+            static Vector4 spotColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+            static Vector3 spotPosition = { 0.0f, 5.0f, 0.0f };
+            static Vector3 spotDirection = { 0.0f, -1.0f, 0.0f };
+            static float spotIntensity = 1.0f;
+            static float prevSpotIntensity = 1.0f;
+            static float spotDistance = 10.0f;
+            static float spotDecay = 1.0f;
+            static float spotAngleDeg = 45.0f;
+            static bool spotLightEnabled = true;
+
+            if (!spotInit && firstObj)
+            {
+                spotColor = firstObj->GetSpotLightColor();
+                spotPosition = firstObj->GetSpotLightPosition();
+                spotDirection = firstObj->GetSpotLightDirection();
+                spotIntensity = firstObj->GetSpotLightIntensity();
+                prevSpotIntensity = spotIntensity;
+                spotDistance = firstObj->GetSpotLightDistance();
+                spotDecay = firstObj->GetSpotLightDecay();
+                spotAngleDeg = firstObj->GetSpotLightAngleDeg();
+                spotInit = true;
+            }
+
+            if (ImGui::Checkbox("Enable Spot Light", &spotLightEnabled))
             {
                 if (!spotLightEnabled)
                 {
-                    prevSpotIntensity = spotIntensity;
                     for (auto& m : modelInstances) if (m) m->SetSpotLightIntensity(0.0f);
                 }
                 else
@@ -490,87 +529,93 @@ void GamePlayScene::Update()
                     for (auto& m : modelInstances) if (m) m->SetSpotLightIntensity(prevSpotIntensity);
                 }
             }
-        }
 
 #if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-        ImGui::BeginDisabled(!spotLightEnabled);
+            ImGui::BeginDisabled(!spotLightEnabled);
 #else
-        if (!spotLightEnabled)
-        {
-            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-        }
+            if (!spotLightEnabled)
+            {
+                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            }
 #endif
 
-        // Color
-        {
-            float scArr[4] = { spotColor.x, spotColor.y, spotColor.z, spotColor.w };
-            if (ImGui::ColorEdit4("Spot Color", scArr))
+            // Color
             {
-                spotColor = Vector4(scArr[0], scArr[1], scArr[2], scArr[3]);
-                for (auto& m : modelInstances) if (m) m->SetSpotLightColor(spotColor);
+                float scArr[4] = { spotColor.x, spotColor.y, spotColor.z, spotColor.w };
+                if (ImGui::ColorEdit4("Color##Spot", scArr))
+                {
+                    spotColor = Vector4(scArr[0], scArr[1], scArr[2], scArr[3]);
+                    for (auto& m : modelInstances) if (m) m->SetSpotLightColor(spotColor);
+                }
             }
-        }
 
-        // Position
-        {
-            float spArr[3] = { spotPosition.x, spotPosition.y, spotPosition.z };
-            if (ImGui::DragFloat3("Spot Position", spArr, 0.05f, -100.0f, 100.0f))
+            // Position
             {
-                spotPosition = Vector3(spArr[0], spArr[1], spArr[2]);
-                for (auto& m : modelInstances) if (m) m->SetSpotLightPosition(spotPosition);
+                float spArr[3] = { spotPosition.x, spotPosition.y, spotPosition.z };
+                if (ImGui::DragFloat3("Position##Spot", spArr, 0.05f, -100.0f, 100.0f))
+                {
+                    spotPosition = Vector3(spArr[0], spArr[1], spArr[2]);
+                    for (auto& m : modelInstances) if (m) m->SetSpotLightPosition(spotPosition);
+                }
             }
-        }
 
-        // Direction
-        {
-            float sdArr[3] = { spotDirection.x, spotDirection.y, spotDirection.z };
-            if (ImGui::DragFloat3("Spot Direction", sdArr, 0.01f, -10.0f, 10.0f))
+            // Direction
             {
-                spotDirection = Vector3(sdArr[0], sdArr[1], sdArr[2]);
-                for (auto& m : modelInstances) if (m) m->SetSpotLightDirection(spotDirection);
+                float sdArr[3] = { spotDirection.x, spotDirection.y, spotDirection.z };
+                if (ImGui::DragFloat3("Direction##Spot", sdArr, 0.01f, -10.0f, 10.0f))
+                {
+                    spotDirection = Vector3(sdArr[0], sdArr[1], sdArr[2]);
+                    for (auto& m : modelInstances) if (m) m->SetSpotLightDirection(spotDirection);
+                }
             }
-        }
 
-        // Intensity
-        if (ImGui::DragFloat("Spot Intensity", &spotIntensity, 0.01f, 0.0f, 100.0f))
-        {
-            if (spotLightEnabled)
+            // Intensity
+            if (ImGui::DragFloat("Intensity##Spot", &spotIntensity, 0.01f, 0.0f, 100.0f))
             {
-                for (auto& m : modelInstances) if (m) m->SetSpotLightIntensity(spotIntensity);
-                prevSpotIntensity = spotIntensity;
+                if (spotLightEnabled)
+                {
+                    for (auto& m : modelInstances) if (m) m->SetSpotLightIntensity(spotIntensity);
+                    prevSpotIntensity = spotIntensity;
+                }
+                else
+                {
+                    prevSpotIntensity = spotIntensity;
+                }
             }
-            else
+
+            // Distance / Decay
+            if (ImGui::DragFloat("Distance##Spot", &spotDistance, 0.1f, 0.0f, 10000.0f))
             {
-                prevSpotIntensity = spotIntensity;
+                for (auto& m : modelInstances) if (m) m->SetSpotLightDistance(spotDistance);
             }
-        }
+            if (ImGui::DragFloat("Decay##Spot", &spotDecay, 0.01f, 0.0f, 10.0f))
+            {
+                for (auto& m : modelInstances) if (m) m->SetSpotLightDecay(spotDecay);
+            }
 
-        // Distance / Decay
-        if (ImGui::DragFloat("Spot Distance", &spotDistance, 0.1f, 0.0f, 10000.0f))
-        {
-            for (auto& m : modelInstances) if (m) m->SetSpotLightDistance(spotDistance);
-        }
-        if (ImGui::DragFloat("Spot Decay", &spotDecay, 0.01f, 0.0f, 10.0f))
-        {
-            for (auto& m : modelInstances) if (m) m->SetSpotLightDecay(spotDecay);
-        }
-
-        // Angle (deg)
-        if (ImGui::SliderFloat("Spot Angle (deg)", &spotAngleDeg, 1.0f, 90.0f))
-        {
-            for (auto& m : modelInstances) if (m) m->SetSpotLightAngleDeg(spotAngleDeg);
-        }
+            // Angle (deg)
+            if (ImGui::SliderFloat("Angle (deg)##Spot", &spotAngleDeg, 1.0f, 90.0f))
+            {
+                for (auto& m : modelInstances) if (m) m->SetSpotLightAngleDeg(spotAngleDeg);
+            }
 
 #if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-        ImGui::EndDisabled();
+            ImGui::EndDisabled();
 #else
-        if (!spotLightEnabled)
-        {
-            ImGui::PopItemFlag();
-            ImGui::PopStyleVar();
-        }
+            if (!spotLightEnabled)
+            {
+                ImGui::PopItemFlag();
+                ImGui::PopStyleVar();
+            }
 #endif
+        }
+
+        // モデルがライトを使わない場合は何も表示されない（意図的）
+        if (!usesDirectional(lightingMode) && !usesPoint(lightingMode) && !usesSpot(lightingMode))
+        {
+            ImGui::TextWrapped("このモデルのライティングモードでは、編集可能なライトがありません。");
+        }
     }
     ImGui::End();
 

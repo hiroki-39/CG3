@@ -309,4 +309,7 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="KHEngine\Scene\GamePlayScene" />
+  </ItemGroup>
 </Project>

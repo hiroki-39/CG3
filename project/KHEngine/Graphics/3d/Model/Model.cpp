@@ -105,7 +105,7 @@ void Model::CreateMaterialResource()
 	materialData_->enableLighting = true;
 
 	//Lightingの種類の設定
-	materialData_->selectLightings = 4;
+	materialData_->selectLightings = 3;
 
 	//単位行列を書き込む
 	materialData_->uvTransform = Matrix4x4::Identity();
