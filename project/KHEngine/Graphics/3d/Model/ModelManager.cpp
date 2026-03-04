@@ -1,31 +1,27 @@
 ﻿#include "ModelManager.h"
 
-ModelManager* ModelManager::instance_ = nullptr;
-
-// シングルトンインスタンスの取得
+// シングルトンインスタンスの取得（Meyers singleton で new を排除）
 ModelManager* ModelManager::GetInstance()
 {
-	if (instance_ == nullptr)
-	{
-		instance_ = new ModelManager();
-	}
-	return instance_;
+	static ModelManager instance;
+	return &instance;
 }
 
-// 終了
+// 終了: シングルトン自体は破棄しない。内部リソースのみ解放する。
 void ModelManager::Finalize()
 {
-	if (instance_ != nullptr)
-	{
-		delete instance_;
-		instance_ = nullptr;
-	}
+	// 保持しているモデルを解放（unique_ptr により自動解放）
+	models.clear();
+
+	// ModelCommon を解放
+	modelCommon.reset();
 }
 
 // 初期化
 void ModelManager::Initialize(DirectXCommon* dxCommon)
 {
-	modelCommon = new ModelCommon();
+	// ModelCommon をスマートポインタで生成（new は使わない）
+	modelCommon = std::make_unique<ModelCommon>();
 	modelCommon->Initialize(dxCommon);
 }
 
@@ -40,7 +36,7 @@ void ModelManager::LoadModel(const std::string& filePath)
 
 	// モデルの生成とファイル読み込み、初期化
 	std::unique_ptr<Model> model = std::make_unique<Model>();
-	model->Initialize(modelCommon,"resources",filePath);
+	model->Initialize(modelCommon.get(),"resources",filePath);
 
 	// モデルをマップに格納
 	models.insert(std::make_pair(filePath, std::move(model)));

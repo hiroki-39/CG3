@@ -1,26 +1,23 @@
 ﻿#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 
-TextureManager* TextureManager::instance = nullptr;
-
 // UI表示用に 1 を足すための定数（内部は生インデックスを使う）
 uint32_t TextureManager::kSRVIndexTop = 1;
 
 
 TextureManager* TextureManager::GetInstance()
 {
-	if (instance == nullptr)
-	{
-		instance = new TextureManager();
-	}
-
-	return instance;
+	static TextureManager instance;
+	return &instance;
 }
 
 void TextureManager::Finalize()
 {
-	delete instance;
-	instance = nullptr;
+	// 内部リソースの解放（ComPtr とコンテナの自動管理に任せる）
+	textureDatas.clear();
+	textureIndexToFilePath.clear();
+	dxCommon_ = nullptr;
+	srvManager = nullptr;
 }
 
 void TextureManager::Initialize(DirectXCommon* dxCommon, SrvManager* srvManager)
@@ -46,7 +43,7 @@ void TextureManager::LoadTexture(const std::string& filePath)
 	}
 
 	// テクスチャ枚数上限チェック
-	assert(textureDatas.size() + 1 < DirectXCommon::kMaxSRVCount);
+	assert(textureDatas.size() + 1 < SrvManager::kMaxSRVCount);
 
 	// ファイルからテクスチャデータを読み込む
 	DirectX::ScratchImage image{};
@@ -119,6 +116,7 @@ void TextureManager::LoadTexture(const std::string& filePath)
 	// サブリソース情報を保存しておく（後でバッチ転送で使う）
 	textureData.subresources = std::move(subresources);
 
+	// image/mipImages の所有権を textureData.image に移動（明示的 Release は行わない）
 	textureData.image = std::move(mipImages);
 
 	dxCommon_->AddTextureUpload(textureData.resource, textureData.intermediateResource, textureData.subresources);
@@ -131,7 +129,7 @@ void TextureManager::ClearIntermediateResources()
 		// 中間リソースを解放
 		textureData.intermediateResource.Reset();
 		// ピクセルデータを解放
-		textureData.image.Release();
+		textureData.image = DirectX::ScratchImage();
 	}
 }
 

@@ -15,7 +15,8 @@ public://　メンバ関数
 
 private://　メンバ変数
 	
-	DirectXCommon* dxCommon_;
+	// 明示的に nullptr で初期化して安全にする
+	DirectXCommon* dxCommon_ = nullptr;
 
 };
 

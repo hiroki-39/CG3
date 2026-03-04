@@ -551,8 +551,8 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::compileshader(const std::wstring
 	//	filePath, profile)));
 
 	//hlslファイルを読む
-	IDxcBlobEncoding* shaderSource = nullptr;
-	HRESULT hr = dxcUtils->LoadFile(filePath.c_str(), nullptr, &shaderSource);
+	ComPtr<IDxcBlobEncoding> shaderSource;
+	HRESULT hr = dxcUtils->LoadFile(filePath.c_str(), nullptr, shaderSource.GetAddressOf());
 
 	//読めなかったら止める
 	assert(SUCCEEDED(hr));
@@ -576,12 +576,12 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::compileshader(const std::wstring
 	};
 
 	//実際にShaderをコンパイルする
-	IDxcResult* shaderResult = nullptr;
+	ComPtr<IDxcResult> shaderResult;
 	hr = dxcCompiler->Compile(
-		&shaderSourceBuffer, //読み込んだファイル
-		arguments,           //コンパイルオプション
-		_countof(arguments), //コンパイルオプションの数
-		includeHandler,      //includeが含まれた諸々
+		&shaderSourceBuffer, // 読み込んだファイル
+		arguments,           // コンパイルオプション
+		_countof(arguments), // コンパイルオプションの数
+		includeHandler.Get(),// ComPtrから生ポインタへ変換
 		IID_PPV_ARGS(&shaderResult)
 	);
 
@@ -589,7 +589,7 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::compileshader(const std::wstring
 	assert(SUCCEEDED(hr));
 
 	/* 3.警告・エラーが出ていないか確認する */
-	IDxcBlobUtf8* shaderError = nullptr;
+	ComPtr<IDxcBlobUtf8> shaderError;
 	shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
 	if (shaderError != nullptr && shaderError->GetStringLength() != 0)
 	{
@@ -601,18 +601,14 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::compileshader(const std::wstring
 
 	/* 4.Compile結果を受け取って返す */
 	//コンパイル結果から実行用バイナリ部分を取得
-	IDxcBlob* shaderBlob = nullptr;
+	ComPtr<IDxcBlob> shaderBlob;
 	hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
 	assert(SUCCEEDED(hr));
 
 	//成功したらログを出力
 	/*Log(os, ConvertString(std::format(L"Compile Succeded, path:{}, profile:{}\n", filePath, profile)));*/
 
-	//もう使わないソースの解放
-	shaderSource->Release();
-	shaderResult->Release();
-
-	//実行用バイナリ返却
+	// ComPtr を返す（自動で解放されるため明示的 Release は不要）
 	return shaderBlob;
 }
 

@@ -4,16 +4,11 @@
 
 const uint32_t SrvManager::kMaxSRVCount = 512;
 
-// シングルトン静的インスタンス定義
-SrvManager* SrvManager::s_instance = nullptr;
-
+// シングルトン取得（Meyers singleton）
 SrvManager* SrvManager::GetInstance()
 {
-	if (s_instance == nullptr)
-	{
-		s_instance = new SrvManager();
-	}
-	return s_instance;
+	static SrvManager instance;
+	return &instance;
 }
 
 void SrvManager::Finalize()
@@ -27,14 +22,6 @@ void SrvManager::Finalize()
 	descriptorSize = 0;
 	useIndex = 0;
 	freeList.clear();
-
-	// シングルトンを安全に破棄して nullptr に戻す
-	SrvManager* inst = SrvManager::s_instance;
-	if (inst)
-	{
-		SrvManager::s_instance = nullptr;
-		delete inst;
-	}
 }
 
 void SrvManager::Initialize(DirectXCommon* dxCommon)

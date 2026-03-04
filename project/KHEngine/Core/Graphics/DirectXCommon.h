@@ -223,12 +223,12 @@ private://メンバ変数
 	// シザー矩形
 	D3D12_RECT scissorRect{ };
 
-	// dxcCompiler
-	IDxcUtils* dxcUtils;
-	IDxcCompiler3* dxcCompiler;
+	// dxc 関連を ComPtr に変更（明示的な Release を避けるため）
+	Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils;
+	Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler;
 
 	// includeHandler
-	IDxcIncludeHandler* includeHandler;
+	Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler;
 
 	// TransitionBarrier
 	D3D12_RESOURCE_BARRIER barrier{};

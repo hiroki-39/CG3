@@ -93,9 +93,6 @@ private:
 	};
 
 
-	// シングルトンインスタンス
-	static TextureManager* instance;
-
 	// DirectXCommon
 	DirectXCommon* dxCommon_ = nullptr;
 
