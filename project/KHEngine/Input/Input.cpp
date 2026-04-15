@@ -4,7 +4,7 @@ using namespace Microsoft::WRL;
 
 void Input::Initialize(WinApp* winApp)
 {
-	/*--- キーボードの初期化 ---*/
+	/*--- 共通初期化 ---*/
 
 	//WindowAPIのポインタを受け取る
 	winApp_ = winApp;
@@ -31,19 +31,28 @@ void Input::Initialize(WinApp* winApp)
 
 #pragma endregion
 
-#pragma region "コントロール操作"
+#pragma region "マウス操作"
 
-	//キーボードデバイスの生成
-	result = directInput->CreateDevice(GUID_SysKeyboard, keyboard.GetAddressOf(), nullptr);
+	//マウスデバイスの生成
+	result = directInput->CreateDevice(GUID_SysMouse, &mouse, nullptr);
 	assert(SUCCEEDED(result));
 
-	//入力データ形式のセット
-	result = keyboard->SetDataFormat(&c_dfDIKeyboard);
+	//入力データ形式のセット（拡張マウス）
+	result = mouse->SetDataFormat(&c_dfDIMouse2);
 	assert(SUCCEEDED(result));
 
-	//排他制御レベルのセット
-	result = keyboard->SetCooperativeLevel(winApp_->GetHwnd(), DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
+	//排他制御レベルのセット（マウスは通常NONEXCLUSIVE）
+	result = mouse->SetCooperativeLevel(winApp_->GetHwnd(), DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 	assert(SUCCEEDED(result));
+
+#pragma endregion
+
+#pragma region "コントローラ初期化（XInput）"
+
+	// XInput は特別な初期化不要。接続確認だけ行う（0番コントローラを想定）
+	DWORD dwResult = XInputGetState(0, &padState);
+	padConnected = (dwResult == ERROR_SUCCESS);
+	// padStatePre は 0 で初期化済み
 
 #pragma endregion
 }
@@ -58,8 +67,40 @@ void Input::Update()
 	//キーボードの入力情報取得
 	keyboard->Acquire();
 
-	//全キーの入力情報を取得
+	//全キーの入力情報を取得（失敗しても継続）
 	keyboard->GetDeviceState(sizeof(key), key);
+
+	//マウスの前回状態を保存
+	mouseStatePre = mouseState;
+
+	//マウス取得
+	if (mouse)
+	{
+		mouse->Acquire();
+		// 取得に失敗しても zero-clear しないと未初期化参照になることを防ぐ
+		if (FAILED(mouse->GetDeviceState(sizeof(DIMOUSESTATE2), &mouseState)))
+		{
+			// 切断や一時的に取得できない場合はゼロにする
+			memset(&mouseState, 0, sizeof(mouseState));
+		}
+	}
+
+	//コントローラの状態更新（0番を確認）
+	XINPUT_STATE newPadState = {};
+	DWORD dwResult = XInputGetState(0, &newPadState);
+	if (dwResult == ERROR_SUCCESS)
+	{
+		padConnected = true;
+		padStatePre = padState;
+		padState = newPadState;
+	}
+	else
+	{
+		// 非接続時は状態をクリア
+		padConnected = false;
+		padStatePre = padState;
+		memset(&padState, 0, sizeof(padState));
+	}
 }
 
 bool Input::PushKey(BYTE keyNumber)
@@ -84,4 +125,49 @@ bool Input::TriggerKey(BYTE keyNumber)
 
 	//トリガーの条件を満たさないものはすべてfalseを返す
 	return false;
+}
+
+/* --- マウス --- */
+bool Input::PushMouseButton(int button)
+{
+	if (button < 0 || button >= 4) return false;
+	return (mouseState.rgbButtons[button] & 0x80) != 0;
+}
+
+bool Input::TriggerMouseButton(int button)
+{
+	if (button < 0 || button >= 4) return false;
+	bool now = (mouseState.rgbButtons[button] & 0x80) != 0;
+	bool prev = (mouseStatePre.rgbButtons[button] & 0x80) != 0;
+	return (now && !prev);
+}
+
+LONG Input::GetMouseMoveX() const
+{
+	return mouseState.lX;
+}
+
+LONG Input::GetMouseMoveY() const
+{
+	return mouseState.lY;
+}
+
+LONG Input::GetMouseWheel() const
+{
+	return mouseState.lZ;
+}
+
+/* --- コントローラ（XInput） --- */
+bool Input::PushPadButton(WORD buttonMask)
+{
+	if (!padConnected) return false;
+	return (padState.Gamepad.wButtons & buttonMask) != 0;
+}
+
+bool Input::TriggerPadButton(WORD buttonMask)
+{
+	if (!padConnected) return false;
+	bool now = (padState.Gamepad.wButtons & buttonMask) != 0;
+	bool prev = (padStatePre.Gamepad.wButtons & buttonMask) != 0;
+	return (now && !prev);
 }
