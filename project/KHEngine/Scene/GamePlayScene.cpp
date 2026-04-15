@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <random>
 #include <memory>
+#include <cmath>
 
 void GamePlayScene::Initialize()
 {
@@ -47,19 +48,19 @@ void GamePlayScene::Initialize()
     ModelManager::GetInstance()->LoadModel("terrain.obj");
 
     // スプライト用テクスチャ読み込み
-    texManager->LoadTexture("resources/uvChecker.png");
-    texManager->LoadTexture("resources/monsterBall.png");
-    texManager->LoadTexture("resources/checkerBoard.png");
-    texManager->LoadTexture("resources/circle.png");
-    texManager->LoadTexture("resources/Cube.png");
+    texManager->LoadTexture("uvChecker.png");
+    texManager->LoadTexture("monsterBall.png");
+    texManager->LoadTexture("checkerBoard.png");
+    texManager->LoadTexture("circle.png");
+    texManager->LoadTexture("Cube.png");
 
     texManager->ExecuteUploadCommands();
 
-    uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/uvChecker.png");
-    uint32_t monsterBallTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/monsterBall.png");
-    uint32_t checkerBoardTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/checkerBoard.png");
+    uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("uvChecker.png");
+    uint32_t monsterBallTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("monsterBall.png");
+    uint32_t checkerBoardTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("checkerBoard.png");
 
-    particleSrvIndex = TextureManager::GetInstance()->GetSrvIndex("resources/circle.png");
+    particleSrvIndex = TextureManager::GetInstance()->GetSrvIndex("circle.png");
 
     ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "quad", dxCommon, srvManager, kNumMaxInstance);
     instancingData = particleRenderer.GetInstancingData();
@@ -82,7 +83,7 @@ void GamePlayScene::Initialize()
     {
         auto obj = std::make_unique<Object3d>();
         obj->Initialize(object3dCommon);
-        obj->SetModel("Cube.obj");
+        obj->SetModel("cube.obj");
         obj->SetTranslate(Vector3(0.0f, 1.0f, -4.0f));
         obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
         obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
@@ -97,7 +98,7 @@ void GamePlayScene::Initialize()
         modelInstances.push_back(std::move(terrain));
     }
 
-    Data = SoundManager::GetInstance()->SoundLoadFile("resources/bgm.mp3");
+    Data = SoundManager::GetInstance()->SoundLoadFile("bgm.mp3");
 
     // ParticleSystem 初期設定
     particleSystem.GetEmitter().GetEmitter().count = 3;
@@ -135,22 +136,22 @@ void GamePlayScene::Update()
     auto services = EngineServices::GetInstance();
     auto input = services->GetInput();
 
-    // --- マウス操作でカメラ制御 ---
-    // ・ホイール押し込み（ミドルボタン）を押しながら移動 -> カメラ回転（yaw/pitch）
-    // ・それ以外のマウス移動 -> カメラ移動（パン）
-    // ・ホイール回転 -> ズーム
+    // --- カメラ操作 ---
+    // ・ホイール押し込み（ミドルボタン）を押しながら移動 -> カメラ回転（yaw/pitch）(継続)
+    // ・WASDキー -> カメラ移動（カメラの向きに沿った前後左右）
+    // ・ホイール回転 -> ズーム (継続)
     if (input && camera)
     {
         // 感度設定（必要に応じて調整）
         const float kRotateSpeed = 0.005f; // 回転感度（ラジアン換算想定）
-        const float kPanSpeed = 0.05f;     // 平行移動感度
+        const float kMoveSpeed = 8.0f;     // 移動速度（ワールド単位 / 秒）
         const float kZoomSpeed = 0.0015f;  // ホイール感度（調整可）
 
         LONG dx = input->GetMouseMoveX();
         LONG dy = input->GetMouseMoveY();
         LONG wheel = input->GetMouseWheel();
 
-        // ミドルボタン（ホイール押し込み）で回転
+        // ミドルボタン（ホイール押し込み）で回転（既存の挙動を維持）
         if (input->PushMouseButton(2))
         {
             Vector3 rot = camera->GetRotation();
@@ -167,19 +168,54 @@ void GamePlayScene::Update()
         }
         else
         {
-            // マウス移動でカメラをパン（ワールド軸に対して移動）
+            // WASDキーでカメラ移動（カメラのyawに沿った前後左右）
+            float moveStep = kMoveSpeed * kDeltaTime_;
             Vector3 pos = camera->GetTranslate();
-            // X方向に水平移動、Z方向に前後移動（用途に応じて変更可能）
-            pos.x += static_cast<float>(dx) * kPanSpeed;
-            pos.z += static_cast<float>(dy) * kPanSpeed;
+            Vector3 rot = camera->GetRotation();
+            float yaw = rot.y;
+
+            // カメラの向きから forward / right を構成
+            Vector3 forward = { std::sinf(yaw), 0.0f, std::cosf(yaw) };
+            Vector3 right = { std::cosf(yaw), 0.0f, -std::sinf(yaw) };
+
+            auto normalize = [](Vector3 v) {
+                float len = std::sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+                if (len > 1e-6f) { v.x /= len; v.y /= len; v.z /= len; }
+                return v;
+            };
+
+            forward = normalize(forward);
+            right = normalize(right);
+
+            if (input->PushKey(DIK_W))
+            {
+                pos.x += forward.x * moveStep;
+                pos.z += forward.z * moveStep;
+            }
+            if (input->PushKey(DIK_S))
+            {
+                pos.x -= forward.x * moveStep;
+                pos.z -= forward.z * moveStep;
+            }
+            if (input->PushKey(DIK_D))
+            {
+                pos.x += right.x * moveStep;
+                pos.z += right.z * moveStep;
+            }
+            if (input->PushKey(DIK_A))
+            {
+                pos.x -= right.x * moveStep;
+                pos.z -= right.z * moveStep;
+            }
+
             camera->SetTranslate(pos);
         }
 
-        // ホイールでズーム（ホイールの正負は環境により逆なのでサインを必要に応じて反転）
+        // ホイールでズーム（既存の挙動）
         if (wheel != 0)
         {
             Vector3 pos = camera->GetTranslate();
-            // wheel は通常 ±120（1ノッチ）を返す。符号は上方向が正/負どちらかは実機で確認して調整してください。
+            // wheel は通常 ±120（1ノッチ）を返す。符号は環境で調整してください。
             pos.z += static_cast<float>(-wheel) * kZoomSpeed;
             camera->SetTranslate(pos);
         }

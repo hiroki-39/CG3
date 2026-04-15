@@ -23,7 +23,7 @@ void ImGuiManager::Initialize([[maybe_unused]]DirectXCommon* dxcommon, [[maybe_u
 	// ImGuiのスタイルを設定
 	ImGui::StyleColorsDark();
 	io.Fonts->AddFontFromFileTTF(
-		"Resources/sprite/YuGothR.ttc",   // フォントファイルのパス
+		"Resources/font/YuGothR.ttc",   // フォントファイルのパス
 		18.0f,                                // フォントサイズ
 		nullptr,
 		io.Fonts->GetGlyphRangesJapanese()    // 日本語の範囲（ひらがな・カタカナ・漢字）

@@ -1,5 +1,8 @@
 ﻿#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
+#include "KHEngine/Core/Resource/ResourceLocator.h"
+#include "KHEngine/Core/Utility/String/StringUtility.h"
+#include <cassert>
 
 // UI表示用に 1 を足すための定数（内部は生インデックスを使う）
 uint32_t TextureManager::kSRVIndexTop = 1;
@@ -34,11 +37,18 @@ void TextureManager::Initialize(DirectXCommon* dxCommon, SrvManager* srvManager)
 
 void TextureManager::LoadTexture(const std::string& filePath)
 {
+	// 論理名またはパスを実パスに解決
+	std::string resolved = ResourceLocator::Resolve(filePath, ResourceLocator::AssetType::Texture);
 
-	// すでに読み込まれているかチェック
-	if (textureDatas.find(filePath) != textureDatas.end())
+	// 存在しない場合はそのまま試す（古いコード互換）
+	if (resolved.empty())
 	{
-		// 読み込み済みなら何もしない
+		resolved = filePath;
+	}
+
+	// すでに読み込まれているかチェック（キーは実パス）
+	if (textureDatas.find(resolved) != textureDatas.end())
+	{
 		return;
 	}
 
@@ -48,14 +58,14 @@ void TextureManager::LoadTexture(const std::string& filePath)
 	// ファイルからテクスチャデータを読み込む
 	DirectX::ScratchImage image{};
 	HRESULT hr = DirectX::LoadFromWICFile(
-		StringUtility::ConvertString(filePath).c_str(),
+		StringUtility::ConvertString(resolved).c_str(),
 		DirectX::WIC_FLAGS_FORCE_SRGB,
 		nullptr,
 		image
 	);
 
 	assert(SUCCEEDED(hr));
-	
+
 
 	//ミップマップの作成
 	DirectX::ScratchImage mipImages{};
@@ -68,13 +78,13 @@ void TextureManager::LoadTexture(const std::string& filePath)
 		mipImages);
 
 	assert(SUCCEEDED(hr));
-	
 
-	// テクスチャデータを追加
-	textureDatas.emplace(filePath, TextureData{});
+
+	// テクスチャデータを追加（key=resolved）
+	textureDatas.emplace(resolved, TextureData{});
 
 	// 追加したテクスチャデータの参照を取得
-	TextureData& textureData = textureDatas[filePath];
+	TextureData& textureData = textureDatas[resolved];
 
 	//ファイルから読み取った情報を格納
 	textureData.metadata = mipImages.GetMetadata();
@@ -87,7 +97,7 @@ void TextureManager::LoadTexture(const std::string& filePath)
 	if (textureIndexToFilePath.size() <= textureData.srvIndex) {
 		textureIndexToFilePath.resize(textureData.srvIndex + 1);
 	}
-	textureIndexToFilePath[textureData.srvIndex] = filePath;
+	textureIndexToFilePath[textureData.srvIndex] = resolved;
 
 	textureData.srvHandleCPU = srvManager->GetSRVCPUDescriptorHandle(textureData.srvIndex);
 	textureData.srvHandleGPU = srvManager->GetSRVGPUDescriptorHandle(textureData.srvIndex);
@@ -141,11 +151,14 @@ void TextureManager::ExecuteUploadCommands()
 
 uint32_t TextureManager::GetTextureIndexByFilePath(const std::string& filePath)
 {
+	// 解決して実パスキーで検索
+	std::string resolved = ResourceLocator::Resolve(filePath, ResourceLocator::AssetType::Texture);
+	if (resolved.empty()) resolved = filePath;
+
 	// 読み込み済みテクスチャを検索
-	if (textureDatas.contains(filePath))
+	if (textureDatas.contains(resolved))
 	{
-		// 見つかったらSRVインデックス（生インデックス）を返す
-		TextureData& textureData = textureDatas[filePath];
+		TextureData& textureData = textureDatas[resolved];
 		return textureData.srvIndex;
 	}
 
@@ -158,10 +171,11 @@ uint32_t TextureManager::GetTextureIndexByFilePath(const std::string& filePath)
 
 D3D12_GPU_DESCRIPTOR_HANDLE TextureManager::GetSrvHandleGPU(const std::string& filePath)
 {
-	// 読み込み済みテクスチャを検索
-	assert(textureDatas.contains(filePath));
-	// 見つかったらSRVハンドルを返す
-	TextureData& textureData = textureDatas[filePath];
+	std::string resolved = ResourceLocator::Resolve(filePath, ResourceLocator::AssetType::Texture);
+	if (resolved.empty()) resolved = filePath;
+
+	assert(textureDatas.contains(resolved));
+	TextureData& textureData = textureDatas[resolved];
 
 	return textureData.srvHandleGPU;
 }
@@ -204,16 +218,16 @@ const DirectX::TexMetadata& TextureManager::GetMetaData(uint32_t TextureIndex)
 
 uint32_t TextureManager::GetSrvIndex(const std::string& filePath)
 {
-	// 読み込み済みテクスチャを検索
-	if (textureDatas.contains(filePath))
+	std::string resolved = ResourceLocator::Resolve(filePath, ResourceLocator::AssetType::Texture);
+	if (resolved.empty()) resolved = filePath;
+
+	if (textureDatas.contains(resolved))
 	{
-		// 見つかったらSRVインデックスを返す（生インデックス）
-		TextureData& textureData = textureDatas[filePath];
+		TextureData& textureData = textureDatas[resolved];
 		return textureData.srvIndex;
 	}
 
 	assert(srvManager->CanAllocate());
 
-	// 見つからなかったら0を返す
 	return 0;
 }
