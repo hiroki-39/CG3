@@ -1,5 +1,6 @@
 #include "SoundManager.h"
 #include "KHEngine/Core/Utility/String/StringUtility.h"
+#include "KHEngine/Core/Resource/ResourceLocator.h"
 #include <mfapi.h>
 #include <mfobjects.h>
 #include <mfidl.h>
@@ -149,8 +150,16 @@ SoundManager::SoundData SoundManager::SoundLoadWave(const char* filename)
 
 SoundManager::SoundData SoundManager::SoundLoadFile(const std::string& filename)
 {
+	// 論理名を実パスに解決（例: "bgm.mp3" -> "resources/audio/bgm.mp3"）
+	std::string resolved = ResourceLocator::Resolve(filename, ResourceLocator::AssetType::Audio);
+	if (resolved.empty())
+	{
+		// 解決できなければ元の名前を使う（互換性）
+		resolved = filename;
+	}
+
 	// フルパスをワイド文字列に変換
-	std::wstring wfilename = StringUtility::ConvertString(filename);
+	std::wstring wfilename = StringUtility::ConvertString(resolved);
 	HRESULT result;
 
 	// SourceReaderの作成

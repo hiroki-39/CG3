@@ -23,11 +23,11 @@ void TitleScene::Initialize()
     if (dxCommon) dxCommon->BeginTextureUploadBatch();
 
     // モンスターボールを読み込む
-    texManager->LoadTexture("resources/monsterBall.png");
+    texManager->LoadTexture("monsterBall.png");
     texManager->ExecuteUploadCommands();
 
     // 生インデックス取得（失敗チェック）
-    uint32_t monsterTex = texManager->GetTextureIndexByFilePath("resources/monsterBall.png");
+    uint32_t monsterTex = texManager->GetTextureIndexByFilePath("monsterBall.png");
     // 取得に失敗した場合の保険（実際の失敗値に合わせて調整）
     if (monsterTex == std::numeric_limits<uint32_t>::max())
     {

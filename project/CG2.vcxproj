@@ -215,6 +215,7 @@
     <ClCompile Include="KHEngine\Scene\TitleScene.cpp" />
     <ClCompile Include="KHEngine\Scene\SceneManager.cpp" />
     <ClCompile Include="KHEngine\Scene\SceneFactory.cpp" />
+    <ClCompile Include="KHEngine\Core\Resource\ResourceLocator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="KHEngine\Scene\AbstractSceneFactory.h" />
@@ -269,6 +270,7 @@
     <ClInclude Include="KHEngine\Scene\TitleScene.h" />
     <ClInclude Include="KHEngine\Scene\SceneManager.h" />
     <ClInclude Include="KHEngine\Scene\SceneFactory.h" />
+    <ClInclude Include="KHEngine\Core\Resource\ResourceLocator.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
