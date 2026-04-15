@@ -15,151 +15,215 @@
 
 void GamePlayScene::Initialize()
 {
-	// フレームワーク共通オブジェクトを取得
-	auto services = EngineServices::GetInstance();
-	auto object3dCommon = services->GetObject3dCommon();
-	auto dxCommon = services->GetDirectXCommon();
-	auto srvManager = services->GetSrvManager();
-	auto spriteCommon = services->GetSpriteCommon();
+    // フレームワーク共通オブジェクトを取得
+    auto services = EngineServices::GetInstance();
+    auto object3dCommon = services->GetObject3dCommon();
+    auto dxCommon = services->GetDirectXCommon();
+    auto srvManager = services->GetSrvManager();
+    auto spriteCommon = services->GetSpriteCommon();
 
-	// カメラ作成（ゲーム固有）
-	camera = std::make_unique<Camera>();
-	if (object3dCommon)
-	{
-		object3dCommon->SetDefaultCamera(camera.get());
-	}
-	camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
-	camera->SetRotation({ 0.3f, 0.0f, 0.0f });
+    // カメラ作成（ゲーム固有）
+    camera = std::make_unique<Camera>();
+    if (object3dCommon)
+    {
+        object3dCommon->SetDefaultCamera(camera.get());
+    }
+    camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
+    camera->SetRotation({ 0.3f, 0.0f, 0.0f });
 
-	// アセット登録
-	ParticleManager::GetInstance()->RegisterQuad("quad", "resources/circle.png");
+    // アセット登録
+    ParticleManager::GetInstance()->RegisterQuad("quad", "resources/circle.png");
 
-	uint32_t instancingSrvIndex = UINT32_MAX;
-	currentBlendModeIndex = static_cast<int>(BlendMode::Additive);
+    uint32_t instancingSrvIndex = UINT32_MAX;
+    currentBlendModeIndex = static_cast<int>(BlendMode::Additive);
 
-	auto texManager = TextureManager::GetInstance();
-	dxCommon->BeginTextureUploadBatch();
+    auto texManager = TextureManager::GetInstance();
+    dxCommon->BeginTextureUploadBatch();
 
-	// モデル読み込み
-	ModelManager::GetInstance()->LoadModel("plane.obj");
+    // モデル読み込み
+    ModelManager::GetInstance()->LoadModel("plane.obj");
     ModelManager::GetInstance()->LoadModel("Cube.obj");
     ModelManager::GetInstance()->LoadModel("monsterBall.obj");
-	ModelManager::GetInstance()->LoadModel("terrain.obj");
+    ModelManager::GetInstance()->LoadModel("terrain.obj");
 
-	// スプライト用テクスチャ読み込み
-	texManager->LoadTexture("resources/uvChecker.png");
-	texManager->LoadTexture("resources/monsterBall.png");
-	texManager->LoadTexture("resources/checkerBoard.png");
-	texManager->LoadTexture("resources/circle.png");
+    // スプライト用テクスチャ読み込み
+    texManager->LoadTexture("resources/uvChecker.png");
+    texManager->LoadTexture("resources/monsterBall.png");
+    texManager->LoadTexture("resources/checkerBoard.png");
+    texManager->LoadTexture("resources/circle.png");
     texManager->LoadTexture("resources/Cube.png");
 
-	texManager->ExecuteUploadCommands();
+    texManager->ExecuteUploadCommands();
 
-	uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/uvChecker.png");
-	uint32_t monsterBallTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/monsterBall.png");
-	uint32_t checkerBoardTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/checkerBoard.png");
+    uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/uvChecker.png");
+    uint32_t monsterBallTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/monsterBall.png");
+    uint32_t checkerBoardTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/checkerBoard.png");
 
-	particleSrvIndex = TextureManager::GetInstance()->GetSrvIndex("resources/circle.png");
+    particleSrvIndex = TextureManager::GetInstance()->GetSrvIndex("resources/circle.png");
 
-	ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "quad", dxCommon, srvManager, kNumMaxInstance);
-	instancingData = particleRenderer.GetInstancingData();
-	instancingSrvIndex = particleRenderer.GetInstancingSrvIndex();
+    ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "quad", dxCommon, srvManager, kNumMaxInstance);
+    instancingData = particleRenderer.GetInstancingData();
+    instancingSrvIndex = particleRenderer.GetInstancingSrvIndex();
 
-	texManager->ClearIntermediateResources();
+    texManager->ClearIntermediateResources();
 
-	// スプライト作成
-	{
-		auto s = std::make_unique<Sprite>();
-		s->Initialize(spriteCommon, uvCheckerTex);
-		s->SetPosition(Vector2(100.0f, 100.0f));
-		s->SetSize(Vector2(128.0f, 128.0f));
-		s->SetAnchorPoint(Vector2(0.5f, 0.5f));
-		s->SetColor(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-		AddSprite(std::move(s));
-	}
+    // スプライト作成
+    {
+        auto s = std::make_unique<Sprite>();
+        s->Initialize(spriteCommon, uvCheckerTex);
+        s->SetPosition(Vector2(100.0f, 100.0f));
+        s->SetSize(Vector2(128.0f, 128.0f));
+        s->SetAnchorPoint(Vector2(0.5f, 0.5f));
+        s->SetColor(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        AddSprite(std::move(s));
+    }
 
-	// モデル作成
-	{
-		auto obj = std::make_unique<Object3d>();
-		obj->Initialize(object3dCommon);
-		obj->SetModel("Cube.obj");
-		obj->SetTranslate(Vector3(0.0f, 1.0f, -4.0f));
-		obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-		obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
-		modelInstances.push_back(std::move(obj));
+    // モデル作成
+    {
+        auto obj = std::make_unique<Object3d>();
+        obj->Initialize(object3dCommon);
+        obj->SetModel("Cube.obj");
+        obj->SetTranslate(Vector3(0.0f, 1.0f, -4.0f));
+        obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
+        obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+        modelInstances.push_back(std::move(obj));
 
-		auto terrain = std::make_unique<Object3d>();
-		terrain->Initialize(object3dCommon);
-		terrain->SetModel("terrain.obj");
-		terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
-		terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-		terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
-		modelInstances.push_back(std::move(terrain));
-	}
+        auto terrain = std::make_unique<Object3d>();
+        terrain->Initialize(object3dCommon);
+        terrain->SetModel("terrain.obj");
+        terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
+        terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
+        terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+        modelInstances.push_back(std::move(terrain));
+    }
 
-	Data = SoundManager::GetInstance()->SoundLoadFile("resources/bgm.mp3");
+    Data = SoundManager::GetInstance()->SoundLoadFile("resources/bgm.mp3");
 
-	// ParticleSystem 初期設定
-	particleSystem.GetEmitter().GetEmitter().count = 3;
-	particleSystem.GetEmitter().GetEmitter().frequency = 0.5f;
-	particleSystem.GetEmitter().GetEmitter().frequencyTime = 0.0f;
-	particleSystem.GetEmitter().GetEmitter().transform.translate = { 0.0f,-2.0f,0.0f };
-	particleSystem.GetEmitter().GetEmitter().transform.rotation = { 0.0f,0.0f,0.0f };
-	particleSystem.GetEmitter().GetEmitter().transform.scale = { 1.0f,1.0f,1.0f };
+    // ParticleSystem 初期設定
+    particleSystem.GetEmitter().GetEmitter().count = 3;
+    particleSystem.GetEmitter().GetEmitter().frequency = 0.5f;
+    particleSystem.GetEmitter().GetEmitter().frequencyTime = 0.0f;
+    particleSystem.GetEmitter().GetEmitter().transform.translate = { 0.0f,-2.0f,0.0f };
+    particleSystem.GetEmitter().GetEmitter().transform.rotation = { 0.0f,0.0f,0.0f };
+    particleSystem.GetEmitter().GetEmitter().transform.scale = { 1.0f,1.0f,1.0f };
 
-	currentEffect = ParticleEffect::Wind;
-	particleSystem.SetEffect(currentEffect);
-	particleSystem.AddInitialParticles(randomEngine, kNumMaxInstance);
+    currentEffect = ParticleEffect::Wind;
+    particleSystem.SetEffect(currentEffect);
+    particleSystem.AddInitialParticles(randomEngine, kNumMaxInstance);
 
-	AccelerationField accelerationField;
-	accelerationField.accleration = { -15.0f, 0.0f, 0.0f };
-	accelerationField.area.min = { -1.0f, -1.0f, -1.0f };
-	accelerationField.area.max = { 1.0f, 1.0f, 1.0f };
-	particleSystem.SetAccelerationField(accelerationField);
+    AccelerationField accelerationField;
+    accelerationField.accleration = { -15.0f, 0.0f, 0.0f };
+    accelerationField.area.min = { -1.0f, -1.0f, -1.0f };
+    accelerationField.area.max = { 1.0f, 1.0f, 1.0f };
+    particleSystem.SetAccelerationField(accelerationField);
 }
 
 void GamePlayScene::Finalize()
 {
-	// unique_ptr 管理なので明示的な delete は不要
-	sprites.clear();
-	modelInstances.clear();
+    // unique_ptr 管理なので明示的な delete は不要
+    sprites.clear();
+    modelInstances.clear();
 
-	sound.Stop();
-	SoundManager::GetInstance()->SoundUnload(&Data);
+    sound.Stop();
+    SoundManager::GetInstance()->SoundUnload(&Data);
 
-	camera.reset();
+    camera.reset();
 }
 
 void GamePlayScene::Update()
 {
-	auto services = EngineServices::GetInstance();
-	auto input = services->GetInput();
+    auto services = EngineServices::GetInstance();
+    auto input = services->GetInput();
 
-	// カメラ更新
-	if (camera) camera->Update();
+    // --- マウス操作でカメラ制御 ---
+    // ・ホイール押し込み（ミドルボタン）を押しながら移動 -> カメラ回転（yaw/pitch）
+    // ・それ以外のマウス移動 -> カメラ移動（パン）
+    // ・ホイール回転 -> ズーム
+    if (input && camera)
+    {
+        // 感度設定（必要に応じて調整）
+        const float kRotateSpeed = 0.005f; // 回転感度（ラジアン換算想定）
+        const float kPanSpeed = 0.05f;     // 平行移動感度
+        const float kZoomSpeed = 0.0015f;  // ホイール感度（調整可）
 
-	for (auto& model : modelInstances) if (model) model->Update();
-	for (auto& sprite : sprites) if (sprite) sprite->Update();
+        LONG dx = input->GetMouseMoveX();
+        LONG dy = input->GetMouseMoveY();
+        LONG wheel = input->GetMouseWheel();
 
-	if (input && input->TriggerKey(DIK_SPACE))
-	{
-		sound.SoundPlayWave(SoundManager::GetInstance()->GetXAudio2(), Data);
-	}
+        // ミドルボタン（ホイール押し込み）で回転
+        if (input->PushMouseButton(2))
+        {
+            Vector3 rot = camera->GetRotation();
+            // マウス右移動で yaw 増加、下移動で pitch 増加（上下反転は好みで調整）
+            rot.y += static_cast<float>(dx) * kRotateSpeed;
+            rot.x += static_cast<float>(dy) * kRotateSpeed;
 
-	// カメラ行列の取得
-	Matrix4x4 cameraMatrix = camera->GetWorldMatrix();
-	Matrix4x4 viewMatrix = camera->GetViewMatrix();
-	Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
+            // ピッチ（X軸回転）を適度に制限（直上直下で反転しないように）
+            const float kMaxPitch = 1.5f;  // 約 85度
+            const float kMinPitch = -1.5f; // 約 -85度
+            rot.x = std::clamp(rot.x, kMinPitch, kMaxPitch);
 
-	// ビルボード行列（Camera* を渡す）
-	Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera.get(), useBillboard);
+            camera->SetRotation(rot);
+        }
+        else
+        {
+            // マウス移動でカメラをパン（ワールド軸に対して移動）
+            Vector3 pos = camera->GetTranslate();
+            // X方向に水平移動、Z方向に前後移動（用途に応じて変更可能）
+            pos.x += static_cast<float>(dx) * kPanSpeed;
+            pos.z += static_cast<float>(dy) * kPanSpeed;
+            camera->SetTranslate(pos);
+        }
 
-	if (update)
-	{
-		particleSystem.Update(kDeltaTime_);
-	}
+        // ホイールでズーム（ホイールの正負は環境により逆なのでサインを必要に応じて反転）
+        if (wheel != 0)
+        {
+            Vector3 pos = camera->GetTranslate();
+            // wheel は通常 ±120（1ノッチ）を返す。符号は上方向が正/負どちらかは実機で確認して調整してください。
+            pos.z += static_cast<float>(-wheel) * kZoomSpeed;
+            camera->SetTranslate(pos);
+        }
+    }
 
-	numInstance = particleSystem.FillInstancingBuffer(instancingData, kNumMaxInstance, viewMatrix, projectionMatrix, billboardMatrix, false);
+    // ESC 押下でウィンドウを閉じる
+    if (input && input->TriggerKey(DIK_ESCAPE))
+    {
+        auto dxCommon = services->GetDirectXCommon();
+        if (dxCommon)
+        {
+            WinApp* winApp = dxCommon->GetWinApp();
+            if (winApp)
+            {
+                ::PostMessage(winApp->GetHwnd(), WM_CLOSE, 0, 0);
+            }
+        }
+    }
+
+    // カメラ更新（入力反映後に行う）
+    if (camera) camera->Update();
+
+    for (auto& model : modelInstances) if (model) model->Update();
+    for (auto& sprite : sprites) if (sprite) sprite->Update();
+
+    if (input && input->TriggerKey(DIK_SPACE))
+    {
+        sound.SoundPlayWave(SoundManager::GetInstance()->GetXAudio2(), Data);
+    }
+
+    // カメラ行列の取得
+    Matrix4x4 cameraMatrix = camera->GetWorldMatrix();
+    Matrix4x4 viewMatrix = camera->GetViewMatrix();
+    Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
+
+    // ビルボード行列（Camera* を渡す）
+    Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera.get(), useBillboard);
+
+    if (update)
+    {
+        particleSystem.Update(kDeltaTime_);
+    }
+
+    numInstance = particleSystem.FillInstancingBuffer(instancingData, kNumMaxInstance, viewMatrix, projectionMatrix, billboardMatrix, false);
 
 #ifdef USE_IMGUI
 
@@ -325,13 +389,13 @@ void GamePlayScene::Update()
         // ヘルパー: ライティングモードがどのライトを使うか
         auto usesDirectional = [](int mode) {
             return mode == 1 || mode == 2 || mode == 3 || mode == 4;
-        };
+            };
         auto usesPoint = [](int mode) {
             return mode == 4;
-        };
+            };
         auto usesSpot = [](int mode) {
             return mode == 5;
-        };
+            };
 
         // Directional
         if (usesDirectional(lightingMode))
@@ -709,20 +773,20 @@ void GamePlayScene::Update()
 
 void GamePlayScene::Draw()
 {
-	auto services = EngineServices::GetInstance();
-	auto object3dCommon = services->GetObject3dCommon();
-	auto spriteCommon = services->GetSpriteCommon();
+    auto services = EngineServices::GetInstance();
+    auto object3dCommon = services->GetObject3dCommon();
+    auto spriteCommon = services->GetSpriteCommon();
 
-	if (object3dCommon) object3dCommon->SetCommonDrawSetting();
+    if (object3dCommon) object3dCommon->SetCommonDrawSetting();
 
-	for (auto& model : modelInstances) if (model) model->Draw();
+    for (auto& model : modelInstances) if (model) model->Draw();
 
-	if (spriteCommon) spriteCommon->SetCommonDrawSetting();
+    if (spriteCommon) spriteCommon->SetCommonDrawSetting();
 
-	if (isDisplaySprite)
-	{
-		for (auto& sprite : sprites) if (sprite) sprite->Draw();
-	}
+    if (isDisplaySprite)
+    {
+        for (auto& sprite : sprites) if (sprite) sprite->Draw();
+    }
 
-	particleRenderer.Draw(numInstance, particleSrvIndex, currentBlendModeIndex);
+    particleRenderer.Draw(numInstance, particleSrvIndex, currentBlendModeIndex);
 }
