@@ -3,6 +3,8 @@
 #include "KHEngine/Core/Resource/ResourceLocator.h"
 #include "KHEngine/Core/Utility/String/StringUtility.h"
 #include <cassert>
+#include <cstring>
+#include <filesystem>
 
 // UI表示用に 1 を足すための定数（内部は生インデックスを使う）
 uint32_t TextureManager::kSRVIndexTop = 1;
@@ -33,10 +35,87 @@ void TextureManager::Initialize(DirectXCommon* dxCommon, SrvManager* srvManager)
 	// 事前確保（ヒープの最大数に合わせて）
 	textureDatas.reserve(srvManager->kMaxSRVCount);
 	textureIndexToFilePath.reserve(srvManager->kMaxSRVCount);
+
+	// 常に専用の1x1白テクスチャを生成して登録する（uvChecker を既定にしない）
+	{
+		TextureData tex{};
+
+		// メタデータ設定
+		DirectX::TexMetadata meta{};
+		meta.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		meta.width = 1;
+		meta.height = 1;
+		meta.arraySize = 1;
+		meta.mipLevels = 1;
+		meta.dimension = DirectX::TEX_DIMENSION_TEXTURE2D;
+
+		tex.metadata = meta;
+
+		// リソース作成
+		tex.resource = dxCommon_->CreateTextureResource(tex.metadata);
+
+		// 生ピクセル (RGBA 255,255,255,255)
+		tex.rawData.resize(4);
+		tex.rawData[0] = 0xFF;
+		tex.rawData[1] = 0xFF;
+		tex.rawData[2] = 0xFF;
+		tex.rawData[3] = 0xFF;
+
+		// SRV インデックス割当
+		tex.srvIndex = srvManager->Allocate();
+
+		// マッピングを追加（srvIndex と配列インデックスを一致させる）
+		if (textureIndexToFilePath.size() <= tex.srvIndex) {
+			textureIndexToFilePath.resize(tex.srvIndex + 1);
+		}
+		// 内部キーとして固定の論理名を使う
+		const std::string key = "__default_white__";
+		textureIndexToFilePath[tex.srvIndex] = key;
+
+		tex.srvHandleCPU = srvManager->GetSRVCPUDescriptorHandle(tex.srvIndex);
+		tex.srvHandleGPU = srvManager->GetSRVGPUDescriptorHandle(tex.srvIndex);
+
+		// SRVの作成
+		srvManager->CreateSRVforTexture2D(
+			tex.srvIndex,
+			tex.resource.Get(),
+			tex.metadata.format,
+			static_cast<UINT>(tex.metadata.mipLevels)
+		);
+
+		// サブリソース情報をセット（生ピクセルへのポインタを指定）
+		D3D12_SUBRESOURCE_DATA sub{};
+		sub.pData = tex.rawData.data();
+		sub.RowPitch = 4;   // 4 bytes per row (1 pixel * 4 bytes)
+		sub.SlicePitch = 4;
+
+		tex.subresources.push_back(sub);
+
+		// intermediateサイズは正しいサブリソース数で計算する
+		uint64_t intermediateSize = GetRequiredIntermediateSize(
+			tex.resource.Get(),
+			0,
+			(UINT)tex.subresources.size()
+		);
+
+		// 転送用に生成した中間リソースをテクスチャデータ構造体に格納
+		tex.intermediateResource = dxCommon_->CreateBufferResource(intermediateSize);
+
+		// textureDatas に格納（キーは内部キー）
+		textureDatas.emplace(key, std::move(tex));
+
+		// Add upload
+		auto& added = textureDatas.at(key);
+		dxCommon_->AddTextureUpload(added.resource, added.intermediateResource, added.subresources);
+
+		// デフォルトインデックスを保持（必ずこの生成白テクスチャを既定にする）
+		defaultTextureIndex_ = textureDatas.at(key).srvIndex;
+	}
 }
 
 void TextureManager::LoadTexture(const std::string& filePath)
 {
+
 	// 論理名またはパスを実パスに解決
 	std::string resolved = ResourceLocator::Resolve(filePath, ResourceLocator::AssetType::Texture);
 
@@ -140,6 +219,7 @@ void TextureManager::ClearIntermediateResources()
 		textureData.intermediateResource.Reset();
 		// ピクセルデータを解放
 		textureData.image = DirectX::ScratchImage();
+		// rawData は保持（SRV生成後は不要だが安全に保持しておく）
 	}
 }
 
@@ -165,8 +245,8 @@ uint32_t TextureManager::GetTextureIndexByFilePath(const std::string& filePath)
 	// テクスチャ条件をチェック
 	assert(srvManager->CanAllocate());
 
-	// 見つからなかったら0を返す
-	return 0;
+	// 見つからなかったらデフォルトを返す（null 相当より安全）
+	return defaultTextureIndex_;
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE TextureManager::GetSrvHandleGPU(const std::string& filePath)
@@ -229,5 +309,5 @@ uint32_t TextureManager::GetSrvIndex(const std::string& filePath)
 
 	assert(srvManager->CanAllocate());
 
-	return 0;
+	return defaultTextureIndex_;
 }

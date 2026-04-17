@@ -17,7 +17,6 @@ void Model::Initialize(ModelCommon* modelCommon, const std::string& directoryPat
 
 	//モデルの読み込み
 	modelData = LoadObjFile(directoryPath, filename);
-	/*modelData = LoadObjFile("./resources", "plane.gltf");*/
 
 	// 頂点データ・インデックスデータの作成
 	CreateBufferResource();
@@ -25,14 +24,19 @@ void Model::Initialize(ModelCommon* modelCommon, const std::string& directoryPat
 	//マテリアルの作成
 	CreateMaterialResource();
 
-	// .objの参照しているテクスチャを読み込み
-	TextureManager::GetInstance()->LoadTexture(modelData.material.textureFilePath);
-
-	// 読み込んだテクスチャの番号を取得
-	modelData.material.textureIndex =
-		TextureManager::GetInstance()->GetTextureIndexByFilePath(modelData.material.textureFilePath);
+	// .objの参照しているテクスチャを読み込み（存在しない場合はデフォルトテクスチャにフォールバック）
+	if (!modelData.material.textureFilePath.empty())
+	{
+		TextureManager::GetInstance()->LoadTexture(modelData.material.textureFilePath);
+		modelData.material.textureIndex =
+			TextureManager::GetInstance()->GetTextureIndexByFilePath(modelData.material.textureFilePath);
+	}
+	else
+	{
+		// テクスチャ未指定のモデルはデフォルトテクスチャを使って描画する
+		modelData.material.textureIndex = TextureManager::GetInstance()->GetDefaultTextureIndex();
+	}
 }
-
 void Model::Draw()
 {
 	//VBVの設定
@@ -116,7 +120,7 @@ void Model::CreateMaterialResource()
 	materialData_->specularColor = { 1.0f,1.0f,1.0f };
 }
 
-Model::ModelData Model::LoadObjFile(const std::string& directoryPath, const std::string& filename)
+Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std::string & filename)
 {
 	ModelData modelData;
 	Model model;
@@ -185,7 +189,10 @@ Model::ModelData Model::LoadObjFile(const std::string& directoryPath, const std:
 		{
 			aiString textureFilePath;
 			material->GetTexture(aiTextureType_DIFFUSE, 0, &textureFilePath);
-			modelData.material.textureFilePath = directoryPath + "/" + textureFilePath.C_Str();
+
+			// 重要: ここではディレクトリを前置せず、マテリアルが参照する「元のパス/ファイル名」を保存する
+			// 例: "uvChecker.png" や "textures/uvChecker.png" のまま保存し、TextureManager 側で ResourceLocator を使って解決する
+			modelData.material.textureFilePath = std::string(textureFilePath.C_Str());
 		}
 	}
 
