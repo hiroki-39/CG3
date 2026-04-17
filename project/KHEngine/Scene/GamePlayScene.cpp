@@ -52,7 +52,7 @@ void GamePlayScene::Initialize()
     texManager->LoadTexture("monsterBall.png");
     texManager->LoadTexture("checkerBoard.png");
     texManager->LoadTexture("circle.png");
-    texManager->LoadTexture("Cube.png");
+    texManager->LoadTexture("white.png");
 
     texManager->ExecuteUploadCommands();
 

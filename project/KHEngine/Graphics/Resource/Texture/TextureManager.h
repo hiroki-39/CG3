@@ -6,6 +6,7 @@
 #include <wrl.h>
 #include <d3d12.h>
 #include <unordered_map>
+#include <vector>
 
 // テクスチャマネージャー
 class TextureManager
@@ -59,6 +60,9 @@ public://メンバ関数
 	// ファイルパスから生インデックスを返す（同じく生インデックス）
 	uint32_t GetSrvIndex(const std::string& filePath);
 
+	// フォールバック用デフォルトテクスチャのインデックスを取得
+	uint32_t GetDefaultTextureIndex() const { return defaultTextureIndex_; }
+
 private://静的メンバ関数
 
 	// コンストラクタ
@@ -89,7 +93,8 @@ private:
 		std::vector<D3D12_SUBRESOURCE_DATA> subresources;			 // サブリソースデータ群
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandleCPU;					 // SRVハンドル(CPU)
 		D3D12_GPU_DESCRIPTOR_HANDLE srvHandleGPU;					 // SRVハンドル(GPU)
-		DirectX::ScratchImage image;								 // アップロード完了までピクセルを保持
+		DirectX::ScratchImage image;								 // アップロード完了までピクセルを保持（WIC経由の通常ロード用）
+		std::vector<uint8_t> rawData;								 // プログラム生成ピクセルデータ（例: 1x1 白）を保持
 	};
 
 
@@ -103,4 +108,7 @@ private:
 	std::vector<std::string> textureIndexToFilePath;
 
 	SrvManager* srvManager = nullptr;
+
+	// デフォルトテクスチャの生インデックス（フォールバック）
+	uint32_t defaultTextureIndex_ = 0;
 };
