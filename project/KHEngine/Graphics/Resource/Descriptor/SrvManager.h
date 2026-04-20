@@ -44,6 +44,11 @@ public:// メンバ関数
 	void CreateSRVforTexture2D(uint32_t srvIndex, ID3D12Resource* pResource, DXGI_FORMAT Format, UINT MipLevels);
 
 	/// <summary>
+	/// SRV作成(TextureCube用)
+	/// </summary>
+	void CreateSRVforTextureCube(uint32_t srvIndex, ID3D12Resource* pResource, DXGI_FORMAT Format, UINT MipLevels);
+
+	/// <summary>
 	/// SRV作成(StructuredBuffer用)
 	/// </summary>
 	void CreateSRVforStructuredBuffer(uint32_t srvIndex, ID3D12Resource* pResource, UINT NumElements, UINT StructureByteStride);

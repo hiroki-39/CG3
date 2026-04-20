@@ -1,6 +1,4 @@
 ﻿#pragma once
-#include <vector>
-#include <random>
 #include "KHEngine/Graphics/2d/Sprite.h"
 #include "KHEngine/Graphics/3d/Object/Object3d.h"
 #include "KHEngine/Sound/Core/Sound.h"
@@ -13,6 +11,10 @@
 #include "KHEngine/Math/Matrix4x4.h"
 #include "KHEngine/Graphics/Billboard/Billboard.h"
 #include "KHEngine/Core/Framework/BaseScene.h"
+#include "KHEngine/Graphics/3d/Skybox/Skybox.h"
+#include <vector>
+#include <random>
+#include <memory>
 
 class GamePlayScene : public BaseScene
 {
@@ -41,6 +43,7 @@ private:
     Sound sound;
 
     std::unique_ptr<Camera> camera;
+    std::unique_ptr<Skybox> skybox_;
 
     ParticleSystem particleSystem;
     ParticleForGPU* instancingData = nullptr;
