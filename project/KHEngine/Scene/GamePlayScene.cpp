@@ -45,7 +45,7 @@ void GamePlayScene::Initialize()
     // スカイボックスの初期化
     skybox_ = std::make_unique<Skybox>();
     // DDSキューブマップファイルのパスを指定してください
-    skybox_->Initialize(dxCommon,"resources/rostock_laage_airport_4k.dds");
+    skybox_->Initialize(dxCommon,"resources/skybox.dds");
 
     // モデル読み込み
     ModelManager::GetInstance()->LoadModel("plane.obj");

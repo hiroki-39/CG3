@@ -291,16 +291,19 @@ std::vector<D3D12_SUBRESOURCE_DATA> TextureManager::CreateSubresources(const Dir
 {
 	std::vector<D3D12_SUBRESOURCE_DATA> subresources;
 
-	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+
 	const DirectX::Image* images = mipImages.GetImages();
 
-	subresources.resize(metadata.mipLevels);
 
-	for (size_t mip = 0; mip < metadata.mipLevels; ++mip)
+	size_t numImages = mipImages.GetImageCount();
+
+	subresources.resize(numImages);
+
+	for (size_t i = 0; i < numImages; ++i)
 	{
-		const DirectX::Image& img = images[mip];
+		const DirectX::Image& img = images[i];
 
-		D3D12_SUBRESOURCE_DATA& sub = subresources[mip];
+		D3D12_SUBRESOURCE_DATA& sub = subresources[i];
 		sub.pData = img.pixels;
 		sub.RowPitch = img.rowPitch;
 		sub.SlicePitch = img.slicePitch;

@@ -12,13 +12,13 @@ void Skybox::Initialize(DirectXCommon* dxCommon, const std::string& cubemapTextu
 	// テクスチャを読み込む
 	TextureManager::GetInstance()->LoadTexture(cubemapTexturePath);
 	cubemapSrvIndex_ = TextureManager::GetInstance()->GetTextureIndexByFilePath(cubemapTexturePath);
-	
+
 	// ルートシグネチャ作成
 	CreateRootSignature();
 
 	// グラフィックスパイプライン生成
 	CreateGraphicsPipeline();
-	
+
 	// バッファ作成
 	CreateBufferResource();
 
@@ -36,13 +36,19 @@ void Skybox::Update()
 	viewMatrix.m[3][0] = 0.0f; // カメラの位置を無視
 	viewMatrix.m[3][1] = 0.0f;
 	viewMatrix.m[3][2] = 0.0f;
-	Matrix4x4 wvpMatrix = Matrix4x4::Multiply(Matrix4x4::Scale({500.0f,500.0f,500.0f}),viewMatrix) * camera_->GetProjectionMatrix();
+	Matrix4x4 wvpMatrix = Matrix4x4::Multiply(Matrix4x4::Scale({ 500.0f,500.0f,500.0f }), viewMatrix) * camera_->GetProjectionMatrix();
 	transformationMatrixData_->WVP = wvpMatrix;
 	transformationMatrixData_->World = Matrix4x4::Identity();
 }
-
 void Skybox::Draw()
 {
+	// ルートシグネチャとパイプラインステートをセット
+	dxCommon->GetCommandList()->SetGraphicsRootSignature(rootSignature.Get());
+	dxCommon->GetCommandList()->SetPipelineState(graphicsPipelineState.Get());
+
+	// トポロジー（形状）を設定 (これを忘れると三角形が描画されません)
+	dxCommon->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
 	//VBVの設定
 	dxCommon->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView);
 
@@ -58,7 +64,6 @@ void Skybox::Draw()
 	//描画！
 	dxCommon->GetCommandList()->DrawIndexedInstanced(36, 1, 0, 0, 0);
 }
-
 void Skybox::CreateBufferResource()
 {
 	/*--- 頂点バッファ用リソースを作る ---*/
@@ -103,7 +108,7 @@ void Skybox::CreateBufferResource()
 	vertexBufferView.SizeInBytes = UINT(sizeof(verteies));
 	//1頂点あたりのサイズ
 	vertexBufferView.StrideInBytes = sizeof(SkyboxVertexData);
-	
+
 	SkyboxVertexData* verteiesData = nullptr;
 
 	//頂点リソースにデータを書き込む
@@ -112,7 +117,6 @@ void Skybox::CreateBufferResource()
 	vertexResource_->Unmap(0, nullptr);
 
 	/*--- インデックスバッファ用リソースを作る ---*/
-
 	uint32_t indices[36] = {
 		0, 1, 2, 2, 1, 3, //右面
 		4, 5, 6, 6, 5, 7, //左面
@@ -124,21 +128,16 @@ void Skybox::CreateBufferResource()
 
 	size_t sizeinBytes = sizeof(indices);
 
-	//頂点リソースを作る
-	indexResource_ = dxCommon->CreateBufferResource(sizeof(sizeinBytes));
+	indexResource_ = dxCommon->CreateBufferResource(sizeinBytes);
 
-	//リソースの先頭からアドレスから使う
 	indexBufferView.BufferLocation = indexResource_->GetGPUVirtualAddress();
 
-	//使用するリソースのサイズは頂点サイズ
-	indexBufferView.SizeInBytes = UINT(sizeof(sizeinBytes));
+	indexBufferView.SizeInBytes = UINT(sizeinBytes);
 
-	//1頂点あたりのサイズ
 	indexBufferView.Format = DXGI_FORMAT_R32_UINT;
 
 	uint32_t* indexData_ = nullptr;
 
-	//頂点リソースにデータを書き込む
 	indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData_));
 	std::memcpy(indexData_, indices, sizeinBytes);
 	indexResource_->Unmap(0, nullptr);
@@ -182,7 +181,7 @@ void Skybox::CreateRootSignature()
 	D3D12_ROOT_PARAMETER rootPrameters[2] = {};
 
 	rootPrameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	rootPrameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootPrameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	rootPrameters[0].Descriptor.ShaderRegister = 0;
 
 	rootPrameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -272,7 +271,7 @@ void Skybox::CreateGraphicsPipeline()
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
 
 	//裏面を表示しない
-	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+	rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
 
 	//三角形の中を塗りつぶす
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
