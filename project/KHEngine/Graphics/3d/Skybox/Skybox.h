@@ -22,21 +22,41 @@ public:// 構造体
 	struct SkyboxVertexData
 	{
 		Vector4 position;
+		Vector2 texcoord;
+		Vector3 normal;
 	};
 
 public:
+	/// <summary>
+	/// 初期化
+	/// </summary>
+	/// <param name="dxCommon">dxCommon</param>
+	/// <param name="cubemapTexturePath">ファイルパス</param>
 	void Initialize(DirectXCommon* dxCommon, const std::string& cubemapTexturePath);
 	
+	/// <summary>
+	/// 更新処理
+	/// </summary>
 	void Update();
 	
+	/// <summary>
+	/// 描画処理
+	/// </summary>
 	void Draw();
+
 
 	void SetCamera(Camera* camera) { this->camera_ = camera; }
 
 private:
-	// バッファ作成
+	
+	/// <summary>
+	/// バッファリソースの作成
+	/// </summary>
 	void CreateBufferResource();
 
+	/// <summary>
+	/// 座標変換行列リソースの作成
+	/// </summary>
 	void CreateTransformationResource();
 
 	/// <summary>
