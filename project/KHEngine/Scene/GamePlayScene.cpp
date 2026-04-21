@@ -45,7 +45,7 @@ void GamePlayScene::Initialize()
     // スカイボックスの初期化
     skybox_ = std::make_unique<Skybox>();
     // DDSキューブマップファイルのパスを指定してください
-    skybox_->Initialize(dxCommon, "resources/rostock_laage_airport_4k.dds");
+    skybox_->Initialize(dxCommon,"resources/rostock_laage_airport_4k.dds");
 
     // モデル読み込み
     ModelManager::GetInstance()->LoadModel("plane.obj");
@@ -260,6 +260,7 @@ void GamePlayScene::Update()
     // ビルボード行列（Camera* を渡す）
     Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera.get(), useBillboard);
 
+    skybox_->Update();
 
     if (update)
     {
@@ -822,7 +823,7 @@ void GamePlayScene::Draw()
 
     if (skybox_)
     {
-        skybox_->Draw(camera.get());
+        skybox_->Draw();
     }
 
     if (object3dCommon) object3dCommon->SetCommonDrawSetting();

@@ -118,7 +118,7 @@ void SrvManager::CreateSRVforTextureCube(uint32_t srvIndex, ID3D12Resource* pRes
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE; // TEXTURECUBEに変更
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.TextureCube.MostDetailedMip = 0;
-	srvDesc.TextureCube.MipLevels = MipLevels;
+	srvDesc.TextureCube.MipLevels = UINT_MAX;
 	srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
 
 	// 設定をもとにSRVの生成

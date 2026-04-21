@@ -1,80 +1,176 @@
 #include "Skybox.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
-#include "KHEngine/Graphics/3d/Model/Model.h"
-#include <Windows.h>
+#include <Windows.h> 
 #include <cstdio>
+
 
 void Skybox::Initialize(DirectXCommon* dxCommon, const std::string& cubemapTexturePath)
 {
-	assert(dxCommon);
-	dxCommon_ = dxCommon;
+	this->dxCommon = dxCommon;
 
 	// テクスチャを読み込む
 	TextureManager::GetInstance()->LoadTexture(cubemapTexturePath);
 	cubemapSrvIndex_ = TextureManager::GetInstance()->GetTextureIndexByFilePath(cubemapTexturePath);
+	
+	// ルートシグネチャ作成
+	CreateRootSignature();
 
-	// モデルを作成
-	model_ = std::make_unique<Model>();
-	Model::ModelData skyboxModelData = Model::CreateSkyboxModelData();
-	// dxCommonを直接渡す
-	model_->Initialize(dxCommon_, skyboxModelData);
+	// グラフィックスパイプライン生成
+	CreateGraphicsPipeline();
+	
+	// バッファ作成
+	CreateBufferResource();
 
-	// 定数バッファ作成
-	transformationMatrixResource_ = dxCommon_->CreateBufferResource(sizeof(TransformationMatrix));
-	transformationMatrixResource_->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixData_));
-
-	CreatePipelineState();
+	CreateTransformationResource();
 }
 
-void Skybox::Draw(Camera* camera)
+void Skybox::Update()
 {
-	// ワールド行列をカメラの位置に合わせる（回転は考慮しない）
-	Matrix4x4 worldMatrix = Matrix4x4::Translation(camera->GetTranslate());
-	Matrix4x4 viewMatrix = camera->GetViewMatrix();
-	Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
+	if (!camera_)
+	{
+		return;
+	}
 
-	// WVP行列を作成
-	Matrix4x4 worldViewProjectionMatrix = worldMatrix * viewMatrix * projectionMatrix;
+	Matrix4x4 viewMatrix = camera_->GetViewMatrix();
+	viewMatrix.m[3][0] = 0.0f; // カメラの位置を無視
+	viewMatrix.m[3][1] = 0.0f;
+	viewMatrix.m[3][2] = 0.0f;
+	Matrix4x4 wvpMatrix = Matrix4x4::Multiply(Matrix4x4::Scale({500.0f,500.0f,500.0f}),viewMatrix) * camera_->GetProjectionMatrix();
+	transformationMatrixData_->WVP = wvpMatrix;
+	transformationMatrixData_->World = Matrix4x4::Identity();
+}
 
-	// 定数バッファに行列を書き込む
-	transformationMatrixData_->WVP = worldViewProjectionMatrix;
-	transformationMatrixData_->World = worldMatrix;
+void Skybox::Draw()
+{
+	//VBVの設定
+	dxCommon->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView);
 
-	// --- 描画コマンド ---
-	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+	//IBVの設定
+	dxCommon->GetCommandList()->IASetIndexBuffer(&indexBufferView);
 
-	// ルートシグネチャとPSOを設定
-	commandList->SetGraphicsRootSignature(rootSignature.Get());
+	//CBVの設定
+	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, transformationResource_->GetGPUVirtualAddress());
 
-	commandList->SetPipelineState(graphicsPipelineState.Get());
-
-	// プリミティブ形状を設定
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	// CBV（行列）を設定
-	commandList->SetGraphicsRootConstantBufferView(0, transformationMatrixResource_->GetGPUVirtualAddress());
-
-	// SRV（キューブマップテクスチャ）を設定
+	//SRVのDescriptorTableの先頭を設定
 	SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(1, cubemapSrvIndex_);
 
-	// モデルを描画
-	model_->Draw();
+	//描画！
+	dxCommon->GetCommandList()->DrawIndexedInstanced(36, 1, 0, 0, 0);
+}
+
+void Skybox::CreateBufferResource()
+{
+	/*--- 頂点バッファ用リソースを作る ---*/
+	SkyboxVertexData verteies[24] = {};
+	//右面
+	verteies[0].position = { 1.0f, 1.0f, 1.0f, 1.0f };
+	verteies[1].position = { 1.0f, 1.0f, -1.0f, 1.0f };
+	verteies[2].position = { 1.0f, -1.0f, 1.0f, 1.0f };
+	verteies[3].position = { 1.0f, -1.0f, -1.0f, 1.0f };
+	//左面
+	verteies[4].position = { -1.0f, 1.0f, -1.0f, 1.0f };
+	verteies[5].position = { -1.0f, 1.0f, 1.0f, 1.0f };
+	verteies[6].position = { -1.0f, -1.0f, -1.0f, 1.0f };
+	verteies[7].position = { -1.0f, -1.0f, 1.0f, 1.0f };
+	//前面
+	verteies[8].position = { -1.0f, 1.0f, 1.0f, 1.0f };
+	verteies[9].position = { 1.0f, 1.0f, 1.0f, 1.0f };
+	verteies[10].position = { -1.0f, -1.0f, 1.0f, 1.0f };
+	verteies[11].position = { 1.0f, -1.0f, 1.0f, 1.0f };
+	//後面
+	verteies[12].position = { 1.0f, 1.0f, -1.0f, 1.0f };
+	verteies[13].position = { -1.0f, 1.0f, -1.0f, 1.0f };
+	verteies[14].position = { 1.0f, -1.0f, -1.0f, 1.0f };
+	verteies[15].position = { -1.0f, -1.0f, -1.0f, 1.0f };
+	//上面
+	verteies[16].position = { -1.0f, 1.0f, -1.0f, 1.0f };
+	verteies[17].position = { 1.0f, 1.0f, -1.0f, 1.0f };
+	verteies[18].position = { -1.0f, 1.0f, 1.0f, 1.0f };
+	verteies[19].position = { 1.0f, 1.0f, 1.0f, 1.0f };
+	//下面
+	verteies[20].position = { -1.0f, -1.0f, 1.0f, 1.0f };
+	verteies[21].position = { 1.0f, -1.0f, 1.0f, 1.0f };
+	verteies[22].position = { -1.0f, -1.0f, -1.0f, 1.0f };
+	verteies[23].position = { 1.0f, -1.0f, -1.0f, 1.0f };
+
+	//頂点リソースを作る
+	vertexResource_ = dxCommon->CreateBufferResource(sizeof(verteies));
+
+	//リソースの先頭からアドレスから使う
+	vertexBufferView.BufferLocation = vertexResource_->GetGPUVirtualAddress();
+	//使用するリソースのサイズは頂点サイズ
+	vertexBufferView.SizeInBytes = UINT(sizeof(verteies));
+	//1頂点あたりのサイズ
+	vertexBufferView.StrideInBytes = sizeof(SkyboxVertexData);
+	
+	SkyboxVertexData* verteiesData = nullptr;
+
+	//頂点リソースにデータを書き込む
+	vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&verteiesData));
+	std::memcpy(verteiesData, verteies, sizeof(verteies));
+	vertexResource_->Unmap(0, nullptr);
+
+	/*--- インデックスバッファ用リソースを作る ---*/
+
+	uint32_t indices[36] = {
+		0, 1, 2, 2, 1, 3, //右面
+		4, 5, 6, 6, 5, 7, //左面
+		8, 9,10,10, 9,11, //前面
+	   12,13,14,14,13,15, //後面
+	   16,17,18,18,17,19, //上面
+	   20,21,22,22,21,23  //下面
+	};
+
+	size_t sizeinBytes = sizeof(indices);
+
+	//頂点リソースを作る
+	indexResource_ = dxCommon->CreateBufferResource(sizeof(sizeinBytes));
+
+	//リソースの先頭からアドレスから使う
+	indexBufferView.BufferLocation = indexResource_->GetGPUVirtualAddress();
+
+	//使用するリソースのサイズは頂点サイズ
+	indexBufferView.SizeInBytes = UINT(sizeof(sizeinBytes));
+
+	//1頂点あたりのサイズ
+	indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+
+	uint32_t* indexData_ = nullptr;
+
+	//頂点リソースにデータを書き込む
+	indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData_));
+	std::memcpy(indexData_, indices, sizeinBytes);
+	indexResource_->Unmap(0, nullptr);
+}
+
+void Skybox::CreateTransformationResource()
+{
+	//WVP用のリソースを作る
+	transformationResource_ = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
+
+	//書き込むためのアドレス取得
+	transformationResource_->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixData_));
+
+	//単位行列を書き込む
+	transformationMatrixData_->WVP = Matrix4x4::Identity();
+	transformationMatrixData_->World = Matrix4x4::Identity();
+	transformationMatrixData_->WorldInverseTranspose = Matrix4x4::Identity();
 }
 
 void Skybox::CreateRootSignature()
 {
 	HRESULT hr;
 
-	D3D12_DESCRIPTOR_RANGE descriptorRange[1]{};
+	D3D12_DESCRIPTOR_RANGE descriptorRange{};
 	//0から始まる
-	descriptorRange[0].BaseShaderRegister = 0;
+	descriptorRange.BaseShaderRegister = 0;
 	//数は1つ
-	descriptorRange[0].NumDescriptors = 1;
+	descriptorRange.NumDescriptors = 1;
 	//SRVを使う
-	descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	descriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	//Offsetを自動計算
-	descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+	descriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 	//RootSignature作成
 	D3D12_ROOT_SIGNATURE_DESC descripitionRootSignature{};
@@ -83,58 +179,16 @@ void Skybox::CreateRootSignature()
 
 
 	/*---RootSignature作成---*/
-	D3D12_ROOT_PARAMETER rootPrameters[7] = {};
+	D3D12_ROOT_PARAMETER rootPrameters[2] = {};
 
-	//CBVを使う(マテリアル用)
 	rootPrameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	//prixelShederを使う
 	rootPrameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	//レジスタ番号0とバインド
 	rootPrameters[0].Descriptor.ShaderRegister = 0;
 
-	//CBVを使う(行列用)
-	rootPrameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	//VertexShederを使う
-	rootPrameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-	//レジスタ番号0とバインド
-	rootPrameters[1].Descriptor.ShaderRegister = 0;
-
-	//DescriptorTableを使う(テクスチャ用)
-	rootPrameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	//PixelShaderで使う
-	rootPrameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	//Tableの中身の配列を指定
-	rootPrameters[2].DescriptorTable.pDescriptorRanges = descriptorRange;
-	//Tableで利用する数
-	rootPrameters[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
-
-	//CBVを使う(ライト用)
-	rootPrameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	//Pixelshaderで使う
-	rootPrameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	//レジスタ番号1を使う
-	rootPrameters[3].Descriptor.ShaderRegister = 1;
-
-	//CBVを使う(カメラ用)
-	rootPrameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	//PixelShaderで使う
-	rootPrameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	//レジスタ番号2を使う 
-	rootPrameters[4].Descriptor.ShaderRegister = 2;
-
-	// CBVを使う(ポイントライト用)
-	rootPrameters[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	// PixelShaderで使う
-	rootPrameters[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	// レジスタ番号3を使う
-	rootPrameters[5].Descriptor.ShaderRegister = 3;
-
-	// CBVを使う(スポットライト用)
-	rootPrameters[6].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	// PixelShaderで使う
-	rootPrameters[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	// レジスタ番号4を使う
-	rootPrameters[6].Descriptor.ShaderRegister = 4;
+	rootPrameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootPrameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootPrameters[1].DescriptorTable.pDescriptorRanges = &descriptorRange;
+	rootPrameters[1].DescriptorTable.NumDescriptorRanges = 1;
 
 	//ルートパラメータ配列へのポインタ
 	descripitionRootSignature.pParameters = rootPrameters;
@@ -170,17 +224,14 @@ void Skybox::CreateRootSignature()
 
 
 	//バイナリを元に生成
-	hr = dxCommon_->GetDevice()->CreateRootSignature(0,
+	hr = dxCommon->GetDevice()->CreateRootSignature(0,
 		signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(),
 		IID_PPV_ARGS(&rootSignature));
 }
 
-void Skybox::CreatePipelineState()
+void Skybox::CreateGraphicsPipeline()
 {
 	HRESULT hr;
-
-	// ルートシグネチャ作成
-	CreateRootSignature();
 
 	//inputLayout
 	D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
@@ -227,9 +278,9 @@ void Skybox::CreatePipelineState()
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
 	//shaderをコンパイルする
-	Microsoft::WRL::ComPtr <IDxcBlob> vertexShaderBlob = dxCommon_->compileshader(L"resources/shaders/Skybox.VS.hlsl", L"vs_6_0");
+	Microsoft::WRL::ComPtr <IDxcBlob> vertexShaderBlob = dxCommon->compileshader(L"resources/shaders/Skybox.VS.hlsl", L"vs_6_0");
 
-	Microsoft::WRL::ComPtr <IDxcBlob> pixelShaderBlob = dxCommon_->compileshader(L"resources/shaders/Skybox.PS.hlsl", L"ps_6_0");
+	Microsoft::WRL::ComPtr <IDxcBlob> pixelShaderBlob = dxCommon->compileshader(L"resources/shaders/Skybox.PS.hlsl", L"ps_6_0");
 
 	//PSOを生成
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineStateDesc{};
@@ -279,6 +330,6 @@ void Skybox::CreatePipelineState()
 	graphicsPipelineStateDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
 
 	//実際に作成
-	hr = dxCommon_->GetDevice()->CreateGraphicsPipelineState(&graphicsPipelineStateDesc, IID_PPV_ARGS(&graphicsPipelineState));
-
+	hr = dxCommon->GetDevice()->CreateGraphicsPipelineState(&graphicsPipelineStateDesc, IID_PPV_ARGS(&graphicsPipelineState));
 }
+
