@@ -99,6 +99,12 @@ void Skybox::CreateBufferResource()
 	verteies[22].position = { -1.0f, -1.0f, -1.0f, 1.0f };
 	verteies[23].position = { 1.0f, -1.0f, -1.0f, 1.0f };
 
+	for (int i = 0; i < 24; ++i)
+	{
+		verteies[i].texcoord = { 0.0f, 0.0f };
+		verteies[i].normal = { 0.0f, 0.0f, 0.0f };
+	}
+
 	//頂点リソースを作る
 	vertexResource_ = dxCommon->CreateBufferResource(sizeof(verteies));
 
