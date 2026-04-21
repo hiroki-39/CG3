@@ -135,7 +135,7 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <Optimization>Disabled</Optimization>
+      <Optimization>Full</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)KHEngine\Graphics;$(ProjectDir)KHEngine\OS;$(ProjectDir)KHEngine\Utility\Log;$(ProjectDir)KHEngine\Utility\String;$(ProjectDir)KHEngine\Utility\Timer;$(ProjectDir)KHEngine\Debug\Imgui;$(ProjectDir)KHEngine\Graphics\2d;$(ProjectDir)KHEngine\Graphics\3d\Camera;$(ProjectDir)KHEngine\Graphics\3d\Model;$(ProjectDir)KHEngine\Graphics\3d\Object;$(ProjectDir)KHEngine\Graphics\3d\Particle;$(ProjectDir)KHEngine\Graphics\Billboard;$(ProjectDir)KHEngine\Graphics\Resource\Descriptor;$(ProjectDir)KHEngine\Graphics\Resource\Texture;$(ProjectDir)KHEngine\Input;$(ProjectDir)KHEngine\Math;$(ProjectDir)KHEngine\Sound\Core;$(SolutionDir)externals\DirectXTex;$(SolutionDir)externals\imgui;$(SolutionDir)externals\assimp\include;$(ProjectDir)KHEngine\Core\Framework;$(ProjectDir)KHEngine\Scene;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -154,6 +154,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="KHEngine\Graphics\3d\Skybox\Skybox.cpp" />
     <ClCompile Include="KHEngine\Scene\AbstractSceneFactory.cpp" />
     <ClCompile Include="KHEngine\Core\Framework\BaseScene.cpp" />
     <ClCompile Include="KHEngine\Core\Services\EngineServices.cpp" />
@@ -218,6 +219,8 @@
     <ClCompile Include="KHEngine\Core\Resource\ResourceLocator.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="KHEngine\Graphics\3d\Skybox\Skybox.h" />
+    <ClInclude Include="KHEngine\Graphics\Camera\Camera.h" />
     <ClInclude Include="KHEngine\Scene\AbstractSceneFactory.h" />
     <ClInclude Include="KHEngine\Core\Framework\BaseScene.h" />
     <ClInclude Include="KHEngine\Core\Services\EngineServices.h" />

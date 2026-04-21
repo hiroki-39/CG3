@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstring>
 #include <filesystem>
+#include <DirectXTex.h> 
 
 // UI表示用に 1 を足すための定数（内部は生インデックスを使う）
 uint32_t TextureManager::kSRVIndexTop = 1;
@@ -115,7 +116,6 @@ void TextureManager::Initialize(DirectXCommon* dxCommon, SrvManager* srvManager)
 
 void TextureManager::LoadTexture(const std::string& filePath)
 {
-
 	// 論理名またはパスを実パスに解決
 	std::string resolved = ResourceLocator::Resolve(filePath, ResourceLocator::AssetType::Texture);
 
@@ -134,30 +134,43 @@ void TextureManager::LoadTexture(const std::string& filePath)
 	// テクスチャ枚数上限チェック
 	assert(textureDatas.size() + 1 < SrvManager::kMaxSRVCount);
 
-	// ファイルからテクスチャデータを読み込む
+	// ファイルパスをwstringに変換
+	std::wstring wFilePath = StringUtility::ConvertString(resolved);
+
+	// テクスチャデータを読み込むための変数
 	DirectX::ScratchImage image{};
-	HRESULT hr = DirectX::LoadFromWICFile(
-		StringUtility::ConvertString(resolved).c_str(),
-		DirectX::WIC_FLAGS_FORCE_SRGB,
-		nullptr,
-		image
-	);
+	DirectX::TexMetadata metadata{};
+	HRESULT hr;
 
+	// ファイル拡張子をチェックして、DDSとそれ以外で処理を分岐
+	if (std::filesystem::path(wFilePath).extension() == L".dds")
+	{
+		// DDSファイルから読み込み
+		hr = DirectX::LoadFromDDSFile(wFilePath.c_str(), DirectX::DDS_FLAGS_NONE, &metadata, image);
+	}
+	else
+	{
+		// WIC対応ファイルから読み込み
+		hr = DirectX::LoadFromWICFile(wFilePath.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, &metadata, image);
+	}
 	assert(SUCCEEDED(hr));
 
-
-	//ミップマップの作成
+	// ミップマップの作成
 	DirectX::ScratchImage mipImages{};
-	hr = DirectX::GenerateMipMaps(
-		image.GetImages(),
-		image.GetImageCount(),
-		image.GetMetadata(),
-		DirectX::TEX_FILTER_SRGB,
-		0,
-		mipImages);
-
-	assert(SUCCEEDED(hr));
-
+	// 圧縮フォーマットかどうかで分岐
+	if (DirectX::IsCompressed(metadata.format))
+	{
+		// 圧縮フォーマットの場合は、DDSに含まれるミップマップをそのまま使う
+		mipImages = std::move(image);
+	}
+	else
+	{
+		// 非圧縮フォーマットの場合はミップマップを生成する
+		hr = DirectX::GenerateMipMaps(
+			image.GetImages(), image.GetImageCount(), metadata,
+			DirectX::TEX_FILTER_SRGB, 0, mipImages);
+		assert(SUCCEEDED(hr));
+	}
 
 	// テクスチャデータを追加（key=resolved）
 	textureDatas.emplace(resolved, TextureData{});
@@ -165,9 +178,10 @@ void TextureManager::LoadTexture(const std::string& filePath)
 	// 追加したテクスチャデータの参照を取得
 	TextureData& textureData = textureDatas[resolved];
 
-	//ファイルから読み取った情報を格納
-	textureData.metadata = mipImages.GetMetadata();
-	textureData.resource = dxCommon_->CreateTextureResource(textureData.metadata);
+	// ファイルから読み取った情報を格納
+	const auto& finalMetadata = mipImages.GetMetadata();
+	textureData.metadata = finalMetadata;
+	textureData.resource = dxCommon_->CreateTextureResource(finalMetadata);
 
 	// テクスチャデータの要素数番号をSRVのインデックスにする（生インデックス）
 	textureData.srvIndex = srvManager->Allocate();
@@ -181,13 +195,25 @@ void TextureManager::LoadTexture(const std::string& filePath)
 	textureData.srvHandleCPU = srvManager->GetSRVCPUDescriptorHandle(textureData.srvIndex);
 	textureData.srvHandleGPU = srvManager->GetSRVGPUDescriptorHandle(textureData.srvIndex);
 
-	// SRVの作成
-	srvManager->CreateSRVforTexture2D(
-		textureData.srvIndex,
-		textureData.resource.Get(),
-		textureData.metadata.format,
-		static_cast<UINT>(textureData.metadata.mipLevels)
-	);
+	// SRVの作成（キューブマップか2Dテクスチャかで分岐）
+	if (finalMetadata.IsCubemap())
+	{
+		srvManager->CreateSRVforTextureCube(
+			textureData.srvIndex,
+			textureData.resource.Get(),
+			finalMetadata.format,
+			static_cast<UINT>(finalMetadata.mipLevels)
+		);
+	}
+	else
+	{
+		srvManager->CreateSRVforTexture2D(
+			textureData.srvIndex,
+			textureData.resource.Get(),
+			finalMetadata.format,
+			static_cast<UINT>(finalMetadata.mipLevels)
+		);
+	}
 
 	// ローカルで作成したサブリソース情報（ここをtextureDataへ保存する）
 	std::vector<D3D12_SUBRESOURCE_DATA> subresources = CreateSubresources(mipImages);
@@ -210,6 +236,7 @@ void TextureManager::LoadTexture(const std::string& filePath)
 
 	dxCommon_->AddTextureUpload(textureData.resource, textureData.intermediateResource, textureData.subresources);
 }
+
 
 void TextureManager::ClearIntermediateResources()
 {
@@ -264,16 +291,19 @@ std::vector<D3D12_SUBRESOURCE_DATA> TextureManager::CreateSubresources(const Dir
 {
 	std::vector<D3D12_SUBRESOURCE_DATA> subresources;
 
-	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+
 	const DirectX::Image* images = mipImages.GetImages();
 
-	subresources.resize(metadata.mipLevels);
 
-	for (size_t mip = 0; mip < metadata.mipLevels; ++mip)
+	size_t numImages = mipImages.GetImageCount();
+
+	subresources.resize(numImages);
+
+	for (size_t i = 0; i < numImages; ++i)
 	{
-		const DirectX::Image& img = images[mip];
+		const DirectX::Image& img = images[i];
 
-		D3D12_SUBRESOURCE_DATA& sub = subresources[mip];
+		D3D12_SUBRESOURCE_DATA& sub = subresources[i];
 		sub.pData = img.pixels;
 		sub.RowPitch = img.rowPitch;
 		sub.SlicePitch = img.slicePitch;

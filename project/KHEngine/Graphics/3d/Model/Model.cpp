@@ -37,6 +37,27 @@ void Model::Initialize(ModelCommon* modelCommon, const std::string& directoryPat
 		modelData.material.textureIndex = TextureManager::GetInstance()->GetDefaultTextureIndex();
 	}
 }
+
+void Model::Initialize(DirectXCommon* dxCommon, const ModelData& data)
+{
+	// ModelCommonは使わないのでnullptrのままでOK
+	this->modelCommon = nullptr;
+	assert(dxCommon != nullptr);
+	this->dxCommon = dxCommon;
+
+	// モデルデータをコピー
+	modelData = data;
+
+	// バッファ作成
+	CreateBufferResource();
+
+	// マテリアル作成
+	CreateMaterialResource();
+
+	// テクスチャはスカイボックス側で管理するのでここでは何もしない
+	modelData.material.textureIndex = TextureManager::GetInstance()->GetDefaultTextureIndex();
+}
+
 void Model::Draw()
 {
 	//VBVの設定
@@ -245,6 +266,35 @@ Model::MaterialData Model::LoadMaterialTemplateFile(const std::string& directory
 	/*---	4.MaterialDataを返す	---*/
 
 	return  materialData;
+}
+
+Model::ModelData Model::CreateSkyboxModelData()
+{
+	ModelData modelData;
+	// 頂点データ (x,y,z,w)
+	modelData.vertices = {
+		// 前
+		{{-1.0f, -1.0f, -1.0f, 1.0f}},
+		{{-1.0f, +1.0f, -1.0f, 1.0f}},
+		{{+1.0f, +1.0f, -1.0f, 1.0f}},
+		{{+1.0f, -1.0f, -1.0f, 1.0f}},
+		// 後
+		{{-1.0f, -1.0f, +1.0f, 1.0f}},
+		{{-1.0f, +1.0f, +1.0f, 1.0f}},
+		{{+1.0f, +1.0f, +1.0f, 1.0f}},
+		{{+1.0f, -1.0f, +1.0f, 1.0f}},
+	};
+
+	// インデックスデータ
+	modelData.indices = {
+		0, 1, 2, 0, 2, 3, // 前
+		4, 6, 5, 4, 7, 6, // 後
+		4, 5, 1, 4, 1, 0, // 左
+		3, 2, 6, 3, 6, 7, // 右
+		1, 5, 6, 1, 6, 2, // 上
+		4, 0, 3, 4, 3, 7, // 下
+	};
+	return modelData;
 }
 
 Model::Node Model::ReadNode(aiNode* node)

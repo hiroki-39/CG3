@@ -3,6 +3,8 @@
 #include "KHEngine/Math/MathCommon.h"
 #include <assimp/scene.h>
 
+class DirectXCommon;
+
 class Model
 {
 public: //構造体
@@ -61,11 +63,21 @@ public: //メンバ関数
 	/// </summary>
 	void Initialize(ModelCommon* modelCommon, const std::string& directoryPath, const std::string& filename);
 
+	/// <summary>
+	/// データから初期化（今回追加）
+	/// </summary>
+	void Initialize(DirectXCommon* dxCommon, const ModelData& data);
+
 
 	/// <summary>
 	/// 描画処理
 	/// </summary>
 	void Draw();
+
+	/// <summary>
+	/// スカイボックス用のモデルデータを作成（今回追加）
+	/// </summary>
+	static ModelData CreateSkyboxModelData();
 
 	inline int32_t GetSelectLightings() const { return materialData_ ? materialData_->selectLightings : 0; }
 	inline void SetSelectLightings(int32_t v) { if (materialData_) materialData_->selectLightings = v; }

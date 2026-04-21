@@ -110,6 +110,25 @@ void SrvManager::CreateSRVforTexture2D(uint32_t srvIndex, ID3D12Resource* pResou
 	);
 }
 
+void SrvManager::CreateSRVforTextureCube(uint32_t srvIndex, ID3D12Resource* pResource, DXGI_FORMAT Format, UINT MipLevels)
+{
+	// SRVの設定
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Format = Format;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE; // TEXTURECUBEに変更
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.TextureCube.MostDetailedMip = 0;
+	srvDesc.TextureCube.MipLevels = UINT_MAX;
+	srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+
+	// 設定をもとにSRVの生成
+	directXCommon->GetDevice()->CreateShaderResourceView(
+		pResource,
+		&srvDesc,
+		GetSRVCPUDescriptorHandle(srvIndex)
+	);
+}
+
 void SrvManager::CreateSRVforStructuredBuffer(uint32_t srvIndex, ID3D12Resource* pResource, UINT NumElements, UINT StructureByteStride)
 {
 	// SRVの設定

@@ -29,6 +29,7 @@ void GamePlayScene::Initialize()
     {
         object3dCommon->SetDefaultCamera(camera.get());
     }
+    
     camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
     camera->SetRotation({ 0.3f, 0.0f, 0.0f });
 
@@ -40,6 +41,11 @@ void GamePlayScene::Initialize()
 
     auto texManager = TextureManager::GetInstance();
     dxCommon->BeginTextureUploadBatch();
+
+    // スカイボックスの初期化
+    skybox_ = std::make_unique<Skybox>();
+    // DDSキューブマップファイルのパスを指定してください
+    skybox_->Initialize(dxCommon,"resources/skybox.dds");
 
     // モデル読み込み
     ModelManager::GetInstance()->LoadModel("plane.obj");
@@ -128,6 +134,7 @@ void GamePlayScene::Finalize()
     sound.Stop();
     SoundManager::GetInstance()->SoundUnload(&Data);
 
+    skybox_.reset();
     camera.reset();
 }
 
@@ -237,7 +244,6 @@ void GamePlayScene::Update()
 
     // カメラ更新（入力反映後に行う）
     if (camera) camera->Update();
-
     for (auto& model : modelInstances) if (model) model->Update();
     for (auto& sprite : sprites) if (sprite) sprite->Update();
 
@@ -253,6 +259,8 @@ void GamePlayScene::Update()
 
     // ビルボード行列（Camera* を渡す）
     Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera.get(), useBillboard);
+
+    skybox_->Update();
 
     if (update)
     {
@@ -812,6 +820,11 @@ void GamePlayScene::Draw()
     auto services = EngineServices::GetInstance();
     auto object3dCommon = services->GetObject3dCommon();
     auto spriteCommon = services->GetSpriteCommon();
+
+    if (skybox_)
+    {
+        skybox_->Draw();
+    }
 
     if (object3dCommon) object3dCommon->SetCommonDrawSetting();
 

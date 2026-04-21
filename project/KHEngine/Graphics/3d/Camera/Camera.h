@@ -25,6 +25,8 @@ public:
 	}
 	Vector3& GetTranslate() { return transform.translate; }
 	Vector3& GetRotation() { return transform.rotation; }
+	const Vector3& GetTranslate() const { return transform.translate;}
+
 
 	// --- Setter ---
 	void SetRotation(const Vector3& rotation) { transform.rotation = rotation; }
