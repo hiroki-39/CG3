@@ -11,7 +11,7 @@
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Sound/Core/SoundManager.h"
-#include "KHEngine/Scene/SceneFactory.h"
+//#include "KHEngine/Scene/SceneFactory.h"
 #include "KHEngine/Scene/AbstractSceneFactory.h"
 
 class KHFramework

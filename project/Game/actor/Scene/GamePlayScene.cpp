@@ -100,7 +100,7 @@ void GamePlayScene::Initialize()
         terrain->SetModel("terrain.obj");
         terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
         terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-        terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+        terrain->SetScale(Vector3(100.0f, 100.0f, 100.0f));
         modelInstances.push_back(std::move(terrain));
     }
 

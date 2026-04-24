@@ -1,11 +1,11 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "Application.h"
 #include <Windows.h>
 #include <combaseapi.h>
 #include "KHEngine/Core/Utility/Log/Logger.h"
 #include "KHEngine/Core/Utility/Crash/CrashDump.h"
 #include "KHEngine/Core/Services/EngineServices.h"
-#include "KHEngine/Scene/SceneFactory.h"
+#include "Game/actor/Scene/GameSceneFactory.h"
 #include <memory>
 
 // 初期化
@@ -24,7 +24,7 @@ void Application::Initialize()
     services->SetImGuiManager(imguiManager_.get());
 
     // シーンマネージャーとシーンファクトリーの生成と初期設定
-    sceneFactory_ = std::make_unique<SceneFactory>();
+    sceneFactory_ = std::make_unique<GameSceneFactory>();
     services->SetSceneFactory(sceneFactory_.get());
 
     // SceneManager を生成してファクトリーを設定
