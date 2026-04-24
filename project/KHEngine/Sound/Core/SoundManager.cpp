@@ -39,21 +39,24 @@ void SoundManager::Initialize()
 // 終了処理
 void SoundManager::Finalize()
 {
-	HRESULT result;
+// 多重呼び出し防止
+if (!xAudio2) return;
 
-	// Media Foundationの終了処理
-	result = MFShutdown();
-	assert(SUCCEEDED(result));
+HRESULT result;
 
-	// マスターボイスの破棄
-	if (masteringVoice)
-	{
-		masteringVoice->DestroyVoice();
-		masteringVoice = nullptr;
-	}
+// Media Foundationの終了処理
+result = MFShutdown();
+assert(SUCCEEDED(result));
 
-	// XAudio2の解放
-	xAudio2.Reset();
+// マスターボイスの破棄（xAudio2が有効な場合のみ）
+if (masteringVoice && xAudio2)
+{
+	masteringVoice->DestroyVoice();
+	masteringVoice = nullptr;
+}
+
+// XAudio2の解放
+xAudio2.Reset();
 }
 
 SoundManager::SoundData SoundManager::SoundLoadWave(const char* filename)
