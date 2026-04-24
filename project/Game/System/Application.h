@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Core/OS/WinApp.h"
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 #include "KHEngine/Input/Input.h"
@@ -7,7 +7,7 @@
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Scene/SceneManager.h"
 #include "KHEngine/Scene/AbstractSceneFactory.h"
-#include "KHEngine/Scene/SceneFactory.h"
+#include "Game/actor/Scene/GameSceneFactory.h"
 #include <memory>
 
 class Application : public KHFramework

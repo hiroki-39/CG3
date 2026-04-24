@@ -1,5 +1,8 @@
 ﻿#pragma once
 #include <memory>
+#include <string>
+#include <unordered_map>
+#include <functional>
 #include "KHEngine/Core/Framework/BaseScene.h"
 #include "KHEngine/Scene/AbstractSceneFactory.h"
 
