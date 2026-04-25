@@ -1,4 +1,4 @@
-﻿#include "Model.h"
+#include "Model.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 #include <fstream>
@@ -137,8 +137,8 @@ void Model::CreateMaterialResource()
 
 	//鏡面反射の強さ
 	materialData_->shininess = 40.0f;
-
 	materialData_->specularColor = { 1.0f,1.0f,1.0f };
+	materialData_->environmentCoefficient = 0.0f;
 }
 
 Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std::string & filename)
@@ -160,9 +160,6 @@ Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std
 		aiMesh* mesh = scene->mMeshes[meshIndex];
 		//法線がないmeshは対応しない
 		assert(mesh->HasNormals());
-		//テクスチャ座標がないmeshは対応しない
-		assert(mesh->HasTextureCoords(0));
-
 		for (uint32_t faceINdex = 0; faceINdex < mesh->mNumFaces; ++faceINdex)
 		{
 			aiFace& face = mesh->mFaces[faceINdex];
@@ -178,13 +175,19 @@ Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std
 
 				aiVector3D& position = mesh->mVertices[vertexIndex];
 				aiVector3D& normal = mesh->mNormals[vertexIndex];
-				aiVector3D& texcoord = mesh->mTextureCoords[0][vertexIndex];
-
+				
 				VertexData vertex;
-
 				vertex.position = { -position.x, position.y, position.z, 1.0f };
 				vertex.normal = { -normal.x, normal.y, normal.z };
-				vertex.texcoord = { 1.0f - texcoord.x,texcoord.y };
+
+				// テクスチャ座標があるかチェック
+				if (mesh->HasTextureCoords(0)) {
+					aiVector3D& texcoord = mesh->mTextureCoords[0][vertexIndex];
+					vertex.texcoord = { 1.0f - texcoord.x, texcoord.y };
+				}
+				else {
+					vertex.texcoord = { 0.0f, 0.0f };
+				}
 
 				vertex.position.x *= -1.0f;
 				vertex.normal.x *= -1.0f;
@@ -295,6 +298,13 @@ Model::ModelData Model::CreateSkyboxModelData()
 		4, 0, 3, 4, 3, 7, // 下
 	};
 	return modelData;
+}
+
+void Model::SetColor(const Vector4& color)
+{
+	if (materialData_) {
+		materialData_->color = color;
+	}
 }
 
 Model::Node Model::ReadNode(aiNode* node)

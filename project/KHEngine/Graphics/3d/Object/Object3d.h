@@ -122,6 +122,8 @@ public://メンバ関数
 
 	
 	inline Model* GetModel() const { return model; }
+	void SetEnvironmentTextureIndex(uint32_t index) { this->environmentTextureIndex = index; }
+	void SetEnvironmentCoefficient(float coefficient) { if (model) model->SetEnvironmentCoefficient(coefficient); }
 
 private://メンバ関数
 
@@ -146,6 +148,9 @@ private://メンバ関数
 	void CreateSpotLight();
 
 private://メンバ変数
+
+	// 環境マップ
+	uint32_t environmentTextureIndex = 0;
 
 	// 共通部分
 	Object3dCommon* object3dCommon = nullptr;
