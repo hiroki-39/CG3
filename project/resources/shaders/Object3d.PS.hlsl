@@ -7,10 +7,12 @@
 struct Material
 {
     float32_t4 color;
-    bool enableLighting;
+    int32_t enableLighting;
     float32_t4x4 uvTransform;
     int32_t selectLightings;
     float32_t shininess;
+    float32_t environmentCoefficient;
+    float32_t padding;
     float32_t3 specularColor;
 };
 
@@ -53,6 +55,7 @@ ConstantBuffer<PointLight> gPointLight : register(b3);
 ConstantBuffer<SpotLight> gSpotLight : register(b4);
 
 Texture2D<float32_t4> gTexture : register(t0);
+TextureCube<float32_t4> gEnvironmentMap : register(t1);
 SamplerState gSampler : register(s0);
 
 struct PixelShaderOutput
@@ -135,7 +138,7 @@ PixelShaderOutput main(VertexShaderOutput input)
 
             float32_t3 specularPointLight = gPointLight.color.rgb * gPointLight.intensity * specularPowPoint * float32_t3(1.0f, 1.0f, 1.0f) * factor;
 
-                // ===== �S������ =====
+                // ===== 全部足す =====
                 output.color.rgb = diffuseDirectionalLight + specularDirectionalLight + diffusePointLight + specularPointLight;
 
                 output.color.a = gMaterial.color.a * textureColor.a;
@@ -145,15 +148,15 @@ PixelShaderOutput main(VertexShaderOutput input)
             {
              // ===== SpotLight =====
             
-             // �\�� �� ��������
+             // 表面 → 光源方向
             float32_t3 spotLightDirection = normalize(input.worldPosition - gSpotLight.position);
 
-            // ��������
+            // 距離減衰
             float32_t distance = length(gSpotLight.position - input.worldPosition);
 
             float32_t attenuation = pow(saturate(-distance / gSpotLight.distance + 1.0f), gSpotLight.decay);
 
-                // �p�x�iFalloff�j
+                // 角度（Falloff）
                 float cosAngle = dot(spotLightDirection, gSpotLight.direction);
 
                 float falloffFactor = saturate((cosAngle - gSpotLight.cosAngle) / (1.0f - gSpotLight.cosAngle));
@@ -174,7 +177,7 @@ PixelShaderOutput main(VertexShaderOutput input)
 
            float32_t3 specularSpotLight = gSpotLight.color.rgb * gSpotLight.intensity * specularPow * float32_t3(1.0f, 1.0f, 1.0f) * attenuation * falloffFactor;
 
-                // ===== �o�� =====
+                // ===== 出力 =====
                 output.color.rgb = diffuseSpotLight + specularSpotLight;
 
                 output.color.a = gMaterial.color.a * textureColor.a;
@@ -182,5 +185,21 @@ PixelShaderOutput main(VertexShaderOutput input)
             break;
     }
 
+    // 環境マッピング
+    if (gMaterial.environmentCoefficient > 0.0f)
+    {
+        // 視線ベクトル（表面からカメラへ）
+        float32_t3 toEye = normalize(gCamera.worldPosition - input.worldPosition);
+        // 反射ベクトル（入射ベクトルを法線で反射させる。reflectの第1引数は「光源から表面へ」なので-toEye）
+        float32_t3 reflectVector = reflect(-toEye, normal);
+        
+        // 環境マップをサンプリング
+        float32_t3 environmentColor = gEnvironmentMap.Sample(gSampler, reflectVector).rgb;
+        
+        // 環境マップの色を加算（鏡面反射として扱う）
+        output.color.rgb += environmentColor * gMaterial.environmentCoefficient;
+    }
+
+    
     return output;
 }

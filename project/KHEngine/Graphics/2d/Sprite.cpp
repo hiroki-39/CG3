@@ -1,4 +1,4 @@
-﻿#include "Sprite.h"
+#include "Sprite.h"
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 
@@ -184,12 +184,17 @@ void Sprite::CreateMaterialResource()
 	//Lightingを有効化
 	materialData_->enableLighting = false;
 
-	////Lightingの種類の設定
-	//materialDataSprite->selectLightings = 0;
+	//Lightingの種類の設定
+	materialData_->selectLightings = 0;
 
 	//単位行列を書き込む
 	materialData_->uvTransform = Matrix4x4::Identity();
 
+	// 鏡面反射の強さ
+	materialData_->shininess = 1.0f;
+	materialData_->environmentCoefficient = 0.0f;
+	materialData_->padding1 = 0.0f;
+	materialData_->specularColor = { 1.0f, 1.0f, 1.0f };
 }
 
 

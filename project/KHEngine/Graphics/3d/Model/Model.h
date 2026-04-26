@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Graphics/3d/Model/ModelCommon.h"
 #include "KHEngine/Math/MathCommon.h"
 #include <assimp/scene.h>
@@ -26,13 +26,14 @@ public: //構造体
 	struct Material
 	{
 		Vector4 color;
-		uint32_t enableLighting;
+		int32_t enableLighting;
 		uint32_t padding0[3];
 		Matrix4x4 uvTransform;
 		int32_t selectLightings;
 		float shininess;
-		Vector3 specularColor;
+		float environmentCoefficient;
 		float padding1;
+		Vector3 specularColor;
 	};
 
 	struct MaterialData
@@ -79,8 +80,16 @@ public: //メンバ関数
 	/// </summary>
 	static ModelData CreateSkyboxModelData();
 
+	/// <summary>
+	/// モデルの色を設定
+	/// </summary>
+	void SetColor(const Vector4& color);
+
 	inline int32_t GetSelectLightings() const { return materialData_ ? materialData_->selectLightings : 0; }
+	inline float GetEnvironmentCoefficient() const { return materialData_ ? materialData_->environmentCoefficient : 0.0f; }
+
 	inline void SetSelectLightings(int32_t v) { if (materialData_) materialData_->selectLightings = v; }
+	inline void SetEnvironmentCoefficient(float v) { if (materialData_) materialData_->environmentCoefficient = v; }
 
 private: //メンバ関数
 

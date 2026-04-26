@@ -97,6 +97,8 @@ void Object3d::Draw()
 		dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(6, spotLightResource_->GetGPUVirtualAddress());
 	}
 
+	// 環境マップのDescriptorTableを設定
+	SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(7, environmentTextureIndex);
 
 	//モデルの描画
 	if (model)

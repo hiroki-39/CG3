@@ -47,6 +47,8 @@ public:
 
 	void SetCamera(Camera* camera) { this->camera_ = camera; }
 
+	uint32_t GetCubemapSrvIndex() const { return cubemapSrvIndex_; }
+
 private:
 	
 	/// <summary>

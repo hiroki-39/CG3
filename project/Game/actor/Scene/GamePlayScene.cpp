@@ -57,6 +57,7 @@ void GamePlayScene::Initialize()
     texManager->LoadTexture("uvChecker.png");
     texManager->LoadTexture("monsterBall.png");
     texManager->LoadTexture("checkerBoard.png");
+	texManager->LoadTexture("resources/skybox.dds");
     texManager->LoadTexture("circle.png");
     texManager->LoadTexture("white.png");
 
@@ -65,6 +66,7 @@ void GamePlayScene::Initialize()
     uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("uvChecker.png");
     uint32_t monsterBallTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("monsterBall.png");
     uint32_t checkerBoardTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("checkerBoard.png");
+    uint32_t skyboxTexIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/skybox.dds");
 
     particleSrvIndex = TextureManager::GetInstance()->GetSrvIndex("circle.png");
 
@@ -89,40 +91,45 @@ void GamePlayScene::Initialize()
     {
         auto obj = std::make_unique<Object3d>();
         obj->Initialize(object3dCommon);
-        obj->SetModel("cube.obj");
+        obj->SetModel("suzanne.obj");
+        obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        /*obj->GetModel()->SetSelectLightings(0);*/
+        uint32_t skyboxTexIndex = skybox_->GetCubemapSrvIndex();
+        obj->SetEnvironmentTextureIndex(skyboxTexIndex);
+        obj->SetEnvironmentCoefficient(1.0f);
         obj->SetTranslate(Vector3(0.0f, 1.0f, -4.0f));
         obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
         obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
         modelInstances.push_back(std::move(obj));
 
-        auto terrain = std::make_unique<Object3d>();
-        terrain->Initialize(object3dCommon);
-        terrain->SetModel("terrain.obj");
-        terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
-        terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-        terrain->SetScale(Vector3(100.0f, 100.0f, 100.0f));
-        modelInstances.push_back(std::move(terrain));
+        //auto terrain = std::make_unique<Object3d>();
+        //terrain->Initialize(object3dCommon);
+        //terrain->SetModel("terrain.obj");
+        //terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
+        //terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
+        //terrain->SetScale(Vector3(100.0f, 100.0f, 100.0f));
+        //modelInstances.push_back(std::move(terrain));
     }
 
     Data = SoundManager::GetInstance()->SoundLoadFile("bgm.mp3");
 
-    // ParticleSystem 初期設定
-    particleSystem.GetEmitter().GetEmitter().count = 3;
-    particleSystem.GetEmitter().GetEmitter().frequency = 0.5f;
-    particleSystem.GetEmitter().GetEmitter().frequencyTime = 0.0f;
-    particleSystem.GetEmitter().GetEmitter().transform.translate = { 0.0f,-2.0f,0.0f };
-    particleSystem.GetEmitter().GetEmitter().transform.rotation = { 0.0f,0.0f,0.0f };
-    particleSystem.GetEmitter().GetEmitter().transform.scale = { 1.0f,1.0f,1.0f };
+    //// ParticleSystem 初期設定
+    //particleSystem.GetEmitter().GetEmitter().count = 3;
+    //particleSystem.GetEmitter().GetEmitter().frequency = 0.5f;
+    //particleSystem.GetEmitter().GetEmitter().frequencyTime = 0.0f;
+    //particleSystem.GetEmitter().GetEmitter().transform.translate = { 0.0f,-2.0f,0.0f };
+    //particleSystem.GetEmitter().GetEmitter().transform.rotation = { 0.0f,0.0f,0.0f };
+    //particleSystem.GetEmitter().GetEmitter().transform.scale = { 1.0f,1.0f,1.0f };
 
-    currentEffect = ParticleEffect::Wind;
-    particleSystem.SetEffect(currentEffect);
-    particleSystem.AddInitialParticles(randomEngine, kNumMaxInstance);
+    //currentEffect = ParticleEffect::Wind;
+    //particleSystem.SetEffect(currentEffect);
+    //particleSystem.AddInitialParticles(randomEngine, kNumMaxInstance);
 
-    AccelerationField accelerationField;
-    accelerationField.accleration = { -15.0f, 0.0f, 0.0f };
-    accelerationField.area.min = { -1.0f, -1.0f, -1.0f };
-    accelerationField.area.max = { 1.0f, 1.0f, 1.0f };
-    particleSystem.SetAccelerationField(accelerationField);
+    //AccelerationField accelerationField;
+    //accelerationField.accleration = { -15.0f, 0.0f, 0.0f };
+    //accelerationField.area.min = { -1.0f, -1.0f, -1.0f };
+    //accelerationField.area.max = { 1.0f, 1.0f, 1.0f };
+    //particleSystem.SetAccelerationField(accelerationField);
 }
 
 void GamePlayScene::Finalize()
@@ -339,6 +346,18 @@ void GamePlayScene::Update()
         if (ImGui::DragFloat3("Scale", sArr, 0.01f, 0.001f, 100.0f))
         {
             obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
+        }
+    }
+
+    if (!modelInstances.empty())
+    {
+        Object3d* obj = modelInstances[0].get(); // スザンヌ
+
+        // 反射強度のスライダーを追加
+        float envCoeff = obj->GetModel()->GetEnvironmentCoefficient(); // ※後述のGetterが必要
+        if (ImGui::DragFloat("Environment Coefficient", &envCoeff, 0.01f, 0.0f, 1.0f))
+        {
+            obj->SetEnvironmentCoefficient(envCoeff);
         }
     }
 

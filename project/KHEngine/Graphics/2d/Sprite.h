@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Math/MathCommon.h"
@@ -28,10 +28,14 @@ private:
 	struct Material
 	{
 		Vector4 color;		     // 色RGBA
-		bool enableLighting;     // ライティング有効化フラグ
-		float padding[3];	     // パディング
+		int32_t enableLighting; // ライティング有効化フラグ
+		uint32_t padding0[3];	 // パディング
 		Matrix4x4 uvTransform;   // UV変換行列
 		int32_t selectLightings; // ライティング種類選択
+		float shininess;         // 光沢度
+		float environmentCoefficient; // 環境マップ係数
+		float padding1;          // パディング
+		Vector3 specularColor;   // 鏡面反射色
 	};
 
 	// 座標変換行列データ
