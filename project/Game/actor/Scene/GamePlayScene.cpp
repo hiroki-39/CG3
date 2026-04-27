@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "GamePlayScene.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Core/Utility/Log/Logger.h"
@@ -59,6 +59,7 @@ void GamePlayScene::Initialize()
     texManager->LoadTexture("checkerBoard.png");
 	texManager->LoadTexture("resources/skybox.dds");
     texManager->LoadTexture("circle.png");
+    texManager->LoadTexture("circle2.png");
     texManager->LoadTexture("white.png");
 
     texManager->ExecuteUploadCommands();
@@ -113,23 +114,16 @@ void GamePlayScene::Initialize()
 
     Data = SoundManager::GetInstance()->SoundLoadFile("bgm.mp3");
 
-    //// ParticleSystem 初期設定
-    //particleSystem.GetEmitter().GetEmitter().count = 3;
-    //particleSystem.GetEmitter().GetEmitter().frequency = 0.5f;
-    //particleSystem.GetEmitter().GetEmitter().frequencyTime = 0.0f;
-    //particleSystem.GetEmitter().GetEmitter().transform.translate = { 0.0f,-2.0f,0.0f };
-    //particleSystem.GetEmitter().GetEmitter().transform.rotation = { 0.0f,0.0f,0.0f };
-    //particleSystem.GetEmitter().GetEmitter().transform.scale = { 1.0f,1.0f,1.0f };
-
-    //currentEffect = ParticleEffect::Wind;
-    //particleSystem.SetEffect(currentEffect);
-    //particleSystem.AddInitialParticles(randomEngine, kNumMaxInstance);
-
-    //AccelerationField accelerationField;
-    //accelerationField.accleration = { -15.0f, 0.0f, 0.0f };
-    //accelerationField.area.min = { -1.0f, -1.0f, -1.0f };
-    //accelerationField.area.max = { 1.0f, 1.0f, 1.0f };
-    //particleSystem.SetAccelerationField(accelerationField);
+    // ParticleEmitter 初期設定 (画像のエフェクトを再現)
+    emitter.SetParameter(ParticleEmitter::CreateSlashPreset());
+    emitter.SetBlendMode(BlendMode::Additive);
+    emitter.SetTextureName("circle2.png");
+    
+    // エミッターの初期位置
+    emitter.SetPosition({ 0.0f, 2.0f, 0.0f });
+    
+    // パーティクル生成
+    emitter.Emit(8);
 }
 
 void GamePlayScene::Finalize()
@@ -266,15 +260,13 @@ void GamePlayScene::Update()
 
     // ビルボード行列（Camera* を渡す）
     Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera.get(), useBillboard);
-
     skybox_->Update();
 
     if (update)
     {
-        particleSystem.Update(kDeltaTime_);
+        emitter.Update(kDeltaTime_);
     }
-
-    numInstance = particleSystem.FillInstancingBuffer(instancingData, kNumMaxInstance, viewMatrix, projectionMatrix, billboardMatrix, false);
+    numInstance = emitter.FillInstancingBuffer(instancingData, kNumMaxInstance, viewMatrix, projectionMatrix, billboardMatrix);
 
 #ifdef USE_IMGUI
 
@@ -764,68 +756,65 @@ void GamePlayScene::Update()
 
     // ブレンドモード選択
     {
-        const char* blendNames[] = { "Alpha", "Additive", "Multiply", "PreMultiplied", "None" };
-        if (ImGui::Combo("Blend Mode", &currentBlendModeIndex, blendNames, static_cast<int>(BlendMode::Count)))
+        const char* blendNames[] = { "None", "Alpha", "Additive", "Multiply", "PreMultiplied" };
+        int mode = static_cast<int>(emitter.GetBlendMode());
+        if (ImGui::Combo("Blend Mode", &mode, blendNames, 5))
         {
-            // currentBlendModeIndex は Draw 呼び出し時に使われる
+            emitter.SetBlendMode(static_cast<BlendMode>(mode));
         }
     }
 
-    // パーティクル種類選択（ParticleEffect enum に合わせる）
+    // プリセット選択
     {
-        const char* effectNames[] = { "Wind", "Fire", "Snow", "Explosion", "Smoke", "Confetti" };
-        // currentEffect は ParticleEffect 型だが ImGui 用に int にキャストする
-        int effectIndex = static_cast<int>(currentEffect);
-        if (ImGui::Combo("Effect", &effectIndex, effectNames, static_cast<int>(ParticleEffect::Count)))
+        const char* presetNames[] = { "Fire", "Snow", "Explosion", "Circle (HitEffect)" };
+        static int selectedPreset = 3; // 初期は Circle
+        if (ImGui::Combo("Presets", &selectedPreset, presetNames, 4))
         {
-            currentEffect = static_cast<ParticleEffect>(effectIndex);
-            particleSystem.SetEffect(currentEffect);
+            if (selectedPreset == 0) {
+                emitter.SetParameter(ParticleEmitter::CreateFirePreset());
+                emitter.SetTextureName("circle.png");
+                emitter.SetBlendMode(BlendMode::Alpha);
+            }
+            else if (selectedPreset == 1) {
+                emitter.SetParameter(ParticleEmitter::CreateSnowPreset());
+                emitter.SetTextureName("circle.png");
+                emitter.SetBlendMode(BlendMode::Alpha);
+            }
+            else if (selectedPreset == 2) {
+                emitter.SetParameter(ParticleEmitter::CreateExplosionPreset());
+                emitter.SetTextureName("circle.png");
+                emitter.SetBlendMode(BlendMode::Additive);
+            }
+            else if (selectedPreset == 3) {
+                emitter.SetParameter(ParticleEmitter::CreateSlashPreset());
+                emitter.SetTextureName("circle2.png");
+                emitter.SetBlendMode(BlendMode::Additive);
+            }
         }
     }
 
     // エミッター設定を直接編集
     {
-        auto& emitter = particleSystem.GetEmitter().GetEmitter();
-
-        int count = static_cast<int>(emitter.count);
+        auto param = emitter.GetParameter();
+        int count = static_cast<int>(param.count);
         if (ImGui::DragInt("Emitter Count", &count, 1.0f, 0, 1000))
         {
-            emitter.count = static_cast<uint32_t>(std::max(0, count));
+            param.count = static_cast<uint32_t>(std::max(0, count));
+            emitter.SetParameter(param);
         }
 
-        float frequency = emitter.frequency;
+        float frequency = param.frequency;
         if (ImGui::DragFloat("Frequency", &frequency, 0.01f, 0.0f, 100.0f))
         {
-            emitter.frequency = frequency;
-        }
-
-        // transform
-        Vector3 t = emitter.transform.translate;
-        float tArr[3] = { t.x, t.y, t.z };
-        if (ImGui::DragFloat3("Emitter Translate", tArr, 0.05f, -1000.0f, 1000.0f))
-        {
-            emitter.transform.translate = Vector3(tArr[0], tArr[1], tArr[2]);
-        }
-
-        Vector3 rot = emitter.transform.rotation;
-        float rArr[3] = { rot.x, rot.y, rot.z };
-        if (ImGui::DragFloat3("Emitter Rotation", rArr, 0.1f, -360.0f, 360.0f))
-        {
-            emitter.transform.rotation = Vector3(rArr[0], rArr[1], rArr[2]);
-        }
-
-        Vector3 sc = emitter.transform.scale;
-        float sArr[3] = { sc.x, sc.y, sc.z };
-        if (ImGui::DragFloat3("Emitter Scale", sArr, 0.01f, 0.001f, 100.0f))
-        {
-            emitter.transform.scale = Vector3(sArr[0], sArr[1], sArr[2]);
+            param.frequency = frequency;
+            emitter.SetParameter(param);
         }
     }
 
-    // 初期パーティクルの再生成
-    if (ImGui::Button("Recreate Initial Particles"))
+    // パーティクルの放出（バースト）
+    if (ImGui::Button("Emit Particles (10)"))
     {
-        particleSystem.AddInitialParticles(randomEngine, kNumMaxInstance);
+        emitter.Emit(10);
     }
 
     ImGui::End();
@@ -856,5 +845,9 @@ void GamePlayScene::Draw()
         for (auto& sprite : sprites) if (sprite) sprite->Draw();
     }
 
-    particleRenderer.Draw(numInstance, particleSrvIndex, currentBlendModeIndex);
+    // テクスチャとブレンドモードをシステムから取得
+    uint32_t texIndex = TextureManager::GetInstance()->GetSrvIndex(emitter.GetTextureName());
+    int blendIndex = static_cast<int>(emitter.GetBlendMode());
+
+    particleRenderer.Draw(numInstance, texIndex, blendIndex);
 }

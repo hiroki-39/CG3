@@ -1,9 +1,8 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Graphics/2d/Sprite.h"
 #include "KHEngine/Graphics/3d/Object/Object3d.h"
 #include "KHEngine/Sound/Core/Sound.h"
 #include "KHEngine/Graphics/3d/Camera/Camera.h"
-#include "KHEngine/Graphics/3d/Particle/ParticleSystem.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleRenderer.h"
 #include "KHEngine/Sound/Core/SoundManager.h"
 #include "KHEngine/Graphics/3d/Particle/Particle.h"
@@ -20,16 +19,6 @@ class GamePlayScene : public BaseScene
 {
 public:
 
-    enum class BlendMode
-    {
-        Alpha = 0,
-        Additive,
-        Multiply,
-        PreMultiplied,
-        None,
-        Count
-    };
-
 public:
     void Initialize();
     void Update();
@@ -45,18 +34,16 @@ private:
     std::unique_ptr<Camera> camera;
     std::unique_ptr<Skybox> skybox_;
 
-    ParticleSystem particleSystem;
     ParticleForGPU* instancingData = nullptr;
 
-    const uint32_t kNumMaxInstance = 100;
+    const uint32_t kNumMaxInstance = 1000;
 
     SoundManager::SoundData Data = {};
 
     int currentBlendModeIndex = 0;
 
     ParticleRenderer particleRenderer;
-    ParticleEffect currentEffect = ParticleEffect::Wind;
-
+    
     uint32_t numInstance = 0;
     uint32_t particleSrvIndex = 0;
 
@@ -70,4 +57,7 @@ private:
 
     // ビルボード使用フラグ
     bool useBillboard = false;
+
+    // パーティクル
+    ParticleEmitter emitter;
 };

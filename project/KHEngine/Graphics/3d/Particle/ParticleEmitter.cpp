@@ -1,106 +1,199 @@
-﻿#include "ParticleEmitter.h"
-#include <random>
-#include <cmath>
+#include "ParticleEmitter.h"
+#include <numbers>
+#include <algorithm>
 
-std::list<Particle> ParticleEmitter::Emit(std::mt19937& engine, ParticleEffect effect)
+ParticleEmitter::ParticleEmitter()
 {
-	std::list<Particle> out;
-	for (uint32_t i = 0; i < emitter_.count; ++i)
-	{
-		out.push_back(MakeNewParticle(engine, emitter_.transform.translate, effect));
-	}
-	return out;
+    std::random_device rd;
+    randomEngine_.seed(rd());
 }
 
-Particle ParticleEmitter::MakeNewParticle(std::mt19937& randamEngine, const Vector3& translate, ParticleEffect effect)
+void ParticleEmitter::Update(float dt)
 {
-	std::uniform_real_distribution<float> distribution(-1.0f, 1.0f);
-	std::uniform_real_distribution<float> distUniform(-1.0f, 1.0f);
-	std::uniform_real_distribution<float> distColor(0.0f, 1.0f);
-	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
-	std::uniform_real_distribution<float> distTime(1.0f, 3.0f);
+    // パーティクルの更新と寿命チェック
+    for (auto it = particles_.begin(); it != particles_.end(); )
+    {
+        Particle& p = *it;
+        p.currentTime += dt;
 
-	Particle particle;
-	particle.transform.rotation = { 0.0f, 0.0f, 0.0f };
-	particle.currentTime = 0.0f;
+        if (p.currentTime >= p.lifeTime)
+        {
+            it = particles_.erase(it);
+            continue;
+        }
 
-	switch (effect)
-	{
-	case ParticleEffect::Fire:
-	{
-		float rx = distUniform(randamEngine) * 0.4f;
-		float rz = distUniform(randamEngine) * 0.4f;
-		particle.transform.translate = translate + Vector3{ rx, 0.0f, rz };
-		particle.velocity = Vector3{ distUniform(randamEngine) * 0.5f, 1.2f + dist01(randamEngine) * 1.4f, distUniform(randamEngine) * 0.5f };
-		particle.color = Vector4{ 0.9f, 0.45f + dist01(randamEngine) * 0.25f, 0.05f, 1.0f };
-		particle.lifeTime = 0.6f + dist01(randamEngine) * 1.2f;
-		float s = 0.2f + dist01(randamEngine) * 0.8f;
-		particle.transform.scale = Vector3{ s, s, s };
-		break;
-	}
-	case ParticleEffect::Snow:
-	{
-		float rx = distUniform(randamEngine) * 4.0f;
-		float rz = distUniform(randamEngine) * 4.0f;
-		particle.transform.translate = translate + Vector3{ rx, 8.0f + dist01(randamEngine) * 2.0f, rz };
-		particle.velocity = Vector3{ distUniform(randamEngine) * 0.1f, -0.2f - dist01(randamEngine) * 0.6f, distUniform(randamEngine) * 0.1f };
-		particle.color = Vector4{ 0.95f, 0.95f, 1.0f, 1.0f };
-		particle.lifeTime = 6.0f + dist01(randamEngine) * 6.0f;
-		float s = 0.15f + dist01(randamEngine) * 0.35f;
-		particle.transform.scale = Vector3{ s, s, s };
-		break;
-	}
-	case ParticleEffect::Explosion:
-	{
-		particle.transform.translate = translate;
-		Vector3 dir = Vector3{ distUniform(randamEngine), distUniform(randamEngine), distUniform(randamEngine) };
-		float len = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-		if (len < 1e-5f) dir = Vector3{ 1,1,0 }; else dir = dir * (1.0f / len);
-		float speed = 8.0f + dist01(randamEngine) * 12.0f;
-		particle.velocity = dir * speed;
-		particle.color = Vector4{ 1.0f, 0.6f + dist01(randamEngine) * 0.4f, 0.1f, 1.0f };
-		particle.lifeTime = 0.3f + dist01(randamEngine) * 0.7f;
-		float s = 0.2f + dist01(randamEngine) * 0.6f;
-		particle.transform.scale = Vector3{ s, s, s };
-		break;
-	}
-	case ParticleEffect::Smoke:
-	{
-		float rx = distUniform(randamEngine) * 0.5f;
-		float rz = distUniform(randamEngine) * 0.5f;
-		particle.transform.translate = translate + Vector3{ rx, 0.0f, rz };
-		particle.velocity = Vector3{ distUniform(randamEngine) * 0.3f, 0.4f + dist01(randamEngine) * 0.6f, distUniform(randamEngine) * 0.3f };
-		float g = 0.3f + dist01(randamEngine) * 0.25f;
-		particle.color = Vector4{ g, g, g, 0.8f };
-		particle.lifeTime = 2.0f + dist01(randamEngine) * 4.0f;
-		float s = 0.3f + dist01(randamEngine) * 1.0f;
-		particle.transform.scale = Vector3{ s, s, s };
-		break;
-	}
-	case ParticleEffect::Confetti:
-	{
-		float rx = distUniform(randamEngine) * 1.0f;
-		float rz = distUniform(randamEngine) * 1.0f;
-		particle.transform.translate = translate + Vector3{ rx, 0.0f, rz };
-		particle.velocity = Vector3{ distUniform(randamEngine) * 2.0f, 1.0f + dist01(randamEngine) * 2.0f, distUniform(randamEngine) * 2.0f };
-		particle.color = Vector4{ dist01(randamEngine), dist01(randamEngine), dist01(randamEngine), 1.0f };
-		particle.lifeTime = 3.0f + dist01(randamEngine) * 3.0f;
-		float s = 0.05f + dist01(randamEngine) * 0.2f;
-		particle.transform.scale = Vector3{ s, s * (0.4f + dist01(randamEngine) * 1.6f), s };
-		break;
-	}
-	case ParticleEffect::Wind:
-	default:
-	{
-		particle.transform.scale = { 1.0f,1.0f,1.0f };
-		particle.transform.rotation = { 0.0f, 0.0f, 0.0f };
-		particle.transform.translate = { distribution(randamEngine),distribution(randamEngine),distribution(randamEngine) };
-		particle.velocity = { distribution(randamEngine), distribution(randamEngine), distribution(randamEngine) };
-		particle.color = { distColor(randamEngine), distColor(randamEngine), distColor(randamEngine), 1.0f };
-		particle.lifeTime = distTime(randamEngine);
-		break;
-	}
-	}
+        // 加速度フィールドの適用
+        if (accelField_.IsInArea(p.transform.translate))
+        {
+            p.velocity += accelField_.acceleration * dt;
+        }
 
-	return particle;
+        // 移動
+        p.transform.translate += p.velocity * dt;
+        
+        ++it;
+    }
+
+    // 自動生成（Frequency が 0 より大きい場合）
+    if (parameter_.frequency > 0.0f)
+    {
+        frequencyTimer_ += dt;
+        while (frequencyTimer_ >= parameter_.frequency)
+        {
+            Emit(parameter_.count);
+            frequencyTimer_ -= parameter_.frequency;
+        }
+    }
+}
+
+void ParticleEmitter::Emit(uint32_t count)
+{
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        particles_.push_back(MakeNewParticle());
+    }
+}
+
+Particle ParticleEmitter::MakeNewParticle()
+{
+    std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+
+    auto randomVec3 = [&](const Vector3& min, const Vector3& max) {
+        return Vector3{
+            std::lerp(min.x, max.x, dist01(randomEngine_)),
+            std::lerp(min.y, max.y, dist01(randomEngine_)),
+            std::lerp(min.z, max.z, dist01(randomEngine_))
+        };
+    };
+
+    auto randomVec4 = [&](const Vector4& min, const Vector4& max) {
+        return Vector4{
+            std::lerp(min.x, max.x, dist01(randomEngine_)),
+            std::lerp(min.y, max.y, dist01(randomEngine_)),
+            std::lerp(min.z, max.z, dist01(randomEngine_)),
+            std::lerp(min.w, max.w, dist01(randomEngine_))
+        };
+    };
+
+    Particle p;
+    p.currentTime = 0.0f;
+    p.lifeTime = std::lerp(parameter_.minLifeTime, parameter_.maxLifeTime, dist01(randomEngine_));
+    
+    p.transform.translate = position_; // 基本はエミッタの位置
+    p.transform.scale = randomVec3(parameter_.minScale, parameter_.maxScale);
+    p.transform.rotation = randomVec3(parameter_.minRotation, parameter_.maxRotation);
+    
+    p.velocity = randomVec3(parameter_.minVelocity, parameter_.maxVelocity);
+    p.color = randomVec4(parameter_.minColor, parameter_.maxColor);
+
+    return p;
+}
+
+uint32_t ParticleEmitter::FillInstancingBuffer(ParticleForGPU* outBuffer, uint32_t maxInstances,
+    const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, const Matrix4x4& billboardMatrix)
+{
+    uint32_t numInstance = 0;
+    Matrix4x4 viewProjection = viewMatrix * projectionMatrix;
+
+    for (const auto& p : particles_)
+    {
+        if (numInstance >= maxInstances) break;
+
+        Matrix4x4 scaleMat = Matrix4x4::Scale(p.transform.scale);
+        Matrix4x4 rotMat = Matrix4x4::RotateX(p.transform.rotation.x) * 
+                           Matrix4x4::RotateY(p.transform.rotation.y) * 
+                           Matrix4x4::RotateZ(p.transform.rotation.z);
+        Matrix4x4 transMat = Matrix4x4::Translation(p.transform.translate);
+
+        Matrix4x4 worldMat;
+        if (useBillboard_)
+        {
+            // Z軸回転を活かすため、回転をビルボード行列の前に適用
+            worldMat = scaleMat * rotMat * billboardMatrix * transMat;
+        }
+        else
+        {
+            worldMat = scaleMat * rotMat * transMat;
+        }
+
+        outBuffer[numInstance].WVP = worldMat * viewProjection;
+        outBuffer[numInstance].World = worldMat;
+
+        // 寿命によるフェードアウト
+        float alphaProgress = 1.0f - (p.currentTime / p.lifeTime);
+        outBuffer[numInstance].color = p.color;
+        outBuffer[numInstance].color.w *= alphaProgress;
+
+        numInstance++;
+    }
+
+    return numInstance;
+}
+
+// --- プリセット ---
+
+ParticleEmitterParameter ParticleEmitter::CreateFirePreset()
+{
+    ParticleEmitterParameter p;
+    p.name = "Fire";
+    p.count = 1;
+    p.frequency = 0.02f;
+    p.minLifeTime = 0.5f; p.maxLifeTime = 1.5f;
+    p.minScale = { 0.2f, 0.2f, 0.2f }; p.maxScale = { 0.8f, 0.8f, 0.8f };
+    p.minVelocity = { -0.2f, 1.0f, -0.2f }; p.maxVelocity = { 0.2f, 2.0f, 0.2f };
+    p.minColor = { 1.0f, 0.4f, 0.0f, 1.0f }; p.maxColor = { 1.0f, 0.8f, 0.2f, 1.0f };
+    return p;
+}
+
+ParticleEmitterParameter ParticleEmitter::CreateSnowPreset()
+{
+    ParticleEmitterParameter p;
+    p.name = "Snow";
+    p.count = 1;
+    p.frequency = 0.1f;
+    p.minLifeTime = 5.0f; p.maxLifeTime = 10.0f;
+    p.minScale = { 0.1f, 0.1f, 0.1f }; p.maxScale = { 0.3f, 0.3f, 0.3f };
+    p.minVelocity = { -0.5f, -1.0f, -0.5f }; p.maxVelocity = { 0.5f, -0.5f, 0.5f };
+    p.minColor = { 0.9f, 0.9f, 1.0f, 1.0f }; p.maxColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+    return p;
+}
+
+ParticleEmitterParameter ParticleEmitter::CreateExplosionPreset()
+{
+    ParticleEmitterParameter p;
+    p.name = "Explosion";
+    p.count = 30;
+    p.frequency = 0.0f; // 一発
+    p.minLifeTime = 0.5f; p.maxLifeTime = 1.0f;
+    p.minScale = { 0.2f, 0.2f, 0.2f }; p.maxScale = { 1.0f, 1.0f, 1.0f };
+    p.minVelocity = { -5.0f, -5.0f, -5.0f }; p.maxVelocity = { 5.0f, 5.0f, 5.0f };
+    p.minColor = { 1.0f, 0.2f, 0.0f, 1.0f }; p.maxColor = { 1.0f, 0.9f, 0.1f, 1.0f };
+    return p;
+}
+
+ParticleEmitterParameter ParticleEmitter::CreateSlashPreset()
+{
+    ParticleEmitterParameter p;
+    p.name = "Slash";
+    p.count = 8;        // 一度に8本出す
+    p.frequency = 0.0f; // 一発
+    p.minLifeTime = 0.2f; p.maxLifeTime = 0.4f; // 短く消える
+
+    // 画像の通り、横を細く、縦を長くする
+    // X を 0.05 程度に潰す
+    p.minScale = { 0.05f, 0.5f, 1.0f }; 
+    p.maxScale = { 0.08f, 2.0f, 1.0f };
+
+    // 速度はほとんどなし、または少しだけ外に広がる程度
+    p.minVelocity = { -0.1f, -0.1f, -0.1f }; 
+    p.maxVelocity = { 0.1f, 0.1f, 0.1f };
+
+    // Z軸にランダム回転（これが星型に見えるポイント）
+    p.minRotation = { 0.0f, 0.0f, -std::numbers::pi_v<float> };
+    p.maxRotation = { 0.0f, 0.0f,  std::numbers::pi_v<float> };
+
+    p.minColor = { 0.8f, 0.9f, 1.0f, 1.0f }; // 少し青みがかった白
+    p.maxColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+    
+    return p;
 }
