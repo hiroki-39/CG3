@@ -35,6 +35,7 @@ void GamePlayScene::Initialize()
 
     // アセット登録
     ParticleManager::GetInstance()->RegisterQuad("quad", "resources/circle.png");
+    ParticleManager::GetInstance()->RegisterRing("ring", "gradationLine.png", 32, 0.5f, 1.0f);
 
     uint32_t instancingSrvIndex = UINT32_MAX;
     currentBlendModeIndex = static_cast<int>(BlendMode::Additive);
@@ -60,6 +61,7 @@ void GamePlayScene::Initialize()
 	texManager->LoadTexture("resources/skybox.dds");
     texManager->LoadTexture("circle.png");
     texManager->LoadTexture("circle2.png");
+    texManager->LoadTexture("gradationLine.png");
     texManager->LoadTexture("white.png");
 
     texManager->ExecuteUploadCommands();
@@ -103,20 +105,20 @@ void GamePlayScene::Initialize()
         obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
         modelInstances.push_back(std::move(obj));
 
-        //auto terrain = std::make_unique<Object3d>();
-        //terrain->Initialize(object3dCommon);
-        //terrain->SetModel("terrain.obj");
-        //terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
-        //terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-        //terrain->SetScale(Vector3(100.0f, 100.0f, 100.0f));
-        //modelInstances.push_back(std::move(terrain));
+        auto terrain = std::make_unique<Object3d>();
+        terrain->Initialize(object3dCommon);
+        terrain->SetModel("terrain.obj");
+        terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
+        terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
+        terrain->SetScale(Vector3(100.0f, 100.0f, 100.0f));
+        modelInstances.push_back(std::move(terrain));
     }
 
     Data = SoundManager::GetInstance()->SoundLoadFile("bgm.mp3");
 
-    // ParticleEmitter 初期設定 (画像のエフェクトを再現)
+    // ParticleEmitter 初期設定
     emitter.SetParameter(ParticleEmitter::CreateSlashPreset());
-    emitter.SetBlendMode(BlendMode::Additive);
+    emitter.SetBlendMode(BlendMode::Alpha);
     emitter.SetTextureName("circle2.png");
     
     // エミッターの初期位置
@@ -766,9 +768,9 @@ void GamePlayScene::Update()
 
     // プリセット選択
     {
-        const char* presetNames[] = { "Fire", "Snow", "Explosion", "Circle (HitEffect)" };
+        const char* presetNames[] = { "Fire", "Snow", "Explosion", "Circle (HitEffect)", "Ring (Shockwave)" };
         static int selectedPreset = 3; // 初期は Circle
-        if (ImGui::Combo("Presets", &selectedPreset, presetNames, 4))
+        if (ImGui::Combo("Presets", &selectedPreset, presetNames, 5))
         {
             if (selectedPreset == 0) {
                 emitter.SetParameter(ParticleEmitter::CreateFirePreset());
@@ -789,6 +791,17 @@ void GamePlayScene::Update()
                 emitter.SetParameter(ParticleEmitter::CreateSlashPreset());
                 emitter.SetTextureName("circle2.png");
                 emitter.SetBlendMode(BlendMode::Additive);
+                // メッシュを四角形に戻す
+                ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "quad", services->GetDirectXCommon(), services->GetSrvManager(), kNumMaxInstance);
+                instancingData = particleRenderer.GetInstancingData();
+            }
+            else if (selectedPreset == 4) {
+                emitter.SetParameter(ParticleEmitter::CreateRingPreset());
+                emitter.SetTextureName("gradationLine.png");
+                emitter.SetBlendMode(BlendMode::Additive);
+                // メッシュをリングに切り替える
+                ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "ring", services->GetDirectXCommon(), services->GetSrvManager(), kNumMaxInstance);
+                instancingData = particleRenderer.GetInstancingData();
             }
         }
     }
