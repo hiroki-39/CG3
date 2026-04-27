@@ -1,61 +1,90 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Math/MathCommon.h"
-#include <list>
 #include <cstdint>
+#include <string>
 
+/**
+ * @brief ブレンドモード定義
+ */
+enum class BlendMode
+{
+    None = 0,
+    Alpha,
+    Additive,
+    Multiply,
+    PreMultiplied,
+    Count
+};
+
+/**
+ * @brief 単一パーティクルのデータ
+ */
 struct Particle
 {
-	Transform transform;
-	Vector3 velocity;
-	Vector4 color;
-	float lifeTime;
-	float currentTime;
+    Transform transform;
+    Vector3 velocity;
+    Vector4 color;
+    float lifeTime;
+    float currentTime;
 };
 
+/**
+ * @brief GPUへ渡す定数バッファ用構造体
+ */
 struct ParticleForGPU
 {
-	Matrix4x4 WVP;
-	Matrix4x4 World;
-	Vector4 color;
+    Matrix4x4 WVP;
+    Matrix4x4 World;
+    Vector4 color;
 };
 
-struct Emitter
+/**
+ * @brief パーティクル生成パラメータ
+ * 様々なエフェクトの外見や挙動を決定します
+ */
+struct ParticleEmitterParameter
 {
-	Transform transform; // エミッターの位置情報
-	uint32_t count = 1; // 生成するパーティクルの数
-	float frequency = 1.0f; // 生成頻度（秒）
-	float frequencyTime = 0.0f; // 周期用タイムカウンタ
+    std::string name;
+    
+    // 生成設定
+    uint32_t count = 1;      // 一度に生成する数
+    float frequency = 0.1f;  // 生成間隔（0なら一度きり）
+
+    // 寿命範囲
+    float minLifeTime = 1.0f;
+    float maxLifeTime = 1.0f;
+
+    // スケール範囲
+    Vector3 minScale = { 1.0f, 1.0f, 1.0f };
+    Vector3 maxScale = { 1.0f, 1.0f, 1.0f };
+
+    // 速度範囲
+    Vector3 minVelocity = { -1.0f, -1.0f, -1.0f };
+    Vector3 maxVelocity = { 1.0f, 1.0f, 1.0f };
+
+    // 回転範囲
+    Vector3 minRotation = { 0.0f, 0.0f, 0.0f };
+    Vector3 maxRotation = { 0.0f, 0.0f, 0.0f };
+
+    // 色範囲
+    Vector4 minColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+    Vector4 maxColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 };
 
-struct AABB
-{
-	Vector3 min;
-	Vector3 max;
-};
-
+/**
+ * @brief 加速度フィールド（重力や風などの影響範囲）
+ */
 struct AccelerationField
 {
-	Vector3 accleration; // 加速度
-	AABB area; // 範囲
+    Vector3 acceleration;
+    struct Area {
+        Vector3 min;
+        Vector3 max;
+    } area;
+
+    bool IsInArea(const Vector3& point) const {
+        return (point.x >= area.min.x && point.x <= area.max.x &&
+                point.y >= area.min.y && point.y <= area.max.y &&
+                point.z >= area.min.z && point.z <= area.max.z);
+    }
 };
-
-enum class ParticleEffect
-{
-	Wind = 0,
-	Fire,
-	Snow,
-	Explosion,
-	Smoke,
-	Confetti,
-	Count
-};
-
-// ユーティリティ
-inline bool IsCollision(const AABB& aabb, const Vector3& point)
-{
-	if (point.x < aabb.min.x || point.x > aabb.max.x) return false;
-	if (point.y < aabb.min.y || point.y > aabb.max.y) return false;
-	if (point.z < aabb.min.z || point.z > aabb.max.z) return false;
-	return true;
-}
-
