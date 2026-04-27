@@ -1,4 +1,5 @@
 #include "ParticleManager.h"
+#include "KHEngine/Graphics/3d/Primitive/Ring.h"
 #include <cassert>
 
 ParticleManager* ParticleManager::instance_ = nullptr;
@@ -22,6 +23,20 @@ void ParticleManager::RegisterQuad(const std::string& name, const std::string& t
     asset.vertices.push_back({ Vector4{  1.0f,  1.0f, 0.0f, 1.0f }, Vector2{1.0f, 0.0f}, Vector3{0.0f,0.0f,1.0f} }); // 右上
     asset.vertices.push_back({ Vector4{  1.0f, -1.0f, 0.0f, 1.0f }, Vector2{1.0f, 1.0f}, Vector3{0.0f,0.0f,1.0f} }); // 右下
     asset.vertices.push_back({ Vector4{ -1.0f, -1.0f, 0.0f, 1.0f }, Vector2{0.0f, 1.0f}, Vector3{0.0f,0.0f,1.0f} }); // 左下
+
+    asset.textureFilePath = textureFilePath;
+    assets_[name] = std::move(asset);
+}
+
+void ParticleManager::RegisterRing(const std::string& name, const std::string& textureFilePath, uint32_t division, float innerRadius, float outerRadius)
+{
+    ParticleAsset asset;
+    auto ringVerts = KHPrimitive::CreateRingVertices(division, innerRadius, outerRadius);
+    
+    asset.vertices.reserve(ringVerts.size());
+    for (const auto& v : ringVerts) {
+        asset.vertices.push_back({ v.position, v.texcoord, v.normal });
+    }
 
     asset.textureFilePath = textureFilePath;
     assets_[name] = std::move(asset);

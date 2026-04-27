@@ -197,3 +197,17 @@ ParticleEmitterParameter ParticleEmitter::CreateSlashPreset()
     
     return p;
 }
+
+ParticleEmitterParameter ParticleEmitter::CreateRingPreset()
+{
+    ParticleEmitterParameter p;
+    p.name = "Ring";
+    p.count = 1;
+    p.frequency = 0.5f;
+    p.minLifeTime = 1.0f; p.maxLifeTime = 1.5f;
+    p.minScale = { 1.0f, 1.0f, 1.0f }; p.maxScale = { 1.2f, 1.2f, 1.2f };
+    p.minVelocity = { 0.0f, 0.5f, 0.0f }; p.maxVelocity = { 0.0f, 1.0f, 0.0f };
+    p.minRotation = { 1.57f, 0.0f, 0.0f }; p.maxRotation = { 1.57f, 0.0f, 0.0f };
+    p.minColor = { 1.0f, 1.0f, 1.0f, 1.0f }; p.maxColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+    return p;
+}
