@@ -8,11 +8,12 @@ struct Material
 {
     float32_t4 color;
     int32_t enableLighting;
+    float32_t3 padding0;
     float32_t4x4 uvTransform;
     int32_t selectLightings;
     float32_t shininess;
     float32_t environmentCoefficient;
-    float32_t padding;
+    float32_t padding1;
     float32_t3 specularColor;
 };
 
