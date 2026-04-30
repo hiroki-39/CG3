@@ -210,6 +210,7 @@
     <ClCompile Include="KHEngine\Graphics\2d\SpriteCommon.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Object\Object3d.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Object\Object3dCommon.cpp" />
+    <ClCompile Include="KHEngine\Graphics\PostProcess\PostProcess.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Model\Model.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelCommon.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelManager.cpp" />
@@ -266,6 +267,7 @@
     <ClInclude Include="KHEngine\Graphics\Resource\TextureManager.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Object\Object3d.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Object\Object3dCommon.h" />
+    <ClInclude Include="KHEngine\Graphics\PostProcess\PostProcess.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Model\Model.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Model\ModelCommon.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Model\ModelManager.h" />

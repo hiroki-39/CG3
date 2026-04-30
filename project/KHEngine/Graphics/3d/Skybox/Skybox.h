@@ -82,12 +82,12 @@ private:
 	// 頂点バッファリソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;
 	// 頂点バッファビュー
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 
 	// インデックスバッファリソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
 	// インデックスバッファビュー
-	D3D12_INDEX_BUFFER_VIEW indexBufferView;
+	D3D12_INDEX_BUFFER_VIEW indexBufferView{};
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> transformationResource_;
 

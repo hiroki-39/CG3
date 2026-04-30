@@ -1,4 +1,4 @@
-﻿#include "KHFramework.h"
+#include "KHFramework.h"
 #include <combaseapi.h>
 #include "KHEngine/Core/Graphics/D3DResourceLeakChecker.h"
 #include "KHEngine/Core/Utility/Log/Logger.h"
@@ -102,6 +102,18 @@ void KHFramework::FrameworkDrawBegin()
 
 void KHFramework::FrameworkDrawEnd()
 {
+	// Swapchainへの描画準備
+	if (dxCommon_)
+	{
+		dxCommon_->PreDrawSwapchain();
+	}
+
+	// PostProcessを描画 (RenderTextureの内容をSwapchainにコピー)
+	if (postProcess_)
+	{
+		postProcess_->Draw();
+	}
+
 	// ImGui 描画
 	if (imguiManager_)
 	{
@@ -178,6 +190,9 @@ void KHFramework::InitializeEngineSubsystems()
 	object3dCommon_ = std::make_unique<Object3dCommon>();
 	object3dCommon_->Initialize(dxCommon_.get());
 
+	// PostProcess 初期化
+	postProcess_ = std::make_unique<PostProcess>();
+	postProcess_->Initialize(dxCommon_.get());
 
 	// TextureManager の初期化で、生成された1x1白テクスチャを確実に GPU にアップロードしておく。
 	if (dxCommon_)
@@ -212,6 +227,11 @@ void KHFramework::FinalizeEngineSubsystems()
 	if (object3dCommon_)
 	{
 		object3dCommon_.reset();
+	}
+
+	if (postProcess_)
+	{
+		postProcess_.reset();
 	}
 
 	// SRVマネージャのファイナライズ（シングルトンのFinalize）

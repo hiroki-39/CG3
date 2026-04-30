@@ -14,6 +14,7 @@
 #include "KHEngine/Core/Utility/Timer/Timer.h"
 #include "KHEngine/Core/OS/WinApp.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
+#include "KHEngine/Math/Vector4.h"
 
 class SrvManager;
 
@@ -89,15 +90,27 @@ public://メンバ関数
 	/// </summary>
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heaptype, UINT numDescriptors, bool shaderVisible);
 
+
+
+	/// <summary>
+	/// RenderTextureリソースの生成
+	/// </summary>
+	Microsoft::WRL::ComPtr<ID3D12Resource> CreateRenderTextureResource(uint32_t width, uint32_t height, DXGI_FORMAT format, const Vector4& clearColor);
+
 	/// <summary>
 	/// 深度ステンシルテクスチャリソースを生成
 	/// </summary>
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreatDepthStencilTextureResource(int32_t width, int32_t height);
 
 	/// <summary>
-	/// 描画前処理
+	/// 描画前処理(RenderTextureへの描画用)
 	/// </summary>
 	void PreDraw();
+
+	/// <summary>
+	/// スワップチェーン用の描画前処理
+	/// </summary>
+	void PreDrawSwapchain();
 
 	/// <summary>
 	/// 描画後処理
@@ -152,6 +165,7 @@ public://メンバ関数
 	ID3D12CommandQueue* GetCommandQueue() { return commandQueue.Get(); }
 	WinApp* GetWinApp() const { return winApp; }
 	size_t GetSwapChainResourceNum() const { return swapChainResources.size(); }
+	Microsoft::WRL::ComPtr<ID3D12Resource> GetRenderTextureResource() const { return renderTextureResource_; }
 
 
 private://メンバ変数
@@ -207,6 +221,11 @@ private://メンバ変数
 
 	// RTVハンドル
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
+
+	// RenderTexture リソース
+	Microsoft::WRL::ComPtr<ID3D12Resource> renderTextureResource_;
+	// RenderTexture 用の RTV ハンドル
+	D3D12_CPU_DESCRIPTOR_HANDLE renderTextureRTVHandle_;
 
 	// 深度バッファ
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource;
