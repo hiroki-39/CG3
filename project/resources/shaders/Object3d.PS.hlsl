@@ -27,7 +27,7 @@ struct DirectionlLight
 struct PointLight
 {
     float32_t4 color;
-    float32_t3 position;
+    float32_t3 direction;
     float intensity;
     float radius;
     float decry;
@@ -42,6 +42,7 @@ struct SpotLight
     float32_t distance;
     float32_t decay;
     float32_t cosAngle;
+    float32_t padding[2];
 };
 
 struct Camera
@@ -120,9 +121,9 @@ PixelShaderOutput main(VertexShaderOutput input)
              float32_t3 specularDirectionalLight = gDirectionlLight.color.rgb * gDirectionlLight.intensity * specularPow * float32_t3(1.0f, 1.0f, 1.0f);
                 
              // ===== PointLight =====
-             float32_t3 pointLightDirection = normalize(input.worldPosition - gPointLight.position);
+             float32_t3 pointLightDirection = normalize(input.worldPosition - gPointLight.direction);
 
-            float32_t distance = length(gPointLight.position - input.worldPosition);
+            float32_t distance = length(gPointLight.direction - input.worldPosition);
             float32_t factor = pow(saturate(-distance / gPointLight.radius + 1.0), gPointLight.decry);
             
                 // Diffuse
