@@ -110,7 +110,7 @@ void GamePlayScene::Initialize()
         terrain->SetModel("terrain.obj");
         terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
         terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-        terrain->SetScale(Vector3(100.0f, 100.0f, 100.0f));
+        terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
         modelInstances.push_back(std::move(terrain));
     }
 
@@ -842,10 +842,10 @@ void GamePlayScene::Draw()
     auto object3dCommon = services->GetObject3dCommon();
     auto spriteCommon = services->GetSpriteCommon();
 
-    if (skybox_)
+  /*  if (skybox_)
     {
         skybox_->Draw();
-    }
+    }*/
 
     if (object3dCommon) object3dCommon->SetCommonDrawSetting();
 

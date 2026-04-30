@@ -157,9 +157,9 @@ private://メンバ変数
 
 
 	// 頂点バッファビュー
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 	// インデックスバッファビュー
-	D3D12_INDEX_BUFFER_VIEW indexBufferView;
+	D3D12_INDEX_BUFFER_VIEW indexBufferView{};
 
 
 	// マテリアルリソース
@@ -179,7 +179,7 @@ private://メンバ変数
 	TransformationMatrix* transformationMatrixData_ = nullptr;
 
 	// テクスチャハンドル
-	D3D12_GPU_DESCRIPTOR_HANDLE textureHandle_;
+	D3D12_GPU_DESCRIPTOR_HANDLE textureHandle_{};
 
 	// テクスチャ番号
 	uint32_t textureIndex = 0;

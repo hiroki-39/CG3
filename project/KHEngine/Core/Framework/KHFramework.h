@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <cstdint>
 #include <memory>
 
@@ -13,6 +13,7 @@
 #include "KHEngine/Sound/Core/SoundManager.h"
 //#include "KHEngine/Scene/SceneFactory.h"
 #include "KHEngine/Scene/AbstractSceneFactory.h"
+#include "KHEngine/Graphics/PostProcess/PostProcess.h"
 
 class KHFramework
 {
@@ -61,6 +62,8 @@ protected:
     std::unique_ptr<Object3dCommon> object3dCommon_ = nullptr;
     
     SrvManager* srvManager_ = nullptr;
+
+    std::unique_ptr<PostProcess> postProcess_ = nullptr;
 
     // フレーム関連設定（デフォルト 60fps）
     float kDeltaTime_ = 1.0f / 60.0f;
