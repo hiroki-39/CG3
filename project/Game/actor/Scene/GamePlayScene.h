@@ -11,6 +11,7 @@
 #include "KHEngine/Graphics/Billboard/Billboard.h"
 #include "KHEngine/Core/Framework/BaseScene.h"
 #include "KHEngine/Graphics/3d/Skybox/Skybox.h"
+#include "KHEngine/Graphics/3d/Particle/ParticleEffect.h"
 #include <vector>
 #include <random>
 #include <memory>
@@ -34,18 +35,7 @@ private:
     std::unique_ptr<Camera> camera;
     std::unique_ptr<Skybox> skybox_;
 
-    ParticleForGPU* instancingData = nullptr;
-
-    const uint32_t kNumMaxInstance = 1000;
-
     SoundManager::SoundData Data = {};
-
-    int currentBlendModeIndex = 0;
-
-    ParticleRenderer particleRenderer;
-    
-    uint32_t numInstance = 0;
-    uint32_t particleSrvIndex = 0;
 
     bool update = true;
 
@@ -55,13 +45,6 @@ private:
     std::random_device seedGenerator;
     std::mt19937 randomEngine{ seedGenerator() };
 
-    // ビルボード使用フラグ
-    bool useBillboard = false;
-
-    // パーティクル
-    ParticleEmitter emitter;
-
-    // アニメーション用
-    float uvScrollOffset_ = 0.0f;
-    float colorTimer_ = 0.0f;
+    // 複合エフェクト（Plane, Ring, Cylinder の共存）
+    ParticleEffect particleEffect_;
 };

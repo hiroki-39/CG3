@@ -39,7 +39,6 @@ void GamePlayScene::Initialize()
     ParticleManager::GetInstance()->RegisterCylinder("Cylinder", "resources/sprites/gradationLine.png");
 
     uint32_t instancingSrvIndex = UINT32_MAX;
-    currentBlendModeIndex = static_cast<int>(BlendMode::Additive);
 
     auto texManager = TextureManager::GetInstance();
     dxCommon->BeginTextureUploadBatch();
@@ -72,11 +71,14 @@ void GamePlayScene::Initialize()
     uint32_t checkerBoardTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("checkerBoard.png");
     uint32_t skyboxTexIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/skybox.dds");
 
-    particleSrvIndex = TextureManager::GetInstance()->GetSrvIndex("circle.png");
-
-    ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "quad", dxCommon, srvManager, kNumMaxInstance);
-    instancingData = particleRenderer.GetInstancingData();
-    instancingSrvIndex = particleRenderer.GetInstancingSrvIndex();
+    particleEffect_.Initialize(dxCommon, srvManager);
+    
+    // 最初からデフォルトのノードを追加しておく
+    particleEffect_.AddNode("HitEffect", 0);
+    particleEffect_.AddNode("Shockwave", 1);
+    particleEffect_.AddNode("Aura", 2);
+    
+    particleEffect_.Play();
 
     texManager->ClearIntermediateResources();
 
@@ -116,17 +118,6 @@ void GamePlayScene::Initialize()
     }
 
     Data = SoundManager::GetInstance()->SoundLoadFile("bgm.mp3");
-
-    // ParticleEmitter 初期設定
-    emitter.SetParameter(ParticleEmitter::CreateSlashPreset());
-    emitter.SetBlendMode(BlendMode::Alpha);
-    emitter.SetTextureName("circle2.png");
-    
-    // エミッターの初期位置
-    emitter.SetPosition({ 0.0f, 2.0f, 0.0f });
-    
-    // パーティクル生成
-    emitter.Emit(8);
 }
 
 void GamePlayScene::Finalize()
@@ -262,30 +253,13 @@ void GamePlayScene::Update()
     Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
 
     // ビルボード行列（Camera* を渡す）
-    Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera.get(), useBillboard);
+    Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera.get(), true);
     skybox_->Update();
 
     if (update)
     {
-        emitter.Update(kDeltaTime_);
-
-        // UVスクロールと色の変更（ポータル風アニメーション）
-        uvScrollOffset_ -= 0.5f * kDeltaTime_;
-        if (uvScrollOffset_ < -1.0f) uvScrollOffset_ += 1.0f;
-
-        colorTimer_ += 2.0f * kDeltaTime_;
-        float colorAnim = (std::sin(colorTimer_) + 1.0f) * 0.5f; // 0.0 ~ 1.0
-
-        // 色は画像に合わせて青白く点滅させる
-        Vector4 portalColor = { 0.2f + 0.3f * colorAnim, 0.5f + 0.5f * colorAnim, 1.0f, 1.0f };
-        
-        // 横方向にスクロールさせるUV変換行列
-        Matrix4x4 uvTransform = Matrix4x4::Translation({ uvScrollOffset_, 0.0f, 0.0f });
-
-        // マテリアル更新
-        ParticleManager::GetInstance()->UpdateMaterial(particleRenderer, portalColor, uvTransform);
+        particleEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
     }
-    numInstance = emitter.FillInstancingBuffer(instancingData, kNumMaxInstance, viewMatrix, projectionMatrix, billboardMatrix);
 
 #ifdef USE_IMGUI
 
@@ -759,103 +733,7 @@ void GamePlayScene::Update()
 
 
     // --- Particle ウィンドウ ---
-    ImGui::Begin("Particle");
-
-    // パーティクルの動作 ON/OFF
-    if (ImGui::Checkbox("Update Particles", &update))
-    {
-        // フラグ変更のみ（Update の呼び出しは main ループ側で行っている）
-    }
-
-    // ビルボード切替
-    if (ImGui::Checkbox("Use Billboard", &useBillboard))
-    {
-        // 反映は描画側の行列生成で行われる
-    }
-
-    // ブレンドモード選択
-    {
-        const char* blendNames[] = { "None", "Alpha", "Additive", "Multiply", "PreMultiplied" };
-        int mode = static_cast<int>(emitter.GetBlendMode());
-        if (ImGui::Combo("Blend Mode", &mode, blendNames, 5))
-        {
-            emitter.SetBlendMode(static_cast<BlendMode>(mode));
-        }
-    }
-
-    // プリセット選択
-    {
-        const char* presetNames[] = { "Fire", "Snow", "Explosion", "Circle (HitEffect)", "Ring (Shockwave)", "Cylinder (Aura)" };
-        static int selectedPreset = 5; // 初期を Cylinder に
-        if (ImGui::Combo("Presets", &selectedPreset, presetNames, 6))
-        {
-            if (selectedPreset == 0) {
-                emitter.SetParameter(ParticleEmitter::CreateFirePreset());
-                emitter.SetTextureName("circle.png");
-                emitter.SetBlendMode(BlendMode::Alpha);
-            }
-            else if (selectedPreset == 1) {
-                emitter.SetParameter(ParticleEmitter::CreateSnowPreset());
-                emitter.SetTextureName("circle.png");
-                emitter.SetBlendMode(BlendMode::Alpha);
-            }
-            else if (selectedPreset == 2) {
-                emitter.SetParameter(ParticleEmitter::CreateExplosionPreset());
-                emitter.SetTextureName("circle.png");
-                emitter.SetBlendMode(BlendMode::Additive);
-            }
-            else if (selectedPreset == 3) {
-                emitter.SetParameter(ParticleEmitter::CreateSlashPreset());
-                emitter.SetTextureName("circle2.png");
-                emitter.SetBlendMode(BlendMode::Additive);
-                // メッシュを四角形に戻す
-                ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "quad", services->GetDirectXCommon(), services->GetSrvManager(), kNumMaxInstance);
-                instancingData = particleRenderer.GetInstancingData();
-            }
-            else if (selectedPreset == 4) {
-                emitter.SetParameter(ParticleEmitter::CreateRingPreset());
-                emitter.SetTextureName("gradationLine.png");
-                emitter.SetBlendMode(BlendMode::Additive);
-                // メッシュをリングに切り替える
-                ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "ring", services->GetDirectXCommon(), services->GetSrvManager(), kNumMaxInstance);
-                instancingData = particleRenderer.GetInstancingData();
-            }
-            else if (selectedPreset == 5) {
-                emitter.SetParameter(ParticleEmitter::CreateCylinderPreset());
-                emitter.SetTextureName("gradationLine.png");
-                emitter.SetBlendMode(BlendMode::Additive);
-                // メッシュをシリンダーに切り替える
-                ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "Cylinder", services->GetDirectXCommon(), services->GetSrvManager(), kNumMaxInstance);
-                instancingData = particleRenderer.GetInstancingData();
-            }
-        }
-    }
-
-    // エミッター設定を直接編集
-    {
-        auto param = emitter.GetParameter();
-        int count = static_cast<int>(param.count);
-        if (ImGui::DragInt("Emitter Count", &count, 1.0f, 0, 1000))
-        {
-            param.count = static_cast<uint32_t>(std::max(0, count));
-            emitter.SetParameter(param);
-        }
-
-        float frequency = param.frequency;
-        if (ImGui::DragFloat("Frequency", &frequency, 0.01f, 0.0f, 100.0f))
-        {
-            param.frequency = frequency;
-            emitter.SetParameter(param);
-        }
-    }
-
-    // パーティクルの放出（バースト）
-    if (ImGui::Button("Emit Particles (10)"))
-    {
-        emitter.Emit(10);
-    }
-
-    ImGui::End();
+    particleEffect_.DrawImGui();
 
 #endif // USE_IMGUI
 
@@ -883,9 +761,5 @@ void GamePlayScene::Draw()
         for (auto& sprite : sprites) if (sprite) sprite->Draw();
     }
 
-    // テクスチャとブレンドモードをシステムから取得
-    uint32_t texIndex = TextureManager::GetInstance()->GetSrvIndex(emitter.GetTextureName());
-    int blendIndex = static_cast<int>(emitter.GetBlendMode());
-
-    particleRenderer.Draw(numInstance, texIndex, blendIndex);
+    particleEffect_.Draw();
 }
