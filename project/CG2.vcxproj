@@ -194,6 +194,7 @@
     <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleEmitter.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleManager.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleRenderer.cpp" />
+    <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleEffect.cpp" />
     <ClCompile Include="KHEngine\Graphics\Resource\Descriptor\SrvManager.cpp" />
     <ClCompile Include="KHEngine\Graphics\Resource\Texture\TextureManager.cpp" />
     <ClCompile Include="KHEngine\Input\Input.cpp" />
@@ -275,6 +276,7 @@
     <ClInclude Include="KHEngine\Graphics\3d\Model\ModelManager.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Particle\Particle.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleRenderer.h" />
+    <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleEffect.h" />
     <ClInclude Include="KHEngine\Sound\Core\Sound.h" />
     <ClInclude Include="KHEngine\Sound\Core\SoundManager.h" />
     <ClInclude Include="KHEngine\Core\Framework\KHFramework.h" />
