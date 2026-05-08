@@ -60,4 +60,8 @@ private:
 
     // パーティクル
     ParticleEmitter emitter;
+
+    // アニメーション用
+    float uvScrollOffset_ = 0.0f;
+    float colorTimer_ = 0.0f;
 };

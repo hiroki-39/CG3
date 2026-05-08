@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <wrl.h>
 #include <vector>
 #include <cstdint>
@@ -20,6 +20,9 @@ public:
 
 	// マテリアル用 CBV を内部で作成して初期化（main から呼ぶ）
 	void CreateMaterialBuffer(size_t sizeInBytes, const void* initData);
+	
+	// マテリアルバッファの生ポインタ取得
+	void* GetMaterialData() { return materialData_; }
 
 	// インスタンスバッファの生ポインタ取得（書き込み用）
 	ParticleForGPU* GetInstancingData() { return instancingData_; }
@@ -57,6 +60,7 @@ private:
 
 	// マテリアル用 CBV 内部管理
 	Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
+	void* materialData_ = nullptr;
 	D3D12_GPU_VIRTUAL_ADDRESS materialCBVAddress_ = 0;
 
 	uint32_t maxInstances_ = 0;

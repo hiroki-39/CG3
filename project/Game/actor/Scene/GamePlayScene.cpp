@@ -36,6 +36,7 @@ void GamePlayScene::Initialize()
     // アセット登録
     ParticleManager::GetInstance()->RegisterQuad("quad", "resources/circle.png");
     ParticleManager::GetInstance()->RegisterRing("ring", "gradationLine.png", 32, 0.5f, 1.0f);
+    ParticleManager::GetInstance()->RegisterCylinder("Cylinder", "resources/sprites/gradationLine.png");
 
     uint32_t instancingSrvIndex = UINT32_MAX;
     currentBlendModeIndex = static_cast<int>(BlendMode::Additive);
@@ -267,6 +268,22 @@ void GamePlayScene::Update()
     if (update)
     {
         emitter.Update(kDeltaTime_);
+
+        // UVスクロールと色の変更（ポータル風アニメーション）
+        uvScrollOffset_ -= 0.5f * kDeltaTime_;
+        if (uvScrollOffset_ < -1.0f) uvScrollOffset_ += 1.0f;
+
+        colorTimer_ += 2.0f * kDeltaTime_;
+        float colorAnim = (std::sin(colorTimer_) + 1.0f) * 0.5f; // 0.0 ~ 1.0
+
+        // 色は画像に合わせて青白く点滅させる
+        Vector4 portalColor = { 0.2f + 0.3f * colorAnim, 0.5f + 0.5f * colorAnim, 1.0f, 1.0f };
+        
+        // 横方向にスクロールさせるUV変換行列
+        Matrix4x4 uvTransform = Matrix4x4::Translation({ uvScrollOffset_, 0.0f, 0.0f });
+
+        // マテリアル更新
+        ParticleManager::GetInstance()->UpdateMaterial(particleRenderer, portalColor, uvTransform);
     }
     numInstance = emitter.FillInstancingBuffer(instancingData, kNumMaxInstance, viewMatrix, projectionMatrix, billboardMatrix);
 
@@ -768,9 +785,9 @@ void GamePlayScene::Update()
 
     // プリセット選択
     {
-        const char* presetNames[] = { "Fire", "Snow", "Explosion", "Circle (HitEffect)", "Ring (Shockwave)" };
-        static int selectedPreset = 3; // 初期は Circle
-        if (ImGui::Combo("Presets", &selectedPreset, presetNames, 5))
+        const char* presetNames[] = { "Fire", "Snow", "Explosion", "Circle (HitEffect)", "Ring (Shockwave)", "Cylinder (Aura)" };
+        static int selectedPreset = 5; // 初期を Cylinder に
+        if (ImGui::Combo("Presets", &selectedPreset, presetNames, 6))
         {
             if (selectedPreset == 0) {
                 emitter.SetParameter(ParticleEmitter::CreateFirePreset());
@@ -801,6 +818,14 @@ void GamePlayScene::Update()
                 emitter.SetBlendMode(BlendMode::Additive);
                 // メッシュをリングに切り替える
                 ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "ring", services->GetDirectXCommon(), services->GetSrvManager(), kNumMaxInstance);
+                instancingData = particleRenderer.GetInstancingData();
+            }
+            else if (selectedPreset == 5) {
+                emitter.SetParameter(ParticleEmitter::CreateCylinderPreset());
+                emitter.SetTextureName("gradationLine.png");
+                emitter.SetBlendMode(BlendMode::Additive);
+                // メッシュをシリンダーに切り替える
+                ParticleManager::GetInstance()->SetupRendererFromAsset(particleRenderer, "Cylinder", services->GetDirectXCommon(), services->GetSrvManager(), kNumMaxInstance);
                 instancingData = particleRenderer.GetInstancingData();
             }
         }

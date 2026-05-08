@@ -20,9 +20,15 @@ public:
   void RegisterRing(const std::string &name, const std::string &textureFilePath,
                     uint32_t division = 32, float innerRadius = 0.5f,
                     float outerRadius = 1.0f);
+  void RegisterCylinder(const std::string &name, const std::string &textureFilePath,
+                        uint32_t division = 32, float topRadius = 1.0f,
+                        float bottomRadius = 1.0f, float height = 3.0f);
   void SetupRendererFromAsset(ParticleRenderer &renderer,
                               const std::string &name, DirectXCommon *dxCommon,
                               SrvManager *srvManager, uint32_t maxInstances);
+
+  // マテリアルの更新（UVスクロールや色変更などに使用）
+  void UpdateMaterial(ParticleRenderer &renderer, const Vector4& color, const Matrix4x4& uvTransform);
 
   // エミッター（旧システム）の生成管理
   ParticleEmitter &CreateEmitter();
@@ -54,7 +60,8 @@ private:
     Vector4 color;
     int32_t selectLightings;
     int32_t enableLightingAsInt;
-    float padding[2];
+    float padding;
+    float alphaReference;
     Matrix4x4 uvTransform;
   };
 

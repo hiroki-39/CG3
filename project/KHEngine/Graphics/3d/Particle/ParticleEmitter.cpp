@@ -211,3 +211,17 @@ ParticleEmitterParameter ParticleEmitter::CreateRingPreset()
     p.minColor = { 1.0f, 1.0f, 1.0f, 1.0f }; p.maxColor = { 1.0f, 1.0f, 1.0f, 1.0f };
     return p;
 }
+
+ParticleEmitterParameter ParticleEmitter::CreateCylinderPreset()
+{
+    ParticleEmitterParameter p;
+    p.name = "Cylinder";
+    p.count = 1;
+    p.frequency = 0.5f;
+    p.minLifeTime = 1.0f; p.maxLifeTime = 2.0f;
+    p.minScale = { 1.0f, 1.0f, 1.0f }; p.maxScale = { 1.5f, 1.5f, 1.5f };
+    p.minVelocity = { 0.0f, 0.1f, 0.0f }; p.maxVelocity = { 0.0f, 0.3f, 0.0f };
+    p.minRotation = { 0.0f, 0.0f, 0.0f }; p.maxRotation = { 0.0f, 6.28f, 0.0f };
+    p.minColor = { 1.0f, 1.0f, 1.0f, 1.0f }; p.maxColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+    return p;
+}
