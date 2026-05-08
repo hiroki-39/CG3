@@ -243,9 +243,8 @@ void ParticleRenderer::CreateMaterialBuffer(size_t sizeInBytes, const void* init
 	assert(dxCommon_ != nullptr);
 	assert(initData != nullptr);
 	materialResource_ = dxCommon_->CreateBufferResource(sizeInBytes);
-	void* mapped = nullptr;
-	materialResource_->Map(0, nullptr, &mapped);
-	std::memcpy(mapped, initData, sizeInBytes);
+	materialResource_->Map(0, nullptr, &materialData_);
+	std::memcpy(materialData_, initData, sizeInBytes);
 	// GPU 側アドレスを保存（SetGraphicsRootConstantBufferView に渡す）
 	materialCBVAddress_ = materialResource_->GetGPUVirtualAddress();
 }

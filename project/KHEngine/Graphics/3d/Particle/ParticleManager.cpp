@@ -1,5 +1,6 @@
 #include "ParticleManager.h"
 #include "KHEngine/Graphics/3d/Primitive/Ring.h"
+#include "KHEngine/Graphics/3d/Primitive/Cylinder.h"
 #include <cassert>
 
 ParticleManager* ParticleManager::instance_ = nullptr;
@@ -42,6 +43,20 @@ void ParticleManager::RegisterRing(const std::string& name, const std::string& t
     assets_[name] = std::move(asset);
 }
 
+void ParticleManager::RegisterCylinder(const std::string& name, const std::string& textureFilePath, uint32_t division, float topRadius, float bottomRadius, float height)
+{
+    ParticleAsset asset;
+    auto cylinderVerts = KHPrimitive::CreateCylinderVertices(division, topRadius, bottomRadius, height);
+    
+    asset.vertices.reserve(cylinderVerts.size());
+    for (const auto& v : cylinderVerts) {
+        asset.vertices.push_back({ v.position, v.texcoord, v.normal });
+    }
+
+    asset.textureFilePath = textureFilePath;
+    assets_[name] = std::move(asset);
+}
+
 void ParticleManager::SetupRendererFromAsset(ParticleRenderer& renderer, const std::string& name,
     DirectXCommon* dxCommon, SrvManager* srvManager, uint32_t maxInstances)
 {
@@ -63,9 +78,22 @@ void ParticleManager::SetupRendererFromAsset(ParticleRenderer& renderer, const s
     initialMaterial.color = Vector4{ 1.0f, 1.0f, 1.0f, 1.0f };
     initialMaterial.enableLightingAsInt = 0;
     initialMaterial.selectLightings = 2;
+    initialMaterial.padding = 0.0f;
+    initialMaterial.alphaReference = 0.0f; // 0.0f以下をdiscard（半透明も表示する）
     initialMaterial.uvTransform = Matrix4x4::Identity();
 
     renderer.CreateMaterialBuffer(sizeof(Material), &initialMaterial);
+}
+
+void ParticleManager::UpdateMaterial(ParticleRenderer& renderer, const Vector4& color, const Matrix4x4& uvTransform)
+{
+    void* materialData = renderer.GetMaterialData();
+    if (materialData)
+    {
+        Material* mat = static_cast<Material*>(materialData);
+        mat->color = color;
+        mat->uvTransform = uvTransform;
+    }
 }
 
 ParticleEmitter& ParticleManager::CreateEmitter()

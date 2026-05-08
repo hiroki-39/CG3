@@ -52,8 +52,9 @@ public:
     static ParticleEmitterParameter CreateExplosionPreset();
     // スラッシュ（画像のような細長いヒットエフェクト）
     static ParticleEmitterParameter CreateSlashPreset();
-    // リング
     static ParticleEmitterParameter CreateRingPreset();
+    // シリンダー (オーラなど)
+    static ParticleEmitterParameter CreateCylinderPreset();
     // 互換性用（Slash と同じ）
     static ParticleEmitterParameter CreateCirclePreset() { return CreateSlashPreset(); }
 

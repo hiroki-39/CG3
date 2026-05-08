@@ -7,9 +7,11 @@
 struct Material
 {
     float32_t4 color;
-    bool enableLighting;
-    float32_t4x4 uvTransform;
     int32_t selectLightings;
+    int32_t enableLightingAsInt;
+    float padding;
+    float alphaReference;
+    float32_t4x4 uvTransform;
 };
 
 struct DirectionlLight
@@ -34,11 +36,16 @@ struct PixelShaderOutput
 PixelShaderOutput main(VertexShaderOutput input)
 {
     PixelShaderOutput output;
-    float32_t4 transformedUV = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
+    
+    // flip v (Cylinder用などにVを反転)
+    float32_t2 texcoord = input.texcoord;
+    texcoord.y = 1.0f - texcoord.y;
+    
+    float32_t4 transformedUV = mul(float32_t4(texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float32_t4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
     output.color = gMaterial.color * textureColor * input.color;
     
-    if (textureColor.a <= 0.5f)
+    if (textureColor.a <= gMaterial.alphaReference)
     {
         discard;
     }
