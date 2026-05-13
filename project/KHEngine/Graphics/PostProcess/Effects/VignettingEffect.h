@@ -1,0 +1,23 @@
+#pragma once
+#include "KHEngine/Graphics/PostProcess/IPostProcess.h"
+#include "externals/imgui/imgui.h"
+
+class VignettingEffect : public IPostProcess {
+public:
+    VignettingEffect(PostProcessData* data) : data_(data) {
+        name_ = "Vignetting";
+    }
+
+    void Initialize() override {
+        data_->vignetteIntensity = 1.0f;
+        data_->vignettePower = 1.5f;
+    }
+
+    void DrawImGui() override {
+        ImGui::SliderFloat("Intensity", &data_->vignetteIntensity, 0.0f, 5.0f);
+        ImGui::SliderFloat("Power", &data_->vignettePower, 0.1f, 5.0f);
+    }
+
+private:
+    PostProcessData* data_;
+};

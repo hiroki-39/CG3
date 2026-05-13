@@ -45,7 +45,6 @@ void GamePlayScene::Initialize()
 
     // スカイボックスの初期化
     skybox_ = std::make_unique<Skybox>();
-    // DDSキューブマップファイルのパスを指定してください
     skybox_->Initialize(dxCommon,"resources/skybox.dds");
 
     // モデル読み込み
@@ -97,9 +96,8 @@ void GamePlayScene::Initialize()
     {
         auto obj = std::make_unique<Object3d>();
         obj->Initialize(object3dCommon);
-        obj->SetModel("suzanne.obj");
+        obj->SetModel("monsterBall.obj");
         obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-        /*obj->GetModel()->SetSelectLightings(0);*/
         uint32_t skyboxTexIndex = skybox_->GetCubemapSrvIndex();
         obj->SetEnvironmentTextureIndex(skyboxTexIndex);
         obj->SetEnvironmentCoefficient(1.0f);
@@ -746,10 +744,10 @@ void GamePlayScene::Draw()
     auto object3dCommon = services->GetObject3dCommon();
     auto spriteCommon = services->GetSpriteCommon();
 
-  /*  if (skybox_)
+    if (skybox_)
     {
         skybox_->Draw();
-    }*/
+    }
 
     if (object3dCommon) object3dCommon->SetCommonDrawSetting();
 

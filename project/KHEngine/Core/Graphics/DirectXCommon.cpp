@@ -287,7 +287,7 @@ void DirectXCommon::CreateRTV()
 	}
 
 	// RenderTextureの生成
-	const Vector4 kRenderTargetClearValue{ 1.0f, 0.0f, 0.0f, 1.0f }; // 一旦分かりやすいように赤
+	const Vector4 kRenderTargetClearValue{ 0.1f, 0.25f, 0.5f, 1.0f }; // 空の色に近い青系
 	renderTextureResource_ = CreateRenderTextureResource(WinApp::kClientWidth, WinApp::kClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, kRenderTargetClearValue);
 
 	// RenderTexture用のRTV作成
@@ -487,7 +487,7 @@ void DirectXCommon::PreDraw()
 	commandList->OMSetRenderTargets(1, &renderTextureRTVHandle_, false, &dsvHandle);
 
 	// 指定した色で画面全体をクリアする(RenderTextureの生成時と同じ色)
-	float clearColor[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+	float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
 	commandList->ClearRenderTargetView(renderTextureRTVHandle_, clearColor, 0, nullptr);
 
 	// 指定した深度で画面全体をクリア

@@ -3,10 +3,38 @@
 
 // 今後増えるエフェクト用パラメータをすべて詰め込む定数バッファ構造体
 struct PostProcessData {
-  int enableGrayscale; // 0 or 1
-  int enableSepia;     // 0 or 1
-  float sepiaStrength;
-  float padding; // 16バイトアライメント
+	int enableGrayscale;
+	int enableSepia;
+	float sepiaStrength;
+	int enableVignette;
+
+	float vignetteIntensity;
+	float vignettePower;
+	int enableSmoothing;
+	float smoothingKernelSize;
+
+	int enableGaussian;
+	float gaussianSigma;
+	int enableOutline;
+	float outlineThreshold;
+
+	int enableRadialBlur;
+	float radialBlurCenterX;
+	float radialBlurCenterY;
+	float radialBlurIntensity;
+
+	int enableDissolve;
+	float dissolveThreshold;
+	float dissolveEdgeWidth;
+	float padding1;
+
+	float dissolveEdgeColor[3];
+	int enableRandom;
+
+	float randomTime;
+	float glitchStrength;
+	float noiseStrength;
+	float padding2[1];
 };
 
 class IPostProcess {

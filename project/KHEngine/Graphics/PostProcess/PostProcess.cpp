@@ -2,6 +2,14 @@
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 #include "KHEngine/Graphics/PostProcess/Effects/GrayscaleEffect.h"
 #include "KHEngine/Graphics/PostProcess/Effects/SepiaEffect.h"
+#include "KHEngine/Graphics/PostProcess/Effects/VignettingEffect.h"
+#include "KHEngine/Graphics/PostProcess/Effects/SmoothingEffect.h"
+#include "KHEngine/Graphics/PostProcess/Effects/GaussianFilterEffect.h"
+#include "KHEngine/Graphics/PostProcess/Effects/OutlineEffect.h"
+#include "KHEngine/Graphics/PostProcess/Effects/RadialBlurEffect.h"
+#include "KHEngine/Graphics/PostProcess/Effects/DissolveEffect.h"
+#include "KHEngine/Graphics/PostProcess/Effects/RandomEffect.h"
+#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "externals/imgui/imgui.h"
 #include "externals/nlohmann/json.hpp"
 #include <cassert>
@@ -14,16 +22,15 @@ void PostProcess::Initialize(DirectXCommon* dxcommon)
 	CreateRootSignature();
 	CreateGraphicsPipeline();
 
-	// RenderTextureのSRVを作成
+	// ポストプロセス用のSRVは後ろの方の番号を固定で使う（既存テクスチャとの競合を避けるため）
+	srvIndex_ = 510;
+	resultSrvIndex_ = 511;
+
+	// RenderTextureのSRV作成
 	SrvManager* srvManager = SrvManager::GetInstance();
-	srvIndex_ = srvManager->Allocate();
-
-	D3D12_RESOURCE_DESC resDesc = dxCommon_->GetRenderTextureResource()->GetDesc();
-	srvManager->CreateSRVforTexture2D(srvIndex_, dxCommon_->GetRenderTextureResource().Get(), resDesc.Format, 1);
-
-	// PostProcess先(2枚目のテクスチャ)のSRVを作成
-	resultSrvIndex_ = srvManager->Allocate();
-	srvManager->CreateSRVforTexture2D(resultSrvIndex_, dxCommon_->GetPostProcessTextureResource().Get(), resDesc.Format, 1);
+	srvManager->CreateSRVforTexture2D(srvIndex_, dxCommon_->GetRenderTextureResource().Get(), DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 1);
+	// 書き込み先（結果）テクスチャのSRV作成
+	srvManager->CreateSRVforTexture2D(resultSrvIndex_, dxCommon_->GetPostProcessTextureResource().Get(), DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 1);
 
 	// 定数バッファの作成
 	D3D12_HEAP_PROPERTIES heapProps{};
@@ -45,6 +52,16 @@ void PostProcess::Initialize(DirectXCommon* dxcommon)
 	// エフェクトの登録
 	effects_.push_back(std::make_unique<GrayscaleEffect>(&data_));
 	effects_.push_back(std::make_unique<SepiaEffect>(&data_));
+	effects_.push_back(std::make_unique<VignettingEffect>(&data_));
+	effects_.push_back(std::make_unique<SmoothingEffect>(&data_));
+	effects_.push_back(std::make_unique<GaussianFilterEffect>(&data_));
+	effects_.push_back(std::make_unique<OutlineEffect>(&data_));
+	effects_.push_back(std::make_unique<RadialBlurEffect>(&data_));
+	effects_.push_back(std::make_unique<DissolveEffect>(&data_));
+	effects_.push_back(std::make_unique<RandomEffect>(&data_));
+
+	// ノイズテクスチャのロード (Dissolve用)
+	TextureManager::GetInstance()->LoadTexture("resources/images/noise0.png");
 
 	for (auto& effect : effects_) {
 		effect->Initialize();
@@ -58,23 +75,34 @@ void PostProcess::CreateRootSignature()
 {
 	HRESULT hr;
 
-	D3D12_DESCRIPTOR_RANGE descriptorRange[1]{};
+	D3D12_DESCRIPTOR_RANGE descriptorRange[2]{};
 	descriptorRange[0].BaseShaderRegister = 0; // t0
 	descriptorRange[0].NumDescriptors = 1;
 	descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-	D3D12_ROOT_PARAMETER rootParameters[2] = {};
-	// t0 (テクスチャ)
+	descriptorRange[1].BaseShaderRegister = 1; // t1
+	descriptorRange[1].NumDescriptors = 1;
+	descriptorRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	descriptorRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+	D3D12_ROOT_PARAMETER rootParameters[3] = {};
+	// t0 (メインテクスチャ)
 	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	rootParameters[0].DescriptorTable.pDescriptorRanges = descriptorRange;
-	rootParameters[0].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
+	rootParameters[0].DescriptorTable.pDescriptorRanges = &descriptorRange[0];
+	rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
 
 	// b0 (定数バッファ: エフェクトのパラメータ)
 	rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	rootParameters[1].Descriptor.ShaderRegister = 0; // b0
+
+	// t1 (マスクテクスチャ)
+	rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParameters[2].DescriptorTable.pDescriptorRanges = &descriptorRange[1];
+	rootParameters[2].DescriptorTable.NumDescriptorRanges = 1;
 
 	D3D12_STATIC_SAMPLER_DESC staticSamplers[1]{};
 	staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -207,13 +235,32 @@ void PostProcess::Draw(bool drawToSwapchain)
 	commandList->SetPipelineState(graphicsPipelineState.Get());
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+	// ランダム(時間)の更新
+	data_.randomTime += 1.0f / 60.0f;
+	if (data_.randomTime > 1000.0f) data_.randomTime = 0.0f;
+
 	// エフェクトの有効/無効フラグを定数バッファに反映
 	data_.enableGrayscale = 0;
 	data_.enableSepia = 0;
+	data_.enableVignette = 0;
+	data_.enableSmoothing = 0;
+	data_.enableGaussian = 0;
+	data_.enableOutline = 0;
+	data_.enableRadialBlur = 0;
+	data_.enableDissolve = 0;
+	data_.enableRandom = 0;
+
 	for (auto& effect : effects_) {
 		if (effect->isActive_) {
 			if (effect->name_ == "Grayscale") data_.enableGrayscale = 1;
-			if (effect->name_ == "Sepia") data_.enableSepia = 1;
+			else if (effect->name_ == "Sepia") data_.enableSepia = 1;
+			else if (effect->name_ == "Vignetting") data_.enableVignette = 1;
+			else if (effect->name_ == "Smoothing") data_.enableSmoothing = 1;
+			else if (effect->name_ == "GaussianFilter") data_.enableGaussian = 1;
+			else if (effect->name_ == "Outline") data_.enableOutline = 1;
+			else if (effect->name_ == "RadialBlur") data_.enableRadialBlur = 1;
+			else if (effect->name_ == "Dissolve") data_.enableDissolve = 1;
+			else if (effect->name_ == "Random(Glitch)") data_.enableRandom = 1;
 		}
 	}
 
@@ -222,11 +269,20 @@ void PostProcess::Draw(bool drawToSwapchain)
 		*constMap_ = data_;
 	}
 
-	// SRVセット
+	// SRVセット (t0)
 	SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(0, srvIndex_);
 
 	// CBVセット (b0)
 	commandList->SetGraphicsRootConstantBufferView(1, constBuffer_->GetGPUVirtualAddress());
+
+	// マスクテクスチャのSRVセット (t1)
+	uint32_t maskSrvIndex = TextureManager::GetInstance()->GetSrvIndex("resources/images/noise0.png");
+	if (maskSrvIndex != 0) {
+		SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(2, maskSrvIndex);
+	} else {
+		// 見つからない場合はメインテクスチャをダミーとして設定
+		SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(2, srvIndex_);
+	}
 
 	// 描画 (3頂点)
 	commandList->DrawInstanced(3, 1, 0, 0);
@@ -294,6 +350,26 @@ void PostProcess::SaveToJson()
 		
 		if (effect->name_ == "Sepia") {
 			effectJson["strength"] = data_.sepiaStrength;
+		} else if (effect->name_ == "Vignetting") {
+			effectJson["intensity"] = data_.vignetteIntensity;
+			effectJson["power"] = data_.vignettePower;
+		} else if (effect->name_ == "Smoothing") {
+			effectJson["kernelSize"] = data_.smoothingKernelSize;
+		} else if (effect->name_ == "GaussianFilter") {
+			effectJson["sigma"] = data_.gaussianSigma;
+		} else if (effect->name_ == "Outline") {
+			effectJson["threshold"] = data_.outlineThreshold;
+		} else if (effect->name_ == "RadialBlur") {
+			effectJson["centerX"] = data_.radialBlurCenterX;
+			effectJson["centerY"] = data_.radialBlurCenterY;
+			effectJson["intensity"] = data_.radialBlurIntensity;
+		} else if (effect->name_ == "Dissolve") {
+			effectJson["threshold"] = data_.dissolveThreshold;
+			effectJson["edgeWidth"] = data_.dissolveEdgeWidth;
+			effectJson["edgeColor"] = { data_.dissolveEdgeColor[0], data_.dissolveEdgeColor[1], data_.dissolveEdgeColor[2] };
+		} else if (effect->name_ == "Random(Glitch)") {
+			effectJson["glitchStrength"] = data_.glitchStrength;
+			effectJson["noiseStrength"] = data_.noiseStrength;
 		}
 
 		j[effect->name_] = effectJson;
@@ -317,12 +393,34 @@ void PostProcess::LoadFromJson()
 		if (j.contains(effect->name_)) {
 			auto& effectJson = j[effect->name_];
 			
-			if (effectJson.contains("isActive")) {
-				effect->isActive_ = effectJson["isActive"];
-			}
+			if (effectJson.contains("isActive")) effect->isActive_ = effectJson["isActive"];
 			
 			if (effect->name_ == "Sepia" && effectJson.contains("strength")) {
 				data_.sepiaStrength = effectJson["strength"];
+			} else if (effect->name_ == "Vignetting") {
+				if (effectJson.contains("intensity")) data_.vignetteIntensity = effectJson["intensity"];
+				if (effectJson.contains("power")) data_.vignettePower = effectJson["power"];
+			} else if (effect->name_ == "Smoothing") {
+				if (effectJson.contains("kernelSize")) data_.smoothingKernelSize = effectJson["kernelSize"];
+			} else if (effect->name_ == "GaussianFilter") {
+				if (effectJson.contains("sigma")) data_.gaussianSigma = effectJson["sigma"];
+			} else if (effect->name_ == "Outline") {
+				if (effectJson.contains("threshold")) data_.outlineThreshold = effectJson["threshold"];
+			} else if (effect->name_ == "RadialBlur") {
+				if (effectJson.contains("centerX")) data_.radialBlurCenterX = effectJson["centerX"];
+				if (effectJson.contains("centerY")) data_.radialBlurCenterY = effectJson["centerY"];
+				if (effectJson.contains("intensity")) data_.radialBlurIntensity = effectJson["intensity"];
+			} else if (effect->name_ == "Dissolve") {
+				if (effectJson.contains("threshold")) data_.dissolveThreshold = effectJson["threshold"];
+				if (effectJson.contains("edgeWidth")) data_.dissolveEdgeWidth = effectJson["edgeWidth"];
+				if (effectJson.contains("edgeColor")) {
+					data_.dissolveEdgeColor[0] = effectJson["edgeColor"][0];
+					data_.dissolveEdgeColor[1] = effectJson["edgeColor"][1];
+					data_.dissolveEdgeColor[2] = effectJson["edgeColor"][2];
+				}
+			} else if (effect->name_ == "Random(Glitch)") {
+				if (effectJson.contains("glitchStrength")) data_.glitchStrength = effectJson["glitchStrength"];
+				if (effectJson.contains("noiseStrength")) data_.noiseStrength = effectJson["noiseStrength"];
 			}
 		}
 	}
