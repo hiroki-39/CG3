@@ -1,0 +1,9 @@
+{
+    "Grayscale": {
+        "isActive": false
+    },
+    "Sepia": {
+        "isActive": false,
+        "strength": 0.800000011920929
+    }
+}

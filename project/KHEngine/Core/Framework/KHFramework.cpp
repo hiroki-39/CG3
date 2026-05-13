@@ -96,7 +96,13 @@ void KHFramework::FrameworkUpdate(float /*deltaTime*/)
 		{
 			// エディタモード：最初にドッキング空間を作り、その中にビューポートを表示
 			// （他のImGui::Beginより前に呼ぶ必要があるためここで行う）
-			EditorSystem::GetInstance()->Draw(postProcess_->GetSrvIndex());
+			EditorSystem::GetInstance()->Draw(postProcess_->GetResultSrvIndex());
+		}
+
+		// ポストプロセスのエディタウィンドウを表示
+		if (postProcess_)
+		{
+			postProcess_->DrawImGui();
 		}
 	}
 }
@@ -117,13 +123,11 @@ void KHFramework::FrameworkDrawEnd()
 		dxCommon_->PreDrawSwapchain();
 	}
 
-	if (!isEditorMode_)
+	// PostProcessを描画
+	if (postProcess_)
 	{
-		// PostProcessを描画 (RenderTextureの内容をSwapchainにコピー)
-		if (postProcess_)
-		{
-			postProcess_->Draw();
-		}
+		// エディタモードなら専用のテクスチャへ、ゲームモードなら直接Swapchainへ出力
+		postProcess_->Draw(!isEditorMode_);
 	}
 
 	// ImGui 描画準備と描画

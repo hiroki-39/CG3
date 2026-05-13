@@ -245,8 +245,8 @@ void DirectXCommon::CreateDescriptorHeaps()
 	desriptorSizeRTV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	desriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
-	//RTV用のヒープでディスクリプタの数は3(SwapChainx2 + RenderTexturex1)。RTVはShader内で触るものではないので、ShaderVisibleはfalse
-	rtvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 3, false);
+	//RTV用のヒープでディスクリプタの数は4(SwapChainx2 + RenderTexturex1 + PostProcessTexturex1)。
+	rtvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 4, false);
 
 	//DSV用のヒープでディスクリプタの数は1。RTVはShader内で触るものではないので、ShaderVisibleはfalse
 	dsvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
@@ -293,6 +293,13 @@ void DirectXCommon::CreateRTV()
 	// RenderTexture用のRTV作成
 	renderTextureRTVHandle_ = handle;
 	device->CreateRenderTargetView(renderTextureResource_.Get(), &rtvDesc, renderTextureRTVHandle_);
+
+	handle.ptr = handle.ptr + incrementSize;
+
+	// PostProcess用Textureの生成とRTV作成
+	postProcessTextureResource_ = CreateRenderTextureResource(WinApp::kClientWidth, WinApp::kClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, kRenderTargetClearValue);
+	postProcessRTVHandle_ = handle;
+	device->CreateRenderTargetView(postProcessTextureResource_.Get(), &rtvDesc, postProcessRTVHandle_);
 }
 
 void DirectXCommon::CreateDSV()
