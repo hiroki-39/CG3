@@ -4,7 +4,7 @@
 #include "KHEngine/Core/Utility/Log/Logger.h"
 #include "KHEngine/Core/Utility/Crash/CrashDump.h"
 #include "KHEngine/Sound/Core/SoundManager.h"
-
+#include "KHEngine/Debug/Editor/EditorSystem.cpp"
 
 void KHFramework::Run()
 {
@@ -62,9 +62,11 @@ void KHFramework::FrameworkInitialize()
 	input_ = std::make_unique<Input>();
 	input_->Initialize(winApp_.get());
 
-	// --- ImGui ---
 	imguiManager_ = std::make_unique<ImGuiManager>();
 	imguiManager_->Initialize(dxCommon_.get(), winApp_.get());
+
+	// --- Editor ---
+	EditorSystem::GetInstance()->Initialize(dxCommon_.get());
 
 	// --- エンジンサブシステムの初期化 ---
 	InitializeEngineSubsystems();
@@ -89,6 +91,13 @@ void KHFramework::FrameworkUpdate(float /*deltaTime*/)
 	if (imguiManager_)
 	{
 		imguiManager_->Begin();
+
+		if (isEditorMode_)
+		{
+			// エディタモード：最初にドッキング空間を作り、その中にビューポートを表示
+			// （他のImGui::Beginより前に呼ぶ必要があるためここで行う）
+			EditorSystem::GetInstance()->Draw(postProcess_->GetSrvIndex());
+		}
 	}
 }
 
@@ -108,15 +117,19 @@ void KHFramework::FrameworkDrawEnd()
 		dxCommon_->PreDrawSwapchain();
 	}
 
-	// PostProcessを描画 (RenderTextureの内容をSwapchainにコピー)
-	if (postProcess_)
+	if (!isEditorMode_)
 	{
-		postProcess_->Draw();
+		// PostProcessを描画 (RenderTextureの内容をSwapchainにコピー)
+		if (postProcess_)
+		{
+			postProcess_->Draw();
+		}
 	}
 
-	// ImGui 描画
+	// ImGui 描画準備と描画
 	if (imguiManager_)
 	{
+		imguiManager_->End();
 		imguiManager_->Draw();
 	}
 

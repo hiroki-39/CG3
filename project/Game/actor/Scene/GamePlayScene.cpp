@@ -264,41 +264,41 @@ void GamePlayScene::Update()
 #ifdef USE_IMGUI
 
     // --- Sprite ウィンドウ ---
-    ImGui::Begin("Sprite");
+    ImGui::Begin("スプライト");
     if (!sprites.empty())
     {
         // unique_ptr から生ポインタを取得
         Sprite* s = sprites[0].get();
 
         bool display = isDisplaySprite;
-        if (ImGui::Checkbox("Display Sprite", &display))
+        if (ImGui::Checkbox("スプライト表示 (Display Sprite)", &display))
         {
             isDisplaySprite = display;
         }
 
         Vector2 pos = s->GetPosition();
         float posArr[2] = { pos.x, pos.y };
-        if (ImGui::DragFloat2("Position", posArr, 1.0f))
+        if (ImGui::DragFloat2("座標 (Position)", posArr, 1.0f))
         {
             s->SetPosition(Vector2(posArr[0], posArr[1]));
         }
 
         Vector2 size = s->GetSize();
         float sizeArr[2] = { size.x, size.y };
-        if (ImGui::DragFloat2("Size", sizeArr, 1.0f, 1.0f, 4096.0f))
+        if (ImGui::DragFloat2("サイズ (Size)", sizeArr, 1.0f, 1.0f, 4096.0f))
         {
             s->SetSize(Vector2(sizeArr[0], sizeArr[1]));
         }
 
         float rotation = s->GetRotation();
-        if (ImGui::DragFloat("Rotation", &rotation, 0.5f))
+        if (ImGui::DragFloat("回転 (Rotation)", &rotation, 0.5f))
         {
             s->SetRotation(rotation);
         }
 
         Vector4 col = s->GetColor();
         float colArr[4] = { col.x, col.y, col.z, col.w };
-        if (ImGui::ColorEdit4("Color", colArr))
+        if (ImGui::ColorEdit4("色 (Color)", colArr))
         {
             s->SetColor(Vector4(colArr[0], colArr[1], colArr[2], colArr[3]));
         }
@@ -307,28 +307,28 @@ void GamePlayScene::Update()
 
 
     // --- Model ウィンドウ ---
-    ImGui::Begin("Model");
+    ImGui::Begin("モデル");
     if (!modelInstances.empty())
     {
         Object3d* obj = modelInstances[0].get();
         // Translate / Rotation / Scale
         Vector3 t = obj->GetTranslate();
         float tArr[3] = { t.x, t.y, t.z };
-        if (ImGui::DragFloat3("Translate", tArr, 0.05f))
+        if (ImGui::DragFloat3("座標 (Translate)", tArr, 0.05f))
         {
             obj->SetTranslate(Vector3(tArr[0], tArr[1], tArr[2]));
         }
 
         Vector3 r = obj->GetRotation();
         float rArr[3] = { r.x, r.y, r.z };
-        if (ImGui::DragFloat3("Rotation", rArr, 0.5f))
+        if (ImGui::DragFloat3("回転 (Rotation)", rArr, 0.5f))
         {
             obj->SetRotation(Vector3(rArr[0], rArr[1], rArr[2]));
         }
 
         Vector3 s = obj->GetScale();
         float sArr[3] = { s.x, s.y, s.z };
-        if (ImGui::DragFloat3("Scale", sArr, 0.01f, 0.001f, 100.0f))
+        if (ImGui::DragFloat3("スケール (Scale)", sArr, 0.01f, 0.001f, 100.0f))
         {
             obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
         }
@@ -340,7 +340,7 @@ void GamePlayScene::Update()
 
         // 反射強度のスライダーを追加
         float envCoeff = obj->GetModel()->GetEnvironmentCoefficient(); // ※後述のGetterが必要
-        if (ImGui::DragFloat("Environment Coefficient", &envCoeff, 0.01f, 0.0f, 1.0f))
+        if (ImGui::DragFloat("環境反射係数 (Environment Coeff)", &envCoeff, 0.01f, 0.0f, 1.0f))
         {
             obj->SetEnvironmentCoefficient(envCoeff);
         }
@@ -356,16 +356,16 @@ void GamePlayScene::Update()
 
             // ラベルは HLSL の case に対応させる（0..5）
             const char* lightingNames[] = {
-                "0: TextureOnly",
-                "1: Directional (Diffuse)",
-                "2: Directional (Soft)",
-                "3: Directional (Diffuse+Specular)",
-                "4: Directional + Point",
-                "5: Spot"
+                "0: テクスチャのみ (TextureOnly)",
+                "1: 平行光源・ディフューズ (Directional Diffuse)",
+                "2: 平行光源・ソフト (Directional Soft)",
+                "3: 平行光源・スペキュラ (Dir Diffuse+Specular)",
+                "4: 平行光源 + 点光源 (Dir + Point)",
+                "5: スポットライト (Spot)"
             };
 
             // Combo で選択（HLSL の switch の case に対応）
-            if (ImGui::Combo("Select Lighting Mode", &currentSelect, lightingNames, IM_ARRAYSIZE(lightingNames)))
+            if (ImGui::Combo("ライティングモード", &currentSelect, lightingNames, IM_ARRAYSIZE(lightingNames)))
             {
                 // 全インスタンスに反映
                 for (auto& obj : modelInstances)
@@ -382,43 +382,43 @@ void GamePlayScene::Update()
 
 
     // --- Camera ウィンドウ (分離) ---
-    ImGui::Begin("Camera");
+    ImGui::Begin("カメラ");
     if (camera)
     {
         Vector3& camPosRef = camera->GetTranslate();
         float camPosArr[3] = { camPosRef.x, camPosRef.y, camPosRef.z };
-        if (ImGui::DragFloat3("Translate", camPosArr, 0.1f))
+        if (ImGui::DragFloat3("座標 (Translate)", camPosArr, 0.1f))
         {
             camera->SetTranslate(Vector3(camPosArr[0], camPosArr[1], camPosArr[2]));
         }
 
         Vector3& camRotRef = camera->GetRotation();
         float camRotArr[3] = { camRotRef.x, camRotRef.y, camRotRef.z };
-        if (ImGui::DragFloat3("Rotation", camRotArr, 0.1f))
+        if (ImGui::DragFloat3("回転 (Rotation)", camRotArr, 0.1f))
         {
             camera->SetRotation(Vector3(camRotArr[0], camRotArr[1], camRotArr[2]));
         }
 
         float fov = camera->GetFovY();
-        if (ImGui::DragFloat("FOV Y", &fov, 0.01f, 0.01f, 3.14f))
+        if (ImGui::DragFloat("画角 (FOV Y)", &fov, 0.01f, 0.01f, 3.14f))
         {
             camera->SetFovY(fov);
         }
 
         float aspect = camera->GetAspectRatio();
-        if (ImGui::DragFloat("Aspect", &aspect, 0.01f, 0.1f, 10.0f))
+        if (ImGui::DragFloat("アスペクト比", &aspect, 0.01f, 0.1f, 10.0f))
         {
             camera->SetAspectRatio(aspect);
         }
 
         float nearC = camera->GetNearClip();
-        if (ImGui::DragFloat("Near Clip", &nearC, 0.001f, 0.001f, 100.0f))
+        if (ImGui::DragFloat("近クリップ", &nearC, 0.001f, 0.001f, 100.0f))
         {
             camera->SetNearClip(nearC);
         }
 
         float farC = camera->GetFarClip();
-        if (ImGui::DragFloat("Far Clip", &farC, 0.1f, 1.0f, 1000.0f))
+        if (ImGui::DragFloat("遠クリップ", &farC, 0.1f, 1.0f, 1000.0f))
         {
             camera->SetFarClip(farC);
         }
@@ -427,7 +427,7 @@ void GamePlayScene::Update()
 
 
     // --- Light ウィンドウ (モデルが使っているライトのみ表示) ---
-    ImGui::Begin("Light");
+    ImGui::Begin("ライト");
     if (!modelInstances.empty())
     {
         Object3d* firstObj = modelInstances[0].get();
@@ -449,7 +449,7 @@ void GamePlayScene::Update()
         if (usesDirectional(lightingMode))
         {
             ImGui::Separator();
-            ImGui::Text("Directional Light");
+            ImGui::Text("平行光源 (Directional Light)");
 
             static bool dirInit = false;
             static Vector4 dirColor = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -468,20 +468,20 @@ void GamePlayScene::Update()
             }
 
             float dcArr[4] = { dirColor.x, dirColor.y, dirColor.z, dirColor.w };
-            if (ImGui::ColorEdit4("Color##Dir", dcArr))
+            if (ImGui::ColorEdit4("色 (Color)##Dir", dcArr))
             {
                 dirColor = Vector4(dcArr[0], dcArr[1], dcArr[2], dcArr[3]);
                 for (auto& m : modelInstances) if (m) m->SetDirectionalLightColor(dirColor);
             }
 
             float ddArr[3] = { dirDirection.x, dirDirection.y, dirDirection.z };
-            if (ImGui::DragFloat3("Direction##Dir", ddArr, 0.01f, -10.0f, 10.0f))
+            if (ImGui::DragFloat3("方向 (Direction)##Dir", ddArr, 0.01f, -10.0f, 10.0f))
             {
                 dirDirection = Vector3(ddArr[0], ddArr[1], ddArr[2]);
                 for (auto& m : modelInstances) if (m) m->SetDirectionalLightDirection(dirDirection);
             }
 
-            if (ImGui::DragFloat("Intensity##Dir", &dirIntensity, 0.01f, 0.0f, 100.0f))
+            if (ImGui::DragFloat("強度 (Intensity)##Dir", &dirIntensity, 0.01f, 0.0f, 100.0f))
             {
                 if (dirEnabledGlobal)
                 {
@@ -494,7 +494,7 @@ void GamePlayScene::Update()
                 }
             }
 
-            if (ImGui::Checkbox("Enable Directional Light (global)", &dirEnabledGlobal))
+            if (ImGui::Checkbox("平行光源を有効化 (global)##Dir", &dirEnabledGlobal))
             {
                 if (!dirEnabledGlobal)
                 {
@@ -511,7 +511,7 @@ void GamePlayScene::Update()
         if (usesPoint(lightingMode))
         {
             ImGui::Separator();
-            ImGui::Text("Point Light");
+            ImGui::Text("点光源 (Point Light)");
 
             static bool pointInit = false;
             static Vector4 pointColor = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -531,7 +531,7 @@ void GamePlayScene::Update()
                 pointInit = true;
             }
 
-            if (ImGui::Checkbox("Enable Point Light", &pointLightEnabled))
+            if (ImGui::Checkbox("点光源を有効化##Point", &pointLightEnabled))
             {
                 if (!pointLightEnabled)
                 {
@@ -554,20 +554,20 @@ void GamePlayScene::Update()
 #endif
 
             float pcArr[4] = { pointColor.x, pointColor.y, pointColor.z, pointColor.w };
-            if (ImGui::ColorEdit4("Color##Point", pcArr))
+            if (ImGui::ColorEdit4("色 (Color)##Point", pcArr))
             {
                 pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
                 for (auto& m : modelInstances) if (m) m->SetPointLightColor(pointColor);
             }
 
             float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
-            if (ImGui::DragFloat3("Position##Point", ppArr, 0.05f, -100.0f, 100.0f))
+            if (ImGui::DragFloat3("位置 (Position)##Point", ppArr, 0.05f, -100.0f, 100.0f))
             {
                 pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
                 for (auto& m : modelInstances) if (m) m->SetPointLightPosition(pointPosition);
             }
 
-            if (ImGui::DragFloat("Intensity##Point", &pointIntensity, 0.01f, 0.0f, 100.0f))
+            if (ImGui::DragFloat("強度 (Intensity)##Point", &pointIntensity, 0.01f, 0.0f, 100.0f))
             {
                 if (pointLightEnabled)
                 {
@@ -580,11 +580,11 @@ void GamePlayScene::Update()
                 }
             }
 
-            if (ImGui::DragFloat("Radius##Point", &pointRadius, 0.01f, 0.1f, 100.0f))
+            if (ImGui::DragFloat("半径 (Radius)##Point", &pointRadius, 0.01f, 0.1f, 100.0f))
             {
                 for (auto& m : modelInstances) if (m) m->SetPointLightRadius(pointRadius);
             }
-            if (ImGui::DragFloat("Range(Decay)##Point", &pointRange, 0.01f, 0.1f, 50.0f))
+            if (ImGui::DragFloat("減衰範囲 (Decay Range)##Point", &pointRange, 0.01f, 0.1f, 50.0f))
             {
                 for (auto& m : modelInstances) if (m) m->SetPointLightDecry(pointRange);
             }
@@ -604,7 +604,7 @@ void GamePlayScene::Update()
         if (usesSpot(lightingMode))
         {
             ImGui::Separator();
-            ImGui::Text("Spot Light");
+            ImGui::Text("スポットライト (Spot Light)");
 
             static bool spotInit = false;
             static Vector4 spotColor = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -630,7 +630,7 @@ void GamePlayScene::Update()
                 spotInit = true;
             }
 
-            if (ImGui::Checkbox("Enable Spot Light", &spotLightEnabled))
+            if (ImGui::Checkbox("スポットライトを有効化##Spot", &spotLightEnabled))
             {
                 if (!spotLightEnabled)
                 {
@@ -655,7 +655,7 @@ void GamePlayScene::Update()
             // Color
             {
                 float scArr[4] = { spotColor.x, spotColor.y, spotColor.z, spotColor.w };
-                if (ImGui::ColorEdit4("Color##Spot", scArr))
+                if (ImGui::ColorEdit4("色 (Color)##Spot", scArr))
                 {
                     spotColor = Vector4(scArr[0], scArr[1], scArr[2], scArr[3]);
                     for (auto& m : modelInstances) if (m) m->SetSpotLightColor(spotColor);
@@ -665,7 +665,7 @@ void GamePlayScene::Update()
             // Position
             {
                 float spArr[3] = { spotPosition.x, spotPosition.y, spotPosition.z };
-                if (ImGui::DragFloat3("Position##Spot", spArr, 0.05f, -100.0f, 100.0f))
+                if (ImGui::DragFloat3("位置 (Position)##Spot", spArr, 0.05f, -100.0f, 100.0f))
                 {
                     spotPosition = Vector3(spArr[0], spArr[1], spArr[2]);
                     for (auto& m : modelInstances) if (m) m->SetSpotLightPosition(spotPosition);
@@ -675,7 +675,7 @@ void GamePlayScene::Update()
             // Direction
             {
                 float sdArr[3] = { spotDirection.x, spotDirection.y, spotDirection.z };
-                if (ImGui::DragFloat3("Direction##Spot", sdArr, 0.01f, -10.0f, 10.0f))
+                if (ImGui::DragFloat3("方向 (Direction)##Spot", sdArr, 0.01f, -10.0f, 10.0f))
                 {
                     spotDirection = Vector3(sdArr[0], sdArr[1], sdArr[2]);
                     for (auto& m : modelInstances) if (m) m->SetSpotLightDirection(spotDirection);
@@ -683,7 +683,7 @@ void GamePlayScene::Update()
             }
 
             // Intensity
-            if (ImGui::DragFloat("Intensity##Spot", &spotIntensity, 0.01f, 0.0f, 100.0f))
+            if (ImGui::DragFloat("強度 (Intensity)##Spot", &spotIntensity, 0.01f, 0.0f, 100.0f))
             {
                 if (spotLightEnabled)
                 {
@@ -697,17 +697,17 @@ void GamePlayScene::Update()
             }
 
             // Distance / Decay
-            if (ImGui::DragFloat("Distance##Spot", &spotDistance, 0.1f, 0.0f, 10000.0f))
+            if (ImGui::DragFloat("距離 (Distance)##Spot", &spotDistance, 0.1f, 0.0f, 10000.0f))
             {
                 for (auto& m : modelInstances) if (m) m->SetSpotLightDistance(spotDistance);
             }
-            if (ImGui::DragFloat("Decay##Spot", &spotDecay, 0.01f, 0.0f, 10.0f))
+            if (ImGui::DragFloat("減衰率 (Decay)##Spot", &spotDecay, 0.01f, 0.0f, 10.0f))
             {
                 for (auto& m : modelInstances) if (m) m->SetSpotLightDecay(spotDecay);
             }
 
             // Angle (deg)
-            if (ImGui::SliderFloat("Angle (deg)##Spot", &spotAngleDeg, 1.0f, 90.0f))
+            if (ImGui::SliderFloat("角度 (Angle deg)##Spot", &spotAngleDeg, 1.0f, 90.0f))
             {
                 for (auto& m : modelInstances) if (m) m->SetSpotLightAngleDeg(spotAngleDeg);
             }

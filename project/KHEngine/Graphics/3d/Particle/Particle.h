@@ -22,7 +22,9 @@ enum class BlendMode
 struct Particle
 {
     Transform transform;
+    Vector3 initialScale; // OverLifetime計算用
     Vector3 velocity;
+    Vector4 initialColor; // OverLifetime計算用
     Vector4 color;
     float lifeTime;
     float currentTime;
@@ -66,9 +68,22 @@ struct ParticleEmitterParameter
     Vector3 minRotation = { 0.0f, 0.0f, 0.0f };
     Vector3 maxRotation = { 0.0f, 0.0f, 0.0f };
 
-    // 色範囲
+    // 色範囲 (開始色)
     Vector4 minColor = { 1.0f, 1.0f, 1.0f, 1.0f };
     Vector4 maxColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+    // --- 新規拡張パラメータ ---
+    // 寿命による変化 (Over Lifetime)
+    bool isColorOverLifetime = true; // デフォルトでフェードアウトするようにtrue
+    Vector4 endColor = { 1.0f, 1.0f, 1.0f, 0.0f }; // 終了時の色 (アルファ0で消える)
+
+    bool isScaleOverLifetime = false;
+    Vector3 endScale = { 0.0f, 0.0f, 0.0f }; // 終了時のスケール
+
+    // 物理挙動 (Physics)
+    bool useGravity = false;
+    float gravity = -9.8f; // 下向きの重力
+    float drag = 0.0f;     // 空気抵抗 (0.0で抵抗なし、値が大きいほど急ブレーキ)
 };
 
 /**

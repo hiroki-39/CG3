@@ -14,6 +14,11 @@ public:
 	/// </summary>
 	void Draw();
 
+	/// <summary>
+	/// SRVインデックスの取得
+	/// </summary>
+	uint32_t GetSrvIndex() const { return srvIndex_; }
+
 private:
 	/// <summary>
 	/// ルートシグネチャの作成
