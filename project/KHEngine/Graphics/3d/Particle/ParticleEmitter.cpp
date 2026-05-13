@@ -22,6 +22,21 @@ void ParticleEmitter::Update(float dt)
             continue;
         }
 
+        // 物理挙動の適用 (Physics)
+        if (parameter_.useGravity)
+        {
+            p.velocity.y += parameter_.gravity * dt;
+        }
+        if (parameter_.drag > 0.0f)
+        {
+            // 簡易的な空気抵抗 (v = v * (1 - drag * dt))
+            float dragFactor = 1.0f - (parameter_.drag * dt);
+            if (dragFactor < 0.0f) dragFactor = 0.0f;
+            p.velocity.x *= dragFactor;
+            p.velocity.y *= dragFactor;
+            p.velocity.z *= dragFactor;
+        }
+
         // 加速度フィールドの適用
         if (accelField_.IsInArea(p.transform.translate))
         {
@@ -30,6 +45,24 @@ void ParticleEmitter::Update(float dt)
 
         // 移動
         p.transform.translate += p.velocity * dt;
+
+        // 寿命による変化 (Over Lifetime)
+        float progress = p.currentTime / p.lifeTime; // 0.0 から 1.0
+        
+        if (parameter_.isScaleOverLifetime)
+        {
+            p.transform.scale.x = std::lerp(p.initialScale.x, parameter_.endScale.x, progress);
+            p.transform.scale.y = std::lerp(p.initialScale.y, parameter_.endScale.y, progress);
+            p.transform.scale.z = std::lerp(p.initialScale.z, parameter_.endScale.z, progress);
+        }
+
+        if (parameter_.isColorOverLifetime)
+        {
+            p.color.x = std::lerp(p.initialColor.x, parameter_.endColor.x, progress);
+            p.color.y = std::lerp(p.initialColor.y, parameter_.endColor.y, progress);
+            p.color.z = std::lerp(p.initialColor.z, parameter_.endColor.z, progress);
+            p.color.w = std::lerp(p.initialColor.w, parameter_.endColor.w, progress);
+        }
         
         ++it;
     }
@@ -81,10 +114,14 @@ Particle ParticleEmitter::MakeNewParticle()
     
     p.transform.translate = position_; // 基本はエミッタの位置
     p.transform.scale = randomVec3(parameter_.minScale, parameter_.maxScale);
+    p.initialScale = p.transform.scale; // 初期スケールを保存
+    
     p.transform.rotation = randomVec3(parameter_.minRotation, parameter_.maxRotation);
     
     p.velocity = randomVec3(parameter_.minVelocity, parameter_.maxVelocity);
+    
     p.color = randomVec4(parameter_.minColor, parameter_.maxColor);
+    p.initialColor = p.color; // 初期色を保存
 
     return p;
 }
@@ -118,11 +155,7 @@ uint32_t ParticleEmitter::FillInstancingBuffer(ParticleForGPU* outBuffer, uint32
 
         outBuffer[numInstance].WVP = worldMat * viewProjection;
         outBuffer[numInstance].World = worldMat;
-
-        // 寿命によるフェードアウト
-        float alphaProgress = 1.0f - (p.currentTime / p.lifeTime);
         outBuffer[numInstance].color = p.color;
-        outBuffer[numInstance].color.w *= alphaProgress;
 
         numInstance++;
     }

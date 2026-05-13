@@ -71,12 +71,6 @@ void Application::Update()
     {
         sceneManager_->Update();
     }
-
-    // ImGui の描画受付終了（Framework が Begin している想定）
-    if (imguiManager_)
-    {
-        imguiManager_->End();
-    }
 }
 
 // 描画処理

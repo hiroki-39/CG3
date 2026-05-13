@@ -14,6 +14,7 @@
 //#include "KHEngine/Scene/SceneFactory.h"
 #include "KHEngine/Scene/AbstractSceneFactory.h"
 #include "KHEngine/Graphics/PostProcess/PostProcess.h"
+#include "KHEngine/Debug/Editor/EditorSystem.h"
 
 class KHFramework
 {
@@ -70,6 +71,9 @@ protected:
 
     // 終了要求
     bool endRequest_ = false;
+
+    // エディタモード
+    bool isEditorMode_ = true;
 
 private:
 
