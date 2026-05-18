@@ -1,9 +1,47 @@
 {
+    "Dissolve": {
+        "edgeColor": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "edgeWidth": 0.05000000074505806,
+        "isActive": false,
+        "threshold": 0.5
+    },
+    "GaussianFilter": {
+        "isActive": false,
+        "sigma": 2.0
+    },
     "Grayscale": {
         "isActive": false
+    },
+    "Outline": {
+        "isActive": false,
+        "threshold": 0.5
+    },
+    "RadialBlur": {
+        "centerX": 0.5,
+        "centerY": 0.5,
+        "intensity": 0.019999999552965164,
+        "isActive": false
+    },
+    "Random(Glitch)": {
+        "glitchStrength": 0.05000000074505806,
+        "isActive": false,
+        "noiseStrength": 0.10000000149011612
     },
     "Sepia": {
         "isActive": false,
         "strength": 0.800000011920929
+    },
+    "Smoothing": {
+        "isActive": false,
+        "kernelSize": 2.0
+    },
+    "Vignetting": {
+        "intensity": 1.0,
+        "isActive": false,
+        "power": 1.5
     }
 }

@@ -55,6 +55,12 @@ if (masteringVoice && xAudio2)
 	masteringVoice = nullptr;
 }
 
+// XAudio2内部スレッドの処理完了を待つ
+if (xAudio2) {
+	xAudio2->CommitChanges(0); // 0は全ての変更を即時反映
+	xAudio2->StopEngine();     // エンジン停止で内部スレッド終了を待つ
+}
+
 // XAudio2の解放
 xAudio2.Reset();
 }

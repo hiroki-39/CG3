@@ -44,6 +44,10 @@ public:
     // ImGuiによるエディタ描画
     void DrawImGui();
 
+    // セーブ・ロード
+    void SaveToJson(const std::string& filename);
+    void LoadFromJson(const std::string& filename);
+
     // ノード（エフェクトの層）を追加
     void AddNode(const std::string& name, int shapeType);
     
