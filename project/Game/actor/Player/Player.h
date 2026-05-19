@@ -25,6 +25,8 @@ public:
     // Getter
     const Vector3& GetTranslate() const { return object_->GetTranslate(); }
     void SetTranslate(const Vector3& translate) { object_->SetTranslate(translate); }
+    Object3d* GetObject3d() const { return object_.get(); }
+    Object3d* GetReticle() const { return reticle_.get(); }
 
 private:
     /// <summary>

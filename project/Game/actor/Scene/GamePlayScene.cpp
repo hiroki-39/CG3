@@ -96,8 +96,9 @@ void GamePlayScene::Initialize()
     {
         auto obj = std::make_unique<Object3d>();
         obj->Initialize(object3dCommon);
-        obj->SetModel("bunny.obj");
+        obj->SetModel("suzanne.obj");
         obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        obj->GetModel()->SetTextureIndex(texManager->GetTextureIndexByFilePath("white.png")); // 強制的に白テクスチャを割り当てて黒落ちを回避
         uint32_t skyboxTexIndex = skybox_->GetCubemapSrvIndex();
         obj->SetEnvironmentTextureIndex(skyboxTexIndex);
         obj->SetEnvironmentCoefficient(1.0f);
@@ -321,11 +322,44 @@ void GamePlayScene::Update()
     ImGui::End();
 
 
+    std::vector<Object3d*> allModels;
+    std::vector<std::string> modelNames;
+    
+    int index = 0;
+    for (auto& obj : modelInstances) {
+        if (obj) {
+            allModels.push_back(obj.get());
+            modelNames.push_back("Model " + std::to_string(index));
+        }
+        index++;
+    }
+    if (player_) {
+        if (player_->GetObject3d()) {
+            allModels.push_back(player_->GetObject3d());
+            modelNames.push_back("Player");
+        }
+        if (player_->GetReticle()) {
+            allModels.push_back(player_->GetReticle());
+            modelNames.push_back("Player Reticle");
+        }
+    }
+
     // --- Model ウィンドウ ---
     ImGui::Begin("モデル");
-    if (!modelInstances.empty())
+    if (!allModels.empty())
     {
-        Object3d* obj = modelInstances[0].get();
+        static int currentModelIndex = 0;
+        if (currentModelIndex >= allModels.size()) currentModelIndex = 0;
+
+        std::vector<const char*> namePtrs;
+        for (const auto& name : modelNames) {
+            namePtrs.push_back(name.c_str());
+        }
+
+        ImGui::Combo("対象モデル", &currentModelIndex, namePtrs.data(), (int)namePtrs.size());
+
+        Object3d* obj = allModels[currentModelIndex];
+        
         // Translate / Rotation / Scale
         Vector3 t = obj->GetTranslate();
         float tArr[3] = { t.x, t.y, t.z };
@@ -347,24 +381,23 @@ void GamePlayScene::Update()
         {
             obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
         }
-    }
 
-    if (!modelInstances.empty())
-    {
-        Object3d* obj = modelInstances[0].get(); // スザンヌ
+        ImGui::Separator();
 
         // 反射強度のスライダーを追加
-        float envCoeff = obj->GetModel()->GetEnvironmentCoefficient(); // ※後述のGetterが必要
-        if (ImGui::DragFloat("環境反射係数 (Environment Coeff)", &envCoeff, 0.01f, 0.0f, 1.0f))
+        if (obj->GetModel())
         {
-            obj->SetEnvironmentCoefficient(envCoeff);
+            float envCoeff = obj->GetModel()->GetEnvironmentCoefficient();
+            if (ImGui::DragFloat("環境反射係数 (Environment Coeff)", &envCoeff, 0.01f, 0.0f, 1.0f))
+            {
+                obj->SetEnvironmentCoefficient(envCoeff);
+            }
         }
-    }
 
-    if (!modelInstances.empty())
-    {
+        ImGui::Separator();
+
         // 最初のインスタンスの Model を参照して現在値を取得
-        Model* sampleModel = modelInstances[0]->GetModel();
+        Model* sampleModel = allModels[0]->GetModel();
         if (sampleModel)
         {
             int currentSelect = sampleModel->GetSelectLightings();
@@ -380,20 +413,19 @@ void GamePlayScene::Update()
             };
 
             // Combo で選択（HLSL の switch の case に対応）
-            if (ImGui::Combo("ライティングモード", &currentSelect, lightingNames, IM_ARRAYSIZE(lightingNames)))
+            if (ImGui::Combo("ライティングモード (一括変更)", &currentSelect, lightingNames, IM_ARRAYSIZE(lightingNames)))
             {
                 // 全インスタンスに反映
-                for (auto& obj : modelInstances)
+                for (auto& mObj : allModels)
                 {
-                    if (!obj) continue;
-                    Model* m = obj->GetModel();
+                    Model* m = mObj->GetModel();
                     if (m) m->SetSelectLightings(currentSelect);
                 }
             }
         }
     }
-
     ImGui::End();
+
 
 
     // --- Camera ウィンドウ (分離) ---
@@ -442,10 +474,10 @@ void GamePlayScene::Update()
 
 
     // --- Light ウィンドウ (モデルが使っているライトのみ表示) ---
-    ImGui::Begin("ライト");
-    if (!modelInstances.empty())
+    ImGui::Begin("グローバルライト設定");
+    if (!allModels.empty())
     {
-        Object3d* firstObj = modelInstances[0].get();
+        Object3d* firstObj = allModels[0];
         Model* sampleModel = firstObj ? firstObj->GetModel() : nullptr;
         int lightingMode = sampleModel ? sampleModel->GetSelectLightings() : 0;
 
@@ -468,7 +500,7 @@ void GamePlayScene::Update()
 
             static bool dirInit = false;
             static Vector4 dirColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-            static Vector3 dirDirection = { 0.0f, -1.0f, 0.0f };
+            static Vector3 dirDirection = { 0.0f, -1.0f, 1.0f }; // 正面斜め上から当たるように初期値を変更
             static float dirIntensity = 1.0f;
             static bool dirEnabledGlobal = true;
             static float dirPrevIntensityGlobal = 1.0f;
@@ -486,21 +518,21 @@ void GamePlayScene::Update()
             if (ImGui::ColorEdit4("色 (Color)##Dir", dcArr))
             {
                 dirColor = Vector4(dcArr[0], dcArr[1], dcArr[2], dcArr[3]);
-                for (auto& m : modelInstances) if (m) m->SetDirectionalLightColor(dirColor);
+                for (auto& m : allModels) m->SetDirectionalLightColor(dirColor);
             }
 
             float ddArr[3] = { dirDirection.x, dirDirection.y, dirDirection.z };
             if (ImGui::DragFloat3("方向 (Direction)##Dir", ddArr, 0.01f, -10.0f, 10.0f))
             {
                 dirDirection = Vector3(ddArr[0], ddArr[1], ddArr[2]);
-                for (auto& m : modelInstances) if (m) m->SetDirectionalLightDirection(dirDirection);
+                for (auto& m : allModels) m->SetDirectionalLightDirection(dirDirection);
             }
 
             if (ImGui::DragFloat("強度 (Intensity)##Dir", &dirIntensity, 0.01f, 0.0f, 100.0f))
             {
                 if (dirEnabledGlobal)
                 {
-                    for (auto& m : modelInstances) if (m) m->SetDirectionalLightIntensity(dirIntensity);
+                    for (auto& m : allModels) m->SetDirectionalLightIntensity(dirIntensity);
                     dirPrevIntensityGlobal = dirIntensity;
                 }
                 else
@@ -513,11 +545,11 @@ void GamePlayScene::Update()
             {
                 if (!dirEnabledGlobal)
                 {
-                    for (auto& m : modelInstances) if (m) m->SetDirectionalLightIntensity(0.0f);
+                    for (auto& m : allModels) m->SetDirectionalLightIntensity(0.0f);
                 }
                 else
                 {
-                    for (auto& m : modelInstances) if (m) m->SetDirectionalLightIntensity(dirPrevIntensityGlobal);
+                    for (auto& m : allModels) m->SetDirectionalLightIntensity(dirPrevIntensityGlobal);
                 }
             }
         }
@@ -530,11 +562,11 @@ void GamePlayScene::Update()
 
             static bool pointInit = false;
             static Vector4 pointColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-            static Vector3 pointPosition = { 0.0f, 5.0f, 0.0f };
+            static Vector3 pointPosition = { 0.0f, 1.0f, -8.0f }; // スザンヌの正面に初期配置
             static float pointIntensity = 1.0f;
             static float prevPointIntensity = 1.0f;
-            static float pointRadius = 1.0f;
-            static float pointRange = 10.0f;
+            static float pointRadius = 15.0f; // 初期値1.0では光が届かないため15.0に拡大
+            static float pointRange = 1.0f;
             static bool pointLightEnabled = true;
 
             if (!pointInit && firstObj)
@@ -550,11 +582,11 @@ void GamePlayScene::Update()
             {
                 if (!pointLightEnabled)
                 {
-                    for (auto& m : modelInstances) if (m) m->SetPointLightIntensity(0.0f);
+                    for (auto& m : allModels) m->SetPointLightIntensity(0.0f);
                 }
                 else
                 {
-                    for (auto& m : modelInstances) if (m) m->SetPointLightIntensity(prevPointIntensity);
+                    for (auto& m : allModels) m->SetPointLightIntensity(prevPointIntensity);
                 }
             }
 
@@ -572,21 +604,21 @@ void GamePlayScene::Update()
             if (ImGui::ColorEdit4("色 (Color)##Point", pcArr))
             {
                 pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
-                for (auto& m : modelInstances) if (m) m->SetPointLightColor(pointColor);
+                for (auto& m : allModels) m->SetPointLightColor(pointColor);
             }
 
             float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
             if (ImGui::DragFloat3("位置 (Position)##Point", ppArr, 0.05f, -100.0f, 100.0f))
             {
                 pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
-                for (auto& m : modelInstances) if (m) m->SetPointLightPosition(pointPosition);
+                for (auto& m : allModels) m->SetPointLightPosition(pointPosition);
             }
 
             if (ImGui::DragFloat("強度 (Intensity)##Point", &pointIntensity, 0.01f, 0.0f, 100.0f))
             {
                 if (pointLightEnabled)
                 {
-                    for (auto& m : modelInstances) if (m) m->SetPointLightIntensity(pointIntensity);
+                    for (auto& m : allModels) m->SetPointLightIntensity(pointIntensity);
                     prevPointIntensity = pointIntensity;
                 }
                 else
@@ -597,11 +629,11 @@ void GamePlayScene::Update()
 
             if (ImGui::DragFloat("半径 (Radius)##Point", &pointRadius, 0.01f, 0.1f, 100.0f))
             {
-                for (auto& m : modelInstances) if (m) m->SetPointLightRadius(pointRadius);
+                for (auto& m : allModels) m->SetPointLightRadius(pointRadius);
             }
             if (ImGui::DragFloat("減衰範囲 (Decay Range)##Point", &pointRange, 0.01f, 0.1f, 50.0f))
             {
-                for (auto& m : modelInstances) if (m) m->SetPointLightDecry(pointRange);
+                for (auto& m : allModels) m->SetPointLightDecry(pointRange);
             }
 
 #if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
@@ -649,11 +681,11 @@ void GamePlayScene::Update()
             {
                 if (!spotLightEnabled)
                 {
-                    for (auto& m : modelInstances) if (m) m->SetSpotLightIntensity(0.0f);
+                    for (auto& m : allModels) m->SetSpotLightIntensity(0.0f);
                 }
                 else
                 {
-                    for (auto& m : modelInstances) if (m) m->SetSpotLightIntensity(prevSpotIntensity);
+                    for (auto& m : allModels) m->SetSpotLightIntensity(prevSpotIntensity);
                 }
             }
 
@@ -673,7 +705,7 @@ void GamePlayScene::Update()
                 if (ImGui::ColorEdit4("色 (Color)##Spot", scArr))
                 {
                     spotColor = Vector4(scArr[0], scArr[1], scArr[2], scArr[3]);
-                    for (auto& m : modelInstances) if (m) m->SetSpotLightColor(spotColor);
+                    for (auto& m : allModels) m->SetSpotLightColor(spotColor);
                 }
             }
 
@@ -683,7 +715,7 @@ void GamePlayScene::Update()
                 if (ImGui::DragFloat3("位置 (Position)##Spot", spArr, 0.05f, -100.0f, 100.0f))
                 {
                     spotPosition = Vector3(spArr[0], spArr[1], spArr[2]);
-                    for (auto& m : modelInstances) if (m) m->SetSpotLightPosition(spotPosition);
+                    for (auto& m : allModels) m->SetSpotLightPosition(spotPosition);
                 }
             }
 
@@ -693,7 +725,7 @@ void GamePlayScene::Update()
                 if (ImGui::DragFloat3("方向 (Direction)##Spot", sdArr, 0.01f, -10.0f, 10.0f))
                 {
                     spotDirection = Vector3(sdArr[0], sdArr[1], sdArr[2]);
-                    for (auto& m : modelInstances) if (m) m->SetSpotLightDirection(spotDirection);
+                    for (auto& m : allModels) m->SetSpotLightDirection(spotDirection);
                 }
             }
 
@@ -702,7 +734,7 @@ void GamePlayScene::Update()
             {
                 if (spotLightEnabled)
                 {
-                    for (auto& m : modelInstances) if (m) m->SetSpotLightIntensity(spotIntensity);
+                    for (auto& m : allModels) m->SetSpotLightIntensity(spotIntensity);
                     prevSpotIntensity = spotIntensity;
                 }
                 else
@@ -714,17 +746,17 @@ void GamePlayScene::Update()
             // Distance / Decay
             if (ImGui::DragFloat("距離 (Distance)##Spot", &spotDistance, 0.1f, 0.0f, 10000.0f))
             {
-                for (auto& m : modelInstances) if (m) m->SetSpotLightDistance(spotDistance);
+                for (auto& m : allModels) m->SetSpotLightDistance(spotDistance);
             }
             if (ImGui::DragFloat("減衰率 (Decay)##Spot", &spotDecay, 0.01f, 0.0f, 10.0f))
             {
-                for (auto& m : modelInstances) if (m) m->SetSpotLightDecay(spotDecay);
+                for (auto& m : allModels) m->SetSpotLightDecay(spotDecay);
             }
 
             // Angle (deg)
             if (ImGui::SliderFloat("角度 (Angle deg)##Spot", &spotAngleDeg, 1.0f, 90.0f))
             {
-                for (auto& m : modelInstances) if (m) m->SetSpotLightAngleDeg(spotAngleDeg);
+                for (auto& m : allModels) m->SetSpotLightAngleDeg(spotAngleDeg);
             }
 
 #if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
@@ -777,15 +809,17 @@ void GamePlayScene::Draw()
         for (auto& sprite : sprites) if (sprite) sprite->Draw();
     }
 
+    // 弾の描画
+    for (auto& bullet : bullets_) {
+        bullet->Draw();
+    }
+    
     // プレイヤーの描画
     if (player_) {
         player_->Draw();
     }
 
-    // 弾の描画
-    for (auto& bullet : bullets_) {
-        bullet->Draw();
-    }
+
 
     particleEffect_.Draw();
 }

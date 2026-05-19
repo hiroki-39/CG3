@@ -85,6 +85,11 @@ public: //メンバ関数
 	/// </summary>
 	void SetColor(const Vector4& color);
 
+	/// <summary>
+	/// テクスチャのインデックスを上書き設定
+	/// </summary>
+	inline void SetTextureIndex(uint32_t index) { modelData.material.textureIndex = index; }
+
 	inline int32_t GetSelectLightings() const { return materialData_ ? materialData_->selectLightings : 0; }
 	inline float GetEnvironmentCoefficient() const { return materialData_ ? materialData_->environmentCoefficient : 0.0f; }
 
