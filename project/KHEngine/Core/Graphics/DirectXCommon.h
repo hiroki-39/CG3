@@ -167,6 +167,18 @@ public://メンバ関数
 	size_t GetSwapChainResourceNum() const { return swapChainResources.size(); }
 	Microsoft::WRL::ComPtr<ID3D12Resource> GetRenderTextureResource() const { return renderTextureResource_; }
 
+	// PostProcess用のGetter
+	Microsoft::WRL::ComPtr<ID3D12Resource> GetPostProcessTextureResource() const { return postProcessTextureResource_; }
+	D3D12_CPU_DESCRIPTOR_HANDLE GetPostProcessRTVHandle() const { return postProcessRTVHandle_; }
+
+	// スワップチェーンのバックバッファ取得用
+	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentBackBufferRTVHandle() const {
+		return rtvHandles[swapChain->GetCurrentBackBufferIndex()];
+	}
+	Microsoft::WRL::ComPtr<ID3D12Resource> GetCurrentBackBufferResource() const {
+		return swapChainResources[swapChain->GetCurrentBackBufferIndex()];
+	}
+
 
 private://メンバ変数
 
@@ -226,6 +238,11 @@ private://メンバ変数
 	Microsoft::WRL::ComPtr<ID3D12Resource> renderTextureResource_;
 	// RenderTexture 用の RTV ハンドル
 	D3D12_CPU_DESCRIPTOR_HANDLE renderTextureRTVHandle_;
+
+	// PostProcess用 RenderTexture リソース
+	Microsoft::WRL::ComPtr<ID3D12Resource> postProcessTextureResource_;
+	// PostProcess用 RenderTexture RTV ハンドル
+	D3D12_CPU_DESCRIPTOR_HANDLE postProcessRTVHandle_;
 
 	// 深度バッファ
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource;

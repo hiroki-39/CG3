@@ -12,7 +12,10 @@
 #include "KHEngine/Core/Framework/BaseScene.h"
 #include "KHEngine/Graphics/3d/Skybox/Skybox.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleEffect.h"
+#include "Game/actor/Player/Player.h"
+#include "Game/actor/Bullet/PlayerBullet.h"
 #include <vector>
+#include <list>
 #include <random>
 #include <memory>
 
@@ -30,12 +33,8 @@ private:
     // ゲーム固有メンバ
     std::vector<std::unique_ptr<Object3d>> modelInstances;
 
-    Sound sound;
-
     std::unique_ptr<Camera> camera;
     std::unique_ptr<Skybox> skybox_;
-
-    SoundManager::SoundData Data = {};
 
     bool update = true;
 
@@ -47,4 +46,9 @@ private:
 
     // 複合エフェクト（Plane, Ring, Cylinder の共存）
     ParticleEffect particleEffect_;
+
+    // プレイヤー
+    std::unique_ptr<Player> player_;
+    // 弾リスト
+    std::list<std::unique_ptr<PlayerBullet>> bullets_;
 };

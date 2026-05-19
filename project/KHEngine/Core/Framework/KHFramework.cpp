@@ -96,7 +96,13 @@ void KHFramework::FrameworkUpdate(float /*deltaTime*/)
 		{
 			// エディタモード：最初にドッキング空間を作り、その中にビューポートを表示
 			// （他のImGui::Beginより前に呼ぶ必要があるためここで行う）
-			EditorSystem::GetInstance()->Draw(postProcess_->GetSrvIndex());
+			EditorSystem::GetInstance()->Draw(postProcess_->GetResultSrvIndex());
+		}
+
+		// ポストプロセスのエディタウィンドウを表示
+		if (postProcess_)
+		{
+			postProcess_->DrawImGui();
 		}
 	}
 }
@@ -117,13 +123,11 @@ void KHFramework::FrameworkDrawEnd()
 		dxCommon_->PreDrawSwapchain();
 	}
 
-	if (!isEditorMode_)
+	// PostProcessを描画
+	if (postProcess_)
 	{
-		// PostProcessを描画 (RenderTextureの内容をSwapchainにコピー)
-		if (postProcess_)
-		{
-			postProcess_->Draw();
-		}
+		// エディタモードなら専用のテクスチャへ、ゲームモードなら直接Swapchainへ出力
+		postProcess_->Draw(!isEditorMode_);
 	}
 
 	// ImGui 描画準備と描画
@@ -193,10 +197,19 @@ void KHFramework::InitializeEngineSubsystems()
 		dxCommon_->RegisterSrvManager(srvManager_);
 	}
 
+	// TextureManager の初期化
+	TextureManager::GetInstance()->Initialize(dxCommon_.get(), srvManager_);
+
+	// バッチ開始（ここから ExecuteUploadCommands までの間にロードされたテクスチャが GPU に送られる）
+	if (dxCommon_)
+	{
+		dxCommon_->BeginTextureUploadBatch();
+	}
+
 	// Model 共通 / モデルマネージャ初期化
 	ModelManager::GetInstance()->Initialize(dxCommon_.get());
 
-	// SpriteCommon / Object3dCommon の初期化（描画設定や共通リソース）
+	// SpriteCommon / Object3dCommon の初期化
 	spriteCommon_ = std::make_unique<SpriteCommon>();
 	spriteCommon_->Initialize(dxCommon_.get());
 
@@ -207,15 +220,7 @@ void KHFramework::InitializeEngineSubsystems()
 	postProcess_ = std::make_unique<PostProcess>();
 	postProcess_->Initialize(dxCommon_.get());
 
-	// TextureManager の初期化で、生成された1x1白テクスチャを確実に GPU にアップロードしておく。
-	if (dxCommon_)
-	{
-		dxCommon_->BeginTextureUploadBatch();
-	}
-
-	TextureManager::GetInstance()->Initialize(dxCommon_.get(), srvManager_);
-
-	// バッチアップロードを実行して中間リソースを解放（デフォルトテクスチャが確実に GPU にある状態にする）
+	// バッチアップロードを実行して中間リソースを解放
 	TextureManager::GetInstance()->ExecuteUploadCommands();
 	TextureManager::GetInstance()->ClearIntermediateResources();
 

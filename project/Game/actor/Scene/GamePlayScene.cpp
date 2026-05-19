@@ -31,7 +31,7 @@ void GamePlayScene::Initialize()
     }
     
     camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
-    camera->SetRotation({ 0.3f, 0.0f, 0.0f });
+    camera->SetRotation({ 0.0f, 0.0f, 0.0f }); // 回転を0度にする
 
     // アセット登録
     ParticleManager::GetInstance()->RegisterQuad("quad", "resources/circle.png");
@@ -45,7 +45,6 @@ void GamePlayScene::Initialize()
 
     // スカイボックスの初期化
     skybox_ = std::make_unique<Skybox>();
-    // DDSキューブマップファイルのパスを指定してください
     skybox_->Initialize(dxCommon,"resources/skybox.dds");
 
     // モデル読み込み
@@ -97,9 +96,8 @@ void GamePlayScene::Initialize()
     {
         auto obj = std::make_unique<Object3d>();
         obj->Initialize(object3dCommon);
-        obj->SetModel("suzanne.obj");
+        obj->SetModel("bunny.obj");
         obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-        /*obj->GetModel()->SetSelectLightings(0);*/
         uint32_t skyboxTexIndex = skybox_->GetCubemapSrvIndex();
         obj->SetEnvironmentTextureIndex(skyboxTexIndex);
         obj->SetEnvironmentCoefficient(1.0f);
@@ -113,11 +111,13 @@ void GamePlayScene::Initialize()
         terrain->SetModel("terrain.obj");
         terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
         terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-        terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+        terrain->SetScale(Vector3(100.0f, 100.0f, 100.0f));
         modelInstances.push_back(std::move(terrain));
     }
 
-    Data = SoundManager::GetInstance()->SoundLoadFile("bgm.mp3");
+    // プレイヤーの初期化
+    player_ = std::make_unique<Player>();
+    player_->Initialize(object3dCommon, skybox_->GetCubemapSrvIndex());
 }
 
 void GamePlayScene::Finalize()
@@ -125,9 +125,6 @@ void GamePlayScene::Finalize()
     // unique_ptr 管理なので明示的な delete は不要
     sprites.clear();
     modelInstances.clear();
-
-    sound.Stop();
-    SoundManager::GetInstance()->SoundUnload(&Data);
 
     skybox_.reset();
     camera.reset();
@@ -153,7 +150,8 @@ void GamePlayScene::Update()
         LONG dy = input->GetMouseMoveY();
         LONG wheel = input->GetMouseWheel();
 
-        // ミドルボタン（ホイール押し込み）で回転（既存の挙動を維持）
+        // ミドルボタン（ホイール押し込み）での回転は無効化（照準移動に専念するため）
+        /*
         if (input->PushMouseButton(2))
         {
             Vector3 rot = camera->GetRotation();
@@ -169,6 +167,7 @@ void GamePlayScene::Update()
             camera->SetRotation(rot);
         }
         else
+        */
         {
             // WASDキーでカメラ移動（カメラのyawに沿った前後左右）
             float moveStep = kMoveSpeed * kDeltaTime_;
@@ -189,6 +188,7 @@ void GamePlayScene::Update()
             forward = normalize(forward);
             right = normalize(right);
 
+/*
             if (input->PushKey(DIK_W))
             {
                 pos.x += forward.x * moveStep;
@@ -211,15 +211,35 @@ void GamePlayScene::Update()
             }
 
             camera->SetTranslate(pos);
+*/
         }
 
-        // ホイールでズーム（既存の挙動）
-        if (wheel != 0)
-        {
-            Vector3 pos = camera->GetTranslate();
-            // wheel は通常 ±120（1ノッチ）を返す。符号は環境で調整してください。
-            pos.z += static_cast<float>(-wheel) * kZoomSpeed;
-            camera->SetTranslate(pos);
+        // --- ルート固定移動（自動前進） ---
+        const float kAutoSpeed = 0.05f;
+        Vector3 camPos = camera->GetTranslate();
+        camPos.z += kAutoSpeed;
+        camera->SetTranslate(camPos);
+
+        // プレイヤーも前進
+        if (player_) {
+            Vector3 playerPos = player_->GetTranslate();
+            playerPos.z += kAutoSpeed;
+            player_->SetTranslate(playerPos);
+        }
+    }
+
+    // プレイヤーの更新
+    if (player_) {
+        player_->Update(bullets_);
+    }
+
+    // 弾の更新
+    for (auto it = bullets_.begin(); it != bullets_.end(); ) {
+        (*it)->Update();
+        if ((*it)->IsDead()) {
+            it = bullets_.erase(it);
+        } else {
+            ++it;
         }
     }
 
@@ -241,11 +261,6 @@ void GamePlayScene::Update()
     if (camera) camera->Update();
     for (auto& model : modelInstances) if (model) model->Update();
     for (auto& sprite : sprites) if (sprite) sprite->Update();
-
-    if (input && input->TriggerKey(DIK_SPACE))
-    {
-        sound.SoundPlayWave(SoundManager::GetInstance()->GetXAudio2(), Data);
-    }
 
     // カメラ行列の取得
     Matrix4x4 cameraMatrix = camera->GetWorldMatrix();
@@ -735,6 +750,7 @@ void GamePlayScene::Update()
     // --- Particle ウィンドウ ---
     particleEffect_.DrawImGui();
 
+
 #endif // USE_IMGUI
 
 }
@@ -745,10 +761,10 @@ void GamePlayScene::Draw()
     auto object3dCommon = services->GetObject3dCommon();
     auto spriteCommon = services->GetSpriteCommon();
 
-  /*  if (skybox_)
+    if (skybox_)
     {
         skybox_->Draw();
-    }*/
+    }
 
     if (object3dCommon) object3dCommon->SetCommonDrawSetting();
 
@@ -759,6 +775,16 @@ void GamePlayScene::Draw()
     if (isDisplaySprite)
     {
         for (auto& sprite : sprites) if (sprite) sprite->Draw();
+    }
+
+    // プレイヤーの描画
+    if (player_) {
+        player_->Draw();
+    }
+
+    // 弾の描画
+    for (auto& bullet : bullets_) {
+        bullet->Draw();
     }
 
     particleEffect_.Draw();
