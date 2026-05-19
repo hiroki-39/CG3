@@ -1,6 +1,7 @@
 #include "PlayerBullet.h"
 
-void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& position) {
+void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& velocity) {
+    velocity_ = velocity;
     object_ = std::make_unique<Object3d>();
     object_->Initialize(object3dCommon);
     object_->SetModel("monsterBall.obj"); // 既存のモデルを使用
@@ -9,9 +10,11 @@ void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& pos
 }
 
 void PlayerBullet::Update() {
-    // 前方に移動
+    // 速度ベクトルに従って移動
     Vector3 pos = object_->GetTranslate();
-    pos.z += speed_;
+    pos.x += velocity_.x;
+    pos.y += velocity_.y;
+    pos.z += velocity_.z;
     object_->SetTranslate(pos);
 
     // 寿命

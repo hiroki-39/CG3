@@ -31,7 +31,7 @@ void GamePlayScene::Initialize()
     }
     
     camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
-    camera->SetRotation({ 0.3f, 0.0f, 0.0f });
+    camera->SetRotation({ 0.0f, 0.0f, 0.0f }); // 回転を0度にする
 
     // アセット登録
     ParticleManager::GetInstance()->RegisterQuad("quad", "resources/circle.png");
@@ -96,7 +96,7 @@ void GamePlayScene::Initialize()
     {
         auto obj = std::make_unique<Object3d>();
         obj->Initialize(object3dCommon);
-        obj->SetModel("monsterBall.obj");
+        obj->SetModel("bunny.obj");
         obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
         uint32_t skyboxTexIndex = skybox_->GetCubemapSrvIndex();
         obj->SetEnvironmentTextureIndex(skyboxTexIndex);
@@ -117,9 +117,7 @@ void GamePlayScene::Initialize()
 
     // プレイヤーの初期化
     player_ = std::make_unique<Player>();
-    player_->Initialize(object3dCommon);
-    // 初期位置の設定
-    player_->SetTranslate({ 0.0f, 0.0f, 0.0f });
+    player_->Initialize(object3dCommon, skybox_->GetCubemapSrvIndex());
 }
 
 void GamePlayScene::Finalize()
@@ -152,7 +150,8 @@ void GamePlayScene::Update()
         LONG dy = input->GetMouseMoveY();
         LONG wheel = input->GetMouseWheel();
 
-        // ミドルボタン（ホイール押し込み）で回転（既存の挙動を維持）
+        // ミドルボタン（ホイール押し込み）での回転は無効化（照準移動に専念するため）
+        /*
         if (input->PushMouseButton(2))
         {
             Vector3 rot = camera->GetRotation();
@@ -168,6 +167,7 @@ void GamePlayScene::Update()
             camera->SetRotation(rot);
         }
         else
+        */
         {
             // WASDキーでカメラ移動（カメラのyawに沿った前後左右）
             float moveStep = kMoveSpeed * kDeltaTime_;
