@@ -8,7 +8,7 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
 
     object_ = std::make_unique<Object3d>();
     object_->Initialize(object3dCommon);
-    object_->SetModel("suzanne.obj");
+    object_->SetModel("cube.obj");
     object_->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     object_->SetEnvironmentTextureIndex(skyboxTexIndex);
     object_->SetEnvironmentCoefficient(1.0f);
@@ -27,6 +27,11 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     
     // 照準の初期位置（プレイヤーの奥）
     reticlePosition_ = { 0.0f, 1.0f, 20.0f }; 
+
+    // 初期状態としてグレースケールをOFFにしておく
+    if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
+        pp->SetEffectActive("Grayscale", false);
+    }
 }
 
 void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets) {
@@ -37,12 +42,13 @@ void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets) {
 }
 
 void Player::Draw() {
-    if (object_) {
-        object_->Draw();
-    }
-    if (reticle_) {
+        if (reticle_) {
         reticle_->Draw();
     }
+        if (object_) {
+        object_->Draw();
+    }
+
 }
 
 void Player::Move() {
@@ -54,10 +60,16 @@ void Player::Move() {
             isRolling_ = true;
             rollTimer_ = 0;
             rollDirection_ = -1.0f; // 左
+            if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
+                pp->SetEffectActive("Grayscale", true);
+            }
         } else if (input_->TriggerKey(DIK_E)) {
             isRolling_ = true;
             rollTimer_ = 0;
             rollDirection_ = 1.0f; // 右
+            if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
+                pp->SetEffectActive("Grayscale", true);
+            }
         }
     }
 
@@ -70,6 +82,9 @@ void Player::Move() {
         // 一定時間でローリング終了
         if (rollTimer_ >= kRollMaxTime) {
             isRolling_ = false;
+            if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
+                pp->SetEffectActive("Grayscale", false);
+            }
         }
     }
 

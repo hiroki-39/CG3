@@ -4,9 +4,9 @@ void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& pos
     velocity_ = velocity;
     object_ = std::make_unique<Object3d>();
     object_->Initialize(object3dCommon);
-    object_->SetModel("monsterBall.obj"); // 既存のモデルを使用
+    object_->SetModel("cube.obj");
     object_->SetTranslate(position);
-    object_->SetScale({ 0.5f, 0.5f, 0.5f }); // 弾なので小さく
+    object_->SetScale({ 1.0f, 1.0f, 1.0f });
 }
 
 void PlayerBullet::Update() {
