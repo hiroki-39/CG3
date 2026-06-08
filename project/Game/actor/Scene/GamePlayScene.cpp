@@ -214,25 +214,24 @@ void GamePlayScene::Update()
         LONG dy = input->GetMouseMoveY();
         LONG wheel = input->GetMouseWheel();
 
-        // ミドルボタン（ホイール押し込み）での回転は無効化（照準移動に専念するため）
-        /*
-        if (input->PushMouseButton(2))
+        // 停止中のみ自由なカメラ操作を許可
+        if (!isPlaying_)
         {
-            Vector3 rot = camera->GetRotation();
-            // マウス右移動で yaw 増加、下移動で pitch 増加（上下反転は好みで調整）
-            rot.y += static_cast<float>(dx) * kRotateSpeed;
-            rot.x += static_cast<float>(dy) * kRotateSpeed;
+            if (input->PushMouseButton(1)) // 右クリックドラッグで回転
+            {
+                Vector3 rot = camera->GetRotation();
+                // マウス右移動で yaw 増加、下移動で pitch 増加
+                rot.y += static_cast<float>(dx) * kRotateSpeed;
+                rot.x += static_cast<float>(dy) * kRotateSpeed;
 
-            // ピッチ（X軸回転）を適度に制限（直上直下で反転しないように）
-            const float kMaxPitch = 1.5f;  // 約 85度
-            const float kMinPitch = -1.5f; // 約 -85度
-            rot.x = std::clamp(rot.x, kMinPitch, kMaxPitch);
+                // ピッチ（X軸回転）を適度に制限
+                const float kMaxPitch = 1.5f;  // 約 85度
+                const float kMinPitch = -1.5f; // 約 -85度
+                rot.x = std::clamp(rot.x, kMinPitch, kMaxPitch);
 
-            camera->SetRotation(rot);
-        }
-        else
-        */
-        {
+                camera->SetRotation(rot);
+            }
+
             // WASDキーでカメラ移動（カメラのyawに沿った前後左右）
             float moveStep = kMoveSpeed * kDeltaTime_;
             Vector3 pos = camera->GetTranslate();
@@ -252,7 +251,6 @@ void GamePlayScene::Update()
             forward = normalize(forward);
             right = normalize(right);
 
-/*
             if (input->PushKey(DIK_W))
             {
                 pos.x += forward.x * moveStep;
@@ -273,37 +271,58 @@ void GamePlayScene::Update()
                 pos.x -= right.x * moveStep;
                 pos.z -= right.z * moveStep;
             }
+            if (input->PushKey(DIK_E)) // 上昇
+            {
+                pos.y += moveStep;
+            }
+            if (input->PushKey(DIK_Q)) // 下降
+            {
+                pos.y -= moveStep;
+            }
 
             camera->SetTranslate(pos);
-*/
         }
 
         // --- ルート固定移動（自動前進） ---
-        const float kAutoSpeed = 0.05f;
-        Vector3 camPos = camera->GetTranslate();
-        camPos.z += kAutoSpeed;
-        camera->SetTranslate(camPos);
+        if (isPlaying_)
+        {
+            const float kAutoSpeed = 0.05f;
+            Vector3 camPos = camera->GetTranslate();
+            camPos.z += kAutoSpeed;
+            camera->SetTranslate(camPos);
 
-        // プレイヤーも前進
-        if (player_) {
-            Vector3 playerPos = player_->GetTranslate();
-            playerPos.z += kAutoSpeed;
-            player_->SetTranslate(playerPos);
+            // プレイヤーも前進
+            if (player_) {
+                Vector3 playerPos = player_->GetTranslate();
+                playerPos.z += kAutoSpeed;
+                player_->SetTranslate(playerPos);
+            }
         }
     }
 
     // プレイヤーの更新
     if (player_) {
-        player_->Update(bullets_);
+        if (isPlaying_) {
+            player_->Update(bullets_);
+        } else {
+            // ゲーム停止中でも、Object3dの更新(カメラ行列の反映など)は必要
+            player_->Update3DObjectOnly();
+        }
     }
 
     // 弾の更新
-    for (auto it = bullets_.begin(); it != bullets_.end(); ) {
-        (*it)->Update();
-        if ((*it)->IsDead()) {
-            it = bullets_.erase(it);
-        } else {
-            ++it;
+    if (isPlaying_) {
+        for (auto it = bullets_.begin(); it != bullets_.end(); ) {
+            (*it)->Update();
+            if ((*it)->IsDead()) {
+                it = bullets_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    } else {
+        for (auto& bullet : bullets_) {
+            bullet->Update3DObjectOnly();
         }
     }
 
@@ -335,12 +354,27 @@ void GamePlayScene::Update()
     Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera.get(), true);
     skybox_->Update();
 
-    if (update)
+    if (isPlaying_)
     {
         particleEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
     }
 
 #ifdef USE_IMGUI
+
+    ImGui::Begin("Game Control");
+    if (isPlaying_) {
+        if (ImGui::Button("Stop (Pause)", ImVec2(120, 40))) {
+            isPlaying_ = false;
+        }
+        ImGui::Text("Status: PLAYING");
+    } else {
+        if (ImGui::Button("Play (Start)", ImVec2(120, 40))) {
+            isPlaying_ = true;
+        }
+        ImGui::Text("Status: STOPPED (Free Camera Mode)");
+        ImGui::Text("Camera Control: WASD/QE to move, Right-Click Drag to rotate");
+    }
+    ImGui::End();
 
     if (player_) {
         player_->DrawUI();

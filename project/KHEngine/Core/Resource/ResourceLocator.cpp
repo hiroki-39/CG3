@@ -14,7 +14,7 @@ std::string ResourceLocator::Resolve(const std::string& logicalName, ResourceLoc
 		fs::path p(reinterpret_cast<const char8_t*>(logicalName.c_str()));
 		if (p.is_absolute() || logicalName.rfind("resources", 0) == 0 || logicalName.find('/') != std::string::npos || logicalName.find('\\') != std::string::npos)
 		{
-			if (fs::exists(p))
+			if (fs::exists(p) && !fs::is_directory(p))
 			{
 				return p.string();
 			}
@@ -104,7 +104,7 @@ std::string ResourceLocator::Resolve(const std::string& logicalName, ResourceLoc
 		for (const auto& name : tryNames)
 		{
 			fs::path cand = fs::path(dir) / reinterpret_cast<const char8_t*>(name.c_str());
-			if (fs::exists(cand))
+			if (fs::exists(cand) && !fs::is_directory(cand))
 			{
 				return cand.string();
 			}
@@ -116,7 +116,7 @@ std::string ResourceLocator::Resolve(const std::string& logicalName, ResourceLoc
 			for (const auto& name : tryNames)
 			{
 				fs::path nested = fs::path(dir) / reinterpret_cast<const char8_t*>(baseName.c_str()) / reinterpret_cast<const char8_t*>(name.c_str());
-				if (fs::exists(nested))
+				if (fs::exists(nested) && !fs::is_directory(nested))
 				{
 					return nested.string();
 				}

@@ -313,6 +313,81 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
             #ファイルにjson文字列を書き込む
             file.write(json_text)
 
+        # --- OBJファイルの自動エクスポート ---
+        import os
+        import mathutils
+
+        # JSONの保存先パスを基準に、resources/3dModels のディレクトリパスを計算
+        json_dir = os.path.dirname(self.filepath)
+        res_idx = json_dir.find("resources")
+        if res_idx != -1:
+            models_dir = os.path.join(json_dir[:res_idx], "resources", "3dModels")
+        else:
+            models_dir = json_dir # 見つからない場合のフォールバック
+            
+        if not os.path.exists(models_dir):
+            os.makedirs(models_dir)
+
+        # 現在の選択状態をクリア (コンテキストエラーを避けるため bpy.ops は使わない)
+        for obj in bpy.context.scene.objects:
+            obj.select_set(False)
+
+        for object in bpy.context.scene.objects:
+            if object.type != 'MESH':
+                continue
+
+            # ファイル名の決定
+            file_name = object.name
+            if "file_name" in object and object["file_name"] != "":
+                file_name = object["file_name"]
+            
+            # .objを削除してベース名にする
+            base_name = file_name.split('.')[0]
+            if not file_name.endswith(".obj"):
+                file_name += ".obj"
+
+            # モデル用ディレクトリの作成
+            obj_dir = os.path.join(models_dir, base_name)
+            if not os.path.exists(obj_dir):
+                os.makedirs(obj_dir)
+
+            obj_path = os.path.join(obj_dir, file_name)
+
+            # トランスフォームの一時保存
+            saved_location = object.location.copy()
+            saved_rotation = object.rotation_euler.copy()
+            saved_scale = object.scale.copy()
+            
+            # オブジェクトを選択状態にしてアクティブに
+            object.select_set(True)
+            bpy.context.view_layer.objects.active = object
+
+            # 原点へ移動、回転とスケールをリセット (純粋なモデルデータのみ出力するため)
+            object.location = mathutils.Vector((0.0, 0.0, 0.0))
+            object.rotation_euler = mathutils.Euler((0.0, 0.0, 0.0), 'XYZ')
+            object.scale = mathutils.Vector((1.0, 1.0, 1.0))
+            
+            # 内部の更新を強制
+            bpy.context.view_layer.update()
+
+            # エクスポート (Blender 4.0以降は wm.obj_export, それ以前は export_scene.obj)
+            try:
+                if hasattr(bpy.ops.wm, "obj_export"):
+                    bpy.ops.wm.obj_export(filepath=obj_path, export_selected_objects=True)
+                else:
+                    bpy.ops.export_scene.obj(filepath=obj_path, use_selection=True)
+            except Exception as e:
+                print(f"Failed to export {obj_path}: {e}")
+
+            # トランスフォームを復元
+            object.location = saved_location
+            object.rotation_euler = saved_rotation
+            object.scale = saved_scale
+            bpy.context.view_layer.update()
+
+            # 選択解除
+            object.select_set(False)
+
 
 
 

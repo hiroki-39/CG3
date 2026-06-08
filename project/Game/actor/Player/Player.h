@@ -25,6 +25,12 @@ public:
     /// </summary>
     void Draw();
 
+    void Update3DObjectOnly() {
+        if (object_) object_->Update();
+        if (accessory_) accessory_->Update();
+        if (reticle_) reticle_->Update();
+    }
+
     // Getter
     const Vector3& GetTranslate() const { return logicalPosition_; }
     void SetTranslate(const Vector3& translate) { logicalPosition_ = translate; }
