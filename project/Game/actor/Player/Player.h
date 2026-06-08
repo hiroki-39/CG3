@@ -9,8 +9,11 @@ class Player {
 public:
     /// <summary>
     /// 初期化
-    /// </summary>
     void Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex);
+
+    void LoadSettings(const std::string& filepath);
+    void SaveSettings(const std::string& filepath);
+    void DrawUI();
 
     /// <summary>
     /// 更新
@@ -23,8 +26,8 @@ public:
     void Draw();
 
     // Getter
-    const Vector3& GetTranslate() const { return object_->GetTranslate(); }
-    void SetTranslate(const Vector3& translate) { object_->SetTranslate(translate); }
+    const Vector3& GetTranslate() const { return logicalPosition_; }
+    void SetTranslate(const Vector3& translate) { logicalPosition_ = translate; }
     Object3d* GetObject3d() const { return object_.get(); }
     Object3d* GetReticle() const { return reticle_.get(); }
 
@@ -42,26 +45,43 @@ private:
 private:
     std::unique_ptr<Object3d> object_ = nullptr;
     std::unique_ptr<Object3d> reticle_ = nullptr; // 照準用モデル
+    std::unique_ptr<Object3d> accessory_ = nullptr; // 親子関係のデモ用アクセサリ
     Object3dCommon* object3dCommon_ = nullptr; // 弾生成用
     Input* input_ = nullptr;
+    
+    uint32_t skyboxTexIndex_ = 0; // 再利用するため保持
 
     Vector3 reticlePosition_ = { 0.0f, 0.0f, 40.0f }; // 照準のワールド座標
 
-    // 移動速度
+    // プレイヤー設定パラメータ
     float speed_ = 0.3f;
-    float reticleSpeed_ = 0.5f; // 照準の移動速度
-    
-    // 移動制限範囲
-    const float kMoveLimitX = 15.0f;
-    const float kMoveLimitY = 10.0f;
+    float reticleSpeed_ = 0.5f;
+    float moveLimitX_ = 15.0f;
+    float moveLimitY_ = 10.0f;
+    int attackInterval_ = 15;
+    int rollMaxTime_ = 15;
+    float playerLimitX_ = 4.0f;
+    float playerLimitYMin_ = 2.0f;
+    float playerLimitYMax_ = 8.0f;
+    float followSpeed_ = 0.08f;
+    float bulletSpeed_ = 3.0f;
+
+    // 見た目関連の設定
+    std::string modelName_ = "cube.obj";
+    Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    bool reflection_ = true;
+    Vector3 modelPosOffset_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 modelRotOffset_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 playerScale_ = { 0.5f, 0.5f, 0.5f };
+
+    // 論理位置
+    Vector3 logicalPosition_ = { 0.0f, 1.0f, -4.0f };
 
     // 攻撃関連
     int attackTimer_ = 0;
-    const int kAttackInterval = 15; // 発射間隔（フレーム数）
 
     // ローリング回避関連
     bool isRolling_ = false;
     int rollTimer_ = 0;
-    const int kRollMaxTime = 15; // 30から15に減らして回転速度を倍速に
     float rollDirection_ = 0.0f; // -1.0f (左), 1.0f (右)
 };

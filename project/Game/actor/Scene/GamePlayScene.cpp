@@ -13,6 +13,57 @@
 #include <random>
 #include <memory>
 #include <cmath>
+#include <numbers>
+#include "KHEngine/Scene/LevelLoader.h"
+#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
+
+static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, Object3dCommon* common, uint32_t skyboxTexIndex) {
+    const Object3d* currentObj = parentObj;
+
+    if (node.type == "MESH") {
+        auto obj = std::make_unique<Object3d>();
+        obj->Initialize(common);
+        
+        std::string modelName = node.fileName;
+        if (modelName.empty()) {
+            modelName = node.name + ".obj";
+        }
+        
+        // ロードされていない可能性を考慮
+        ModelManager::GetInstance()->LoadModel(modelName);
+        if (ModelManager::GetInstance()->FindModel(modelName) != nullptr) {
+            obj->SetModel(modelName);
+            // 黒落ちを回避するために色とテクスチャを設定
+            obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            obj->GetModel()->SetTextureIndex(TextureManager::GetInstance()->GetTextureIndexByFilePath("white.png"));
+            obj->SetEnvironmentCoefficient(1.0f);
+        }
+        
+        obj->SetTranslate(node.translation);
+        
+        // Blender出力は恐らく度数法(Degree)なのでラジアンに変換
+        Vector3 rotRad;
+        rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
+        rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
+        rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
+        obj->SetRotation(rotRad);
+        
+        obj->SetScale(node.scale);
+        obj->SetEnvironmentTextureIndex(skyboxTexIndex);
+        
+        if (parentObj) {
+            obj->SetParent(parentObj);
+        }
+        
+        currentObj = obj.get();
+        instances.push_back(std::move(obj));
+    }
+
+    // 子オブジェクトを再帰的に生成
+    for (const auto& child : node.children) {
+        CreateObjectFromNode(child, currentObj, instances, common, skyboxTexIndex);
+    }
+}
 
 void GamePlayScene::Initialize()
 {
@@ -116,9 +167,21 @@ void GamePlayScene::Initialize()
         modelInstances.push_back(std::move(terrain));
     }
 
+    // レベルデータの読み込みと配置
+    auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
+    if (levelData) {
+        for (const auto& objData : levelData->objects) {
+            CreateObjectFromNode(objData, nullptr, modelInstances, object3dCommon, skybox_->GetCubemapSrvIndex());
+        }
+        OutputDebugStringA("LevelLoader: Successfully placed objects.\n");
+    } else {
+        OutputDebugStringA("LevelLoader: Failed to load template.json!\n");
+    }
+
     // プレイヤーの初期化
     player_ = std::make_unique<Player>();
     player_->Initialize(object3dCommon, skybox_->GetCubemapSrvIndex());
+    player_->LoadSettings("resources/json/player/player_settings.json");
 }
 
 void GamePlayScene::Finalize()
@@ -278,6 +341,10 @@ void GamePlayScene::Update()
     }
 
 #ifdef USE_IMGUI
+
+    if (player_) {
+        player_->DrawUI();
+    }
 
     // --- Sprite ウィンドウ ---
     ImGui::Begin("スプライト");

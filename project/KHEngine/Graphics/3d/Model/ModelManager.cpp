@@ -1,4 +1,4 @@
-﻿#include "ModelManager.h"
+#include "ModelManager.h"
 #include "KHEngine/Core/Resource/ResourceLocator.h"
 #include <filesystem>
 #include <cassert>
@@ -38,10 +38,14 @@ void ModelManager::LoadModel(const std::string& filePath)
 
 	// 論理名から実パスを解決
 	std::string resolved = ResourceLocator::Resolve(filePath, ResourceLocator::AssetType::Model3D);
-	assert(!resolved.empty() && "Model file not found via ResourceLocator");
+	if (resolved.empty())
+	{
+		// ファイルが見つからない場合は読み込みをスキップする
+		return;
+	}
 
 	// 実パスをディレクトリとファイル名に分割して Model::Initialize に渡す
-	std::filesystem::path rp(resolved);
+	std::filesystem::path rp(reinterpret_cast<const char8_t*>(resolved.c_str()));
 	std::string directory = rp.parent_path().string();
 	std::string filename = rp.filename().string();
 
