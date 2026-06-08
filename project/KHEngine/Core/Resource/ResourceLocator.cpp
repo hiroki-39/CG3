@@ -11,10 +11,10 @@ std::string ResourceLocator::Resolve(const std::string& logicalName, ResourceLoc
 	// そのまま存在するパスならそれを返す
 	try
 	{
-		fs::path p(logicalName);
+		fs::path p(reinterpret_cast<const char8_t*>(logicalName.c_str()));
 		if (p.is_absolute() || logicalName.rfind("resources", 0) == 0 || logicalName.find('/') != std::string::npos || logicalName.find('\\') != std::string::npos)
 		{
-			if (fs::exists(p))
+			if (fs::exists(p) && !fs::is_directory(p))
 			{
 				return p.string();
 			}
@@ -67,7 +67,7 @@ std::string ResourceLocator::Resolve(const std::string& logicalName, ResourceLoc
 	tryNames.push_back(logicalName);
 
 	// もし拡張子がない場合は典型的な候補を追加
-	auto hasExt = fs::path(logicalName).has_extension();
+	auto hasExt = fs::path(reinterpret_cast<const char8_t*>(logicalName.c_str())).has_extension();
 	if (!hasExt)
 	{
 		// テクスチャ候補
@@ -95,15 +95,16 @@ std::string ResourceLocator::Resolve(const std::string& logicalName, ResourceLoc
 	}
 
 	// basename（例: "plane.obj" -> "plane"）を用意
-	std::string baseName = fs::path(logicalName).stem().string();
+	// u8string()でUTF-8として取得し、再度char8_t*経由で扱えるようにする
+	std::string baseName = reinterpret_cast<const char*>(fs::path(reinterpret_cast<const char8_t*>(logicalName.c_str())).stem().u8string().c_str());
 
 	// 探索
 	for (const auto& dir : candidates)
 	{
 		for (const auto& name : tryNames)
 		{
-			fs::path cand = fs::path(dir) / name;
-			if (fs::exists(cand))
+			fs::path cand = fs::path(dir) / reinterpret_cast<const char8_t*>(name.c_str());
+			if (fs::exists(cand) && !fs::is_directory(cand))
 			{
 				return cand.string();
 			}
@@ -114,8 +115,8 @@ std::string ResourceLocator::Resolve(const std::string& logicalName, ResourceLoc
 		{
 			for (const auto& name : tryNames)
 			{
-				fs::path nested = fs::path(dir) / baseName / name;
-				if (fs::exists(nested))
+				fs::path nested = fs::path(dir) / reinterpret_cast<const char8_t*>(baseName.c_str()) / reinterpret_cast<const char8_t*>(name.c_str());
+				if (fs::exists(nested) && !fs::is_directory(nested))
 				{
 					return nested.string();
 				}

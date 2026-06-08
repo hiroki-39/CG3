@@ -1,4 +1,4 @@
-﻿#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
+#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 #include "KHEngine/Core/Resource/ResourceLocator.h"
 #include "KHEngine/Core/Utility/String/StringUtility.h"
@@ -107,7 +107,9 @@ void TextureManager::Initialize(DirectXCommon* dxCommon, SrvManager* srvManager)
 
 		// Add upload
 		auto& added = textureDatas.at(key);
+		dxCommon_->BeginTextureUploadBatch();
 		dxCommon_->AddTextureUpload(added.resource, added.intermediateResource, added.subresources);
+		dxCommon_->ExecuteTextureUploadBatch();
 
 		// デフォルトインデックスを保持（必ずこの生成白テクスチャを既定にする）
 		defaultTextureIndex_ = textureDatas.at(key).srvIndex;

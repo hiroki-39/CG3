@@ -13,6 +13,57 @@
 #include <random>
 #include <memory>
 #include <cmath>
+#include <numbers>
+#include "KHEngine/Scene/LevelLoader.h"
+#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
+
+static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, Object3dCommon* common, uint32_t skyboxTexIndex) {
+    const Object3d* currentObj = parentObj;
+
+    if (node.type == "MESH") {
+        auto obj = std::make_unique<Object3d>();
+        obj->Initialize(common);
+        
+        std::string modelName = node.fileName;
+        if (modelName.empty()) {
+            modelName = node.name + ".obj";
+        }
+        
+        // ロードされていない可能性を考慮
+        ModelManager::GetInstance()->LoadModel(modelName);
+        if (ModelManager::GetInstance()->FindModel(modelName) != nullptr) {
+            obj->SetModel(modelName);
+            // 黒落ちを回避するために色とテクスチャを設定
+            obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            obj->GetModel()->SetTextureIndex(TextureManager::GetInstance()->GetTextureIndexByFilePath("white.png"));
+            obj->SetEnvironmentCoefficient(1.0f);
+        }
+        
+        obj->SetTranslate(node.translation);
+        
+        // Blender出力は恐らく度数法(Degree)なのでラジアンに変換
+        Vector3 rotRad;
+        rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
+        rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
+        rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
+        obj->SetRotation(rotRad);
+        
+        obj->SetScale(node.scale);
+        obj->SetEnvironmentTextureIndex(skyboxTexIndex);
+        
+        if (parentObj) {
+            obj->SetParent(parentObj);
+        }
+        
+        currentObj = obj.get();
+        instances.push_back(std::move(obj));
+    }
+
+    // 子オブジェクトを再帰的に生成
+    for (const auto& child : node.children) {
+        CreateObjectFromNode(child, currentObj, instances, common, skyboxTexIndex);
+    }
+}
 
 void GamePlayScene::Initialize()
 {
@@ -116,9 +167,21 @@ void GamePlayScene::Initialize()
         modelInstances.push_back(std::move(terrain));
     }
 
+    // レベルデータの読み込みと配置
+    auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
+    if (levelData) {
+        for (const auto& objData : levelData->objects) {
+            CreateObjectFromNode(objData, nullptr, modelInstances, object3dCommon, skybox_->GetCubemapSrvIndex());
+        }
+        OutputDebugStringA("LevelLoader: Successfully placed objects.\n");
+    } else {
+        OutputDebugStringA("LevelLoader: Failed to load template.json!\n");
+    }
+
     // プレイヤーの初期化
     player_ = std::make_unique<Player>();
     player_->Initialize(object3dCommon, skybox_->GetCubemapSrvIndex());
+    player_->LoadSettings("resources/json/player/player_settings.json");
 }
 
 void GamePlayScene::Finalize()
@@ -151,25 +214,24 @@ void GamePlayScene::Update()
         LONG dy = input->GetMouseMoveY();
         LONG wheel = input->GetMouseWheel();
 
-        // ミドルボタン（ホイール押し込み）での回転は無効化（照準移動に専念するため）
-        /*
-        if (input->PushMouseButton(2))
+        // 停止中のみ自由なカメラ操作を許可
+        if (!isPlaying_)
         {
-            Vector3 rot = camera->GetRotation();
-            // マウス右移動で yaw 増加、下移動で pitch 増加（上下反転は好みで調整）
-            rot.y += static_cast<float>(dx) * kRotateSpeed;
-            rot.x += static_cast<float>(dy) * kRotateSpeed;
+            if (input->PushMouseButton(1)) // 右クリックドラッグで回転
+            {
+                Vector3 rot = camera->GetRotation();
+                // マウス右移動で yaw 増加、下移動で pitch 増加
+                rot.y += static_cast<float>(dx) * kRotateSpeed;
+                rot.x += static_cast<float>(dy) * kRotateSpeed;
 
-            // ピッチ（X軸回転）を適度に制限（直上直下で反転しないように）
-            const float kMaxPitch = 1.5f;  // 約 85度
-            const float kMinPitch = -1.5f; // 約 -85度
-            rot.x = std::clamp(rot.x, kMinPitch, kMaxPitch);
+                // ピッチ（X軸回転）を適度に制限
+                const float kMaxPitch = 1.5f;  // 約 85度
+                const float kMinPitch = -1.5f; // 約 -85度
+                rot.x = std::clamp(rot.x, kMinPitch, kMaxPitch);
 
-            camera->SetRotation(rot);
-        }
-        else
-        */
-        {
+                camera->SetRotation(rot);
+            }
+
             // WASDキーでカメラ移動（カメラのyawに沿った前後左右）
             float moveStep = kMoveSpeed * kDeltaTime_;
             Vector3 pos = camera->GetTranslate();
@@ -189,7 +251,6 @@ void GamePlayScene::Update()
             forward = normalize(forward);
             right = normalize(right);
 
-/*
             if (input->PushKey(DIK_W))
             {
                 pos.x += forward.x * moveStep;
@@ -210,37 +271,58 @@ void GamePlayScene::Update()
                 pos.x -= right.x * moveStep;
                 pos.z -= right.z * moveStep;
             }
+            if (input->PushKey(DIK_E)) // 上昇
+            {
+                pos.y += moveStep;
+            }
+            if (input->PushKey(DIK_Q)) // 下降
+            {
+                pos.y -= moveStep;
+            }
 
             camera->SetTranslate(pos);
-*/
         }
 
         // --- ルート固定移動（自動前進） ---
-        const float kAutoSpeed = 0.05f;
-        Vector3 camPos = camera->GetTranslate();
-        camPos.z += kAutoSpeed;
-        camera->SetTranslate(camPos);
+        if (isPlaying_)
+        {
+            const float kAutoSpeed = 0.05f;
+            Vector3 camPos = camera->GetTranslate();
+            camPos.z += kAutoSpeed;
+            camera->SetTranslate(camPos);
 
-        // プレイヤーも前進
-        if (player_) {
-            Vector3 playerPos = player_->GetTranslate();
-            playerPos.z += kAutoSpeed;
-            player_->SetTranslate(playerPos);
+            // プレイヤーも前進
+            if (player_) {
+                Vector3 playerPos = player_->GetTranslate();
+                playerPos.z += kAutoSpeed;
+                player_->SetTranslate(playerPos);
+            }
         }
     }
 
     // プレイヤーの更新
     if (player_) {
-        player_->Update(bullets_);
+        if (isPlaying_) {
+            player_->Update(bullets_);
+        } else {
+            // ゲーム停止中でも、Object3dの更新(カメラ行列の反映など)は必要
+            player_->Update3DObjectOnly();
+        }
     }
 
     // 弾の更新
-    for (auto it = bullets_.begin(); it != bullets_.end(); ) {
-        (*it)->Update();
-        if ((*it)->IsDead()) {
-            it = bullets_.erase(it);
-        } else {
-            ++it;
+    if (isPlaying_) {
+        for (auto it = bullets_.begin(); it != bullets_.end(); ) {
+            (*it)->Update();
+            if ((*it)->IsDead()) {
+                it = bullets_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    } else {
+        for (auto& bullet : bullets_) {
+            bullet->Update3DObjectOnly();
         }
     }
 
@@ -272,12 +354,31 @@ void GamePlayScene::Update()
     Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera.get(), true);
     skybox_->Update();
 
-    if (update)
+    if (isPlaying_)
     {
         particleEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
     }
 
 #ifdef USE_IMGUI
+
+    ImGui::Begin("Game Control");
+    if (isPlaying_) {
+        if (ImGui::Button("Stop (Pause)", ImVec2(120, 40))) {
+            isPlaying_ = false;
+        }
+        ImGui::Text("Status: PLAYING");
+    } else {
+        if (ImGui::Button("Play (Start)", ImVec2(120, 40))) {
+            isPlaying_ = true;
+        }
+        ImGui::Text("Status: STOPPED (Free Camera Mode)");
+        ImGui::Text("Camera Control: WASD/QE to move, Right-Click Drag to rotate");
+    }
+    ImGui::End();
+
+    if (player_) {
+        player_->DrawUI();
+    }
 
     // --- Sprite ウィンドウ ---
     ImGui::Begin("スプライト");

@@ -14,6 +14,8 @@ public:
     /// </summary>
     void Update();
 
+    void Update3DObjectOnly() { if (object_) object_->Update(); }
+
     /// <summary>
     /// 描画
     /// </summary>

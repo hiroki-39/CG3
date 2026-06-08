@@ -44,6 +44,9 @@ void Object3d::Update()
 {
 	//Transformの更新
 	Matrix4x4 worldMatrix = transform.GetWorldMatrix();
+	if (parent_) {
+		worldMatrix = Matrix4x4::Multiply(worldMatrix, parent_->transform.GetWorldMatrix());
+	}
 
 	Matrix4x4 worldViewProjectionMatrix;
 	if (camera)

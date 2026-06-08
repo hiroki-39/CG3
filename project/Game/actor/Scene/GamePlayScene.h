@@ -35,8 +35,7 @@ private:
 
     std::unique_ptr<Camera> camera;
     std::unique_ptr<Skybox> skybox_;
-
-    bool update = true;
+    bool isPlaying_ = false;
 
     float kDeltaTime_local_override = 0.0f;
 

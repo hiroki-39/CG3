@@ -25,20 +25,20 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -222,6 +222,7 @@
     <ClCompile Include="KHEngine\Sound\Core\SoundManager.cpp" />
     <ClCompile Include="KHEngine\Scene\SceneManager.cpp" />
     <ClCompile Include="KHEngine\Core\Resource\ResourceLocator.cpp" />
+    <ClCompile Include="KHEngine\Scene\LevelLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Game\actor\Scene\GamePlayScene.h" />
@@ -288,6 +289,7 @@
     <ClInclude Include="KHEngine\Scene\SceneManager.h" />
     <ClInclude Include="KHEngine\Scene\SceneFactory.h" />
     <ClInclude Include="KHEngine\Core\Resource\ResourceLocator.h" />
+    <ClInclude Include="KHEngine\Scene\LevelLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
