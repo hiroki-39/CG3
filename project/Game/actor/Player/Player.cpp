@@ -166,7 +166,11 @@ void Player::Move() {
     
     // 実際のモデルの Transform にはオフセットを足して適用
     object_->SetScale(playerScale_);
-    object_->SetRotation(Vector3(pitchAngle + modelRotOffset_.x, yawAngle + modelRotOffset_.y, bankAngle + modelRotOffset_.z));
+    object_->SetRotation(Vector3(
+        baseRotation_.x + pitchAngle + modelRotOffset_.x,
+        baseRotation_.y + yawAngle + modelRotOffset_.y,
+        baseRotation_.z + bankAngle + modelRotOffset_.z
+    ));
     object_->SetTranslate(Vector3(logicalPosition_.x + modelPosOffset_.x, logicalPosition_.y + modelPosOffset_.y, logicalPosition_.z + modelPosOffset_.z));
 }
 

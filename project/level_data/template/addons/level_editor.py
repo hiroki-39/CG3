@@ -261,7 +261,38 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
             collider["center"] = object["collider_center"].to_list()
             collider["size"] = object["collider_size"].to_list()
             json_object["collider"] = collider
+
+           # カーブ(レール)情報のエクスポート
+        if object.type == 'CURVE':
+            json_object["curve_points_debug"] = "Script is updated!"
+            curve_data = object.data
+            matrix_world = object.matrix_world
+            points_list = []
+            for spline in curve_data.splines:
+                if spline.type == 'BEZIER':
+                    for point in spline.bezier_points:
+                        position = matrix_world @ point.co
+                        handle_left = matrix_world @ point.handle_left
+                        handle_right = matrix_world @ point.handle_right
+                        point_data = {
+                            "position": {"x": position.x, "y": position.y, "z": position.z},
+                            "handle_left": {"x": handle_left.x, "y": handle_left.y, "z": handle_left.z},
+                            "handle_right": {"x": handle_right.x, "y": handle_right.y, "z": handle_right.z},
+                            "tilt": point.tilt
+                        }
+                        points_list.append(point_data)
+                elif spline.type in {'NURBS', 'POLY'}:
+                    for point in spline.points:
+                        position = matrix_world @ mathutils.Vector((point.co.x, point.co.y, point.co.z))
+                        point_data = {
+                            "position": {"x": position.x, "y": position.y, "z": position.z},
+                            "tilt": point.tilt
+                        }
+                        points_list.append(point_data)
             
+            if points_list:
+                json_object["curve_points"] = points_list
+
 
         #一個分のjsonオブジェクトを親オブジェクトに登録
         data_parent.append(json_object)

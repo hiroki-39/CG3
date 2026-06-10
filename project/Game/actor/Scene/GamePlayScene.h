@@ -14,6 +14,7 @@
 #include "KHEngine/Graphics/3d/Particle/ParticleEffect.h"
 #include "Game/actor/Player/Player.h"
 #include "Game/actor/Bullet/PlayerBullet.h"
+#include "Game/System/Rail.h"
 #include <vector>
 #include <list>
 #include <random>
@@ -22,12 +23,10 @@
 class GamePlayScene : public BaseScene
 {
 public:
-
-public:
-    void Initialize();
-    void Update();
-    void Draw();
-    void Finalize();
+    void Initialize() override;
+    void Update() override;
+    void Draw() override;
+    void Finalize() override;
 
 private:
     // ゲーム固有メンバ
@@ -36,6 +35,12 @@ private:
     std::unique_ptr<Camera> camera;
     std::unique_ptr<Camera> debugCamera_;
     Camera* activeCamera_ = nullptr;
+    
+    // レールシステム
+    std::unique_ptr<Rail> mainRail_;
+    float railProgress_ = 0.0f;
+    std::vector<std::unique_ptr<Object3d>> railVisualizers_;
+    bool isDrawRail_ = true;
     std::unique_ptr<Skybox> skybox_;
     bool isPlaying_ = false;
 

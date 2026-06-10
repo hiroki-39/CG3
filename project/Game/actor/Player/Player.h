@@ -34,6 +34,7 @@ public:
     // Getter
     const Vector3& GetTranslate() const { return logicalPosition_; }
     void SetTranslate(const Vector3& translate) { logicalPosition_ = translate; }
+    void SetRotation(const Vector3& rotation) { baseRotation_ = rotation; }
     Object3d* GetObject3d() const { return object_.get(); }
     Object3d* GetReticle() const { return reticle_.get(); }
 
@@ -80,8 +81,9 @@ private:
     Vector3 modelRotOffset_ = { 0.0f, 0.0f, 0.0f };
     Vector3 playerScale_ = { 0.5f, 0.5f, 0.5f };
 
-    // 論理位置
+    // 論理位置・回転
     Vector3 logicalPosition_ = { 0.0f, 1.0f, -4.0f };
+    Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f };
 
     // 攻撃関連
     int attackTimer_ = 0;
