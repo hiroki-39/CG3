@@ -166,15 +166,11 @@ Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std
 
 			std::string texPath = textureFilePath.C_Str();
 			std::string fullPath = directoryPath + "/" + texPath;
-			std::ofstream out("texture_debug.txt", std::ios::app);
 			if (std::filesystem::exists(fullPath)) {
 				modelData.material.textureFilePath = fullPath;
-				out << "Model: " << filename << " -> Found texture: " << fullPath << "\n";
 			} else {
 				modelData.material.textureFilePath = texPath;
-				out << "Model: " << filename << " -> Texture NOT found: " << fullPath << ", using " << texPath << "\n";
 			}
-			out.close();
 		}
 	}
 
