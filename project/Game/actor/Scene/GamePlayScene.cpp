@@ -254,7 +254,6 @@ void GamePlayScene::Initialize()
             obj->Initialize(object3dCommon);
             obj->SetModel(railModel_.get()); 
             obj->SetTranslate(center);
-            
             float yaw = std::atan2(dir.x, dir.z);
             float pitch = std::asin(-dir.y);
             obj->SetRotation(Vector3(pitch, yaw, 0.0f));
@@ -269,10 +268,18 @@ void GamePlayScene::Initialize()
         }
     }
 
+    // カメラオブジェクト（プレイヤーの親となる）の初期化
+    cameraObject_ = std::make_unique<Object3d>();
+    cameraObject_->Initialize(object3dCommon);
+
     // プレイヤーの初期化
     player_ = std::make_unique<Player>();
     player_->Initialize(object3dCommon, skybox_->GetCubemapSrvIndex());
     player_->LoadSettings("resources/json/player/player_settings.json");
+    
+    // プレイヤーをカメラオブジェクトの子にする
+    player_->GetObject3d()->SetParent(cameraObject_.get());
+    player_->GetReticle()->SetParent(cameraObject_.get());
 
     // 全てのモデル・テクスチャ読み込みが終わった後にGPUへ転送する
     texManager->ExecuteUploadCommands();
@@ -389,26 +396,8 @@ void GamePlayScene::Update()
 
             activeCamera_->SetTranslate(pos);
 
-            // 自由カメラ移動時もプレイヤーをカメラの前方に追従させる
-            if (player_) {
-                // カメラの回転からプレイヤーの回転を逆算（見下ろし角を元に戻す）
-                Vector3 playerRot = rot;
-                playerRot.x -= 0.15f; 
-
-                // カメラから見て前方(10.0)、下方(-3.0)にプレイヤーを配置
-                Vector3 playerOffset = { 0.0f, -3.0f, 10.0f };
-                Matrix4x4 playerRotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, playerRot, pos);
-                
-                // 行優先でのベクトル変換
-                Vector3 playerPos = {
-                    playerOffset.x * playerRotMat.m[0][0] + playerOffset.y * playerRotMat.m[1][0] + playerOffset.z * playerRotMat.m[2][0] + playerRotMat.m[3][0],
-                    playerOffset.x * playerRotMat.m[0][1] + playerOffset.y * playerRotMat.m[1][1] + playerOffset.z * playerRotMat.m[2][1] + playerRotMat.m[3][1],
-                    playerOffset.x * playerRotMat.m[0][2] + playerOffset.y * playerRotMat.m[1][2] + playerOffset.z * playerRotMat.m[2][2] + playerRotMat.m[3][2]
-                };
-
-                player_->SetTranslate(playerPos);
-                player_->SetRotation(playerRot);
-            }
+            // 自由カメラ移動時は cameraObject_ (プレイヤーの親) を同期しないことで、
+            // プレイヤーは元の位置に取り残される（=自由に見回せる）ようにする
         }
 
         // --- ルート固定移動（レールに沿った移動） ---
@@ -421,39 +410,53 @@ void GamePlayScene::Update()
                     railProgress_ = 1.0f; // 終点で停止
                 }
 
-                Vector3 railPos = mainRail_->GetPosition(railProgress_);
-                Vector3 railForward = mainRail_->GetForward(railProgress_);
-                float railTilt = mainRail_->GetTilt(railProgress_);
+                // 課題の仕様通り: 視点(eye)と注視点(target)を求めてカメラ行列を作成
+                Vector3 baseEye = mainRail_->GetPosition(railProgress_);
+                
+                // 注視点は少し進んだ地点
+                float targetProgress = std::min(railProgress_ + 0.01f, 1.0f);
+                Vector3 baseTarget = mainRail_->GetPosition(targetProgress);
 
-                // 進行方向からYaw, Pitchを計算
-                float yaw = std::atan2(railForward.x, railForward.z);
-                // Pitchの計算はY-upの場合、asin(-y)で表現可能
-                float pitch = std::asin(-railForward.y);
+                // 差分ベクトル (forward)
+                Vector3 forward = {
+                    baseTarget.x - baseEye.x,
+                    baseTarget.y - baseEye.y,
+                    baseTarget.z - baseEye.z
+                };
 
-                Vector3 newRot(pitch, yaw, railTilt);
-
-                // プレイヤーの更新 (レールの上に配置)
-                if (player_) {
-                    player_->SetTranslate(railPos);
-                    player_->SetRotation(newRot);
+                // 正規化
+                float len = std::sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
+                if (len > 1e-6f) {
+                    forward.x /= len; forward.y /= len; forward.z /= len;
                 }
 
-                // カメラの更新 (プレイヤーの後方・上空に配置)
-                Vector3 cameraOffset = { 0.0f, 3.0f, -10.0f }; // プレイヤーからの相対位置 (後ろに10、上に3)
-                Matrix4x4 rotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, newRot, railPos);
-                
-                // 行優先(Row-Major)での正しいベクトル変換 (v * M)
-                Vector3 cameraPos = {
-                    cameraOffset.x * rotMat.m[0][0] + cameraOffset.y * rotMat.m[1][0] + cameraOffset.z * rotMat.m[2][0] + rotMat.m[3][0],
-                    cameraOffset.x * rotMat.m[0][1] + cameraOffset.y * rotMat.m[1][1] + cameraOffset.z * rotMat.m[2][1] + rotMat.m[3][1],
-                    cameraOffset.x * rotMat.m[0][2] + cameraOffset.y * rotMat.m[1][2] + cameraOffset.z * rotMat.m[2][2] + rotMat.m[3][2]
+                // 回転角の計算
+                float yaw = std::atan2(forward.x, forward.z);
+                float pitch = std::asin(-forward.y);
+                float railTilt = mainRail_->GetTilt(railProgress_);
+                Vector3 cameraRot(pitch, yaw, railTilt);
+
+                // 視点(eye)をレールの少し上（+3.0f）に設定することで、レールが画面中央を塞ぐのを防ぐ
+                Matrix4x4 baseRotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, cameraRot, baseEye);
+                Vector3 cameraOffset = { 0.0f, 3.0f, 0.0f }; // レールから上に3.0f浮かせる
+                Vector3 eye = {
+                    cameraOffset.x * baseRotMat.m[0][0] + cameraOffset.y * baseRotMat.m[1][0] + cameraOffset.z * baseRotMat.m[2][0] + baseRotMat.m[3][0],
+                    cameraOffset.x * baseRotMat.m[0][1] + cameraOffset.y * baseRotMat.m[1][1] + cameraOffset.z * baseRotMat.m[2][1] + baseRotMat.m[3][1],
+                    cameraOffset.x * baseRotMat.m[0][2] + cameraOffset.y * baseRotMat.m[1][2] + cameraOffset.z * baseRotMat.m[2][2] + baseRotMat.m[3][2]
                 };
                 
-                // カメラを少し下に向ける場合は Pitch を少し下げる
-                Vector3 cameraRot = newRot;
-                cameraRot.x += 0.15f; // 少し下を見下ろす角度 (ラジアン)
+                // カメラを少し見下ろすように角度をつける
+                cameraRot.x += 0.1f;
 
-                activeCamera_->SetTranslate(cameraPos);
+                // カメラオブジェクトのワールド行列に反映（自機などの親）
+                if (cameraObject_) {
+                    cameraObject_->SetTranslate(eye);
+                    cameraObject_->SetRotation(cameraRot);
+                    cameraObject_->Update();
+                }
+
+                // 実際のカメラの更新 (スライド4の通り、カメラオブジェクトのワールド行列の逆行列をビュー行列とするため、完全に一致させる)
+                activeCamera_->SetTranslate(eye);
                 activeCamera_->SetRotation(cameraRot);
             } else {
                 // レールが無い場合のフォールバック（自動前進）
@@ -462,11 +465,9 @@ void GamePlayScene::Update()
                 camPos.z += kAutoSpeed;
                 activeCamera_->SetTranslate(camPos);
 
-                // プレイヤーも前進
-                if (player_) {
-                    Vector3 playerPos = player_->GetTranslate();
-                    playerPos.z += kAutoSpeed;
-                    player_->SetTranslate(playerPos);
+                if (cameraObject_) {
+                    cameraObject_->SetTranslate(camPos);
+                    cameraObject_->Update();
                 }
             }
         }
@@ -575,33 +576,30 @@ void GamePlayScene::Update()
         railProgress_ = 0.0f;
         isPlaying_ = false;
         if (mainRail_ && mainRail_->IsValid()) {
-            Vector3 railPos = mainRail_->GetPosition(0.0f);
+            Vector3 baseEye = mainRail_->GetPosition(0.0f);
             Vector3 railForward = mainRail_->GetForward(0.0f);
             float railTilt = mainRail_->GetTilt(0.0f);
             float yaw = std::atan2(railForward.x, railForward.z);
             float pitch = std::asin(-railForward.y);
-            Vector3 newRot(pitch, yaw, railTilt);
+            Vector3 cameraRot(pitch, yaw, railTilt);
 
-            if (player_) {
-                player_->SetTranslate(railPos);
-                player_->SetRotation(newRot);
-            }
+            Matrix4x4 baseRotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, cameraRot, baseEye);
+            Vector3 cameraOffset = { 0.0f, 3.0f, 0.0f }; // レールから上に3.0f浮かせる
+            Vector3 eye = {
+                cameraOffset.x * baseRotMat.m[0][0] + cameraOffset.y * baseRotMat.m[1][0] + cameraOffset.z * baseRotMat.m[2][0] + baseRotMat.m[3][0],
+                cameraOffset.x * baseRotMat.m[0][1] + cameraOffset.y * baseRotMat.m[1][1] + cameraOffset.z * baseRotMat.m[2][1] + baseRotMat.m[3][1],
+                cameraOffset.x * baseRotMat.m[0][2] + cameraOffset.y * baseRotMat.m[1][2] + cameraOffset.z * baseRotMat.m[2][2] + baseRotMat.m[3][2]
+            };
+            cameraRot.x += 0.1f;
+
             if (activeCamera_) {
-                Vector3 cameraOffset = { 0.0f, 3.0f, -10.0f };
-                Matrix4x4 rotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, newRot, railPos);
-                
-                // 行優先(Row-Major)での正しいベクトル変換 (v * M)
-                Vector3 cameraPos = {
-                    cameraOffset.x * rotMat.m[0][0] + cameraOffset.y * rotMat.m[1][0] + cameraOffset.z * rotMat.m[2][0] + rotMat.m[3][0],
-                    cameraOffset.x * rotMat.m[0][1] + cameraOffset.y * rotMat.m[1][1] + cameraOffset.z * rotMat.m[2][1] + rotMat.m[3][1],
-                    cameraOffset.x * rotMat.m[0][2] + cameraOffset.y * rotMat.m[1][2] + cameraOffset.z * rotMat.m[2][2] + rotMat.m[3][2]
-                };
-                
-                Vector3 cameraRot = newRot;
-                cameraRot.x += 0.15f;
-                
-                activeCamera_->SetTranslate(cameraPos);
+                activeCamera_->SetTranslate(eye);
                 activeCamera_->SetRotation(cameraRot);
+            }
+            if (cameraObject_) {
+                cameraObject_->SetTranslate(eye);
+                cameraObject_->SetRotation(cameraRot);
+                cameraObject_->Update();
             }
         }
     }

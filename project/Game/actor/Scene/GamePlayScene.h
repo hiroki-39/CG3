@@ -35,6 +35,7 @@ private:
     std::unique_ptr<Camera> camera;
     std::unique_ptr<Camera> debugCamera_;
     Camera* activeCamera_ = nullptr;
+    std::unique_ptr<Object3d> cameraObject_;
     
     // レールシステム
     std::unique_ptr<Rail> mainRail_;

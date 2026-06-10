@@ -71,7 +71,7 @@ private:
     
     uint32_t skyboxTexIndex_ = 0; // 再利用するため保持
 
-    Vector3 reticlePosition_ = { 0.0f, 0.0f, 40.0f }; // 照準のワールド座標
+    Vector3 reticlePosition_ = { 0.0f, 0.0f, 40.0f }; // 照準のローカル座標
 
     // プレイヤー設定パラメータ
     float speed_ = 0.3f;
@@ -94,8 +94,8 @@ private:
     Vector3 modelRotOffset_ = { 0.0f, 0.0f, 0.0f };
     Vector3 playerScale_ = { 0.5f, 0.5f, 0.5f };
 
-    // 論理位置・回転
-    Vector3 logicalPosition_ = { 0.0f, 1.0f, -4.0f };
+    // 論理位置・回転 (カメラの子オブジェクトとしてのローカル座標になる)
+    Vector3 logicalPosition_ = { 0.0f, -2.5f, 20.0f }; // カメラオブジェクトから20前方のやや下
     Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f };
 
     // 攻撃関連
