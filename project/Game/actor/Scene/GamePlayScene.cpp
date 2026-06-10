@@ -501,18 +501,54 @@ void GamePlayScene::Update()
 
     ImGui::Begin("Game Control");
     
+    bool doReset = false;
+
     // シーン切り替えとプレイ状態
     if (isPlaying_) {
         if (ImGui::Button("Stop (Pause)", ImVec2(120, 40))) {
             isPlaying_ = false;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Reset", ImVec2(120, 40))) {
+            doReset = true;
         }
         ImGui::Text("Status: PLAYING");
     } else {
         if (ImGui::Button("Play (Start)", ImVec2(120, 40))) {
             isPlaying_ = true;
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Reset", ImVec2(120, 40))) {
+            doReset = true;
+        }
         ImGui::Text("Status: STOPPED (Free Camera Mode)");
         ImGui::Text("Camera Control: WASD/QE to move, Right-Click Drag to rotate");
+    }
+
+    // リセット処理：レール進行度を0に戻し、カメラとプレイヤーを始点に移動させる
+    if (doReset) {
+        railProgress_ = 0.0f;
+        isPlaying_ = false;
+        if (mainRail_ && mainRail_->IsValid()) {
+            Vector3 railPos = mainRail_->GetPosition(0.0f);
+            Vector3 railForward = mainRail_->GetForward(0.0f);
+            float railTilt = mainRail_->GetTilt(0.0f);
+            float yaw = std::atan2(railForward.x, railForward.z);
+            float pitch = std::asin(-railForward.y);
+            Vector3 newRot(pitch, yaw, railTilt);
+
+            if (activeCamera_) {
+                activeCamera_->SetTranslate(railPos);
+                activeCamera_->SetRotation(newRot);
+            }
+            if (player_) {
+                Vector3 playerOffset = { 0.0f, -2.0f, 5.0f };
+                Matrix4x4 rotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, newRot, railPos);
+                Vector3 worldPos = rotMat * playerOffset;
+                player_->SetTranslate(worldPos);
+                player_->SetRotation(newRot);
+            }
+        }
     }
     
     ImGui::Separator();
