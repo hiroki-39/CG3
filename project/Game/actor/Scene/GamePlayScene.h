@@ -34,6 +34,8 @@ private:
     std::vector<std::unique_ptr<Object3d>> modelInstances;
 
     std::unique_ptr<Camera> camera;
+    std::unique_ptr<Camera> debugCamera_;
+    Camera* activeCamera_ = nullptr;
     std::unique_ptr<Skybox> skybox_;
     bool isPlaying_ = false;
 

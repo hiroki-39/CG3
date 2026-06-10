@@ -140,7 +140,7 @@ private: //メンバ変数
 	// 頂点データの仮想アドレス
 	VertexData* vertexData_ = nullptr;
 	// 頂点バッファビュー
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 
 
 	// インデックスバッファリソース
@@ -148,7 +148,7 @@ private: //メンバ変数
 	// インデックスデータの仮想アドレス
 	uint32_t* indexData_ = nullptr;
 	// インデックスバッファビュー
-	D3D12_INDEX_BUFFER_VIEW indexBufferView;
+	D3D12_INDEX_BUFFER_VIEW indexBufferView{};
 
 
 	// マテリアルリソース

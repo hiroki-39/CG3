@@ -75,7 +75,7 @@ private:
     // 見た目関連の設定
     std::string modelName_ = "cube.obj";
     Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-    bool reflection_ = true;
+    bool reflection_ = false;
     Vector3 modelPosOffset_ = { 0.0f, 0.0f, 0.0f };
     Vector3 modelRotOffset_ = { 0.0f, 0.0f, 0.0f };
     Vector3 playerScale_ = { 0.5f, 0.5f, 0.5f };

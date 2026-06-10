@@ -36,7 +36,7 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
             // 黒落ちを回避するために色とテクスチャを設定
             obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
             obj->GetModel()->SetTextureIndex(TextureManager::GetInstance()->GetTextureIndexByFilePath("white.png"));
-            obj->SetEnvironmentCoefficient(1.0f);
+            obj->SetEnvironmentCoefficient(0.0f);
         }
         
         obj->SetTranslate(node.translation);
@@ -76,13 +76,20 @@ void GamePlayScene::Initialize()
 
     // カメラ作成（ゲーム固有）
     camera = std::make_unique<Camera>();
-    if (object3dCommon)
-    {
-        object3dCommon->SetDefaultCamera(camera.get());
-    }
-    
     camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
     camera->SetRotation({ 0.0f, 0.0f, 0.0f }); // 回転を0度にする
+    
+    // デバッグカメラ作成
+    debugCamera_ = std::make_unique<Camera>();
+    debugCamera_->SetTranslate({ 0.0f, 6.0f, -20.0f });
+    debugCamera_->SetRotation({ 0.0f, 0.0f, 0.0f });
+    
+    activeCamera_ = camera.get();
+    
+    if (object3dCommon)
+    {
+        object3dCommon->SetDefaultCamera(activeCamera_);
+    }
 
     // アセット登録
     ParticleManager::GetInstance()->RegisterQuad("quad", "resources/circle.png");
@@ -101,8 +108,11 @@ void GamePlayScene::Initialize()
     // モデル読み込み
     ModelManager::GetInstance()->LoadModel("plane.obj");
     ModelManager::GetInstance()->LoadModel("Cube.obj");
+    ModelManager::GetInstance()->LoadModel("cube.obj");
     ModelManager::GetInstance()->LoadModel("monsterBall.obj");
     ModelManager::GetInstance()->LoadModel("terrain.obj");
+    ModelManager::GetInstance()->LoadModel("player.obj");
+    ModelManager::GetInstance()->LoadModel("suzanne.obj");
 
     // スプライト用テクスチャ読み込み
     texManager->LoadTexture("uvChecker.png");
@@ -114,7 +124,6 @@ void GamePlayScene::Initialize()
     texManager->LoadTexture("gradationLine.png");
     texManager->LoadTexture("white.png");
 
-    texManager->ExecuteUploadCommands();
 
     uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("uvChecker.png");
     uint32_t monsterBallTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("monsterBall.png");
@@ -130,7 +139,6 @@ void GamePlayScene::Initialize()
     
     particleEffect_.Play();
 
-    texManager->ClearIntermediateResources();
 
     // スプライト作成
     {
@@ -149,10 +157,9 @@ void GamePlayScene::Initialize()
         obj->Initialize(object3dCommon);
         obj->SetModel("suzanne.obj");
         obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-        obj->GetModel()->SetTextureIndex(texManager->GetTextureIndexByFilePath("white.png")); // 強制的に白テクスチャを割り当てて黒落ちを回避
         uint32_t skyboxTexIndex = skybox_->GetCubemapSrvIndex();
         obj->SetEnvironmentTextureIndex(skyboxTexIndex);
-        obj->SetEnvironmentCoefficient(1.0f);
+        obj->SetEnvironmentCoefficient(0.0f);
         obj->SetTranslate(Vector3(0.0f, 1.0f, -4.0f));
         obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
         obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
@@ -182,6 +189,10 @@ void GamePlayScene::Initialize()
     player_ = std::make_unique<Player>();
     player_->Initialize(object3dCommon, skybox_->GetCubemapSrvIndex());
     player_->LoadSettings("resources/json/player/player_settings.json");
+
+    // 全てのモデル・テクスチャ読み込みが終わった後にGPUへ転送する
+    texManager->ExecuteUploadCommands();
+    texManager->ClearIntermediateResources();
 }
 
 void GamePlayScene::Finalize()
@@ -192,6 +203,8 @@ void GamePlayScene::Finalize()
 
     skybox_.reset();
     camera.reset();
+    debugCamera_.reset();
+    activeCamera_ = nullptr;
 }
 
 void GamePlayScene::Update()
@@ -199,11 +212,21 @@ void GamePlayScene::Update()
     auto services = EngineServices::GetInstance();
     auto input = services->GetInput();
 
+    // --- カメラ切り替え ---
+    if (isPlaying_) {
+        activeCamera_ = camera.get();
+    } else {
+        activeCamera_ = debugCamera_.get();
+    }
+    if (auto objCommon = services->GetObject3dCommon()) {
+        objCommon->SetDefaultCamera(activeCamera_);
+    }
+
     // --- カメラ操作 ---
     // ・ホイール押し込み（ミドルボタン）を押しながら移動 -> カメラ回転（yaw/pitch）(継続)
     // ・WASDキー -> カメラ移動（カメラの向きに沿った前後左右）
     // ・ホイール回転 -> ズーム (継続)
-    if (input && camera)
+    if (input && activeCamera_)
     {
         // 感度設定（必要に応じて調整）
         const float kRotateSpeed = 0.005f; // 回転感度（ラジアン換算想定）
@@ -219,7 +242,7 @@ void GamePlayScene::Update()
         {
             if (input->PushMouseButton(1)) // 右クリックドラッグで回転
             {
-                Vector3 rot = camera->GetRotation();
+                Vector3 rot = activeCamera_->GetRotation();
                 // マウス右移動で yaw 増加、下移動で pitch 増加
                 rot.y += static_cast<float>(dx) * kRotateSpeed;
                 rot.x += static_cast<float>(dy) * kRotateSpeed;
@@ -229,13 +252,13 @@ void GamePlayScene::Update()
                 const float kMinPitch = -1.5f; // 約 -85度
                 rot.x = std::clamp(rot.x, kMinPitch, kMaxPitch);
 
-                camera->SetRotation(rot);
+                activeCamera_->SetRotation(rot);
             }
 
             // WASDキーでカメラ移動（カメラのyawに沿った前後左右）
             float moveStep = kMoveSpeed * kDeltaTime_;
-            Vector3 pos = camera->GetTranslate();
-            Vector3 rot = camera->GetRotation();
+            Vector3 pos = activeCamera_->GetTranslate();
+            Vector3 rot = activeCamera_->GetRotation();
             float yaw = rot.y;
 
             // カメラの向きから forward / right を構成
@@ -280,16 +303,16 @@ void GamePlayScene::Update()
                 pos.y -= moveStep;
             }
 
-            camera->SetTranslate(pos);
+            activeCamera_->SetTranslate(pos);
         }
 
         // --- ルート固定移動（自動前進） ---
         if (isPlaying_)
         {
             const float kAutoSpeed = 0.05f;
-            Vector3 camPos = camera->GetTranslate();
+            Vector3 camPos = activeCamera_->GetTranslate();
             camPos.z += kAutoSpeed;
-            camera->SetTranslate(camPos);
+            activeCamera_->SetTranslate(camPos);
 
             // プレイヤーも前進
             if (player_) {
@@ -341,18 +364,27 @@ void GamePlayScene::Update()
     }
 
     // カメラ更新（入力反映後に行う）
-    if (camera) camera->Update();
+    if (activeCamera_) activeCamera_->Update();
     for (auto& model : modelInstances) if (model) model->Update();
     for (auto& sprite : sprites) if (sprite) sprite->Update();
 
     // カメラ行列の取得
-    Matrix4x4 cameraMatrix = camera->GetWorldMatrix();
-    Matrix4x4 viewMatrix = camera->GetViewMatrix();
-    Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
+    Matrix4x4 cameraMatrix = Matrix4x4::Identity();
+    Matrix4x4 viewMatrix = Matrix4x4::Identity();
+    Matrix4x4 projectionMatrix = Matrix4x4::Identity();
+    Matrix4x4 billboardMatrix = Matrix4x4::Identity();
 
-    // ビルボード行列（Camera* を渡す）
-    Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera.get(), true);
-    skybox_->Update();
+    if (activeCamera_) {
+        cameraMatrix = activeCamera_->GetWorldMatrix();
+        viewMatrix = activeCamera_->GetViewMatrix();
+        projectionMatrix = activeCamera_->GetProjectionMatrix();
+        billboardMatrix = Billboard::CreateFromCamera(activeCamera_, true);
+    }
+
+    if (skybox_) {
+        skybox_->SetCamera(activeCamera_);
+        skybox_->Update();
+    }
 
     if (isPlaying_)
     {
@@ -917,6 +949,7 @@ void GamePlayScene::Draw()
     
     // プレイヤーの描画
     if (player_) {
+        if (object3dCommon) object3dCommon->SetCommonDrawSetting();
         player_->Draw();
     }
 

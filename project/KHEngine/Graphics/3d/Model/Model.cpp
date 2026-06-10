@@ -3,6 +3,8 @@
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 #include <fstream>
 #include <sstream>
+#include <filesystem>
+
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 
@@ -149,8 +151,46 @@ Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std
 	/*--- 1.ファイルの読み込み ---*/
 	Assimp::Importer importer;
 	std::string filePath = directoryPath + "/" + filename;
-	const aiScene* scene = importer.ReadFile(filePath.c_str(), aiProcess_FlipWindingOrder | aiProcess_FlipUVs);
+	const aiScene* scene = importer.ReadFile(filePath.c_str(), aiProcess_FlipUVs | aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_JoinIdenticalVertices);
 	assert(scene->HasMeshes());
+
+	/*--- 3.マテリアル情報の読み込み ---*/
+
+	for (uint32_t materialIndex = 0; materialIndex < scene->mNumMaterials; ++materialIndex)
+	{
+		aiMaterial* material = scene->mMaterials[materialIndex];
+		if (material->GetTextureCount(aiTextureType_DIFFUSE) != 0)
+		{
+			aiString textureFilePath;
+			material->GetTexture(aiTextureType_DIFFUSE, 0, &textureFilePath);
+
+			std::string texPath = textureFilePath.C_Str();
+			std::string fullPath = directoryPath + "/" + texPath;
+			std::ofstream out("texture_debug.txt", std::ios::app);
+			if (std::filesystem::exists(fullPath)) {
+				modelData.material.textureFilePath = fullPath;
+				out << "Model: " << filename << " -> Found texture: " << fullPath << "\n";
+			} else {
+				modelData.material.textureFilePath = texPath;
+				out << "Model: " << filename << " -> Texture NOT found: " << fullPath << ", using " << texPath << "\n";
+			}
+			out.close();
+		}
+	}
+
+	// Assimpがテクスチャを見つけられなかった場合のフォールバック
+	if (modelData.material.textureFilePath.empty())
+	{
+		std::string mtlFilename = filename.substr(0, filename.find_last_of('.')) + ".mtl";
+		MaterialData fallbackMat = LoadMaterialTemplateFile(directoryPath, mtlFilename);
+		if (!fallbackMat.textureFilePath.empty())
+		{
+			std::string fullPath = fallbackMat.textureFilePath;
+			if (std::filesystem::exists(fullPath)) {
+				modelData.material.textureFilePath = fullPath;
+			}
+		}
+	}
 
 	modelData.rootNode = model.ReadNode(scene->mRootNode);
 
@@ -177,48 +217,31 @@ Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std
 				aiVector3D& normal = mesh->mNormals[vertexIndex];
 				
 				VertexData vertex;
-				vertex.position = { -position.x, position.y, position.z, 1.0f };
-				vertex.normal = { -normal.x, normal.y, normal.z };
+				vertex.position = { position.x, position.y, -position.z, 1.0f }; // RH to LH: Zを反転
+				vertex.normal = { normal.x, normal.y, -normal.z }; // RH to LH: 法線のZも反転
 
 				// テクスチャ座標があるかチェック
 				if (mesh->HasTextureCoords(0)) {
 					aiVector3D& texcoord = mesh->mTextureCoords[0][vertexIndex];
-					vertex.texcoord = { 1.0f - texcoord.x, texcoord.y };
+					vertex.texcoord = { texcoord.x, texcoord.y };
 				}
 				else {
 					vertex.texcoord = { 0.0f, 0.0f };
 				}
-
-				vertex.position.x *= -1.0f;
-				vertex.normal.x *= -1.0f;
 
 				uint32_t newIndex = static_cast<uint32_t>(modelData.vertices.size());
 				modelData.vertices.push_back(vertex);
 				newIndices[element] = newIndex;
 			}
 
-			// ワインディングを反転してインデックスを追加（0,2,1）
+			// Zを反転してLH座標系にしたため、面が裏返らないように頂点のインデックス順を逆（0, 2, 1）にします。
 			modelData.indices.push_back(newIndices[0]);
 			modelData.indices.push_back(newIndices[2]);
 			modelData.indices.push_back(newIndices[1]);
 		}
 	}
 
-	/*--- 3.マテリアル情報の読み込み ---*/
 
-	for (uint32_t materialIndex = 0; materialIndex < scene->mNumMaterials; ++materialIndex)
-	{
-		aiMaterial* material = scene->mMaterials[materialIndex];
-		if (material->GetTextureCount(aiTextureType_DIFFUSE) != 0)
-		{
-			aiString textureFilePath;
-			material->GetTexture(aiTextureType_DIFFUSE, 0, &textureFilePath);
-
-			// 重要: ここではディレクトリを前置せず、マテリアルが参照する「元のパス/ファイル名」を保存する
-			// 例: "uvChecker.png" や "textures/uvChecker.png" のまま保存し、TextureManager 側で ResourceLocator を使って解決する
-			modelData.material.textureFilePath = std::string(textureFilePath.C_Str());
-		}
-	}
 
 	/*--- 4.Modeldataを返す ---*/
 
@@ -241,7 +264,9 @@ Model::MaterialData Model::LoadMaterialTemplateFile(const std::string& directory
 	std::ifstream file(directoryPath + "/" + filename);
 
 	//とりあえず開かなかったら止める
-	assert(file.is_open());
+	if (!file.is_open()) {
+		return materialData;
+	}
 
 	/*---	3.実際にファイルを読み	---*/
 

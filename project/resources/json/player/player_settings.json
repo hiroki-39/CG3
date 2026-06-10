@@ -2,9 +2,9 @@
     "attackInterval": 15,
     "bulletSpeed": 3.0,
     "color": [
-        0.13471496105194092,
         1.0,
-        0.0,
+        1.0,
+        1.0,
         1.0
     ],
     "followSpeed": 0.07999999821186066,
@@ -23,11 +23,11 @@
     "moveLimitY": 10.0,
     "playerLimitX": 4.0,
     "playerLimitYMax": 8.0,
-    "playerLimitYMin": 2.0,
+    "playerLimitYMin": 3.0,
     "playerScale": [
-        0.4000000059604645,
-        0.4000000059604645,
-        0.4000000059604645
+        2.0,
+        2.0,
+        2.0
     ],
     "reflection": false,
     "reticleSpeed": 0.5,
