@@ -16,6 +16,8 @@
 #include <numbers>
 #include "KHEngine/Scene/LevelLoader.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
+#include "KHEngine/Core/Resource/ResourceLocator.h"
+#include <filesystem>
 
 static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::unique_ptr<Rail>& outRail, Object3dCommon* common, uint32_t skyboxTexIndex) {
     const Object3d* currentObj = parentObj;
@@ -217,6 +219,21 @@ void GamePlayScene::Initialize()
 
     // レールの可視化用オブジェクトの生成
     if (mainRail_ && mainRail_->IsValid()) {
+        railModel_ = std::make_unique<Model>();
+        
+        std::string resolved = ResourceLocator::Resolve("cube.obj", ResourceLocator::AssetType::Model3D);
+        if (!resolved.empty()) {
+            std::filesystem::path rp(reinterpret_cast<const char8_t*>(resolved.c_str()));
+            std::string directory = rp.parent_path().string();
+            std::string filename = rp.filename().string();
+            railModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), directory, filename);
+        } else {
+            // フォールバック
+            railModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), "resources/models", "cube.obj");
+        }
+        
+        railModel_->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 独立した赤色のマテリアル
+
         int sampleCount = 200; // 分割数を増やして滑らかな線にする
         for (int i = 0; i < sampleCount; ++i) {
             float t1 = static_cast<float>(i) / sampleCount;
@@ -235,18 +252,16 @@ void GamePlayScene::Initialize()
             
             auto obj = std::make_unique<Object3d>();
             obj->Initialize(object3dCommon);
-            obj->SetModel("cube.obj"); 
+            obj->SetModel(railModel_.get()); 
             obj->SetTranslate(center);
             
             float yaw = std::atan2(dir.x, dir.z);
             float pitch = std::asin(-dir.y);
             obj->SetRotation(Vector3(pitch, yaw, 0.0f));
             
-            // cube.objのデフォルトサイズ(1辺2m)に合わせてZスケールを length / 2.0f に設定
-            // XとYを非常に細く(0.05f)することで「線」のように見せる
-            obj->SetScale(Vector3(0.05f, 0.05f, length / 2.0f)); 
+            // 少し長めにスケールして途切れないようにする(length)
+            obj->SetScale(Vector3(0.02f, 0.02f, length)); 
             
-            obj->GetModel()->SetColor({1.0f, 0.8f, 0.0f, 1.0f}); // オレンジ色の線
             obj->SetEnvironmentCoefficient(0.0f);
             obj->SetEnvironmentTextureIndex(skybox_->GetCubemapSrvIndex());
             
@@ -373,6 +388,27 @@ void GamePlayScene::Update()
             }
 
             activeCamera_->SetTranslate(pos);
+
+            // 自由カメラ移動時もプレイヤーをカメラの前方に追従させる
+            if (player_) {
+                // カメラの回転からプレイヤーの回転を逆算（見下ろし角を元に戻す）
+                Vector3 playerRot = rot;
+                playerRot.x -= 0.15f; 
+
+                // カメラから見て前方(10.0)、下方(-3.0)にプレイヤーを配置
+                Vector3 playerOffset = { 0.0f, -3.0f, 10.0f };
+                Matrix4x4 playerRotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, playerRot, pos);
+                
+                // 行優先でのベクトル変換
+                Vector3 playerPos = {
+                    playerOffset.x * playerRotMat.m[0][0] + playerOffset.y * playerRotMat.m[1][0] + playerOffset.z * playerRotMat.m[2][0] + playerRotMat.m[3][0],
+                    playerOffset.x * playerRotMat.m[0][1] + playerOffset.y * playerRotMat.m[1][1] + playerOffset.z * playerRotMat.m[2][1] + playerRotMat.m[3][1],
+                    playerOffset.x * playerRotMat.m[0][2] + playerOffset.y * playerRotMat.m[1][2] + playerOffset.z * playerRotMat.m[2][2] + playerRotMat.m[3][2]
+                };
+
+                player_->SetTranslate(playerPos);
+                player_->SetRotation(playerRot);
+            }
         }
 
         // --- ルート固定移動（レールに沿った移動） ---
@@ -396,20 +432,29 @@ void GamePlayScene::Update()
 
                 Vector3 newRot(pitch, yaw, railTilt);
 
-                // カメラの更新
-                activeCamera_->SetTranslate(railPos);
-                activeCamera_->SetRotation(newRot);
-
-                // プレイヤーの更新 (カメラより少し前に配置)
+                // プレイヤーの更新 (レールの上に配置)
                 if (player_) {
-                    Vector3 playerOffset = { 0.0f, -2.0f, 5.0f }; // カメラからの相対位置
-                    // 回転行列を作成してオフセットを適用
-                    Matrix4x4 rotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, newRot, railPos);
-                    Vector3 worldPos = rotMat * playerOffset;
-                    
-                    player_->SetTranslate(worldPos);
+                    player_->SetTranslate(railPos);
                     player_->SetRotation(newRot);
                 }
+
+                // カメラの更新 (プレイヤーの後方・上空に配置)
+                Vector3 cameraOffset = { 0.0f, 3.0f, -10.0f }; // プレイヤーからの相対位置 (後ろに10、上に3)
+                Matrix4x4 rotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, newRot, railPos);
+                
+                // 行優先(Row-Major)での正しいベクトル変換 (v * M)
+                Vector3 cameraPos = {
+                    cameraOffset.x * rotMat.m[0][0] + cameraOffset.y * rotMat.m[1][0] + cameraOffset.z * rotMat.m[2][0] + rotMat.m[3][0],
+                    cameraOffset.x * rotMat.m[0][1] + cameraOffset.y * rotMat.m[1][1] + cameraOffset.z * rotMat.m[2][1] + rotMat.m[3][1],
+                    cameraOffset.x * rotMat.m[0][2] + cameraOffset.y * rotMat.m[1][2] + cameraOffset.z * rotMat.m[2][2] + rotMat.m[3][2]
+                };
+                
+                // カメラを少し下に向ける場合は Pitch を少し下げる
+                Vector3 cameraRot = newRot;
+                cameraRot.x += 0.15f; // 少し下を見下ろす角度 (ラジアン)
+
+                activeCamera_->SetTranslate(cameraPos);
+                activeCamera_->SetRotation(cameraRot);
             } else {
                 // レールが無い場合のフォールバック（自動前進）
                 const float kAutoSpeed = 0.05f;
@@ -537,16 +582,26 @@ void GamePlayScene::Update()
             float pitch = std::asin(-railForward.y);
             Vector3 newRot(pitch, yaw, railTilt);
 
-            if (activeCamera_) {
-                activeCamera_->SetTranslate(railPos);
-                activeCamera_->SetRotation(newRot);
-            }
             if (player_) {
-                Vector3 playerOffset = { 0.0f, -2.0f, 5.0f };
-                Matrix4x4 rotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, newRot, railPos);
-                Vector3 worldPos = rotMat * playerOffset;
-                player_->SetTranslate(worldPos);
+                player_->SetTranslate(railPos);
                 player_->SetRotation(newRot);
+            }
+            if (activeCamera_) {
+                Vector3 cameraOffset = { 0.0f, 3.0f, -10.0f };
+                Matrix4x4 rotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, newRot, railPos);
+                
+                // 行優先(Row-Major)での正しいベクトル変換 (v * M)
+                Vector3 cameraPos = {
+                    cameraOffset.x * rotMat.m[0][0] + cameraOffset.y * rotMat.m[1][0] + cameraOffset.z * rotMat.m[2][0] + rotMat.m[3][0],
+                    cameraOffset.x * rotMat.m[0][1] + cameraOffset.y * rotMat.m[1][1] + cameraOffset.z * rotMat.m[2][1] + rotMat.m[3][1],
+                    cameraOffset.x * rotMat.m[0][2] + cameraOffset.y * rotMat.m[1][2] + cameraOffset.z * rotMat.m[2][2] + rotMat.m[3][2]
+                };
+                
+                Vector3 cameraRot = newRot;
+                cameraRot.x += 0.15f;
+                
+                activeCamera_->SetTranslate(cameraPos);
+                activeCamera_->SetRotation(cameraRot);
             }
         }
     }

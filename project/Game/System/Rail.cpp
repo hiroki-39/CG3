@@ -56,23 +56,25 @@ Vector3 Rail::GetPosition(float t) const {
     float localT = 0.0f;
     GetSegment(t, i, localT);
 
-    const auto& p0 = points_[i];
-    const auto& p1 = points_[i + 1];
+    // Catmull-Rom スプラインの制御点 P0, P1, P2, P3 を設定
+    // P1とP2が現在の区間。P0はP1の1つ前、P3はP2の1つ後。
+    // 範囲外の場合は端の点を複製する
+    Vector3 P0 = (i - 1 >= 0) ? points_[i - 1].position : points_[i].position;
+    Vector3 P1 = points_[i].position;
+    Vector3 P2 = points_[i + 1].position;
+    Vector3 P3 = (i + 2 < static_cast<int>(points_.size())) ? points_[i + 2].position : points_[i + 1].position;
 
-    // 3次ベジェ曲線の制御点
-    Vector3 P0 = p0.position;
-    Vector3 P1 = p0.handle_right;
-    Vector3 P2 = p1.handle_left;
-    Vector3 P3 = p1.position;
-
-    float mt = 1.0f - localT;
-    float mt2 = mt * mt;
-    float mt3 = mt2 * mt;
     float t2 = localT * localT;
     float t3 = t2 * localT;
 
-    // P(t) = (1-t)^3*P0 + 3(1-t)^2*t*P1 + 3(1-t)*t^2*P2 + t^3*P3
-    return (P0 * mt3) + (P1 * (3.0f * mt2 * localT)) + (P2 * (3.0f * mt * t2)) + (P3 * t3);
+    // Catmull-Rom Spline 計算
+    // P(t) = 0.5 * ( (2*P1) + (-P0 + P2)*t + (2*P0 - 5*P1 + 4*P2 - P3)*t^2 + (-P0 + 3*P1 - 3*P2 + P3)*t^3 )
+    Vector3 result = (P1 * 2.0f) + 
+                     (P2 - P0) * localT + 
+                     (P0 * 2.0f - P1 * 5.0f + P2 * 4.0f - P3) * t2 + 
+                     (P1 * 3.0f - P0 - P2 * 3.0f + P3) * t3;
+                     
+    return result * 0.5f;
 }
 
 Vector3 Rail::GetForward(float t) const {
@@ -83,20 +85,21 @@ Vector3 Rail::GetForward(float t) const {
     float localT = 0.0f;
     GetSegment(t, i, localT);
 
-    const auto& p0 = points_[i];
-    const auto& p1 = points_[i + 1];
+    // Catmull-Rom スプラインの制御点
+    Vector3 P0 = (i - 1 >= 0) ? points_[i - 1].position : points_[i].position;
+    Vector3 P1 = points_[i].position;
+    Vector3 P2 = points_[i + 1].position;
+    Vector3 P3 = (i + 2 < static_cast<int>(points_.size())) ? points_[i + 2].position : points_[i + 1].position;
 
-    Vector3 P0 = p0.position;
-    Vector3 P1 = p0.handle_right;
-    Vector3 P2 = p1.handle_left;
-    Vector3 P3 = p1.position;
-
-    float mt = 1.0f - localT;
-    float mt2 = mt * mt;
     float t2 = localT * localT;
 
-    // P'(t) = 3(1-t)^2*(P1-P0) + 6(1-t)t*(P2-P1) + 3t^2*(P3-P2)
-    Vector3 derivative = ((P1 - P0) * (3.0f * mt2)) + ((P2 - P1) * (6.0f * mt * localT)) + ((P3 - P2) * (3.0f * t2));
+    // Catmull-Rom Spline 微分 (速度ベクトル)
+    // P'(t) = 0.5 * ( (-P0 + P2) + 2*(2*P0 - 5*P1 + 4*P2 - P3)*t + 3*(-P0 + 3*P1 - 3*P2 + P3)*t^2 )
+    Vector3 derivative = (P2 - P0) + 
+                         (P0 * 2.0f - P1 * 5.0f + P2 * 4.0f - P3) * (2.0f * localT) + 
+                         (P1 * 3.0f - P0 - P2 * 3.0f + P3) * (3.0f * t2);
+                         
+    derivative = derivative * 0.5f;
 
     float len = derivative.Length();
     if (len > 0.0001f) {
@@ -104,7 +107,7 @@ Vector3 Rail::GetForward(float t) const {
     }
     
     // 微分がゼロベクトルの場合は、単純に次の点までの方向を返す
-    return (P3 - P0).Normalize();
+    return (P2 - P1).Normalize();
 }
 
 float Rail::GetTilt(float t) const {

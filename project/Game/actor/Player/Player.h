@@ -26,7 +26,20 @@ public:
     void Draw();
 
     void Update3DObjectOnly() {
-        if (object_) object_->Update();
+        if (object_) {
+            object_->SetScale(playerScale_);
+            object_->SetRotation(Vector3(
+                baseRotation_.x + modelRotOffset_.x,
+                baseRotation_.y + modelRotOffset_.y,
+                baseRotation_.z + modelRotOffset_.z
+            ));
+            object_->SetTranslate(Vector3(
+                logicalPosition_.x + modelPosOffset_.x, 
+                logicalPosition_.y + modelPosOffset_.y, 
+                logicalPosition_.z + modelPosOffset_.z
+            ));
+            object_->Update();
+        }
         if (accessory_) accessory_->Update();
         if (reticle_) reticle_->Update();
     }

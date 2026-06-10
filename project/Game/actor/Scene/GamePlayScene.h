@@ -39,6 +39,7 @@ private:
     // レールシステム
     std::unique_ptr<Rail> mainRail_;
     float railProgress_ = 0.0f;
+    std::unique_ptr<Model> railModel_;
     std::vector<std::unique_ptr<Object3d>> railVisualizers_;
     bool isDrawRail_ = true;
     std::unique_ptr<Skybox> skybox_;
