@@ -373,9 +373,9 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
             # エクスポート (Blender 4.0以降は wm.obj_export, それ以前は export_scene.obj)
             try:
                 if hasattr(bpy.ops.wm, "obj_export"):
-                    bpy.ops.wm.obj_export(filepath=obj_path, export_selected_objects=True)
+                    bpy.ops.wm.obj_export(filepath=obj_path, export_selected_objects=True, export_triangulated_mesh=True, export_normals=True)
                 else:
-                    bpy.ops.export_scene.obj(filepath=obj_path, use_selection=True)
+                    bpy.ops.export_scene.obj(filepath=obj_path, use_selection=True, use_triangles=True, use_normals=True)
             except Exception as e:
                 print(f"Failed to export {obj_path}: {e}")
 

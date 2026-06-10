@@ -105,9 +105,10 @@ PixelShaderOutput main(VertexShaderOutput input)
             NdotL = dot(normal, -gDirectionlLight.direction);
             cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
             {
+                float32_t3 ambient = gMaterial.color.rgb * textureColor.rgb * 0.2f; // 環境光を追加
                 float32_t3 diffuse = gMaterial.color.rgb * textureColor.rgb * gDirectionlLight.color.rgb * cos * gDirectionlLight.intensity;
                 float32_t3 specular = gDirectionlLight.color.rgb * gDirectionlLight.intensity * specularPow * float32_t3(1.0f, 1.0f, 1.0f);
-                output.color.rgb = diffuse + specular;
+                output.color.rgb = ambient + diffuse + specular;
                 output.color.a = gMaterial.color.a * textureColor.a;
             }
             break;
