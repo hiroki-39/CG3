@@ -7,7 +7,7 @@ public:
     /// <summary>
     /// 初期化
     /// </summary>
-    void Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& velocity);
+    void Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& velocity, Object3d* parent);
 
     /// <summary>
     /// 更新

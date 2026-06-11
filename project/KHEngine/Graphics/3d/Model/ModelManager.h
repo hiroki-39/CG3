@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <map>
 #include <string>
 #include <memory>
@@ -32,6 +32,9 @@ public:
 	/// <param name="filePath">モデルファイルのパス</param>
 	/// <returns>モデル</returns>
 	Model* FindModel(const std::string& filePath);
+
+	// ModelCommonの取得
+	ModelCommon* GetModelCommon() const { return modelCommon.get(); }
 
 private:
 

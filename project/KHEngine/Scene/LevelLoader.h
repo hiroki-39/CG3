@@ -10,6 +10,13 @@ struct LevelCollider {
     Vector3 size;
 };
 
+struct LevelCurvePoint {
+    Vector3 position;
+    Vector3 handle_left;
+    Vector3 handle_right;
+    float tilt;
+};
+
 struct LevelObjectData {
     std::string type;
     std::string name;
@@ -24,6 +31,9 @@ struct LevelObjectData {
     
     // 子オブジェクト
     std::vector<LevelObjectData> children;
+    
+    // カーブ（レール）の制御点
+    std::vector<LevelCurvePoint> curvePoints;
 };
 
 struct LevelData {

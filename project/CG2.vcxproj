@@ -162,6 +162,7 @@
     <ClCompile Include="KHEngine\Graphics\3d\Primitive\Ring.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Primitive\Cylinder.cpp" />
     <ClCompile Include="Game\System\Application.cpp" />
+    <ClCompile Include="Game\System\Rail.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Skybox\Skybox.cpp" />
     <ClCompile Include="KHEngine\Scene\AbstractSceneFactory.cpp" />
     <ClCompile Include="KHEngine\Core\Framework\BaseScene.cpp" />
@@ -231,6 +232,7 @@
     <ClInclude Include="Game\actor\Player\Player.h" />
     <ClInclude Include="Game\actor\Bullet\PlayerBullet.h" />
     <ClInclude Include="Game\System\Application.h" />
+    <ClInclude Include="Game\System\Rail.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Primitive\Ring.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Primitive\Cylinder.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Skybox\Skybox.h" />

@@ -1,12 +1,15 @@
 #include "PlayerBullet.h"
 
-void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& velocity) {
+void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& velocity, Object3d* parent) {
     velocity_ = velocity;
     object_ = std::make_unique<Object3d>();
     object_->Initialize(object3dCommon);
     object_->SetModel("cube.obj");
     object_->SetTranslate(position);
     object_->SetScale({ 1.0f, 1.0f, 1.0f });
+    if (parent) {
+        object_->SetParent(parent);
+    }
 }
 
 void PlayerBullet::Update() {

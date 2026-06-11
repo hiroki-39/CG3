@@ -19,16 +19,16 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
     object_->SetScale(playerScale_);
      
-    // アクセサリの初期化
-    accessory_ = std::make_unique<Object3d>();
-    accessory_->Initialize(object3dCommon);
-    accessory_->SetModel("suzanne.obj");
-    accessory_->GetModel()->SetColor({0.8f, 0.8f, 0.0f, 1.0f});
-    accessory_->SetEnvironmentTextureIndex(skyboxTexIndex);
-    accessory_->SetEnvironmentCoefficient(0.0f);
-    accessory_->SetScale(Vector3(0.3f, 0.3f, 0.3f));
-    accessory_->SetTranslate(Vector3(1.5f, 1.0f, 0.0f)); // プレイヤーの右上に配置
-    accessory_->SetParent(object_.get()); // 親子関係を設定
+    //// アクセサリの初期化
+    //accessory_ = std::make_unique<Object3d>();
+    //accessory_->Initialize(object3dCommon);
+    //accessory_->SetModel("suzanne.obj");
+    //accessory_->GetModel()->SetColor({0.8f, 0.8f, 0.0f, 1.0f});
+    //accessory_->SetEnvironmentTextureIndex(skyboxTexIndex);
+    //accessory_->SetEnvironmentCoefficient(0.0f);
+    //accessory_->SetScale(Vector3(0.3f, 0.3f, 0.3f));
+    //accessory_->SetTranslate(Vector3(1.5f, 1.0f, 0.0f)); // プレイヤーの右上に配置
+    //accessory_->SetParent(object_.get()); // 親子関係を設定
 
     // 照準の初期化
     reticle_ = std::make_unique<Object3d>();
@@ -39,8 +39,8 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     reticle_->SetEnvironmentCoefficient(0.0f);
     reticle_->SetScale(Vector3(0.5f, 0.5f, 0.5f));
     
-    // 照準の初期位置（プレイヤーの奥）
-    reticlePosition_ = { 0.0f, 1.0f, 20.0f }; 
+    // 照準の初期位置（カメラの奥）
+    reticlePosition_ = { 0.0f, 0.0f, 40.0f }; 
 
     // 初期状態としてグレースケールをOFFにしておく
     if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
@@ -48,9 +48,9 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     }
 }
 
-void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets) {
+void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera) {
     Move();
-    Attack(bullets);
+    Attack(bullets, parentCamera);
 
     object_->Update();
     if (accessory_) {
@@ -166,11 +166,15 @@ void Player::Move() {
     
     // 実際のモデルの Transform にはオフセットを足して適用
     object_->SetScale(playerScale_);
-    object_->SetRotation(Vector3(pitchAngle + modelRotOffset_.x, yawAngle + modelRotOffset_.y, bankAngle + modelRotOffset_.z));
+    object_->SetRotation(Vector3(
+        baseRotation_.x + pitchAngle + modelRotOffset_.x,
+        baseRotation_.y + yawAngle + modelRotOffset_.y,
+        baseRotation_.z + bankAngle + modelRotOffset_.z
+    ));
     object_->SetTranslate(Vector3(logicalPosition_.x + modelPosOffset_.x, logicalPosition_.y + modelPosOffset_.y, logicalPosition_.z + modelPosOffset_.z));
 }
 
-void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets) {
+void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera) {
     if (!input_) return;
 
     // 発射間隔のタイマー更新
@@ -208,7 +212,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets) {
 
         // 弾を生成
         std::unique_ptr<PlayerBullet> newBullet = std::make_unique<PlayerBullet>();
-        newBullet->Initialize(object3dCommon_, playerPos, velocity);
+        newBullet->Initialize(object3dCommon_, playerPos, velocity, parentCamera);
         bullets.push_back(std::move(newBullet));
     }
 }

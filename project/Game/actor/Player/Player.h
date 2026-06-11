@@ -18,7 +18,7 @@ public:
     /// <summary>
     /// 更新
     /// </summary>
-    void Update(std::list<std::unique_ptr<PlayerBullet>>& bullets);
+    void Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera = nullptr);
 
     /// <summary>
     /// 描画
@@ -26,7 +26,20 @@ public:
     void Draw();
 
     void Update3DObjectOnly() {
-        if (object_) object_->Update();
+        if (object_) {
+            object_->SetScale(playerScale_);
+            object_->SetRotation(Vector3(
+                baseRotation_.x + modelRotOffset_.x,
+                baseRotation_.y + modelRotOffset_.y,
+                baseRotation_.z + modelRotOffset_.z
+            ));
+            object_->SetTranslate(Vector3(
+                logicalPosition_.x + modelPosOffset_.x, 
+                logicalPosition_.y + modelPosOffset_.y, 
+                logicalPosition_.z + modelPosOffset_.z
+            ));
+            object_->Update();
+        }
         if (accessory_) accessory_->Update();
         if (reticle_) reticle_->Update();
     }
@@ -34,6 +47,7 @@ public:
     // Getter
     const Vector3& GetTranslate() const { return logicalPosition_; }
     void SetTranslate(const Vector3& translate) { logicalPosition_ = translate; }
+    void SetRotation(const Vector3& rotation) { baseRotation_ = rotation; }
     Object3d* GetObject3d() const { return object_.get(); }
     Object3d* GetReticle() const { return reticle_.get(); }
 
@@ -46,7 +60,7 @@ private:
     /// <summary>
     /// 攻撃処理
     /// </summary>
-    void Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets);
+    void Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera);
 
 private:
     std::unique_ptr<Object3d> object_ = nullptr;
@@ -57,7 +71,7 @@ private:
     
     uint32_t skyboxTexIndex_ = 0; // 再利用するため保持
 
-    Vector3 reticlePosition_ = { 0.0f, 0.0f, 40.0f }; // 照準のワールド座標
+    Vector3 reticlePosition_ = { 0.0f, 0.0f, 40.0f }; // 照準のローカル座標
 
     // プレイヤー設定パラメータ
     float speed_ = 0.3f;
@@ -80,8 +94,9 @@ private:
     Vector3 modelRotOffset_ = { 0.0f, 0.0f, 0.0f };
     Vector3 playerScale_ = { 0.5f, 0.5f, 0.5f };
 
-    // 論理位置
-    Vector3 logicalPosition_ = { 0.0f, 1.0f, -4.0f };
+    // 論理位置・回転 (カメラの子オブジェクトとしてのローカル座標になる)
+    Vector3 logicalPosition_ = { 0.0f, -0.0f, 20.0f }; // カメラから20前方のやや下
+    Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f };
 
     // 攻撃関連
     int attackTimer_ = 0;

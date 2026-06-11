@@ -16,9 +16,41 @@
 #include <numbers>
 #include "KHEngine/Scene/LevelLoader.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
+#include "KHEngine/Core/Resource/ResourceLocator.h"
+#include <filesystem>
 
-static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, Object3dCommon* common, uint32_t skyboxTexIndex) {
+static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::unique_ptr<Rail>& outRail, Object3dCommon* common, uint32_t skyboxTexIndex) {
     const Object3d* currentObj = parentObj;
+
+    if (node.type == "CURVE") {
+        if (!outRail) {
+            // カーブのポイントはローカル座標なので、オブジェクトのTransformを適用してワールド座標に変換する
+            Vector3 rotRad;
+            rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
+            rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
+            rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
+            
+            Matrix4x4 transformMatrix = Matrix4x4::MakeAffine(node.scale, rotRad, node.translation);
+            
+            auto TransformVector = [&transformMatrix](const Vector3& v) -> Vector3 {
+                return {
+                    v.x * transformMatrix.m[0][0] + v.y * transformMatrix.m[1][0] + v.z * transformMatrix.m[2][0] + transformMatrix.m[3][0],
+                    v.x * transformMatrix.m[0][1] + v.y * transformMatrix.m[1][1] + v.z * transformMatrix.m[2][1] + transformMatrix.m[3][1],
+                    v.x * transformMatrix.m[0][2] + v.y * transformMatrix.m[1][2] + v.z * transformMatrix.m[2][2] + transformMatrix.m[3][2]
+                };
+            };
+            
+            std::vector<LevelCurvePoint> worldPoints = node.curvePoints;
+            for (auto& pt : worldPoints) {
+                pt.position = TransformVector(pt.position);
+                pt.handle_left = TransformVector(pt.handle_left);
+                pt.handle_right = TransformVector(pt.handle_right);
+            }
+            
+            outRail = std::make_unique<Rail>();
+            outRail->Initialize(worldPoints);
+        }
+    }
 
     if (node.type == "MESH") {
         auto obj = std::make_unique<Object3d>();
@@ -61,7 +93,7 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 
     // 子オブジェクトを再帰的に生成
     for (const auto& child : node.children) {
-        CreateObjectFromNode(child, currentObj, instances, common, skyboxTexIndex);
+        CreateObjectFromNode(child, currentObj, instances, outRail, common, skyboxTexIndex);
     }
 }
 
@@ -132,12 +164,12 @@ void GamePlayScene::Initialize()
 
     particleEffect_.Initialize(dxCommon, srvManager);
     
-    // 最初からデフォルトのノードを追加しておく
-    particleEffect_.AddNode("HitEffect", 0);
-    particleEffect_.AddNode("Shockwave", 1);
-    particleEffect_.AddNode("Aura", 2);
-    
-    particleEffect_.Play();
+    //// 最初からデフォルトのノードを追加しておく
+    //particleEffect_.AddNode("HitEffect", 0);
+    //particleEffect_.AddNode("Shockwave", 1);
+    //particleEffect_.AddNode("Aura", 2);
+    //
+    //particleEffect_.Play();
 
 
     // スプライト作成
@@ -167,10 +199,10 @@ void GamePlayScene::Initialize()
 
         auto terrain = std::make_unique<Object3d>();
         terrain->Initialize(object3dCommon);
-        terrain->SetModel("terrain.obj");
-        terrain->SetTranslate(Vector3(0.0f, 0.0f, 0.0f));
+        terrain->SetModel("suzanne.obj");
+        terrain->SetTranslate(Vector3(0.0f, 50.0f, 0.0f));
         terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-        terrain->SetScale(Vector3(100.0f, 100.0f, 100.0f));
+        terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
         modelInstances.push_back(std::move(terrain));
     }
 
@@ -178,17 +210,76 @@ void GamePlayScene::Initialize()
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
     if (levelData) {
         for (const auto& objData : levelData->objects) {
-            CreateObjectFromNode(objData, nullptr, modelInstances, object3dCommon, skybox_->GetCubemapSrvIndex());
+            CreateObjectFromNode(objData, nullptr, modelInstances, mainRail_, object3dCommon, skybox_->GetCubemapSrvIndex());
         }
         OutputDebugStringA("LevelLoader: Successfully placed objects.\n");
     } else {
-        OutputDebugStringA("LevelLoader: Failed to load template.json!\n");
+        OutputDebugStringA("LevelLoader: Failed to load level.\n");
     }
+
+    // レールの可視化用オブジェクトの生成
+    if (mainRail_ && mainRail_->IsValid()) {
+        railModel_ = std::make_unique<Model>();
+        
+        std::string resolved = ResourceLocator::Resolve("rail.obj", ResourceLocator::AssetType::Model3D);
+        if (!resolved.empty()) {
+            std::filesystem::path rp(reinterpret_cast<const char8_t*>(resolved.c_str()));
+            std::string directory = rp.parent_path().string();
+            std::string filename = rp.filename().string();
+            railModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), directory, filename);
+        } else {
+            // フォールバック
+            railModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), "resources/models", "rail.obj");
+        }
+        
+        railModel_->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 独立した赤色のマテリアル
+
+        int sampleCount = 200; // 分割数を増やして滑らかな線にする
+        for (int i = 0; i < sampleCount; ++i) {
+            float t1 = static_cast<float>(i) / sampleCount;
+            float t2 = static_cast<float>(i + 1) / sampleCount;
+            
+            Vector3 p1 = mainRail_->GetPosition(t1);
+            Vector3 p2 = mainRail_->GetPosition(t2);
+            
+            Vector3 dir = { p2.x - p1.x, p2.y - p1.y, p2.z - p1.z };
+            float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+            if (length < 0.0001f) continue;
+            
+            dir.x /= length; dir.y /= length; dir.z /= length;
+            
+            Vector3 center = { (p1.x + p2.x) * 0.5f, (p1.y + p2.y) * 0.5f, (p1.z + p2.z) * 0.5f };
+            
+            auto obj = std::make_unique<Object3d>();
+            obj->Initialize(object3dCommon);
+            obj->SetModel(railModel_.get()); 
+            obj->SetTranslate(center);
+            float yaw = std::atan2(dir.x, dir.z);
+            float pitch = std::asin(-dir.y);
+            obj->SetRotation(Vector3(pitch, yaw, 0.0f));
+            
+            // 少し長めにスケールして途切れないようにする(length)
+            obj->SetScale(Vector3(0.02f, 0.02f, length)); 
+            
+            obj->SetEnvironmentCoefficient(0.0f);
+            obj->SetEnvironmentTextureIndex(skybox_->GetCubemapSrvIndex());
+            
+            railVisualizers_.push_back(std::move(obj));
+        }
+    }
+
+    // カメラオブジェクト（プレイヤーの親となる）の初期化
+    cameraObject_ = std::make_unique<Object3d>();
+    cameraObject_->Initialize(object3dCommon);
 
     // プレイヤーの初期化
     player_ = std::make_unique<Player>();
     player_->Initialize(object3dCommon, skybox_->GetCubemapSrvIndex());
     player_->LoadSettings("resources/json/player/player_settings.json");
+    
+    // プレイヤーをカメラオブジェクトの子にする
+    player_->GetObject3d()->SetParent(cameraObject_.get());
+    player_->GetReticle()->SetParent(cameraObject_.get());
 
     // 全てのモデル・テクスチャ読み込みが終わった後にGPUへ転送する
     texManager->ExecuteUploadCommands();
@@ -205,6 +296,15 @@ void GamePlayScene::Finalize()
     camera.reset();
     debugCamera_.reset();
     activeCamera_ = nullptr;
+}
+
+namespace {
+    float LerpAngle(float a, float b, float t) {
+        float diff = b - a;
+        while (diff < -3.14159265f) diff += 6.2831853f;
+        while (diff > 3.14159265f) diff -= 6.2831853f;
+        return a + diff * t;
+    }
 }
 
 void GamePlayScene::Update()
@@ -304,21 +404,73 @@ void GamePlayScene::Update()
             }
 
             activeCamera_->SetTranslate(pos);
+
+            // 自由カメラ移動時は cameraObject_ (プレイヤーの親) を同期しないことで、
+            // プレイヤーは元の位置に取り残される（=自由に見回せる）ようにする
         }
 
-        // --- ルート固定移動（自動前進） ---
+        // --- ルート固定移動（レールに沿った移動） ---
         if (isPlaying_)
         {
-            const float kAutoSpeed = 0.05f;
-            Vector3 camPos = activeCamera_->GetTranslate();
-            camPos.z += kAutoSpeed;
-            activeCamera_->SetTranslate(camPos);
+            if (mainRail_ && mainRail_->IsValid()) {
+                float kAutoSpeed = 0.002f * gameSpeed_; // レール上の進行速度(要調整)
+                railProgress_ += kAutoSpeed;
+                if (railProgress_ > 1.0f) {
+                    railProgress_ = 1.0f; // 終点で停止
+                }
 
-            // プレイヤーも前進
-            if (player_) {
-                Vector3 playerPos = player_->GetTranslate();
-                playerPos.z += kAutoSpeed;
-                player_->SetTranslate(playerPos);
+                // カメラをレールから「上へ1.0f」浮かせる
+                // （回転行列でローカルの上方向にずらすと、曲線の接線変化で位置がブレてガタつくため、ワールド座標で単純に上にずらす）
+                Vector3 baseEye = mainRail_->GetPosition(railProgress_);
+                Vector3 eye = baseEye;
+                eye.y += 0.2f;
+                
+                // 注視点は少し進んだ地点（厳密にレールに沿わせるため距離を短くする）
+                float targetProgress = std::min(railProgress_ + 0.01f, 1.0f);
+                Vector3 baseTarget = mainRail_->GetPosition(targetProgress);
+
+                // 差分ベクトル (forward)
+                Vector3 forward = {
+                    baseTarget.x - baseEye.x,
+                    baseTarget.y - baseEye.y,
+                    baseTarget.z - baseEye.z
+                };
+
+                // 正規化
+                float len = std::sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
+                if (len > 1e-6f) {
+                    forward.x /= len; forward.y /= len; forward.z /= len;
+                }
+
+                // 目標の回転角の計算（レールの接線にピッタリ合わせる）
+                float targetYaw = std::atan2(forward.x, forward.z);
+                float targetPitch = std::asin(-forward.y);
+                float railTilt = mainRail_->GetTilt(railProgress_);
+
+                // 補間なしで完全にレールと同じ向きにする
+                Vector3 cameraRot(targetPitch, targetYaw, railTilt);
+
+                // カメラオブジェクトのワールド行列に反映（自機などの親）
+                if (cameraObject_) {
+                    cameraObject_->SetTranslate(eye);
+                    cameraObject_->SetRotation(cameraRot);
+                    cameraObject_->Update();
+                }
+
+                // 実際のカメラの更新 (スライド4の通り、カメラオブジェクトのワールド行列の逆行列をビュー行列とするため、完全に一致させる)
+                activeCamera_->SetTranslate(eye);
+                activeCamera_->SetRotation(cameraRot);
+            } else {
+                // レールが無い場合のフォールバック（自動前進）
+                const float kAutoSpeed = 0.05f;
+                Vector3 camPos = activeCamera_->GetTranslate();
+                camPos.z += kAutoSpeed;
+                activeCamera_->SetTranslate(camPos);
+
+                if (cameraObject_) {
+                    cameraObject_->SetTranslate(camPos);
+                    cameraObject_->Update();
+                }
             }
         }
     }
@@ -326,7 +478,7 @@ void GamePlayScene::Update()
     // プレイヤーの更新
     if (player_) {
         if (isPlaying_) {
-            player_->Update(bullets_);
+            player_->Update(bullets_, cameraObject_.get());
         } else {
             // ゲーム停止中でも、Object3dの更新(カメラ行列の反映など)は必要
             player_->Update3DObjectOnly();
@@ -366,7 +518,9 @@ void GamePlayScene::Update()
     // カメラ更新（入力反映後に行う）
     if (activeCamera_) activeCamera_->Update();
     for (auto& model : modelInstances) if (model) model->Update();
-    for (auto& sprite : sprites) if (sprite) sprite->Update();
+    if (isDrawRail_) {
+        for (auto& vis : railVisualizers_) if (vis) vis->Update();
+    }
 
     // カメラ行列の取得
     Matrix4x4 cameraMatrix = Matrix4x4::Identity();
@@ -394,18 +548,101 @@ void GamePlayScene::Update()
 #ifdef USE_IMGUI
 
     ImGui::Begin("Game Control");
+    
+    bool doReset = false;
+
+    // シーン切り替えとプレイ状態
     if (isPlaying_) {
         if (ImGui::Button("Stop (Pause)", ImVec2(120, 40))) {
             isPlaying_ = false;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Reset", ImVec2(120, 40))) {
+            doReset = true;
         }
         ImGui::Text("Status: PLAYING");
     } else {
         if (ImGui::Button("Play (Start)", ImVec2(120, 40))) {
             isPlaying_ = true;
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Reset", ImVec2(120, 40))) {
+            doReset = true;
+        }
         ImGui::Text("Status: STOPPED (Free Camera Mode)");
         ImGui::Text("Camera Control: WASD/QE to move, Right-Click Drag to rotate");
     }
+
+    ImGui::Separator();
+    if (ImGui::SliderFloat("ゲーム時間 (Rail Progress)", &railProgress_, 0.0f, 1.0f)) {
+        if (!isPlaying_ && mainRail_ && mainRail_->IsValid()) {
+            Vector3 baseEye = mainRail_->GetPosition(railProgress_);
+            float targetProgress = std::min(railProgress_ + 0.01f, 1.0f);
+            Vector3 baseTarget = mainRail_->GetPosition(targetProgress);
+
+            Vector3 forward = {
+                baseTarget.x - baseEye.x,
+                baseTarget.y - baseEye.y,
+                baseTarget.z - baseEye.z
+            };
+            float len = std::sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
+            if (len > 1e-6f) {
+                forward.x /= len; forward.y /= len; forward.z /= len;
+            }
+
+            float targetYaw = std::atan2(forward.x, forward.z);
+            float targetPitch = std::asin(-forward.y);
+            float railTilt = mainRail_->GetTilt(railProgress_);
+            Vector3 cameraRot(targetPitch, targetYaw, railTilt);
+
+            if (cameraObject_) {
+                cameraObject_->SetTranslate(baseEye);
+                cameraObject_->SetRotation(cameraRot);
+                cameraObject_->Update();
+            }
+            if (camera) {
+                camera->SetTranslate(baseEye);
+                camera->SetRotation(cameraRot);
+            }
+        }
+    }
+    ImGui::SliderFloat("ゲームスピード (Game Speed)", &gameSpeed_, 0.0f, 5.0f);
+
+    // リセット処理：レール進行度を0に戻し、カメラとプレイヤーを始点に移動させる
+    if (doReset) {
+        railProgress_ = 0.0f;
+        isPlaying_ = false;
+        if (mainRail_ && mainRail_->IsValid()) {
+            Vector3 baseEye = mainRail_->GetPosition(0.0f);
+            Vector3 railForward = mainRail_->GetForward(0.0f);
+            float railTilt = mainRail_->GetTilt(0.0f);
+            float yaw = std::atan2(railForward.x, railForward.z);
+            float pitch = std::asin(-railForward.y);
+            Vector3 cameraRot(pitch, yaw, railTilt);
+
+            // リセット時に補間用変数を初期化
+            currentCameraRot_ = {pitch, yaw, 0.0f};
+            lastCameraYaw_ = yaw;
+            currentCameraBank_ = railTilt;
+
+            // カメラをレールから「上へ1.0f」浮かせる（ワールド座標で単純に上にずらす）
+            Vector3 eye = baseEye;
+            eye.y += 1.0f;
+
+            if (activeCamera_) {
+                activeCamera_->SetTranslate(eye);
+                activeCamera_->SetRotation(cameraRot);
+            }
+            if (cameraObject_) {
+                cameraObject_->SetTranslate(eye);
+                cameraObject_->SetRotation(cameraRot);
+                cameraObject_->Update();
+            }
+        }
+    }
+    
+    ImGui::Separator();
+    ImGui::Checkbox("レールを表示 (Draw Rail)", &isDrawRail_);
     ImGui::End();
 
     if (player_) {
@@ -953,7 +1190,13 @@ void GamePlayScene::Draw()
         player_->Draw();
     }
 
-
+    // レールの描画
+    if (isDrawRail_) {
+        if (object3dCommon) object3dCommon->SetCommonDrawSetting();
+        for (auto& vis : railVisualizers_) {
+            if (vis) vis->Draw();
+        }
+    }
 
     particleEffect_.Draw();
 }
