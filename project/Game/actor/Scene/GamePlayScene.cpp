@@ -221,7 +221,7 @@ void GamePlayScene::Initialize()
     if (mainRail_ && mainRail_->IsValid()) {
         railModel_ = std::make_unique<Model>();
         
-        std::string resolved = ResourceLocator::Resolve("cube.obj", ResourceLocator::AssetType::Model3D);
+        std::string resolved = ResourceLocator::Resolve("rail.obj", ResourceLocator::AssetType::Model3D);
         if (!resolved.empty()) {
             std::filesystem::path rp(reinterpret_cast<const char8_t*>(resolved.c_str()));
             std::string directory = rp.parent_path().string();
@@ -229,7 +229,7 @@ void GamePlayScene::Initialize()
             railModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), directory, filename);
         } else {
             // フォールバック
-            railModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), "resources/models", "cube.obj");
+            railModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), "resources/models", "rail.obj");
         }
         
         railModel_->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 独立した赤色のマテリアル
@@ -296,6 +296,15 @@ void GamePlayScene::Finalize()
     camera.reset();
     debugCamera_.reset();
     activeCamera_ = nullptr;
+}
+
+namespace {
+    float LerpAngle(float a, float b, float t) {
+        float diff = b - a;
+        while (diff < -3.14159265f) diff += 6.2831853f;
+        while (diff > 3.14159265f) diff -= 6.2831853f;
+        return a + diff * t;
+    }
 }
 
 void GamePlayScene::Update()
@@ -404,16 +413,19 @@ void GamePlayScene::Update()
         if (isPlaying_)
         {
             if (mainRail_ && mainRail_->IsValid()) {
-                const float kAutoSpeed = 0.002f; // レール上の進行速度(要調整)
+                float kAutoSpeed = 0.002f * gameSpeed_; // レール上の進行速度(要調整)
                 railProgress_ += kAutoSpeed;
                 if (railProgress_ > 1.0f) {
                     railProgress_ = 1.0f; // 終点で停止
                 }
 
-                // 課題の仕様通り: 視点(eye)と注視点(target)を求めてカメラ行列を作成
+                // カメラをレールから「上へ1.0f」浮かせる
+                // （回転行列でローカルの上方向にずらすと、曲線の接線変化で位置がブレてガタつくため、ワールド座標で単純に上にずらす）
                 Vector3 baseEye = mainRail_->GetPosition(railProgress_);
+                Vector3 eye = baseEye;
+                eye.y += 0.2f;
                 
-                // 注視点は少し進んだ地点
+                // 注視点は少し進んだ地点（厳密にレールに沿わせるため距離を短くする）
                 float targetProgress = std::min(railProgress_ + 0.01f, 1.0f);
                 Vector3 baseTarget = mainRail_->GetPosition(targetProgress);
 
@@ -430,23 +442,13 @@ void GamePlayScene::Update()
                     forward.x /= len; forward.y /= len; forward.z /= len;
                 }
 
-                // 回転角の計算
-                float yaw = std::atan2(forward.x, forward.z);
-                float pitch = std::asin(-forward.y);
+                // 目標の回転角の計算（レールの接線にピッタリ合わせる）
+                float targetYaw = std::atan2(forward.x, forward.z);
+                float targetPitch = std::asin(-forward.y);
                 float railTilt = mainRail_->GetTilt(railProgress_);
-                Vector3 cameraRot(pitch, yaw, railTilt);
 
-                // 視点(eye)をレールの少し上（+3.0f）に設定することで、レールが画面中央を塞ぐのを防ぐ
-                Matrix4x4 baseRotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, cameraRot, baseEye);
-                Vector3 cameraOffset = { 0.0f, 3.0f, 0.0f }; // レールから上に3.0f浮かせる
-                Vector3 eye = {
-                    cameraOffset.x * baseRotMat.m[0][0] + cameraOffset.y * baseRotMat.m[1][0] + cameraOffset.z * baseRotMat.m[2][0] + baseRotMat.m[3][0],
-                    cameraOffset.x * baseRotMat.m[0][1] + cameraOffset.y * baseRotMat.m[1][1] + cameraOffset.z * baseRotMat.m[2][1] + baseRotMat.m[3][1],
-                    cameraOffset.x * baseRotMat.m[0][2] + cameraOffset.y * baseRotMat.m[1][2] + cameraOffset.z * baseRotMat.m[2][2] + baseRotMat.m[3][2]
-                };
-                
-                // カメラを少し見下ろすように角度をつける
-                cameraRot.x += 0.1f;
+                // 補間なしで完全にレールと同じ向きにする
+                Vector3 cameraRot(targetPitch, targetYaw, railTilt);
 
                 // カメラオブジェクトのワールド行列に反映（自機などの親）
                 if (cameraObject_) {
@@ -476,7 +478,7 @@ void GamePlayScene::Update()
     // プレイヤーの更新
     if (player_) {
         if (isPlaying_) {
-            player_->Update(bullets_);
+            player_->Update(bullets_, cameraObject_.get());
         } else {
             // ゲーム停止中でも、Object3dの更新(カメラ行列の反映など)は必要
             player_->Update3DObjectOnly();
@@ -571,6 +573,41 @@ void GamePlayScene::Update()
         ImGui::Text("Camera Control: WASD/QE to move, Right-Click Drag to rotate");
     }
 
+    ImGui::Separator();
+    if (ImGui::SliderFloat("ゲーム時間 (Rail Progress)", &railProgress_, 0.0f, 1.0f)) {
+        if (!isPlaying_ && mainRail_ && mainRail_->IsValid()) {
+            Vector3 baseEye = mainRail_->GetPosition(railProgress_);
+            float targetProgress = std::min(railProgress_ + 0.01f, 1.0f);
+            Vector3 baseTarget = mainRail_->GetPosition(targetProgress);
+
+            Vector3 forward = {
+                baseTarget.x - baseEye.x,
+                baseTarget.y - baseEye.y,
+                baseTarget.z - baseEye.z
+            };
+            float len = std::sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
+            if (len > 1e-6f) {
+                forward.x /= len; forward.y /= len; forward.z /= len;
+            }
+
+            float targetYaw = std::atan2(forward.x, forward.z);
+            float targetPitch = std::asin(-forward.y);
+            float railTilt = mainRail_->GetTilt(railProgress_);
+            Vector3 cameraRot(targetPitch, targetYaw, railTilt);
+
+            if (cameraObject_) {
+                cameraObject_->SetTranslate(baseEye);
+                cameraObject_->SetRotation(cameraRot);
+                cameraObject_->Update();
+            }
+            if (camera) {
+                camera->SetTranslate(baseEye);
+                camera->SetRotation(cameraRot);
+            }
+        }
+    }
+    ImGui::SliderFloat("ゲームスピード (Game Speed)", &gameSpeed_, 0.0f, 5.0f);
+
     // リセット処理：レール進行度を0に戻し、カメラとプレイヤーを始点に移動させる
     if (doReset) {
         railProgress_ = 0.0f;
@@ -583,14 +620,14 @@ void GamePlayScene::Update()
             float pitch = std::asin(-railForward.y);
             Vector3 cameraRot(pitch, yaw, railTilt);
 
-            Matrix4x4 baseRotMat = Matrix4x4::MakeAffine({1.0f, 1.0f, 1.0f}, cameraRot, baseEye);
-            Vector3 cameraOffset = { 0.0f, 3.0f, 0.0f }; // レールから上に3.0f浮かせる
-            Vector3 eye = {
-                cameraOffset.x * baseRotMat.m[0][0] + cameraOffset.y * baseRotMat.m[1][0] + cameraOffset.z * baseRotMat.m[2][0] + baseRotMat.m[3][0],
-                cameraOffset.x * baseRotMat.m[0][1] + cameraOffset.y * baseRotMat.m[1][1] + cameraOffset.z * baseRotMat.m[2][1] + baseRotMat.m[3][1],
-                cameraOffset.x * baseRotMat.m[0][2] + cameraOffset.y * baseRotMat.m[1][2] + cameraOffset.z * baseRotMat.m[2][2] + baseRotMat.m[3][2]
-            };
-            cameraRot.x += 0.1f;
+            // リセット時に補間用変数を初期化
+            currentCameraRot_ = {pitch, yaw, 0.0f};
+            lastCameraYaw_ = yaw;
+            currentCameraBank_ = railTilt;
+
+            // カメラをレールから「上へ1.0f」浮かせる（ワールド座標で単純に上にずらす）
+            Vector3 eye = baseEye;
+            eye.y += 1.0f;
 
             if (activeCamera_) {
                 activeCamera_->SetTranslate(eye);

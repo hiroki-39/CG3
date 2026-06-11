@@ -18,7 +18,7 @@ public:
     /// <summary>
     /// 更新
     /// </summary>
-    void Update(std::list<std::unique_ptr<PlayerBullet>>& bullets);
+    void Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera = nullptr);
 
     /// <summary>
     /// 描画
@@ -60,7 +60,7 @@ private:
     /// <summary>
     /// 攻撃処理
     /// </summary>
-    void Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets);
+    void Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera);
 
 private:
     std::unique_ptr<Object3d> object_ = nullptr;
@@ -95,7 +95,7 @@ private:
     Vector3 playerScale_ = { 0.5f, 0.5f, 0.5f };
 
     // 論理位置・回転 (カメラの子オブジェクトとしてのローカル座標になる)
-    Vector3 logicalPosition_ = { 0.0f, -2.5f, 20.0f }; // カメラオブジェクトから20前方のやや下
+    Vector3 logicalPosition_ = { 0.0f, -0.0f, 20.0f }; // カメラから20前方のやや下
     Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f };
 
     // 攻撃関連

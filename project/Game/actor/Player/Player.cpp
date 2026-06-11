@@ -48,9 +48,9 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     }
 }
 
-void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets) {
+void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera) {
     Move();
-    Attack(bullets);
+    Attack(bullets, parentCamera);
 
     object_->Update();
     if (accessory_) {
@@ -174,7 +174,7 @@ void Player::Move() {
     object_->SetTranslate(Vector3(logicalPosition_.x + modelPosOffset_.x, logicalPosition_.y + modelPosOffset_.y, logicalPosition_.z + modelPosOffset_.z));
 }
 
-void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets) {
+void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera) {
     if (!input_) return;
 
     // 発射間隔のタイマー更新
@@ -212,7 +212,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets) {
 
         // 弾を生成
         std::unique_ptr<PlayerBullet> newBullet = std::make_unique<PlayerBullet>();
-        newBullet->Initialize(object3dCommon_, playerPos, velocity);
+        newBullet->Initialize(object3dCommon_, playerPos, velocity, parentCamera);
         bullets.push_back(std::move(newBullet));
     }
 }

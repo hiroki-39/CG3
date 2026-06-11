@@ -40,11 +40,17 @@ private:
     // レールシステム
     std::unique_ptr<Rail> mainRail_;
     float railProgress_ = 0.0f;
+    float gameSpeed_ = 1.0f;
     std::unique_ptr<Model> railModel_;
     std::vector<std::unique_ptr<Object3d>> railVisualizers_;
     bool isDrawRail_ = true;
     std::unique_ptr<Skybox> skybox_;
     bool isPlaying_ = false;
+
+    // カメラの補間用
+    Vector3 currentCameraRot_ = {0.0f, 0.0f, 0.0f};
+    float lastCameraYaw_ = 0.0f;
+    float currentCameraBank_ = 0.0f;
 
     float kDeltaTime_local_override = 0.0f;
 
