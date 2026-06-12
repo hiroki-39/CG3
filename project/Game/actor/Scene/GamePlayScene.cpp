@@ -191,18 +191,18 @@ void GamePlayScene::Initialize()
         obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
         uint32_t skyboxTexIndex = skybox_->GetCubemapSrvIndex();
         obj->SetEnvironmentTextureIndex(skyboxTexIndex);
-        obj->SetEnvironmentCoefficient(0.0f);
-        obj->SetTranslate(Vector3(0.0f, 1.0f, -4.0f));
-        obj->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-        obj->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+        obj->SetEnvironmentCoefficient(1.0f);
+        obj->SetTranslate(Vector3(0.0f, 3.0f, 40.0f));
+        obj->SetRotation(Vector3(0.0f, 2.3f, 0.0f));
+        obj->SetScale(Vector3(3.0f, 3.0f, 3.0f));
         modelInstances.push_back(std::move(obj));
 
         auto terrain = std::make_unique<Object3d>();
         terrain->Initialize(object3dCommon);
-        terrain->SetModel("suzanne.obj");
-        terrain->SetTranslate(Vector3(0.0f, 50.0f, 0.0f));
+        terrain->SetModel("terrain.obj");
+        terrain->SetTranslate(Vector3(0.0f, -3.0f, 0.0f));
         terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-        terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+        terrain->SetScale(Vector3(1000.0f, 1000.0f, 1000.0f));
         modelInstances.push_back(std::move(terrain));
     }
 
