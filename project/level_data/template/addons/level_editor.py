@@ -270,7 +270,7 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
             points_list = []
             for spline in curve_data.splines:
                 if spline.type == 'BEZIER':
-                    for point in spline.bezier_points:
+                    for i, point in enumerate(spline.bezier_points):
                         position = matrix_world @ point.co
                         handle_left = matrix_world @ point.handle_left
                         handle_right = matrix_world @ point.handle_right
@@ -280,6 +280,13 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
                             "handle_right": {"x": handle_right.x, "y": handle_right.y, "z": handle_right.z},
                             "tilt": point.tilt
                         }
+                        # オブジェクト自体に持たせた speed_i, event_i を取得する
+                        speed_key = f"speed_{i}"
+                        event_key = f"event_{i}"
+                        if speed_key in object:
+                            point_data["speed"] = object[speed_key]
+                        if event_key in object:
+                            point_data["event"] = object[event_key]
                         points_list.append(point_data)
                 elif spline.type in {'NURBS', 'POLY'}:
                     for point in spline.points:
