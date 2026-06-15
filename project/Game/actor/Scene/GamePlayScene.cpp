@@ -19,7 +19,7 @@
 #include "KHEngine/Core/Resource/ResourceLocator.h"
 #include <filesystem>
 
-static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::unique_ptr<Rail>& outRail, Object3dCommon* common, uint32_t skyboxTexIndex) {
+static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::unique_ptr<Rail>& outRail, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies) {
     const Object3d* currentObj = parentObj;
 
     if (node.type == "CURVE") {
@@ -49,6 +49,14 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
             
             outRail = std::make_unique<Rail>();
             outRail->Initialize(worldPoints);
+        }
+    }
+
+    if (node.type == "EMPTY" && !node.fileName.empty()) {
+        if (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos || node.fileName.find("Obstacle") != std::string::npos) {
+            auto enemy = std::make_unique<Enemy>();
+            enemy->Initialize(common, node.translation, node.fileName, skyboxTexIndex);
+            enemies.push_back(std::move(enemy));
         }
     }
 
@@ -93,7 +101,7 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 
     // 子オブジェクトを再帰的に生成
     for (const auto& child : node.children) {
-        CreateObjectFromNode(child, currentObj, instances, outRail, common, skyboxTexIndex);
+        CreateObjectFromNode(child, currentObj, instances, outRail, common, skyboxTexIndex, enemies);
     }
 }
 
@@ -210,7 +218,7 @@ void GamePlayScene::Initialize()
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
     if (levelData) {
         for (const auto& objData : levelData->objects) {
-            CreateObjectFromNode(objData, nullptr, modelInstances, mainRail_, object3dCommon, skybox_->GetCubemapSrvIndex());
+            CreateObjectFromNode(objData, nullptr, modelInstances, mainRail_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_);
         }
         OutputDebugStringA("LevelLoader: Successfully placed objects.\n");
     } else {
@@ -495,9 +503,57 @@ void GamePlayScene::Update()
                 ++it;
             }
         }
+
+        // 敵の更新と当たり判定
+        for (auto it = enemies_.begin(); it != enemies_.end();) {
+            (*it)->Update();
+
+            // プレイヤーの弾との当たり判定
+            for (auto& bullet : bullets_) {
+                if (bullet->IsDead()) continue;
+
+                Vector3 diff = {
+                    (*it)->GetPosition().x - bullet->GetPosition().x,
+                    (*it)->GetPosition().y - bullet->GetPosition().y,
+                    (*it)->GetPosition().z - bullet->GetPosition().z
+                };
+                float distSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+                // 弾の半径をとりあえず1.0fとする
+                float rSq = ((*it)->GetRadius() + 1.0f) * ((*it)->GetRadius() + 1.0f);
+
+                if (distSq <= rSq) {
+                    bullet->OnCollision();
+                    (*it)->OnCollision();
+                    
+                    // パーティクルの再生
+                    particleEffect_.Play();
+                }
+            }
+
+            if ((*it)->IsDead()) {
+                // 破壊エフェクト
+                particleEffect_.Play();
+                it = enemies_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+
+        // 当たり判定で死んだ弾を削除
+        for (auto it = bullets_.begin(); it != bullets_.end(); ) {
+            if ((*it)->IsDead()) {
+                it = bullets_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+
     } else {
         for (auto& bullet : bullets_) {
             bullet->Update3DObjectOnly();
+        }
+        for (auto& enemy : enemies_) {
+            enemy->Update3DObjectOnly();
         }
     }
 
@@ -1182,6 +1238,12 @@ void GamePlayScene::Draw()
     // 弾の描画
     for (auto& bullet : bullets_) {
         bullet->Draw();
+    }
+    
+    // 敵の描画
+    if (object3dCommon) object3dCommon->SetCommonDrawSetting();
+    for (auto& enemy : enemies_) {
+        enemy->Draw();
     }
     
     // プレイヤーの描画

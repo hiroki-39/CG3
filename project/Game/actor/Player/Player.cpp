@@ -34,10 +34,10 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     reticle_ = std::make_unique<Object3d>();
     reticle_->Initialize(object3dCommon);
     reticle_->SetModel("plane.obj"); // 照準モデルとして使用
-    reticle_->GetModel()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
+    reticle_->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 赤色
     reticle_->SetEnvironmentTextureIndex(skyboxTexIndex);
     reticle_->SetEnvironmentCoefficient(0.0f);
-    reticle_->SetScale(Vector3(0.5f, 0.5f, 0.5f));
+    reticle_->SetScale(Vector3(1.0f, 1.0f, 1.0f));
     
     // 照準の初期位置（カメラの奥）
     reticlePosition_ = { 0.0f, 0.0f, 40.0f }; 
