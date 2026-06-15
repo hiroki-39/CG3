@@ -1,6 +1,6 @@
 {
     "attackInterval": 15,
-    "bulletSpeed": 3.0,
+    "bulletSpeed": 10.0,
     "color": [
         1.0,
         1.0,

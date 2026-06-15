@@ -159,6 +159,7 @@
     <ClCompile Include="Game\actor\Scene\TitleScene.cpp" />
     <ClCompile Include="Game\actor\Player\Player.cpp" />
     <ClCompile Include="Game\actor\Bullet\PlayerBullet.cpp" />
+    <ClCompile Include="Game\actor\Enemy\Enemy.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Primitive\Ring.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Primitive\Cylinder.cpp" />
     <ClCompile Include="Game\System\Application.cpp" />
@@ -231,6 +232,7 @@
     <ClInclude Include="Game\actor\Scene\TitleScene.h" />
     <ClInclude Include="Game\actor\Player\Player.h" />
     <ClInclude Include="Game\actor\Bullet\PlayerBullet.h" />
+    <ClInclude Include="Game\actor\Enemy\Enemy.h" />
     <ClInclude Include="Game\System\Application.h" />
     <ClInclude Include="Game\System\Rail.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Primitive\Ring.h" />

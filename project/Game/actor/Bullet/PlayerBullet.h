@@ -24,6 +24,9 @@ public:
     // デッドフラグ
     bool IsDead() const { return isDead_; }
 
+    const Vector3& GetPosition() const { return object_ ? object_->GetTranslate() : velocity_; }
+    void OnCollision() { isDead_ = true; }
+
 private:
     std::unique_ptr<Object3d> object_ = nullptr;
     Vector3 velocity_ = { 0.0f, 0.0f, 1.5f }; // 速度ベクトル

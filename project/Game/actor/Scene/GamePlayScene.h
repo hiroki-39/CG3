@@ -15,6 +15,7 @@
 #include "Game/actor/Player/Player.h"
 #include "Game/actor/Bullet/PlayerBullet.h"
 #include "Game/System/Rail.h"
+#include "Game/actor/Enemy/Enemy.h"
 #include <vector>
 #include <list>
 #include <random>
@@ -65,4 +66,7 @@ private:
     std::unique_ptr<Player> player_;
     // 弾リスト
     std::list<std::unique_ptr<PlayerBullet>> bullets_;
+
+    // 敵リスト
+    std::list<std::unique_ptr<Enemy>> enemies_;
 };
