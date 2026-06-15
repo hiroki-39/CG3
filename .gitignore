@@ -336,4 +336,7 @@ imgui.ini
 # Visual Studio debug symbols
 *.pdb
 
-
+*.blend
+*.blend[0-9]
+.blend
+.blend[0-9]
