@@ -29,6 +29,8 @@ public:
     void Draw() override;
     void Finalize() override;
 
+    void ReloadLevel(); // レベルリロード用メソッド
+
 private:
     // ゲーム固有メンバ
     std::vector<std::unique_ptr<Object3d>> modelInstances;

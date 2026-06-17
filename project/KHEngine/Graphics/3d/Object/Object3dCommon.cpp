@@ -192,7 +192,7 @@ void Object3dCommon::CreateGraphicsPipeline()
 	//RasiterZerStateの設定
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
 
-	//裏面を表示しない
+	//裏面(時計回り)を表示しない
 	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
 
 	//三角形の中を塗りつぶす

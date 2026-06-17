@@ -8,6 +8,7 @@ struct LevelCollider {
     std::string type;
     Vector3 center;
     Vector3 size;
+    float radius = 1.0f;
 };
 
 struct LevelCurvePoint {

@@ -17,7 +17,9 @@
 #include "KHEngine/Scene/LevelLoader.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Core/Resource/ResourceLocator.h"
+#include "externals/imgui/imgui.h"
 #include <filesystem>
+#include "KHEngine/Math/CollisionMath.h"
 
 static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::unique_ptr<Rail>& outRail, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies) {
     const Object3d* currentObj = parentObj;
@@ -55,7 +57,7 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
     if (node.type == "EMPTY" && !node.fileName.empty()) {
         if (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos || node.fileName.find("Obstacle") != std::string::npos) {
             auto enemy = std::make_unique<Enemy>();
-            enemy->Initialize(common, node.translation, node.fileName, skyboxTexIndex);
+            enemy->Initialize(common, node.translation, node.fileName, skyboxTexIndex, node.collider);
             enemies.push_back(std::move(enemy));
         }
     }
@@ -73,10 +75,6 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
         ModelManager::GetInstance()->LoadModel(modelName);
         if (ModelManager::GetInstance()->FindModel(modelName) != nullptr) {
             obj->SetModel(modelName);
-            // 黒落ちを回避するために色とテクスチャを設定
-            obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-            obj->GetModel()->SetTextureIndex(TextureManager::GetInstance()->GetTextureIndexByFilePath("white.png"));
-            obj->SetEnvironmentCoefficient(0.0f);
         }
         
         obj->SetTranslate(node.translation);
@@ -214,15 +212,51 @@ void GamePlayScene::Initialize()
         modelInstances.push_back(std::move(terrain));
     }
 
+    // ホットリロード用の関数に処理を切り出したので呼び出す
+    ReloadLevel();
+
+    // カメラオブジェクト（プレイヤーの親となる）の初期化
+    cameraObject_ = std::make_unique<Object3d>();
+    cameraObject_->Initialize(object3dCommon);
+
+    // プレイヤーの初期化
+    player_ = std::make_unique<Player>();
+    player_->Initialize(object3dCommon, skybox_->GetCubemapSrvIndex());
+    player_->LoadSettings("resources/json/player/player_settings.json");
+    
+    // プレイヤーをカメラオブジェクトの子にする
+    player_->GetObject3d()->SetParent(cameraObject_.get());
+    player_->GetReticle()->SetParent(cameraObject_.get());
+
+    // 全てのモデル・テクスチャ読み込みが終わった後にGPUへ転送する
+    texManager->ExecuteUploadCommands();
+    texManager->ClearIntermediateResources();
+}
+
+void GamePlayScene::ReloadLevel()
+{
+    auto services = EngineServices::GetInstance();
+    auto object3dCommon = services->GetObject3dCommon();
+
+    // 既存データのクリア (先頭のsuzanneとterrainは残す)
+    while (modelInstances.size() > 2) {
+        modelInstances.pop_back();
+    }
+    enemies_.clear();
+    bullets_.clear();
+    railVisualizers_.clear();
+    mainRail_.reset();
+    railProgress_ = 0.0f;
+
     // レベルデータの読み込みと配置
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
     if (levelData) {
         for (const auto& objData : levelData->objects) {
             CreateObjectFromNode(objData, nullptr, modelInstances, mainRail_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_);
         }
-        OutputDebugStringA("LevelLoader: Successfully placed objects.\n");
+        OutputDebugStringA("LevelLoader: Successfully reloaded objects.\n");
     } else {
-        OutputDebugStringA("LevelLoader: Failed to load level.\n");
+        OutputDebugStringA("LevelLoader: Failed to reload level.\n");
     }
 
     // レールの可視化用オブジェクトの生成
@@ -266,7 +300,6 @@ void GamePlayScene::Initialize()
             float pitch = std::asin(-dir.y);
             obj->SetRotation(Vector3(pitch, yaw, 0.0f));
             
-            // 少し長めにスケールして途切れないようにする(length)
             obj->SetScale(Vector3(0.02f, 0.02f, length)); 
             
             obj->SetEnvironmentCoefficient(0.0f);
@@ -275,23 +308,6 @@ void GamePlayScene::Initialize()
             railVisualizers_.push_back(std::move(obj));
         }
     }
-
-    // カメラオブジェクト（プレイヤーの親となる）の初期化
-    cameraObject_ = std::make_unique<Object3d>();
-    cameraObject_->Initialize(object3dCommon);
-
-    // プレイヤーの初期化
-    player_ = std::make_unique<Player>();
-    player_->Initialize(object3dCommon, skybox_->GetCubemapSrvIndex());
-    player_->LoadSettings("resources/json/player/player_settings.json");
-    
-    // プレイヤーをカメラオブジェクトの子にする
-    player_->GetObject3d()->SetParent(cameraObject_.get());
-    player_->GetReticle()->SetParent(cameraObject_.get());
-
-    // 全てのモデル・テクスチャ読み込みが終わった後にGPUへ転送する
-    texManager->ExecuteUploadCommands();
-    texManager->ClearIntermediateResources();
 }
 
 void GamePlayScene::Finalize()
@@ -319,6 +335,11 @@ void GamePlayScene::Update()
 {
     auto services = EngineServices::GetInstance();
     auto input = services->GetInput();
+
+    // ホットリロードのトリガー (F5キー)
+    if (input && input->TriggerKey(DIK_F5)) {
+        ReloadLevel();
+    }
 
     // --- カメラ切り替え ---
     if (isPlaying_) {
@@ -364,7 +385,11 @@ void GamePlayScene::Update()
             }
 
             // WASDキーでカメラ移動（カメラのyawに沿った前後左右）
-            float moveStep = kMoveSpeed * kDeltaTime_;
+            float currentMoveSpeed = kMoveSpeed;
+            if (input->PushKey(DIK_LSHIFT) || input->PushKey(DIK_RSHIFT)) {
+                currentMoveSpeed *= 25.0f; // Shiftキーで超高速移動
+            }
+            float moveStep = currentMoveSpeed * kDeltaTime_;
             Vector3 pos = activeCamera_->GetTranslate();
             Vector3 rot = activeCamera_->GetRotation();
             float yaw = rot.y;
@@ -512,16 +537,37 @@ void GamePlayScene::Update()
             for (auto& bullet : bullets_) {
                 if (bullet->IsDead()) continue;
 
-                Vector3 diff = {
-                    (*it)->GetPosition().x - bullet->GetPosition().x,
-                    (*it)->GetPosition().y - bullet->GetPosition().y,
-                    (*it)->GetPosition().z - bullet->GetPosition().z
-                };
-                float distSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
-                // 弾の半径をとりあえず1.0fとする
-                float rSq = ((*it)->GetRadius() + 1.0f) * ((*it)->GetRadius() + 1.0f);
+                Sphere bulletSphere = { bullet->GetPosition(), 1.0f };
+                bool isHit = false;
 
-                if (distSq <= rSq) {
+                const LevelCollider& col = (*it)->GetCollider();
+                Vector3 enemyPos = (*it)->GetPosition();
+                Vector3 colCenter = { enemyPos.x + col.center.x, enemyPos.y + col.center.y, enemyPos.z + col.center.z };
+
+                if (col.type == "SPHERE") {
+                    Sphere enemySphere = { colCenter, col.radius };
+                    isHit = CollisionMath::IsCollision(bulletSphere, enemySphere);
+                } else if (col.type == "OBB") {
+                    // Enemyに持たせているObject3dから回転行列を取得できれば良いが、今はAABB扱いで近似するか、
+                    // または単位行列を使用
+                    Matrix4x4 identity = {
+                        1,0,0,0,
+                        0,1,0,0,
+                        0,0,1,0,
+                        0,0,0,1
+                    };
+                    OBB enemyOBB = CollisionMath::CreateOBB(colCenter, col.size, identity);
+                    isHit = CollisionMath::IsCollision(bulletSphere, enemyOBB);
+                } else {
+                    // AABB
+                    AABB enemyAABB = {
+                        { colCenter.x - col.size.x * 0.5f, colCenter.y - col.size.y * 0.5f, colCenter.z - col.size.z * 0.5f },
+                        { colCenter.x + col.size.x * 0.5f, colCenter.y + col.size.y * 0.5f, colCenter.z + col.size.z * 0.5f }
+                    };
+                    isHit = CollisionMath::IsCollision(bulletSphere, enemyAABB);
+                }
+
+                if (isHit) {
                     bullet->OnCollision();
                     (*it)->OnCollision();
                     
@@ -627,6 +673,11 @@ void GamePlayScene::Update()
         }
         ImGui::Text("Status: STOPPED (Free Camera Mode)");
         ImGui::Text("Camera Control: WASD/QE to move, Right-Click Drag to rotate");
+    }
+
+    ImGui::Separator();
+    if (ImGui::Button("Reload Level (F5)", ImVec2(160, 40))) {
+        ReloadLevel();
     }
 
     ImGui::Separator();
@@ -1235,15 +1286,16 @@ void GamePlayScene::Draw()
         for (auto& sprite : sprites) if (sprite) sprite->Draw();
     }
 
-    // 弾の描画
-    for (auto& bullet : bullets_) {
-        bullet->Draw();
-    }
-    
-    // 敵の描画
+    // 敵とコライダーの描画
     if (object3dCommon) object3dCommon->SetCommonDrawSetting();
     for (auto& enemy : enemies_) {
         enemy->Draw();
+        enemy->DrawCollider();
+    }
+    
+    // 弾の描画
+    for (auto& bullet : bullets_) {
+        bullet->Draw();
     }
     
     // プレイヤーの描画

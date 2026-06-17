@@ -127,7 +127,6 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
 1. 単なる数学的な曲線ではなく、プレイヤーの手に汗握るような「ダイナミックな演出」と「カメラワークの緩急」を意識してください。
 2. 急旋回、急降下、見せ場となる長い直線など、シチュエーションに応じたドラマチックな軌道を計算して座標を生成してください。
 3. ベジェハンドルの長さを工夫してください。ハンドルを長くして滑らかな大旋回を作ったり、ハンドルを短くして鋭角な回避行動を表現してください。
-4. 【追加】指定されたシチュエーションやイベント頻度に合わせて、コース上に敵（enemies）や障害物（obstacles）を配置してください。
 
 必ず以下のJSONスキーマに従い、JSONテキストのみを出力してください。マークダウン(```json)や余分な解説を含めないでください。
 {
@@ -139,24 +138,6 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
       "speed": 10.0,
       "event": "none"
     }
-  ],
-  "enemies": [
-    {
-      "type": "Fighter",
-      "spawn_point_index": 5,
-      "offset_x": 10.0,
-      "offset_y": 0.0,
-      "offset_z": 5.0
-    }
-  ],
-  "obstacles": [
-    {
-      "type": "Asteroid",
-      "spawn_point_index": 12,
-      "offset_x": -5.0,
-      "offset_y": 0.0,
-      "offset_z": -2.0
-    }
   ]
 }
 【重要ルール】
@@ -164,7 +145,6 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
 ・レールが伸びる基本の進行方向は、必ず「+Y方向」(Y軸の正の方向) としてください。
 ・長さや曲がり具合は、+Y方向に進みながらX軸(左右)やZ軸(上下)を変化させて表現してください。
 ・ハンドルの座標は絶対座標(グローバル座標)で指定してください。進行方向が+Yなので、基本的なハンドルはY軸方向に伸ばす(+Yや-Y)形になります。
-・【配置のルール】敵や障害物は、レールの絶対座標ではなく「レール上の何番目のポイント(spawn_point_index)を基準にするか」と、「そこからの相対位置(offset_x, offset_y, offset_z)」で指定してください。これにより地形にめり込むのを防ぎます。
 """
         payload = {
             "contents": [{
@@ -257,53 +237,7 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
         bpy.context.view_layer.objects.active = curve_obj
         curve_obj.select_set(True)
 
-        # ---- 追加：敵・障害物の自動配置（プレースホルダー） ----
-        enemies = data.get("enemies", [])
-        for i, e_data in enumerate(enemies):
-            idx = e_data.get("spawn_point_index", 0)
-            if idx >= len(points): idx = len(points) - 1
-            
-            base_pos = points[idx].get("position", {"x":0, "y":0, "z":0})
-            offset_x = e_data.get("offset_x", 0.0)
-            offset_y = e_data.get("offset_y", 0.0)
-            offset_z = e_data.get("offset_z", 0.0)
-            
-            e_type = e_data.get("type", "Enemy")
-            obj_name = f"Enemy_{e_type}_{i}"
-            
-            # ダミーのEmptyオブジェクト（四角枠）を配置
-            empty_obj = bpy.data.objects.new(obj_name, None)
-            empty_obj.empty_display_type = 'CUBE'
-            empty_obj.empty_display_size = 2.0
-            empty_obj.location = (base_pos["x"] + offset_x, base_pos["y"] + offset_y, base_pos["z"] + offset_z)
-            
-            # ゲーム側にエクスポートするためのカスタムプロパティ
-            empty_obj["file_name"] = e_type
-            empty_obj["is_enemy"] = True
-            bpy.context.scene.collection.objects.link(empty_obj)
-
-        obstacles = data.get("obstacles", [])
-        for i, o_data in enumerate(obstacles):
-            idx = o_data.get("spawn_point_index", 0)
-            if idx >= len(points): idx = len(points) - 1
-            
-            base_pos = points[idx].get("position", {"x":0, "y":0, "z":0})
-            offset_x = o_data.get("offset_x", 0.0)
-            offset_y = o_data.get("offset_y", 0.0)
-            offset_z = o_data.get("offset_z", 0.0)
-            
-            o_type = o_data.get("type", "Obstacle")
-            obj_name = f"Obstacle_{o_type}_{i}"
-            
-            # ダミーのEmptyオブジェクト（球枠）を配置
-            empty_obj = bpy.data.objects.new(obj_name, None)
-            empty_obj.empty_display_type = 'SPHERE'
-            empty_obj.empty_display_size = 3.0
-            empty_obj.location = (base_pos["x"] + offset_x, base_pos["y"] + offset_y, base_pos["z"] + offset_z)
-            
-            empty_obj["file_name"] = o_type
-            empty_obj["is_obstacle"] = True
-            bpy.context.scene.collection.objects.link(empty_obj)
+        # ---- 敵・障害物の自動配置は無効化（手動配置に移行） ----
 
 class AIRAIL_PT_Panel(bpy.types.Panel):
     bl_label = "AI Rail Generator"
