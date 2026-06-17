@@ -15,6 +15,7 @@
 #include "Game/actor/Player/Player.h"
 #include "Game/actor/Bullet/PlayerBullet.h"
 #include "Game/System/Rail.h"
+#include "Game/System/RailCameraController.h"
 #include "Game/actor/Enemy/Enemy.h"
 #include <vector>
 #include <list>
@@ -42,7 +43,7 @@ private:
     
     // レールシステム
     std::unique_ptr<Rail> mainRail_;
-    float railProgress_ = 0.0f;
+    std::unique_ptr<RailCameraController> railCameraController_;
     float gameSpeed_ = 1.0f;
     std::unique_ptr<Model> railModel_;
     std::vector<std::unique_ptr<Object3d>> railVisualizers_;

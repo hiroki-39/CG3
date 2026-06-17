@@ -228,6 +228,12 @@ void GamePlayScene::Initialize()
     player_->GetObject3d()->SetParent(cameraObject_.get());
     player_->GetReticle()->SetParent(cameraObject_.get());
 
+    // レールカメラコントローラの初期化
+    railCameraController_ = std::make_unique<RailCameraController>();
+    if (mainRail_) {
+        railCameraController_->Initialize(mainRail_.get(), activeCamera_, cameraObject_.get());
+    }
+
     // 全てのモデル・テクスチャ読み込みが終わった後にGPUへ転送する
     texManager->ExecuteUploadCommands();
     texManager->ClearIntermediateResources();
@@ -246,7 +252,9 @@ void GamePlayScene::ReloadLevel()
     bullets_.clear();
     railVisualizers_.clear();
     mainRail_.reset();
-    railProgress_ = 0.0f;
+    if (railCameraController_) {
+        railCameraController_->Reset();
+    }
 
     // レベルデータの読み込みと配置
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
@@ -445,54 +453,9 @@ void GamePlayScene::Update()
         // --- ルート固定移動（レールに沿った移動） ---
         if (isPlaying_)
         {
-            if (mainRail_ && mainRail_->IsValid()) {
+            if (mainRail_ && mainRail_->IsValid() && railCameraController_) {
                 float kAutoSpeed = 0.002f * gameSpeed_; // レール上の進行速度(要調整)
-                railProgress_ += kAutoSpeed;
-                if (railProgress_ > 1.0f) {
-                    railProgress_ = 1.0f; // 終点で停止
-                }
-
-                // カメラをレールから「上へ1.0f」浮かせる
-                // （回転行列でローカルの上方向にずらすと、曲線の接線変化で位置がブレてガタつくため、ワールド座標で単純に上にずらす）
-                Vector3 baseEye = mainRail_->GetPosition(railProgress_);
-                Vector3 eye = baseEye;
-                eye.y += 0.2f;
-                
-                // 注視点は少し進んだ地点（厳密にレールに沿わせるため距離を短くする）
-                float targetProgress = std::min(railProgress_ + 0.01f, 1.0f);
-                Vector3 baseTarget = mainRail_->GetPosition(targetProgress);
-
-                // 差分ベクトル (forward)
-                Vector3 forward = {
-                    baseTarget.x - baseEye.x,
-                    baseTarget.y - baseEye.y,
-                    baseTarget.z - baseEye.z
-                };
-
-                // 正規化
-                float len = std::sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
-                if (len > 1e-6f) {
-                    forward.x /= len; forward.y /= len; forward.z /= len;
-                }
-
-                // 目標の回転角の計算（レールの接線にピッタリ合わせる）
-                float targetYaw = std::atan2(forward.x, forward.z);
-                float targetPitch = std::asin(-forward.y);
-                float railTilt = mainRail_->GetTilt(railProgress_);
-
-                // 補間なしで完全にレールと同じ向きにする
-                Vector3 cameraRot(targetPitch, targetYaw, railTilt);
-
-                // カメラオブジェクトのワールド行列に反映（自機などの親）
-                if (cameraObject_) {
-                    cameraObject_->SetTranslate(eye);
-                    cameraObject_->SetRotation(cameraRot);
-                    cameraObject_->Update();
-                }
-
-                // 実際のカメラの更新 (スライド4の通り、カメラオブジェクトのワールド行列の逆行列をビュー行列とするため、完全に一致させる)
-                activeCamera_->SetTranslate(eye);
-                activeCamera_->SetRotation(cameraRot);
+                railCameraController_->Update(kAutoSpeed);
             } else {
                 // レールが無い場合のフォールバック（自動前進）
                 const float kAutoSpeed = 0.05f;
@@ -540,32 +503,7 @@ void GamePlayScene::Update()
                 Sphere bulletSphere = { bullet->GetPosition(), 1.0f };
                 bool isHit = false;
 
-                const LevelCollider& col = (*it)->GetCollider();
-                Vector3 enemyPos = (*it)->GetPosition();
-                Vector3 colCenter = { enemyPos.x + col.center.x, enemyPos.y + col.center.y, enemyPos.z + col.center.z };
-
-                if (col.type == "SPHERE") {
-                    Sphere enemySphere = { colCenter, col.radius };
-                    isHit = CollisionMath::IsCollision(bulletSphere, enemySphere);
-                } else if (col.type == "OBB") {
-                    // Enemyに持たせているObject3dから回転行列を取得できれば良いが、今はAABB扱いで近似するか、
-                    // または単位行列を使用
-                    Matrix4x4 identity = {
-                        1,0,0,0,
-                        0,1,0,0,
-                        0,0,1,0,
-                        0,0,0,1
-                    };
-                    OBB enemyOBB = CollisionMath::CreateOBB(colCenter, col.size, identity);
-                    isHit = CollisionMath::IsCollision(bulletSphere, enemyOBB);
-                } else {
-                    // AABB
-                    AABB enemyAABB = {
-                        { colCenter.x - col.size.x * 0.5f, colCenter.y - col.size.y * 0.5f, colCenter.z - col.size.z * 0.5f },
-                        { colCenter.x + col.size.x * 0.5f, colCenter.y + col.size.y * 0.5f, colCenter.z + col.size.z * 0.5f }
-                    };
-                    isHit = CollisionMath::IsCollision(bulletSphere, enemyAABB);
-                }
+                isHit = (*it)->CheckCollision(bulletSphere);
 
                 if (isHit) {
                     bullet->OnCollision();
@@ -614,32 +552,8 @@ void GamePlayScene::Update()
                 for (auto& enemy : enemies_) {
                     if (enemy->IsDead()) continue;
                     
-                    const LevelCollider& col = enemy->GetCollider();
-                    Vector3 enemyPos = enemy->GetPosition();
-                    Vector3 colCenter = { enemyPos.x + col.center.x, enemyPos.y + col.center.y, enemyPos.z + col.center.z };
-
-                    bool hit = false;
                     float dist = 0.0f;
-                    if (col.type == "SPHERE") {
-                        Sphere enemySphere = { colCenter, col.radius };
-                        hit = CollisionMath::Raycast(ray, enemySphere, &dist);
-                    } else if (col.type == "OBB") {
-                        Matrix4x4 identity = {
-                            1,0,0,0,
-                            0,1,0,0,
-                            0,0,1,0,
-                            0,0,0,1
-                        };
-                        OBB enemyOBB = CollisionMath::CreateOBB(colCenter, col.size, identity);
-                        hit = CollisionMath::Raycast(ray, enemyOBB, &dist);
-                    } else {
-                        // AABB
-                        AABB enemyAABB = {
-                            { colCenter.x - col.size.x * 0.5f, colCenter.y - col.size.y * 0.5f, colCenter.z - col.size.z * 0.5f },
-                            { colCenter.x + col.size.x * 0.5f, colCenter.y + col.size.y * 0.5f, colCenter.z + col.size.z * 0.5f }
-                        };
-                        hit = CollisionMath::Raycast(ray, enemyAABB, &dist);
-                    }
+                    bool hit = enemy->CheckRaycast(ray, &dist);
 
                     if (hit) {
                         if (dist < closestDist) {
@@ -761,35 +675,11 @@ void GamePlayScene::Update()
     }
 
     ImGui::Separator();
-    if (ImGui::SliderFloat("ゲーム時間 (Rail Progress)", &railProgress_, 0.0f, 1.0f)) {
-        if (!isPlaying_ && mainRail_ && mainRail_->IsValid()) {
-            Vector3 baseEye = mainRail_->GetPosition(railProgress_);
-            float targetProgress = std::min(railProgress_ + 0.01f, 1.0f);
-            Vector3 baseTarget = mainRail_->GetPosition(targetProgress);
-
-            Vector3 forward = {
-                baseTarget.x - baseEye.x,
-                baseTarget.y - baseEye.y,
-                baseTarget.z - baseEye.z
-            };
-            float len = std::sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
-            if (len > 1e-6f) {
-                forward.x /= len; forward.y /= len; forward.z /= len;
-            }
-
-            float targetYaw = std::atan2(forward.x, forward.z);
-            float targetPitch = std::asin(-forward.y);
-            float railTilt = mainRail_->GetTilt(railProgress_);
-            Vector3 cameraRot(targetPitch, targetYaw, railTilt);
-
-            if (cameraObject_) {
-                cameraObject_->SetTranslate(baseEye);
-                cameraObject_->SetRotation(cameraRot);
-                cameraObject_->Update();
-            }
-            if (camera) {
-                camera->SetTranslate(baseEye);
-                camera->SetRotation(cameraRot);
+    if (railCameraController_) {
+        float p = railCameraController_->GetProgress();
+        if (ImGui::SliderFloat("ゲーム時間 (Rail Progress)", &p, 0.0f, 1.0f)) {
+            if (!isPlaying_) {
+                railCameraController_->SetProgress(p);
             }
         }
     }
@@ -797,34 +687,20 @@ void GamePlayScene::Update()
 
     // リセット処理：レール進行度を0に戻し、カメラとプレイヤーを始点に移動させる
     if (doReset) {
-        railProgress_ = 0.0f;
         isPlaying_ = false;
+        if (railCameraController_) {
+            railCameraController_->Reset();
+        }
+        
+        // リセット時に補間用変数を初期化
         if (mainRail_ && mainRail_->IsValid()) {
-            Vector3 baseEye = mainRail_->GetPosition(0.0f);
             Vector3 railForward = mainRail_->GetForward(0.0f);
-            float railTilt = mainRail_->GetTilt(0.0f);
             float yaw = std::atan2(railForward.x, railForward.z);
             float pitch = std::asin(-railForward.y);
-            Vector3 cameraRot(pitch, yaw, railTilt);
-
-            // リセット時に補間用変数を初期化
+            float railTilt = mainRail_->GetTilt(0.0f);
             currentCameraRot_ = {pitch, yaw, 0.0f};
             lastCameraYaw_ = yaw;
             currentCameraBank_ = railTilt;
-
-            // カメラをレールから「上へ1.0f」浮かせる（ワールド座標で単純に上にずらす）
-            Vector3 eye = baseEye;
-            eye.y += 1.0f;
-
-            if (activeCamera_) {
-                activeCamera_->SetTranslate(eye);
-                activeCamera_->SetRotation(cameraRot);
-            }
-            if (cameraObject_) {
-                cameraObject_->SetTranslate(eye);
-                cameraObject_->SetRotation(cameraRot);
-                cameraObject_->Update();
-            }
         }
     }
     
