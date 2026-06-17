@@ -28,93 +28,78 @@ class DrawCollider:
 
     # 3Dビューに登録する描画関数
     def draw_collider():
-        # 頂点データ
-        vertices ={"pos": []}
-        # インデックスデータ
+        # 頂点データとインデックスデータ
+        vertices = {"pos": []}
         indices = []
 
-        #各頂点の、オブジェクト中心からのオフセット
         offsets = [
-                    [ -0.5, -0.5, -0.5], #左下前
-                    [ +0.5, -0.5, -0.5], #右下前
-                    [ -0.5, +0.5, -0.5], #左上前
-                    [ +0.5, +0.5, -0.5], #右上前
-                    [ -0.5, -0.5, +0.5], #左下奥
-                    [ +0.5, -0.5, +0.5], #右下奥
-                    [ -0.5, +0.5, +0.5], #左上奥
-                    [ +0.5, +0.5, +0.5], #右上奥
-                   
-                ]
-        
-        #立方体のX,Y,Z方向のサイズ
-        size = [2.0, 2.0, 2.0]
+            [-0.5, -0.5, -0.5], [+0.5, -0.5, -0.5], [-0.5, +0.5, -0.5], [+0.5, +0.5, -0.5],
+            [-0.5, -0.5, +0.5], [+0.5, -0.5, +0.5], [-0.5, +0.5, +0.5], [+0.5, +0.5, +0.5]
+        ]
 
-        #現在シーンのオブジェクトリストを走査
         for object in bpy.context.scene.objects:
-            #コライダープロパティがなければ描画スキップ
             if not "collider" in object:
                 continue
 
-            #中心点、サイズの変数を宣言
-            center = mathutils.Vector((0.0, 0.0, 0.0))
-            size = mathutils.Vector((2.0, 2.0, 2.0))
-
-            #プロパティから値を取得
-            center[0] = object["collider_center"][0]
-            center[1] = object["collider_center"][1]
-            center[2] = object["collider_center"][2]
-            size[0] = object["collider_size"][0]
-            size[1] = object["collider_size"][1]
-            size[2] = object["collider_size"][2]
-
-            #追加前の頂点数
+            collider_type = object.get("collider_type", object.get("collider", "BOX"))
+            center = mathutils.Vector(object.get("collider_center", (0,0,0)))
             start = len(vertices["pos"])
 
-            #Boxの8頂点分回す
-            for offset in offsets:
-                #オブジェクトの中心座標をコピー
+            if collider_type == 'SPHERE':
+                radius = object.get("collider_radius", 1.0)
+                segments = 16
+                for plane in range(3):
+                    for i in range(segments):
+                        angle = (i / segments) * 2 * math.pi
+                        x = math.cos(angle) * radius
+                        y = math.sin(angle) * radius
+                        pos = copy.copy(center)
+                        if plane == 0:
+                            pos[0] += x; pos[1] += y
+                        elif plane == 1:
+                            pos[1] += x; pos[2] += y
+                        else:
+                            pos[2] += x; pos[0] += y
+                        
+                        pos = object.matrix_world @ pos
+                        vertices["pos"].append(pos)
+                        
+                        idx = start + plane * segments + i
+                        next_idx = start + plane * segments + ((i + 1) % segments)
+                        indices.append([idx, next_idx])
+            
+            else: # AABB, OBB, BOX
+                size = mathutils.Vector(object.get("collider_size", (2,2,2)))
+                for offset in offsets:
+                    pos = copy.copy(center)
+                    pos[0] += offset[0] * size[0]
+                    pos[1] += offset[1] * size[1]
+                    pos[2] += offset[2] * size[2]
+                    
+                    if collider_type == 'AABB':
+                        # AABBは回転させず、スケールと平行移動のみ適用
+                        mat_trans = mathutils.Matrix.Translation(object.location)
+                        mat_scale = mathutils.Matrix.Scale(object.scale[0], 4, (1,0,0)) @ mathutils.Matrix.Scale(object.scale[1], 4, (0,1,0)) @ mathutils.Matrix.Scale(object.scale[2], 4, (0,0,1))
+                        pos = (mat_trans @ mat_scale) @ pos
+                    else: # OBB
+                        pos = object.matrix_world @ pos
+                        
+                    vertices["pos"].append(pos)
 
-                pos = copy.copy(center)
-                #中心点を基準に各頂点座標をコピー
-                pos[0] += offset[0] * size[0]
-                pos[1] += offset[1] * size[1]
-                pos[2] += offset[2] * size[2]
-                #ローカル座標からワールド座標に変換
-                pos = object.matrix_world @ pos
+                indices.extend([
+                    [start+0, start+1], [start+2, start+3], [start+0, start+2], [start+1, start+3],
+                    [start+4, start+5], [start+6, start+7], [start+4, start+6], [start+5, start+7],
+                    [start+0, start+4], [start+1, start+5], [start+2, start+6], [start+3, start+7]
+                ])
 
-                #頂点データリストに座標を追加
-                vertices["pos"].append(pos)
+        if len(vertices["pos"]) == 0:
+            return
 
-                #前面を構成する返の頂点インデックス
-                indices.append([start + 0, start + 1])
-                indices.append([start + 2, start + 3])
-                indices.append([start + 0, start + 2])
-                indices.append([start + 1, start + 3])
-
-                #奥面を構成する辺の頂点インデックス
-                indices.append([start + 4, start + 5])
-                indices.append([start + 6, start + 7])
-                indices.append([start + 4, start + 6])
-                indices.append([start + 5, start + 7])
-
-                #手前と奥をつなぐ辺の頂点インデックス
-                indices.append([start + 0, start + 4])
-                indices.append([start + 1, start + 5])
-                indices.append([start + 2, start + 6])
-                indices.append([start + 3, start + 7])
-
-
-        #　ビルドインのシェーダーを取得
         shader = gpu.shader.from_builtin('UNIFORM_COLOR')
-
-        # バッチを作成
-        batch = gpu_extras.batch.batch_for_shader(shader, 'LINES', vertices, indices = indices)
-
-        #シェーダーのパラメータ設定
+        batch = gpu_extras.batch.batch_for_shader(shader, 'LINES', vertices, indices=indices)
         color = [0.5, 1.0, 1.0, 1.0]
         shader.bind()
         shader.uniform_float("color", color)
-        #描画
         batch.draw(shader)
 
 
@@ -144,6 +129,46 @@ class MYADDON_OT_create_ico_sphere(bpy.types.Operator):
         print("ICO球が生成されました。")
         return {'FINISHED'}
 
+#オペレータ　Fighter（敵）生成
+class MYADDON_OT_create_fighter(bpy.types.Operator):
+    bl_idname = "myaddon.create_fighter"
+    bl_label = "敵(Fighter)生成"
+    bl_description = "敵(Fighter)の配置用ダミーを生成します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        empty_obj = bpy.data.objects.new("Enemy_Fighter", None)
+        empty_obj.empty_display_type = 'CUBE'
+        empty_obj.empty_display_size = 2.0
+        empty_obj.location = context.scene.cursor.location
+        empty_obj["file_name"] = "Fighter"
+        empty_obj["is_enemy"] = True
+        context.scene.collection.objects.link(empty_obj)
+        context.view_layer.objects.active = empty_obj
+        empty_obj.select_set(True)
+        print("敵(Fighter)ダミーを生成しました。")
+        return {'FINISHED'}
+
+#オペレータ　Asteroid（障害物）生成
+class MYADDON_OT_create_asteroid(bpy.types.Operator):
+    bl_idname = "myaddon.create_asteroid"
+    bl_label = "障害物(Asteroid)生成"
+    bl_description = "障害物(Asteroid)の配置用ダミーを生成します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        empty_obj = bpy.data.objects.new("Obstacle_Asteroid", None)
+        empty_obj.empty_display_type = 'SPHERE'
+        empty_obj.empty_display_size = 3.0
+        empty_obj.location = context.scene.cursor.location
+        empty_obj["file_name"] = "Asteroid"
+        empty_obj["is_obstacle"] = True
+        context.scene.collection.objects.link(empty_obj)
+        context.view_layer.objects.active = empty_obj
+        empty_obj.select_set(True)
+        print("障害物(Asteroid)ダミーを生成しました。")
+        return {'FINISHED'}
+
 #オペレータ　カスタムプロパティ['file_name']追加
 class MYADDON_OT_add_filename(bpy.types.Operator):
     bl_idname = "myaddon.myaddon_ot_add_filename"
@@ -165,10 +190,11 @@ class MYADDON_OT_add_collider(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        #[collider]プロパティを追加
-        context.object["collider"] = "BOX"
+        context.object["collider"] = "SPHERE"
+        context.object["collider_type"] = "SPHERE"
         context.object["collider_center"] = mathutils.Vector((0.0, 0.0, 0.0))
         context.object["collider_size"] = mathutils.Vector((2.0, 2.0, 2.0))
+        context.object["collider_radius"] = 1.0
 
         return {'FINISHED'}
 
@@ -202,10 +228,16 @@ class OBJECT_PT_collider(bpy.types.Panel):
     def draw(self, context):
         #パネルに項目を追加
         if "collider" in context.object:
-            #既にプロパティがあれば、プロパティを表示
-            self.layout.prop(context.object, '["collider"]', text= self.bl_label)
-            self.layout.prop(context.object, '["collider_center"]', text= "Collider Center")
-            self.layout.prop(context.object, '["collider_size"]', text= "Collider Size")
+            # カスタムプロパティをUIから直接変更できるようにする
+            self.layout.prop(context.object, '["collider_type"]', text="Type (SPHERE/AABB/OBB)")
+            self.layout.prop(context.object, '["collider_center"]', text= "Center Offset")
+            
+            # タイプに応じたプロパティの表示
+            c_type = context.object.get("collider_type", "")
+            if c_type == 'SPHERE':
+                self.layout.prop(context.object, '["collider_radius"]', text= "Radius")
+            else:
+                self.layout.prop(context.object, '["collider_size"]', text= "Size")
         else:
             #プロパティがなければ、プロパティ追加のオペレータを表示
             self.layout.operator(MYADDON_OT_add_collider.bl_idname)
@@ -257,9 +289,13 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
         #カスタムプロパティ'collider'
         if "collider" in object:
             collider = dict()
-            collider["type"] = object["collider"]
-            collider["center"] = object["collider_center"].to_list()
-            collider["size"] = object["collider_size"].to_list()
+            c_type = object.get("collider_type", object.get("collider", "BOX"))
+            collider["type"] = c_type
+            collider["center"] = object["collider_center"].to_list() if "collider_center" in object else [0,0,0]
+            if c_type == 'SPHERE':
+                collider["radius"] = object.get("collider_radius", 1.0)
+            else:
+                collider["size"] = object["collider_size"].to_list() if "collider_size" in object else [2,2,2]
             json_object["collider"] = collider
 
            # カーブ(レール)情報のエクスポート
@@ -504,6 +540,8 @@ class TOPBAR_MT_my_menu(bpy.types.Menu):
         self.layout.operator("wm.url_open_preset", text="Manual", icon='HELP')
         self.layout.operator(MYADDON_OT_stretch_vertex.bl_idname, text = MYADDON_OT_stretch_vertex.bl_label)
         self.layout.operator(MYADDON_OT_create_ico_sphere.bl_idname, text = MYADDON_OT_create_ico_sphere.bl_label)
+        self.layout.operator(MYADDON_OT_create_fighter.bl_idname, text = MYADDON_OT_create_fighter.bl_label)
+        self.layout.operator(MYADDON_OT_create_asteroid.bl_idname, text = MYADDON_OT_create_asteroid.bl_label)
         self.layout.operator(MYADDON_OT_export_scene.bl_idname, text = MYADDON_OT_export_scene.bl_label)
 
 
@@ -517,6 +555,8 @@ classes  = (
     TOPBAR_MT_my_menu,
     MYADDON_OT_stretch_vertex,
     MYADDON_OT_create_ico_sphere,
+    MYADDON_OT_create_fighter,
+    MYADDON_OT_create_asteroid,
     MYADDON_OT_export_scene,
     MYADDON_OT_add_filename,
     OBJECT_PT_file_name,

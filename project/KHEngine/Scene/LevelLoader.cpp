@@ -58,6 +58,9 @@ void LevelLoader::ParseObject(const void* jsonNodePtr, LevelObjectData& objectDa
             auto s = collider["size"];
             objectData.collider.size = Vector3(s[0], s[2], s[1]);
         }
+        if (collider.contains("radius")) {
+            objectData.collider.radius = collider["radius"].get<float>();
+        }
     }
 
     // カーブ制御点

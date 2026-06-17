@@ -204,6 +204,7 @@
     <ClCompile Include="KHEngine\Input\Input.cpp" />
     <ClCompile Include="KHEngine\Core\Utility\Log\Logger.cpp" />
     <ClCompile Include="KHEngine\Math\Matrix4x4.cpp" />
+    <ClCompile Include="KHEngine\Math\CollisionMath.cpp" />
     <ClCompile Include="KHEngine\Core\Framework\KHFramework.cpp" />
     <ClCompile Include="main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
@@ -276,6 +277,7 @@
     <ClInclude Include="KHEngine\Math\Vector3.h" />
     <ClInclude Include="KHEngine\Math\Vector4.h" />
     <ClInclude Include="KHEngine\Math\MathUtility.h" />
+    <ClInclude Include="KHEngine\Math\CollisionMath.h" />
     <ClInclude Include="KHEngine\Graphics\Resource\TextureManager.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Object\Object3d.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Object\Object3dCommon.h" />

@@ -22,6 +22,13 @@ void Object3dCommon::SetCommonDrawSetting()
 	dxCommon_->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
+void Object3dCommon::SetWireframeDrawSetting()
+{
+	dxCommon_->GetCommandList()->SetGraphicsRootSignature(rootSignature.Get());
+	dxCommon_->GetCommandList()->SetPipelineState(wireframePipelineState_.Get());
+	dxCommon_->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
 void Object3dCommon::CreateRootSignature()
 {
 	HRESULT hr;
@@ -192,7 +199,7 @@ void Object3dCommon::CreateGraphicsPipeline()
 	//RasiterZerStateの設定
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
 
-	//裏面を表示しない
+	//裏面(時計回り)を表示しない
 	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
 
 	//三角形の中を塗りつぶす
@@ -252,5 +259,11 @@ void Object3dCommon::CreateGraphicsPipeline()
 
 	//実際に作成
 	hr = dxCommon_->GetDevice()->CreateGraphicsPipelineState(&graphicsPipelineStateDesc, IID_PPV_ARGS(&graphicsPipelineState));
-
+	assert(SUCCEEDED(hr));
+	
+	// --- ワイヤーフレーム用のパイプラインステートを生成 ---
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC wireframeDesc = graphicsPipelineStateDesc;
+	wireframeDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+	hr = dxCommon_->GetDevice()->CreateGraphicsPipelineState(&wireframeDesc, IID_PPV_ARGS(&wireframePipelineState_));
+	assert(SUCCEEDED(hr));
 }

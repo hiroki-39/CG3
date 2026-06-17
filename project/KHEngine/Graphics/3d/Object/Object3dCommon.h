@@ -15,6 +15,7 @@ public://メンバ関数
 	/// 共通描画設定
 	/// </summary>
 	void SetCommonDrawSetting();
+	void SetWireframeDrawSetting(); // ワイヤーフレーム用の描画設定
 
 	// --- Getter ---
 	DirectXCommon* GetDirectXCommon() const { return dxCommon_; }
@@ -47,4 +48,5 @@ private:
 
 	//グラフィックスパイプラインステート
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineState;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> wireframePipelineState_; // ワイヤーフレーム用
 };
