@@ -21,6 +21,8 @@ public:
     /// </summary>
     void Draw();
 
+    void DrawCollider();
+
     // デッドフラグ
     bool IsDead() const { return isDead_; }
 
@@ -29,6 +31,7 @@ public:
 
 private:
     std::unique_ptr<Object3d> object_ = nullptr;
+    std::unique_ptr<Object3d> colliderObject_ = nullptr;
     Vector3 velocity_ = { 0.0f, 0.0f, 1.5f }; // 速度ベクトル
     bool isDead_ = false;
     int deathTimer_ = 120; // 寿命（フレーム）

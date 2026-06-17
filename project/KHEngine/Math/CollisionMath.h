@@ -21,11 +21,22 @@ struct OBB {
     Vector3 halfExtents;     // 中心からの各ローカル軸方向へのサイズの半分
 };
 
+// 光線 (Ray)
+struct Ray {
+    Vector3 origin;
+    Vector3 direction; // 正規化された方向ベクトル
+};
+
 namespace CollisionMath {
     // 交差判定関数
     bool IsCollision(const Sphere& s1, const Sphere& s2);
     bool IsCollision(const Sphere& sphere, const AABB& aabb);
     bool IsCollision(const Sphere& sphere, const OBB& obb);
+    
+    // Raycast関数
+    bool Raycast(const Ray& ray, const Sphere& sphere, float* outDistance = nullptr);
+    bool Raycast(const Ray& ray, const AABB& aabb, float* outDistance = nullptr);
+    bool Raycast(const Ray& ray, const OBB& obb, float* outDistance = nullptr);
     
     // OBBの構築ヘルパー
     // rotateMatrixは3x3の回転部分を含むMatrix4x4（平行移動を含まない純粋な回転行列を想定）

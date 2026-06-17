@@ -2,7 +2,7 @@
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 
-void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const std::string& typeName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo) {
+void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const std::string& typeName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo) {
     position_ = pos;
     typeName_ = typeName;
     isDead_ = false;
@@ -29,10 +29,8 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const
     object_->SetModel(modelName);
     object_->SetTranslate(position_);
     
-    // スケールをコライダーから推測して設定
-    float scaleVal = (collider_.type == "SPHERE") ? collider_.radius : collider_.size.x;
-    if (scaleVal <= 0.0f) scaleVal = 1.0f;
-    object_->SetScale({ scaleVal, scaleVal, scaleVal });
+    // 敵本体のスケールには引数で受け取ったBlender上のscaleをそのまま設定する
+    object_->SetScale(scale);
     
     object_->SetEnvironmentTextureIndex(skyboxTexIndex);
 
@@ -40,12 +38,17 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const
     colliderObject_ = std::make_unique<Object3d>();
     colliderObject_->Initialize(object3dCommon);
     if (collider_.type == "SPHERE") {
-        colliderObject_->SetModel("monsterBall.obj"); // 球の代用
+        ModelManager::GetInstance()->LoadModel("collider_sphere.obj");
+        colliderObject_->SetModel("collider_sphere.obj"); // 球の代用
         colliderObject_->SetScale({collider_.radius, collider_.radius, collider_.radius});
     } else {
-        colliderObject_->SetModel("cube.obj");
-        colliderObject_->SetScale({collider_.size.x * 0.5f, collider_.size.y * 0.5f, collider_.size.z * 0.5f});
+        ModelManager::GetInstance()->LoadModel("collider_cube.obj");
+        colliderObject_->SetModel("collider_cube.obj");
+        colliderObject_->SetScale({collider_.size.x, collider_.size.y, collider_.size.z});
     }
+    
+    // コライダー専用のモデルなので、色を赤にしても他のモデルに影響しない
+    colliderObject_->GetModel()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
 }
 
 void Enemy::Update() {

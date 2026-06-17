@@ -6,7 +6,7 @@
 
 class Enemy {
 public:
-    void Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const std::string& typeName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo);
+    void Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const std::string& typeName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo);
     void Update();
     void Update3DObjectOnly() {
         if (object_) object_->Update();

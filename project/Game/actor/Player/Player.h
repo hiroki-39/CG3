@@ -50,6 +50,16 @@ public:
     void SetRotation(const Vector3& rotation) { baseRotation_ = rotation; }
     Object3d* GetObject3d() const { return object_.get(); }
     Object3d* GetReticle() const { return reticle_.get(); }
+    
+    // 照準(レティクル)関連
+    void SetReticleColor(const Vector4& color);
+    const Vector4& GetReticleColor() const { return reticleColor_; }
+    Vector3 GetReticleWorldPosition() const;
+
+    void SetLockOn(bool isLockOn, const Vector3& targetPos = { 0, 0, 0 }) {
+        isLockOn_ = isLockOn;
+        lockOnTargetPos_ = targetPos;
+    }
 
 private:
     /// <summary>
@@ -72,6 +82,7 @@ private:
     uint32_t skyboxTexIndex_ = 0; // 再利用するため保持
 
     Vector3 reticlePosition_ = { 0.0f, 0.0f, 40.0f }; // 照準のローカル座標
+    Vector4 reticleColor_ = { 1.0f, 1.0f, 1.0f, 1.0f }; // 照準の色
 
     // プレイヤー設定パラメータ
     float speed_ = 0.3f;
@@ -105,4 +116,8 @@ private:
     bool isRolling_ = false;
     int rollTimer_ = 0;
     float rollDirection_ = 0.0f; // -1.0f (左), 1.0f (右)
+
+    // エイムアシスト
+    bool isLockOn_ = false;
+    Vector3 lockOnTargetPos_ = { 0,0,0 };
 };

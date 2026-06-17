@@ -73,6 +73,7 @@ public://メンバ関数
 	const Vector3& GetScale() const { return transform.scale; }
 	const Vector3& GetRotation() const { return transform.rotation; }
 	const Vector3& GetTranslate() const { return transform.translate; }
+	const Matrix4x4& GetmatWorld() const { return transformationMatrixData_->World; }
 	Vector4 GetDirectionalLightColor() const;
 	Vector3 GetDirectionalLightDirection() const;
 	float GetDirectionalLightIntensity() const;

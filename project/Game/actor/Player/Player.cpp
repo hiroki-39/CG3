@@ -34,7 +34,7 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     reticle_ = std::make_unique<Object3d>();
     reticle_->Initialize(object3dCommon);
     reticle_->SetModel("plane.obj"); // 照準モデルとして使用
-    reticle_->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 赤色
+    reticle_->GetModel()->SetColor(reticleColor_); // 初期色
     reticle_->SetEnvironmentTextureIndex(skyboxTexIndex);
     reticle_->SetEnvironmentCoefficient(0.0f);
     reticle_->SetScale(Vector3(1.0f, 1.0f, 1.0f));
@@ -73,6 +73,20 @@ void Player::Draw() {
         accessory_->Draw();
     }
 
+}
+
+void Player::SetReticleColor(const Vector4& color) {
+    reticleColor_ = color;
+    if (reticle_) {
+        reticle_->GetModel()->SetColor(reticleColor_);
+    }
+}
+
+Vector3 Player::GetReticleWorldPosition() const {
+    if (!reticle_) return {0,0,0};
+    // 照準オブジェクトのワールド座標をマトリックスから取得
+    const Matrix4x4& mat = reticle_->GetmatWorld();
+    return { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
 }
 
 void Player::Move() {
@@ -186,10 +200,21 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d*
     // スペースキーまたはマウス左クリックで発射
     if (attackTimer_ <= 0 && (input_->PushKey(DIK_SPACE) || input_->PushMouseButton(0))) {
         attackTimer_ = attackInterval_; // タイマーリセット
-        Vector3 playerPos = object_->GetTranslate();
-        Vector3 targetPos = reticlePosition_;
         
-        // 照準に向かうベクトルを計算
+        // プレイヤーのワールド座標を取得する (object_はカメラの子なのでGetTranslateはローカル座標になってしまう)
+        const Matrix4x4& mat = object_->GetmatWorld();
+        Vector3 playerPos = { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
+        
+        Vector3 targetPos;
+        if (isLockOn_) {
+            targetPos = lockOnTargetPos_;
+        } else {
+            // ロックオンしていない場合は、そのまま画面奥（カメラのRay線上など）に飛ばしたいが
+            // 今回はレティクルのワールド座標を使う
+            targetPos = GetReticleWorldPosition();
+        }
+        
+        // 照準(またはロックオン座標)に向かうベクトルを計算
         Vector3 direction = {
             targetPos.x - playerPos.x,
             targetPos.y - playerPos.y,

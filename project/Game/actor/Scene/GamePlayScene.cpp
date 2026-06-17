@@ -57,7 +57,7 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
     if (node.type == "EMPTY" && !node.fileName.empty()) {
         if (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos || node.fileName.find("Obstacle") != std::string::npos) {
             auto enemy = std::make_unique<Enemy>();
-            enemy->Initialize(common, node.translation, node.fileName, skyboxTexIndex, node.collider);
+            enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
             enemies.push_back(std::move(enemy));
         }
     }
@@ -191,17 +191,17 @@ void GamePlayScene::Initialize()
 
     // モデル作成
     {
-        auto obj = std::make_unique<Object3d>();
-        obj->Initialize(object3dCommon);
-        obj->SetModel("suzanne.obj");
-        obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-        uint32_t skyboxTexIndex = skybox_->GetCubemapSrvIndex();
-        obj->SetEnvironmentTextureIndex(skyboxTexIndex);
-        obj->SetEnvironmentCoefficient(1.0f);
-        obj->SetTranslate(Vector3(0.0f, 3.0f, 40.0f));
-        obj->SetRotation(Vector3(0.0f, 2.3f, 0.0f));
-        obj->SetScale(Vector3(3.0f, 3.0f, 3.0f));
-        modelInstances.push_back(std::move(obj));
+        //auto obj = std::make_unique<Object3d>();
+        //obj->Initialize(object3dCommon);
+        //obj->SetModel("suzanne.obj");
+        //obj->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        //uint32_t skyboxTexIndex = skybox_->GetCubemapSrvIndex();
+        //obj->SetEnvironmentTextureIndex(skyboxTexIndex);
+        //obj->SetEnvironmentCoefficient(1.0f);
+        //obj->SetTranslate(Vector3(0.0f, 3.0f, 40.0f));
+        //obj->SetRotation(Vector3(0.0f, 2.3f, 0.0f));
+        //obj->SetScale(Vector3(3.0f, 3.0f, 3.0f));
+        //modelInstances.push_back(std::move(obj));
 
         auto terrain = std::make_unique<Object3d>();
         terrain->Initialize(object3dCommon);
@@ -582,6 +582,86 @@ void GamePlayScene::Update()
                 it = enemies_.erase(it);
             } else {
                 ++it;
+            }
+        }
+
+        // --- 照準（レティクル）のロックオン判定 (Raycast) ---
+        bool isLockOn = false;
+        if (player_ && player_->GetObject3d() && player_->GetReticle() && activeCamera_) {
+            Vector3 cameraPos = activeCamera_->GetTranslate();
+            Vector3 reticlePos = player_->GetReticleWorldPosition();
+
+            // カメラから照準へ向かうレイを作成（画面上で重なっているかを判定）
+            Vector3 rayDir = {
+                reticlePos.x - cameraPos.x,
+                reticlePos.y - cameraPos.y,
+                reticlePos.z - cameraPos.z
+            };
+            float length = std::sqrtf(rayDir.x * rayDir.x + rayDir.y * rayDir.y + rayDir.z * rayDir.z);
+
+            Vector3 lockOnPos = { 0, 0, 0 };
+
+            if (length > 0.0001f) {
+                rayDir.x /= length;
+                rayDir.y /= length;
+                rayDir.z /= length;
+
+                Ray ray = { cameraPos, rayDir };
+
+                float closestDist = 1000000.0f;
+
+                // 全ての敵に対してレイキャストを行う
+                for (auto& enemy : enemies_) {
+                    if (enemy->IsDead()) continue;
+                    
+                    const LevelCollider& col = enemy->GetCollider();
+                    Vector3 enemyPos = enemy->GetPosition();
+                    Vector3 colCenter = { enemyPos.x + col.center.x, enemyPos.y + col.center.y, enemyPos.z + col.center.z };
+
+                    bool hit = false;
+                    float dist = 0.0f;
+                    if (col.type == "SPHERE") {
+                        Sphere enemySphere = { colCenter, col.radius };
+                        hit = CollisionMath::Raycast(ray, enemySphere, &dist);
+                    } else if (col.type == "OBB") {
+                        Matrix4x4 identity = {
+                            1,0,0,0,
+                            0,1,0,0,
+                            0,0,1,0,
+                            0,0,0,1
+                        };
+                        OBB enemyOBB = CollisionMath::CreateOBB(colCenter, col.size, identity);
+                        hit = CollisionMath::Raycast(ray, enemyOBB, &dist);
+                    } else {
+                        // AABB
+                        AABB enemyAABB = {
+                            { colCenter.x - col.size.x * 0.5f, colCenter.y - col.size.y * 0.5f, colCenter.z - col.size.z * 0.5f },
+                            { colCenter.x + col.size.x * 0.5f, colCenter.y + col.size.y * 0.5f, colCenter.z + col.size.z * 0.5f }
+                        };
+                        hit = CollisionMath::Raycast(ray, enemyAABB, &dist);
+                    }
+
+                    if (hit) {
+                        if (dist < closestDist) {
+                            closestDist = dist;
+                            lockOnPos = {
+                                ray.origin.x + ray.direction.x * dist,
+                                ray.origin.y + ray.direction.y * dist,
+                                ray.origin.z + ray.direction.z * dist
+                            };
+                            isLockOn = true;
+                        }
+                    }
+                }
+            }
+
+            // 照準の色の更新とロックオン座標の伝達
+            if (isLockOn) {
+                player_->SetReticleColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
+                player_->SetLockOn(true, lockOnPos);
+            } else {
+                player_->SetReticleColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 白色
+                player_->SetLockOn(false);
             }
         }
 
@@ -1290,8 +1370,18 @@ void GamePlayScene::Draw()
     if (object3dCommon) object3dCommon->SetCommonDrawSetting();
     for (auto& enemy : enemies_) {
         enemy->Draw();
+    }
+    
+    // コライダーはワイヤーフレームで描画
+    if (object3dCommon) object3dCommon->SetWireframeDrawSetting();
+    for (auto& enemy : enemies_) {
         enemy->DrawCollider();
     }
+    for (auto& bullet : bullets_) {
+        bullet->DrawCollider();
+    }
+    // 描画設定を元に戻す
+    if (object3dCommon) object3dCommon->SetCommonDrawSetting();
     
     // 弾の描画
     for (auto& bullet : bullets_) {
