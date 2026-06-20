@@ -121,3 +121,27 @@ float Rail::GetTilt(float t) const {
     // 単純な線形補間
     return points_[i].tilt * (1.0f - localT) + points_[i + 1].tilt * localT;
 }
+
+float Rail::GetSpeed(float t) const {
+    if (points_.empty()) return 20.0f;
+    if (points_.size() == 1) return points_[0].speed;
+
+    int i = 0;
+    float localT = 0.0f;
+    GetSegment(t, i, localT);
+
+    // 単純な線形補間
+    return points_[i].speed * (1.0f - localT) + points_[i + 1].speed * localT;
+}
+
+std::string Rail::GetEvent(float t) const {
+    if (points_.empty()) return "none";
+    if (points_.size() == 1) return points_[0].event;
+
+    int i = 0;
+    float localT = 0.0f;
+    GetSegment(t, i, localT);
+
+    // イベントは補間できないため、現在の区間（始点）のイベントを返す
+    return points_[i].event;
+}

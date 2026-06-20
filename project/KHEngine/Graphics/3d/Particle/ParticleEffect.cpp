@@ -56,6 +56,14 @@ void ParticleEffect::Play()
     }
 }
 
+void ParticleEffect::SetPosition(const Vector3& pos)
+{
+    for (auto& node : nodes_)
+    {
+        node->emitter.SetPosition(pos);
+    }
+}
+
 void ParticleEffect::Update(float dt, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, const Matrix4x4& billboardMatrix)
 {
     for (auto& node : nodes_)

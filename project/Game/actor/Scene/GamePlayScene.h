@@ -30,7 +30,15 @@ public:
     void Draw() override;
     void Finalize() override;
 
-    void ReloadLevel(); // レベルリロード用メソッド
+    /// <summary>
+    /// レベルデータを再読み込みする
+    /// </summary>
+    void ReloadLevel();
+
+    /// <summary>
+    /// 敵だけを再読み込み（リスポーン）する
+    /// </summary>
+    void ReloadEnemiesOnly();
 
 private:
     // ゲーム固有メンバ
@@ -62,8 +70,13 @@ private:
     std::random_device seedGenerator;
     std::mt19937 randomEngine{ seedGenerator() };
 
-    // 複合エフェクト（Plane, Ring, Cylinder の共存）
-    ParticleEffect particleEffect_;
+    // エフェクト群
+    ParticleEffect thrusterEffect_;   // プレイヤースラスター用
+    ParticleEffect explosionEffect_;  // 敵撃破時の爆発用
+    ParticleEffect hitEffect_;        // 弾着弾時のヒット用
+
+    // ImGuiのエディタで編集するエフェクトのインデックス (0:Thruster, 1:Explosion, 2:Hit)
+    int currentEditEffectIndex_ = 0;
 
     // プレイヤー
     std::unique_ptr<Player> player_;
@@ -72,4 +85,7 @@ private:
 
     // 敵リスト
     std::list<std::unique_ptr<Enemy>> enemies_;
+
+    // コライダーのワイヤーフレーム描画
+    bool isDrawCollider_ = true;
 };

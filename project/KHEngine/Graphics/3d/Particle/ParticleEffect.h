@@ -54,6 +54,9 @@ public:
     // すべてのノードで放出（バースト）
     void Play();
 
+    // エフェクト全体の発生位置を設定
+    void SetPosition(const Vector3& pos);
+
 private:
     void SetupRendererForNode(Node* node);
 

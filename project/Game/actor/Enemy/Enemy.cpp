@@ -49,6 +49,19 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const
     
     // コライダー専用のモデルなので、色を赤にしても他のモデルに影響しない
     colliderObject_->GetModel()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
+
+    // 初期位置にコライダーオブジェクトを追従させる
+    object_->Update();
+    if (colliderObject_) {
+        Vector3 colliderPos = {
+            position_.x + collider_.center.x,
+            position_.y + collider_.center.y,
+            position_.z + collider_.center.z
+        };
+        colliderObject_->SetTranslate(colliderPos);
+        colliderObject_->SetRotation(object_->GetRotation());
+        colliderObject_->Update();
+    }
 }
 
 void Enemy::Update() {

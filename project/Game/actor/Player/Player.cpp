@@ -33,11 +33,11 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     // 照準の初期化
     reticle_ = std::make_unique<Object3d>();
     reticle_->Initialize(object3dCommon);
-    reticle_->SetModel("plane.obj"); // 照準モデルとして使用
+    reticle_->SetModel("crossHair.obj"); // 照準モデルとして使用
     reticle_->GetModel()->SetColor(reticleColor_); // 初期色
     reticle_->SetEnvironmentTextureIndex(skyboxTexIndex);
     reticle_->SetEnvironmentCoefficient(0.0f);
-    reticle_->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+    reticle_->SetScale(Vector3(1.5f, 1.5f, 1.5f));
     
     // 照準の初期位置（カメラの奥）
     reticlePosition_ = { 0.0f, 0.0f, 40.0f }; 
@@ -198,7 +198,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d*
 
     // タイマーが0以下なら発射可能
     // スペースキーまたはマウス左クリックで発射
-    if (attackTimer_ <= 0 && (input_->PushKey(DIK_SPACE) || input_->PushMouseButton(0))) {
+    if (attackTimer_ <= 0 && (input_->PushKey(DIK_SPACE))) {
         attackTimer_ = attackInterval_; // タイマーリセット
         
         // プレイヤーのワールド座標を取得する (object_はカメラの子なのでGetTranslateはローカル座標になってしまう)

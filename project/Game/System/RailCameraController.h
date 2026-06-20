@@ -21,8 +21,8 @@ public:
     /// <summary>
     /// 更新処理
     /// </summary>
-    /// <param name="deltaProgress">今回進む進行度</param>
-    void Update(float deltaProgress);
+    /// <param name="gameSpeed">ゲームスピードの倍率</param>
+    void Update(float gameSpeed = 1.0f);
 
     /// <summary>
     /// レールの先頭にリセットする

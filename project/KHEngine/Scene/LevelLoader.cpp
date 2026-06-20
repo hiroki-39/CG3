@@ -88,6 +88,12 @@ void LevelLoader::ParseObject(const void* jsonNodePtr, LevelObjectData& objectDa
             } else {
                 pt.tilt = 0.0f;
             }
+            if (ptJson.contains("speed")) {
+                pt.speed = ptJson["speed"].get<float>();
+            }
+            if (ptJson.contains("event")) {
+                pt.event = ptJson["event"].get<std::string>();
+            }
             objectData.curvePoints.push_back(pt);
         }
     }

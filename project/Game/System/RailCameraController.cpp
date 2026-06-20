@@ -9,11 +9,22 @@ void RailCameraController::Initialize(Rail* rail, Camera* camera, Object3d* pare
     ApplyTransform();
 }
 
-void RailCameraController::Update(float deltaProgress) {
+void RailCameraController::Update(float gameSpeed) {
     if (!rail_ || !rail_->IsValid()) return;
 
-    progress_ += deltaProgress;
-    progress_ = std::clamp(progress_, 0.0f, 1.0f);
+    // 現在地点での設定スピード（m/s）を取得
+    float currentSpeed = rail_->GetSpeed(progress_);
+    
+    // 1フレーム（60FPS想定）あたりの移動距離
+    float distancePerFrame = (currentSpeed * gameSpeed) / 60.0f;
+    
+    // レール全長に対する割合（進行度）に変換
+    float totalLength = rail_->GetTotalLength();
+    if (totalLength > 0.0001f) {
+        float deltaProgress = distancePerFrame / totalLength;
+        progress_ += deltaProgress;
+        progress_ = std::clamp(progress_, 0.0f, 1.0f);
+    }
 
     ApplyTransform();
 }
