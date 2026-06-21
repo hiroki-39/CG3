@@ -64,6 +64,14 @@ void ParticleEffect::SetPosition(const Vector3& pos)
     }
 }
 
+void ParticleEffect::SetBaseColor(const Vector4& color)
+{
+    for (auto& node : nodes_)
+    {
+        node->baseColor = color;
+    }
+}
+
 void ParticleEffect::Update(float dt, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, const Matrix4x4& billboardMatrix)
 {
     for (auto& node : nodes_)

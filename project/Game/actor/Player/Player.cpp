@@ -98,16 +98,12 @@ void Player::Move() {
             isRolling_ = true;
             rollTimer_ = 0;
             rollDirection_ = -1.0f; // 左
-            if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
-                pp->SetEffectActive("Grayscale", true);
-            }
+            isDodgeTriggered_ = true;
         } else if (input_->TriggerKey(DIK_E)) {
             isRolling_ = true;
             rollTimer_ = 0;
             rollDirection_ = 1.0f; // 右
-            if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
-                pp->SetEffectActive("Grayscale", true);
-            }
+            isDodgeTriggered_ = true;
         }
     }
 
@@ -120,24 +116,33 @@ void Player::Move() {
         // 一定時間でローリング終了
         if (rollTimer_ >= rollMaxTime_) {
             isRolling_ = false;
-            if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
-                pp->SetEffectActive("Grayscale", false);
-            }
+            // if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
+            //     pp->SetEffectActive("Grayscale", false);
+            // }
         }
+    }
+
+    // --- ブースト判定 ---
+    isBoosting_ = input_->PushKey(DIK_LSHIFT);
+    float currentReticleSpeed = reticleSpeed_;
+    float currentFollowSpeed = followSpeed_;
+    if (isBoosting_) {
+        currentReticleSpeed *= 1.5f;
+        currentFollowSpeed *= 1.5f;
     }
 
     // --- 照準（レティクル）の移動 ---
     if (input_->PushKey(DIK_W) || input_->PushKey(DIK_UP)) {
-        reticlePosition_.y += reticleSpeed_;
+        reticlePosition_.y += currentReticleSpeed;
     }
     if (input_->PushKey(DIK_S) || input_->PushKey(DIK_DOWN)) {
-        reticlePosition_.y -= reticleSpeed_;
+        reticlePosition_.y -= currentReticleSpeed;
     }
     if (input_->PushKey(DIK_A) || input_->PushKey(DIK_LEFT)) {
-        reticlePosition_.x -= reticleSpeed_;
+        reticlePosition_.x -= currentReticleSpeed;
     }
     if (input_->PushKey(DIK_D) || input_->PushKey(DIK_RIGHT)) {
-        reticlePosition_.x += reticleSpeed_;
+        reticlePosition_.x += currentReticleSpeed;
     }
 
     // 移動制限
@@ -155,8 +160,8 @@ void Player::Move() {
 
     // プレイヤーの追従（Panzer Dragoon風）
     // プレイヤーは照準のXY座標に向かって少し遅れて追従する
-    logicalPosition_.x += (reticlePosition_.x - logicalPosition_.x) * followSpeed_;
-    logicalPosition_.y += (reticlePosition_.y - logicalPosition_.y) * followSpeed_;
+    logicalPosition_.x += (reticlePosition_.x - logicalPosition_.x) * currentFollowSpeed;
+    logicalPosition_.y += (reticlePosition_.y - logicalPosition_.y) * currentFollowSpeed;
 
     // プレイヤーがカメラ外に出ないように制限
     logicalPosition_.x = std::clamp(logicalPosition_.x, -playerLimitX_, playerLimitX_);
@@ -188,10 +193,11 @@ void Player::Move() {
     currentYaw_ += (yawAngle - currentYaw_) * lerpSpeed;
     currentBank_ += (bankAngle - currentBank_) * lerpSpeed;
 
-    // ローリング中なら360度回転を追加
+    // 最終的なバンク角（ローリング角度は累積させずに一時的に足す）
+    float finalBank = currentBank_;
     if (isRolling_) {
         float rollAngle = (static_cast<float>(rollTimer_) / rollMaxTime_) * 3.14159265f * 2.0f;
-        currentBank_ += rollAngle * -rollDirection_;
+        finalBank += rollAngle * -rollDirection_;
     }
     
     // 実際のモデルの Transform にはオフセットを足して適用
@@ -199,7 +205,7 @@ void Player::Move() {
     object_->SetRotation(Vector3(
         baseRotation_.x + currentPitch_ + modelRotOffset_.x,
         baseRotation_.y + currentYaw_ + modelRotOffset_.y,
-        baseRotation_.z + currentBank_ + modelRotOffset_.z
+        baseRotation_.z + finalBank + modelRotOffset_.z
     ));
     object_->SetTranslate(Vector3(logicalPosition_.x + modelPosOffset_.x, logicalPosition_.y + modelPosOffset_.y, logicalPosition_.z + modelPosOffset_.z));
 }

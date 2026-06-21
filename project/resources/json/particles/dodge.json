@@ -1,0 +1,87 @@
+[
+    {
+        "blendMode": 1,
+        "colorAnimSpeed": 2.0,
+        "emitterParam": {
+            "count": 1,
+            "drag": 0.0,
+            "endColor": [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+            ],
+            "endScale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "frequency": 0.5,
+            "gravity": -9.800000190734863,
+            "isColorOverLifetime": true,
+            "isScaleOverLifetime": false,
+            "maxColor": [
+                0.0,
+                0.8,
+                1.0,
+                1.0
+            ],
+            "maxLifeTime": 1.5,
+            "maxRotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "maxScale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "maxVelocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "minColor": [
+                0.0,
+                0.8,
+                1.0,
+                1.0
+            ],
+            "minLifeTime": 0.5,
+            "minRotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "minScale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "minVelocity": [
+                0.0,
+                0.5,
+                0.0
+            ],
+            "useGravity": false
+        },
+        "enableColorAnim": false,
+        "endColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "name": "DodgeRing",
+        "shapeType": 1,
+        "startColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "textureName": "gradationLine.png",
+        "uvScrollSpeed": 0.0
+    }
+]

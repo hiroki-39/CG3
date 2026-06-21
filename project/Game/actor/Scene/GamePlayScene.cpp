@@ -247,6 +247,10 @@ void GamePlayScene::Initialize()
     hitEffect_.Initialize(dxCommon, srvManager);
     hitEffect_.LoadFromJson("hit.json");
 
+    // 回避時の衝撃波（リング）エフェクトの初期化
+    dodgeEffect_.Initialize(dxCommon, srvManager);
+    dodgeEffect_.LoadFromJson("dodge.json");
+
     // 全てのモデル・テクスチャ読み込みが終わった後にGPUへ転送する
     texManager->ExecuteUploadCommands();
     texManager->ClearIntermediateResources();
@@ -485,6 +489,23 @@ void GamePlayScene::Update()
         // --- ルート固定移動（レールに沿った移動） ---
         if (isPlaying_)
         {
+            // === ブースト機能の処理 ===
+            auto pp = EngineServices::GetInstance()->GetPostProcess();
+            if (player_ && player_->IsBoosting()) {
+                gameSpeed_ = 1.5f; // スピードアップ
+                thrusterEffect_.SetBaseColor({ 1.0f, 0.2f, 0.0f, 1.0f }); // 赤色
+                if (pp) {
+                    pp->SetEffectActive("RadialBlur", true);
+                    pp->GetData()->radialBlurIntensity = 0.1f;
+                }
+            } else {
+                gameSpeed_ = 1.0f; // 通常スピード
+                thrusterEffect_.SetBaseColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 通常（元の色）
+                if (pp) {
+                    pp->SetEffectActive("RadialBlur", false);
+                }
+            }
+
             if (mainRail_ && mainRail_->IsValid() && railCameraController_) {
                 railCameraController_->Update(gameSpeed_);
             } else {
@@ -506,6 +527,26 @@ void GamePlayScene::Update()
     if (player_) {
         if (isPlaying_) {
             player_->Update(bullets_, cameraObject_.get());
+            
+            // 回避エフェクトの再生
+            if (player_->ConsumeDodgeTrigger()) {
+                const Matrix4x4& wMat = player_->GetObject3d()->GetmatWorld();
+                // ワールド座標を取得
+                Vector3 pPos = { wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] };
+                
+                // 進行方向（Z軸）
+                Vector3 forward = { wMat.m[2][0], wMat.m[2][1], wMat.m[2][2] };
+                float len = std::sqrt(forward.x*forward.x + forward.y*forward.y + forward.z*forward.z);
+                if (len > 0.0001f) {
+                    forward.x /= len; forward.y /= len; forward.z /= len;
+                }
+                
+                // 自機より少し手前（進行方向の逆）に出す
+                Vector3 effectPos = { pPos.x - forward.x * 2.0f, pPos.y - forward.y * 2.0f, pPos.z - forward.z * 2.0f };
+                
+                dodgeEffect_.SetPosition(effectPos);
+                dodgeEffect_.Play();
+            }
         } else {
             // ゲーム停止中でも、Object3dの更新(カメラ行列の反映など)は必要
             player_->Update3DObjectOnly();
@@ -691,10 +732,11 @@ void GamePlayScene::Update()
         worldPos.z += backward.z * offsetDistance;
 
         thrusterEffect_.SetPosition(worldPos); // スラスターは常に自機の尻尾に追従
+        thrusterEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
+        explosionEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
+        hitEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
+        dodgeEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
     }
-    thrusterEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
-    explosionEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
-    hitEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
 
 #ifdef USE_IMGUI
 
@@ -1348,4 +1390,5 @@ void GamePlayScene::Draw()
     thrusterEffect_.Draw();
     explosionEffect_.Draw();
     hitEffect_.Draw();
+    dodgeEffect_.Draw();
 }

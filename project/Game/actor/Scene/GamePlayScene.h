@@ -82,6 +82,7 @@ private:
     ParticleEffect thrusterEffect_;   // プレイヤースラスター用
     ParticleEffect explosionEffect_;  // 敵撃破時の爆発用
     ParticleEffect hitEffect_;        // 弾着弾時のヒット用
+    ParticleEffect dodgeEffect_;        // 弾着弾時のヒット用
 
     // ImGuiのエディタで編集するエフェクトのインデックス (0:Thruster, 1:Explosion, 2:Hit)
     int currentEditEffectIndex_ = 0;
