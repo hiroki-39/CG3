@@ -30,6 +30,16 @@ public:
     float GetTilt(float t) const;
 
     /// <summary>
+    /// 進行度(t) における速度（Speed）を取得する
+    /// </summary>
+    float GetSpeed(float t) const;
+
+    /// <summary>
+    /// 進行度(t) におけるイベント名を取得する
+    /// </summary>
+    std::string GetEvent(float t) const;
+
+    /// <summary>
     /// レールの総長を取得する（近似値）
     /// </summary>
     float GetTotalLength() const { return totalLength_; }

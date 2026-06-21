@@ -54,6 +54,12 @@ public:
     // すべてのノードで放出（バースト）
     void Play();
 
+    // エフェクト全体の発生位置を設定
+    void SetPosition(const Vector3& pos);
+
+    // エフェクト全体のベースカラーを設定
+    void SetBaseColor(const Vector4& color);
+
 private:
     void SetupRendererForNode(Node* node);
 

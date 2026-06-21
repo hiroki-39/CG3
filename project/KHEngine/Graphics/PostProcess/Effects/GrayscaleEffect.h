@@ -13,8 +13,10 @@ public:
     }
 
     void DrawImGui() override {
+#ifdef USE_IMGUI
         // グレースケールは特に調整パラメータがないのでテキストのみ
         ImGui::Text("Grayscale is Active.");
+#endif
     }
 
 private:

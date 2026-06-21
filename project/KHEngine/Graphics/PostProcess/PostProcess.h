@@ -50,6 +50,11 @@ public:
 		}
 	}
 
+	/// <summary>
+	/// エフェクトのデータを取得（パラメータ変更用）
+	/// </summary>
+	PostProcessData* GetData() { return &data_; }
+
 private:
 	/// <summary>
 	/// ルートシグネチャの作成

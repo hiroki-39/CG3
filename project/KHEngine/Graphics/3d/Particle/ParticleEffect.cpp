@@ -56,6 +56,22 @@ void ParticleEffect::Play()
     }
 }
 
+void ParticleEffect::SetPosition(const Vector3& pos)
+{
+    for (auto& node : nodes_)
+    {
+        node->emitter.SetPosition(pos);
+    }
+}
+
+void ParticleEffect::SetBaseColor(const Vector4& color)
+{
+    for (auto& node : nodes_)
+    {
+        node->baseColor = color;
+    }
+}
+
 void ParticleEffect::Update(float dt, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, const Matrix4x4& billboardMatrix)
 {
     for (auto& node : nodes_)
@@ -100,6 +116,7 @@ void ParticleEffect::Draw()
 
 void ParticleEffect::DrawImGui()
 {
+#ifdef USE_IMGUI
     ImGui::Begin("Effect Editor");
 
     static char filename[64] = "default_effect.json";
@@ -232,6 +249,7 @@ void ParticleEffect::DrawImGui()
     }
 
     ImGui::End();
+#endif
 }
 
 void ParticleEffect::SaveToJson(const std::string& filename) {

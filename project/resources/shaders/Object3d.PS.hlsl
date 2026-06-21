@@ -201,8 +201,10 @@ PixelShaderOutput main(VertexShaderOutput input)
         
         // 環境マップの色を加算（鏡面反射として扱う）
         output.color.rgb += environmentColor * gMaterial.environmentCoefficient;
+    }    // 半透明のピクセル（アンチエイリアスのフチなど）も破棄して黒いフチを消す
+    if (output.color.a <= 0.5f) {
+        discard;
     }
 
-    
     return output;
 }

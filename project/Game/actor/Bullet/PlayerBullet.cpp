@@ -5,8 +5,8 @@ void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& pos
     object_ = std::make_unique<Object3d>();
     object_->Initialize(object3dCommon);
     object_->SetModel("cube.obj");
+    object_->GetModel()->SetColor({ 0.0f, 0.8f, 1.0f, 1.0f }); // 弾を青色（水色）にする
     object_->SetTranslate(position);
-    object_->SetScale({ 1.0f, 1.0f, 1.0f });
     object_->SetScale({ 1.0f, 1.0f, 1.0f });
     // 弾はワールド座標系で飛ばすため、親(カメラ)は設定しない
     // if (parent) {

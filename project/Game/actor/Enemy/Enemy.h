@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include "KHEngine/Scene/LevelLoader.h"
+#include "KHEngine/Math/CollisionMath.h"
 
 class Enemy {
 public:
@@ -20,6 +21,10 @@ public:
     const Vector3& GetPosition() const { return position_; }
     const LevelCollider& GetCollider() const { return collider_; }
     bool IsDead() const { return isDead_; }
+
+    // 衝突判定用メソッド
+    bool CheckCollision(const Sphere& bulletSphere) const;
+    bool CheckRaycast(const Ray& ray, float* outDist) const;
 
 private:
     std::unique_ptr<Object3d> object_;

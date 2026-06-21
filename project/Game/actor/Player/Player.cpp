@@ -33,11 +33,11 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     // 照準の初期化
     reticle_ = std::make_unique<Object3d>();
     reticle_->Initialize(object3dCommon);
-    reticle_->SetModel("plane.obj"); // 照準モデルとして使用
+    reticle_->SetModel("crossHair.obj"); // 照準モデルとして使用
     reticle_->GetModel()->SetColor(reticleColor_); // 初期色
     reticle_->SetEnvironmentTextureIndex(skyboxTexIndex);
     reticle_->SetEnvironmentCoefficient(0.0f);
-    reticle_->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+    reticle_->SetScale(Vector3(1.5f, 1.5f, 1.5f));
     
     // 照準の初期位置（カメラの奥）
     reticlePosition_ = { 0.0f, 0.0f, 40.0f }; 
@@ -98,16 +98,12 @@ void Player::Move() {
             isRolling_ = true;
             rollTimer_ = 0;
             rollDirection_ = -1.0f; // 左
-            if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
-                pp->SetEffectActive("Grayscale", true);
-            }
+            isDodgeTriggered_ = true;
         } else if (input_->TriggerKey(DIK_E)) {
             isRolling_ = true;
             rollTimer_ = 0;
             rollDirection_ = 1.0f; // 右
-            if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
-                pp->SetEffectActive("Grayscale", true);
-            }
+            isDodgeTriggered_ = true;
         }
     }
 
@@ -120,24 +116,33 @@ void Player::Move() {
         // 一定時間でローリング終了
         if (rollTimer_ >= rollMaxTime_) {
             isRolling_ = false;
-            if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
-                pp->SetEffectActive("Grayscale", false);
-            }
+            // if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
+            //     pp->SetEffectActive("Grayscale", false);
+            // }
         }
+    }
+
+    // --- ブースト判定 ---
+    isBoosting_ = input_->PushKey(DIK_LSHIFT);
+    float currentReticleSpeed = reticleSpeed_;
+    float currentFollowSpeed = followSpeed_;
+    if (isBoosting_) {
+        currentReticleSpeed *= 1.5f;
+        currentFollowSpeed *= 1.5f;
     }
 
     // --- 照準（レティクル）の移動 ---
     if (input_->PushKey(DIK_W) || input_->PushKey(DIK_UP)) {
-        reticlePosition_.y += reticleSpeed_;
+        reticlePosition_.y += currentReticleSpeed;
     }
     if (input_->PushKey(DIK_S) || input_->PushKey(DIK_DOWN)) {
-        reticlePosition_.y -= reticleSpeed_;
+        reticlePosition_.y -= currentReticleSpeed;
     }
     if (input_->PushKey(DIK_A) || input_->PushKey(DIK_LEFT)) {
-        reticlePosition_.x -= reticleSpeed_;
+        reticlePosition_.x -= currentReticleSpeed;
     }
     if (input_->PushKey(DIK_D) || input_->PushKey(DIK_RIGHT)) {
-        reticlePosition_.x += reticleSpeed_;
+        reticlePosition_.x += currentReticleSpeed;
     }
 
     // 移動制限
@@ -150,40 +155,57 @@ void Player::Move() {
     reticle_->SetTranslate(reticlePosition_);
     reticle_->Update();
 
-    // --- プレイヤーの追従（Panzer Dragoon風） ---
+    // 前回の位置を保存
+    Vector3 oldPos = logicalPosition_;
+
+    // プレイヤーの追従（Panzer Dragoon風）
     // プレイヤーは照準のXY座標に向かって少し遅れて追従する
-    logicalPosition_.x += (reticlePosition_.x - logicalPosition_.x) * followSpeed_;
-    logicalPosition_.y += (reticlePosition_.y - logicalPosition_.y) * followSpeed_;
+    logicalPosition_.x += (reticlePosition_.x - logicalPosition_.x) * currentFollowSpeed;
+    logicalPosition_.y += (reticlePosition_.y - logicalPosition_.y) * currentFollowSpeed;
 
     // プレイヤーがカメラ外に出ないように制限
     logicalPosition_.x = std::clamp(logicalPosition_.x, -playerLimitX_, playerLimitX_);
     logicalPosition_.y = std::clamp(logicalPosition_.y, playerLimitYMin_, playerLimitYMax_);
 
-    // 移動時の体の傾き計算（Panzer Dragoon風）
+    // 実際の移動量（速度）を計算。画面端で動けない時は0になる
+    Vector3 velocity = {
+        logicalPosition_.x - oldPos.x,
+        logicalPosition_.y - oldPos.y,
+        0.0f
+    };
+
+    // 移動時の体の傾き計算
     // 上下移動時のピッチ角（機首の上下）
-    float pitchAngle = (reticlePosition_.y - logicalPosition_.y) * -0.1f;
+    float pitchAngle = velocity.y * -2.0f;
     pitchAngle = std::clamp(pitchAngle, -0.6f, 0.6f);
 
     // 左右移動時のヨー角（機首の左右）
-    float yawAngle = (reticlePosition_.x - logicalPosition_.x) * 0.05f;
+    float yawAngle = velocity.x * 0.6f;
     yawAngle = std::clamp(yawAngle, -0.4f, 0.4f);
 
     // 左右移動時のバンク角（機体のロール）
-    float bankAngle = (reticlePosition_.x - logicalPosition_.x) * -0.1f;
+    float bankAngle = velocity.x * -1.5f;
     bankAngle = std::clamp(bankAngle, -0.8f, 0.8f);
 
-    // ローリング中なら360度回転を追加
+    // 滑らかに補間（Lerp）する
+    float lerpSpeed = 0.1f; // 傾きが戻る・変わる速さ（0.1 = 毎フレーム10%近づく）
+    currentPitch_ += (pitchAngle - currentPitch_) * lerpSpeed;
+    currentYaw_ += (yawAngle - currentYaw_) * lerpSpeed;
+    currentBank_ += (bankAngle - currentBank_) * lerpSpeed;
+
+    // 最終的なバンク角（ローリング角度は累積させずに一時的に足す）
+    float finalBank = currentBank_;
     if (isRolling_) {
         float rollAngle = (static_cast<float>(rollTimer_) / rollMaxTime_) * 3.14159265f * 2.0f;
-        bankAngle += rollAngle * -rollDirection_;
+        finalBank += rollAngle * -rollDirection_;
     }
     
     // 実際のモデルの Transform にはオフセットを足して適用
     object_->SetScale(playerScale_);
     object_->SetRotation(Vector3(
-        baseRotation_.x + pitchAngle + modelRotOffset_.x,
-        baseRotation_.y + yawAngle + modelRotOffset_.y,
-        baseRotation_.z + bankAngle + modelRotOffset_.z
+        baseRotation_.x + currentPitch_ + modelRotOffset_.x,
+        baseRotation_.y + currentYaw_ + modelRotOffset_.y,
+        baseRotation_.z + finalBank + modelRotOffset_.z
     ));
     object_->SetTranslate(Vector3(logicalPosition_.x + modelPosOffset_.x, logicalPosition_.y + modelPosOffset_.y, logicalPosition_.z + modelPosOffset_.z));
 }
@@ -198,7 +220,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d*
 
     // タイマーが0以下なら発射可能
     // スペースキーまたはマウス左クリックで発射
-    if (attackTimer_ <= 0 && (input_->PushKey(DIK_SPACE) || input_->PushMouseButton(0))) {
+    if (attackTimer_ <= 0 && (input_->PushKey(DIK_SPACE))) {
         attackTimer_ = attackInterval_; // タイマーリセット
         
         // プレイヤーのワールド座標を取得する (object_はカメラの子なのでGetTranslateはローカル座標になってしまう)

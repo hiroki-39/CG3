@@ -12,13 +12,13 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const
     std::string modelName = "cube.obj";
     if (typeName_ == "Asteroid") {
         modelName = "monsterBall.obj"; // とりあえずあるモデルを流用
-        hp_ = 1; // 元5
+        hp_ = 2; 
     } else if (typeName_ == "Fighter") {
         modelName = "suzanne.obj"; // 猿のモデルをFighterの代わりにする
-        hp_ = 1; // 元2
+        hp_ = 2; 
     } else {
         modelName = "cube.obj";
-        hp_ = 1;
+        hp_ = 2;
     }
 
     // モデルがロードされているか確認してロード
@@ -49,6 +49,19 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const
     
     // コライダー専用のモデルなので、色を赤にしても他のモデルに影響しない
     colliderObject_->GetModel()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
+
+    // 初期位置にコライダーオブジェクトを追従させる
+    object_->Update();
+    if (colliderObject_) {
+        Vector3 colliderPos = {
+            position_.x + collider_.center.x,
+            position_.y + collider_.center.y,
+            position_.z + collider_.center.z
+        };
+        colliderObject_->SetTranslate(colliderPos);
+        colliderObject_->SetRotation(object_->GetRotation());
+        colliderObject_->Update();
+    }
 }
 
 void Enemy::Update() {
@@ -99,5 +112,59 @@ void Enemy::OnCollision() {
     hp_--;
     if (hp_ <= 0) {
         isDead_ = true;
+    }
+}
+
+bool Enemy::CheckCollision(const Sphere& bulletSphere) const {
+    if (isDead_) return false;
+
+    Vector3 colCenter = { position_.x + collider_.center.x, position_.y + collider_.center.y, position_.z + collider_.center.z };
+
+    if (collider_.type == "SPHERE") {
+        Sphere enemySphere = { colCenter, collider_.radius };
+        return CollisionMath::IsCollision(bulletSphere, enemySphere);
+    } else if (collider_.type == "OBB") {
+        Matrix4x4 identity = {
+            1,0,0,0,
+            0,1,0,0,
+            0,0,1,0,
+            0,0,0,1
+        };
+        OBB enemyOBB = CollisionMath::CreateOBB(colCenter, collider_.size, identity);
+        return CollisionMath::IsCollision(bulletSphere, enemyOBB);
+    } else {
+        // AABB
+        AABB enemyAABB = {
+            { colCenter.x - collider_.size.x * 0.5f, colCenter.y - collider_.size.y * 0.5f, colCenter.z - collider_.size.z * 0.5f },
+            { colCenter.x + collider_.size.x * 0.5f, colCenter.y + collider_.size.y * 0.5f, colCenter.z + collider_.size.z * 0.5f }
+        };
+        return CollisionMath::IsCollision(bulletSphere, enemyAABB);
+    }
+}
+
+bool Enemy::CheckRaycast(const Ray& ray, float* outDist) const {
+    if (isDead_) return false;
+
+    Vector3 colCenter = { position_.x + collider_.center.x, position_.y + collider_.center.y, position_.z + collider_.center.z };
+
+    if (collider_.type == "SPHERE") {
+        Sphere enemySphere = { colCenter, collider_.radius };
+        return CollisionMath::Raycast(ray, enemySphere, outDist);
+    } else if (collider_.type == "OBB") {
+        Matrix4x4 identity = {
+            1,0,0,0,
+            0,1,0,0,
+            0,0,1,0,
+            0,0,0,1
+        };
+        OBB enemyOBB = CollisionMath::CreateOBB(colCenter, collider_.size, identity);
+        return CollisionMath::Raycast(ray, enemyOBB, outDist);
+    } else {
+        // AABB
+        AABB enemyAABB = {
+            { colCenter.x - collider_.size.x * 0.5f, colCenter.y - collider_.size.y * 0.5f, colCenter.z - collider_.size.z * 0.5f },
+            { colCenter.x + collider_.size.x * 0.5f, colCenter.y + collider_.size.y * 0.5f, colCenter.z + collider_.size.z * 0.5f }
+        };
+        return CollisionMath::Raycast(ray, enemyAABB, outDist);
     }
 }

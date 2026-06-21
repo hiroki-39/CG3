@@ -13,7 +13,9 @@ public:
     }
 
     void DrawImGui() override {
+#ifdef USE_IMGUI
         ImGui::SliderFloat("Kernel Size", &data_->smoothingKernelSize, 1.0f, 10.0f);
+#endif
     }
 
 private:

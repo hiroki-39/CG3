@@ -14,8 +14,10 @@ public:
     }
 
     void DrawImGui() override {
+#ifdef USE_IMGUI
         ImGui::SliderFloat("Glitch Strength", &data_->glitchStrength, 0.0f, 0.2f);
         ImGui::SliderFloat("Noise Strength (Sandstorm)", &data_->noiseStrength, 0.0f, 1.0f);
+#endif
     }
 
 private:

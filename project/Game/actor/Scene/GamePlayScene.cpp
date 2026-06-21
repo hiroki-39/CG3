@@ -103,6 +103,19 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
     }
 }
 
+static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies) {
+    if (node.type == "EMPTY" && !node.fileName.empty()) {
+        if (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos || node.fileName.find("Obstacle") != std::string::npos) {
+            auto enemy = std::make_unique<Enemy>();
+            enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
+            enemies.push_back(std::move(enemy));
+        }
+    }
+    for (const auto& child : node.children) {
+        LoadEnemiesOnlyFromNode(child, common, skyboxTexIndex, enemies);
+    }
+}
+
 void GamePlayScene::Initialize()
 {
     // フレームワーク共通オブジェクトを取得
@@ -168,15 +181,6 @@ void GamePlayScene::Initialize()
     uint32_t checkerBoardTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("checkerBoard.png");
     uint32_t skyboxTexIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/skybox.dds");
 
-    particleEffect_.Initialize(dxCommon, srvManager);
-    
-    //// 最初からデフォルトのノードを追加しておく
-    //particleEffect_.AddNode("HitEffect", 0);
-    //particleEffect_.AddNode("Shockwave", 1);
-    //particleEffect_.AddNode("Aura", 2);
-    //
-    //particleEffect_.Play();
-
 
     // スプライト作成
     {
@@ -228,6 +232,25 @@ void GamePlayScene::Initialize()
     player_->GetObject3d()->SetParent(cameraObject_.get());
     player_->GetReticle()->SetParent(cameraObject_.get());
 
+    // レールカメラコントローラの初期化
+    railCameraController_ = std::make_unique<RailCameraController>();
+    if (mainRail_) {
+        railCameraController_->Initialize(mainRail_.get(), activeCamera_, cameraObject_.get());
+    }
+
+    thrusterEffect_.Initialize(dxCommon, srvManager);
+    thrusterEffect_.LoadFromJson("thruster.json");
+
+    explosionEffect_.Initialize(dxCommon, srvManager);
+    explosionEffect_.LoadFromJson("explosion.json");
+
+    hitEffect_.Initialize(dxCommon, srvManager);
+    hitEffect_.LoadFromJson("hit.json");
+
+    // 回避時の衝撃波（リング）エフェクトの初期化
+    dodgeEffect_.Initialize(dxCommon, srvManager);
+    dodgeEffect_.LoadFromJson("dodge.json");
+
     // 全てのモデル・テクスチャ読み込みが終わった後にGPUへ転送する
     texManager->ExecuteUploadCommands();
     texManager->ClearIntermediateResources();
@@ -246,7 +269,9 @@ void GamePlayScene::ReloadLevel()
     bullets_.clear();
     railVisualizers_.clear();
     mainRail_.reset();
-    railProgress_ = 0.0f;
+    if (railCameraController_) {
+        railCameraController_->Reset();
+    }
 
     // レベルデータの読み込みと配置
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
@@ -309,6 +334,25 @@ void GamePlayScene::ReloadLevel()
         }
     }
 }
+
+void GamePlayScene::ReloadEnemiesOnly()
+{
+    auto services = EngineServices::GetInstance();
+    auto object3dCommon = services->GetObject3dCommon();
+
+    enemies_.clear();
+
+    auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
+    if (levelData) {
+        for (const auto& objData : levelData->objects) {
+            LoadEnemiesOnlyFromNode(objData, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_);
+        }
+        OutputDebugStringA("LevelLoader: Successfully respawned enemies.\n");
+    } else {
+        OutputDebugStringA("LevelLoader: Failed to respawn enemies.\n");
+    }
+}
+
 
 void GamePlayScene::Finalize()
 {
@@ -445,54 +489,25 @@ void GamePlayScene::Update()
         // --- ルート固定移動（レールに沿った移動） ---
         if (isPlaying_)
         {
-            if (mainRail_ && mainRail_->IsValid()) {
-                float kAutoSpeed = 0.002f * gameSpeed_; // レール上の進行速度(要調整)
-                railProgress_ += kAutoSpeed;
-                if (railProgress_ > 1.0f) {
-                    railProgress_ = 1.0f; // 終点で停止
+            // === ブースト機能の処理 ===
+            auto pp = EngineServices::GetInstance()->GetPostProcess();
+            if (player_ && player_->IsBoosting()) {
+                gameSpeed_ = 1.5f; // スピードアップ
+                thrusterEffect_.SetBaseColor({ 1.0f, 0.2f, 0.0f, 1.0f }); // 赤色
+                if (pp) {
+                    pp->SetEffectActive("RadialBlur", true);
+                    pp->GetData()->radialBlurIntensity = 0.1f;
                 }
-
-                // カメラをレールから「上へ1.0f」浮かせる
-                // （回転行列でローカルの上方向にずらすと、曲線の接線変化で位置がブレてガタつくため、ワールド座標で単純に上にずらす）
-                Vector3 baseEye = mainRail_->GetPosition(railProgress_);
-                Vector3 eye = baseEye;
-                eye.y += 0.2f;
-                
-                // 注視点は少し進んだ地点（厳密にレールに沿わせるため距離を短くする）
-                float targetProgress = std::min(railProgress_ + 0.01f, 1.0f);
-                Vector3 baseTarget = mainRail_->GetPosition(targetProgress);
-
-                // 差分ベクトル (forward)
-                Vector3 forward = {
-                    baseTarget.x - baseEye.x,
-                    baseTarget.y - baseEye.y,
-                    baseTarget.z - baseEye.z
-                };
-
-                // 正規化
-                float len = std::sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
-                if (len > 1e-6f) {
-                    forward.x /= len; forward.y /= len; forward.z /= len;
+            } else {
+                gameSpeed_ = 1.0f; // 通常スピード
+                thrusterEffect_.SetBaseColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 通常（元の色）
+                if (pp) {
+                    pp->SetEffectActive("RadialBlur", false);
                 }
+            }
 
-                // 目標の回転角の計算（レールの接線にピッタリ合わせる）
-                float targetYaw = std::atan2(forward.x, forward.z);
-                float targetPitch = std::asin(-forward.y);
-                float railTilt = mainRail_->GetTilt(railProgress_);
-
-                // 補間なしで完全にレールと同じ向きにする
-                Vector3 cameraRot(targetPitch, targetYaw, railTilt);
-
-                // カメラオブジェクトのワールド行列に反映（自機などの親）
-                if (cameraObject_) {
-                    cameraObject_->SetTranslate(eye);
-                    cameraObject_->SetRotation(cameraRot);
-                    cameraObject_->Update();
-                }
-
-                // 実際のカメラの更新 (スライド4の通り、カメラオブジェクトのワールド行列の逆行列をビュー行列とするため、完全に一致させる)
-                activeCamera_->SetTranslate(eye);
-                activeCamera_->SetRotation(cameraRot);
+            if (mainRail_ && mainRail_->IsValid() && railCameraController_) {
+                railCameraController_->Update(gameSpeed_);
             } else {
                 // レールが無い場合のフォールバック（自動前進）
                 const float kAutoSpeed = 0.05f;
@@ -512,6 +527,26 @@ void GamePlayScene::Update()
     if (player_) {
         if (isPlaying_) {
             player_->Update(bullets_, cameraObject_.get());
+            
+            // 回避エフェクトの再生
+            if (player_->ConsumeDodgeTrigger()) {
+                const Matrix4x4& wMat = player_->GetObject3d()->GetmatWorld();
+                // ワールド座標を取得
+                Vector3 pPos = { wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] };
+                
+                // 進行方向（Z軸）
+                Vector3 forward = { wMat.m[2][0], wMat.m[2][1], wMat.m[2][2] };
+                float len = std::sqrt(forward.x*forward.x + forward.y*forward.y + forward.z*forward.z);
+                if (len > 0.0001f) {
+                    forward.x /= len; forward.y /= len; forward.z /= len;
+                }
+                
+                // 自機より少し手前（進行方向の逆）に出す
+                Vector3 effectPos = { pPos.x - forward.x * 2.0f, pPos.y - forward.y * 2.0f, pPos.z - forward.z * 2.0f };
+                
+                dodgeEffect_.SetPosition(effectPos);
+                dodgeEffect_.Play();
+            }
         } else {
             // ゲーム停止中でも、Object3dの更新(カメラ行列の反映など)は必要
             player_->Update3DObjectOnly();
@@ -540,45 +575,22 @@ void GamePlayScene::Update()
                 Sphere bulletSphere = { bullet->GetPosition(), 1.0f };
                 bool isHit = false;
 
-                const LevelCollider& col = (*it)->GetCollider();
-                Vector3 enemyPos = (*it)->GetPosition();
-                Vector3 colCenter = { enemyPos.x + col.center.x, enemyPos.y + col.center.y, enemyPos.z + col.center.z };
-
-                if (col.type == "SPHERE") {
-                    Sphere enemySphere = { colCenter, col.radius };
-                    isHit = CollisionMath::IsCollision(bulletSphere, enemySphere);
-                } else if (col.type == "OBB") {
-                    // Enemyに持たせているObject3dから回転行列を取得できれば良いが、今はAABB扱いで近似するか、
-                    // または単位行列を使用
-                    Matrix4x4 identity = {
-                        1,0,0,0,
-                        0,1,0,0,
-                        0,0,1,0,
-                        0,0,0,1
-                    };
-                    OBB enemyOBB = CollisionMath::CreateOBB(colCenter, col.size, identity);
-                    isHit = CollisionMath::IsCollision(bulletSphere, enemyOBB);
-                } else {
-                    // AABB
-                    AABB enemyAABB = {
-                        { colCenter.x - col.size.x * 0.5f, colCenter.y - col.size.y * 0.5f, colCenter.z - col.size.z * 0.5f },
-                        { colCenter.x + col.size.x * 0.5f, colCenter.y + col.size.y * 0.5f, colCenter.z + col.size.z * 0.5f }
-                    };
-                    isHit = CollisionMath::IsCollision(bulletSphere, enemyAABB);
-                }
+                isHit = (*it)->CheckCollision(bulletSphere);
 
                 if (isHit) {
                     bullet->OnCollision();
                     (*it)->OnCollision();
                     
                     // パーティクルの再生
-                    particleEffect_.Play();
+                    hitEffect_.SetPosition(bulletSphere.center);
+                    hitEffect_.Play();
                 }
             }
 
             if ((*it)->IsDead()) {
                 // 破壊エフェクト
-                particleEffect_.Play();
+                explosionEffect_.SetPosition((*it)->GetPosition());
+                explosionEffect_.Play();
                 it = enemies_.erase(it);
             } else {
                 ++it;
@@ -614,32 +626,8 @@ void GamePlayScene::Update()
                 for (auto& enemy : enemies_) {
                     if (enemy->IsDead()) continue;
                     
-                    const LevelCollider& col = enemy->GetCollider();
-                    Vector3 enemyPos = enemy->GetPosition();
-                    Vector3 colCenter = { enemyPos.x + col.center.x, enemyPos.y + col.center.y, enemyPos.z + col.center.z };
-
-                    bool hit = false;
                     float dist = 0.0f;
-                    if (col.type == "SPHERE") {
-                        Sphere enemySphere = { colCenter, col.radius };
-                        hit = CollisionMath::Raycast(ray, enemySphere, &dist);
-                    } else if (col.type == "OBB") {
-                        Matrix4x4 identity = {
-                            1,0,0,0,
-                            0,1,0,0,
-                            0,0,1,0,
-                            0,0,0,1
-                        };
-                        OBB enemyOBB = CollisionMath::CreateOBB(colCenter, col.size, identity);
-                        hit = CollisionMath::Raycast(ray, enemyOBB, &dist);
-                    } else {
-                        // AABB
-                        AABB enemyAABB = {
-                            { colCenter.x - col.size.x * 0.5f, colCenter.y - col.size.y * 0.5f, colCenter.z - col.size.z * 0.5f },
-                            { colCenter.x + col.size.x * 0.5f, colCenter.y + col.size.y * 0.5f, colCenter.z + col.size.z * 0.5f }
-                        };
-                        hit = CollisionMath::Raycast(ray, enemyAABB, &dist);
-                    }
+                    bool hit = enemy->CheckRaycast(ray, &dist);
 
                     if (hit) {
                         if (dist < closestDist) {
@@ -724,7 +712,30 @@ void GamePlayScene::Update()
 
     if (isPlaying_)
     {
-        particleEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
+        // プレイ中のみ特定の更新を行う場合はここに記述
+    }
+
+    // エフェクトの更新はプレイ中・停止中（エディタ操作中）に関わらず常に実行する
+    if (player_ && player_->GetObject3d()) {
+        const Matrix4x4& wMat = player_->GetObject3d()->GetmatWorld();
+        Vector3 worldPos = { wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] };
+        
+        // 自機の後方（ローカルZ軸の逆方向）へオフセットをかける
+        Vector3 backward = { -wMat.m[2][0], -wMat.m[2][1], -wMat.m[2][2] };
+        float length = std::sqrt(backward.x * backward.x + backward.y * backward.y + backward.z * backward.z);
+        if (length > 0.0f) {
+            backward.x /= length; backward.y /= length; backward.z /= length;
+        }
+        float offsetDistance = 1.8f; // 尻尾までの距離（必要に応じて調整）
+        worldPos.x += backward.x * offsetDistance;
+        worldPos.y += backward.y * offsetDistance;
+        worldPos.z += backward.z * offsetDistance;
+
+        thrusterEffect_.SetPosition(worldPos); // スラスターは常に自機の尻尾に追従
+        thrusterEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
+        explosionEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
+        hitEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
+        dodgeEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
     }
 
 #ifdef USE_IMGUI
@@ -759,77 +770,42 @@ void GamePlayScene::Update()
     if (ImGui::Button("Reload Level (F5)", ImVec2(160, 40))) {
         ReloadLevel();
     }
+    ImGui::SameLine();
+    if (ImGui::Button("Respawn Enemies", ImVec2(160, 40))) {
+        ReloadEnemiesOnly();
+    }
 
     ImGui::Separator();
-    if (ImGui::SliderFloat("ゲーム時間 (Rail Progress)", &railProgress_, 0.0f, 1.0f)) {
-        if (!isPlaying_ && mainRail_ && mainRail_->IsValid()) {
-            Vector3 baseEye = mainRail_->GetPosition(railProgress_);
-            float targetProgress = std::min(railProgress_ + 0.01f, 1.0f);
-            Vector3 baseTarget = mainRail_->GetPosition(targetProgress);
-
-            Vector3 forward = {
-                baseTarget.x - baseEye.x,
-                baseTarget.y - baseEye.y,
-                baseTarget.z - baseEye.z
-            };
-            float len = std::sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
-            if (len > 1e-6f) {
-                forward.x /= len; forward.y /= len; forward.z /= len;
-            }
-
-            float targetYaw = std::atan2(forward.x, forward.z);
-            float targetPitch = std::asin(-forward.y);
-            float railTilt = mainRail_->GetTilt(railProgress_);
-            Vector3 cameraRot(targetPitch, targetYaw, railTilt);
-
-            if (cameraObject_) {
-                cameraObject_->SetTranslate(baseEye);
-                cameraObject_->SetRotation(cameraRot);
-                cameraObject_->Update();
-            }
-            if (camera) {
-                camera->SetTranslate(baseEye);
-                camera->SetRotation(cameraRot);
-            }
+    if (railCameraController_) {
+        float p = railCameraController_->GetProgress();
+        if (ImGui::SliderFloat("ゲーム時間 (Rail Progress)", &p, 0.0f, 1.0f)) {
+            railCameraController_->SetProgress(p);
         }
     }
     ImGui::SliderFloat("ゲームスピード (Game Speed)", &gameSpeed_, 0.0f, 5.0f);
 
     // リセット処理：レール進行度を0に戻し、カメラとプレイヤーを始点に移動させる
     if (doReset) {
-        railProgress_ = 0.0f;
         isPlaying_ = false;
+        if (railCameraController_) {
+            railCameraController_->Reset();
+        }
+        
+        // リセット時に補間用変数を初期化
         if (mainRail_ && mainRail_->IsValid()) {
-            Vector3 baseEye = mainRail_->GetPosition(0.0f);
             Vector3 railForward = mainRail_->GetForward(0.0f);
-            float railTilt = mainRail_->GetTilt(0.0f);
             float yaw = std::atan2(railForward.x, railForward.z);
             float pitch = std::asin(-railForward.y);
-            Vector3 cameraRot(pitch, yaw, railTilt);
-
-            // リセット時に補間用変数を初期化
+            float railTilt = mainRail_->GetTilt(0.0f);
             currentCameraRot_ = {pitch, yaw, 0.0f};
             lastCameraYaw_ = yaw;
             currentCameraBank_ = railTilt;
-
-            // カメラをレールから「上へ1.0f」浮かせる（ワールド座標で単純に上にずらす）
-            Vector3 eye = baseEye;
-            eye.y += 1.0f;
-
-            if (activeCamera_) {
-                activeCamera_->SetTranslate(eye);
-                activeCamera_->SetRotation(cameraRot);
-            }
-            if (cameraObject_) {
-                cameraObject_->SetTranslate(eye);
-                cameraObject_->SetRotation(cameraRot);
-                cameraObject_->Update();
-            }
         }
     }
     
     ImGui::Separator();
     ImGui::Checkbox("レールを表示 (Draw Rail)", &isDrawRail_);
+    ImGui::Checkbox("コライダーを表示 (Draw Collider)", &isDrawCollider_);
     ImGui::End();
 
     if (player_) {
@@ -1337,7 +1313,14 @@ void GamePlayScene::Update()
 
 
     // --- Particle ウィンドウ ---
-    particleEffect_.DrawImGui();
+    ImGui::Begin("Effect Selector");
+    const char* items[] = { "Thruster", "Explosion", "Hit" };
+    ImGui::Combo("Edit Target", &currentEditEffectIndex_, items, IM_ARRAYSIZE(items));
+    ImGui::End();
+
+    if (currentEditEffectIndex_ == 0) thrusterEffect_.DrawImGui();
+    else if (currentEditEffectIndex_ == 1) explosionEffect_.DrawImGui();
+    else if (currentEditEffectIndex_ == 2) hitEffect_.DrawImGui();
 
 
 #endif // USE_IMGUI
@@ -1373,15 +1356,17 @@ void GamePlayScene::Draw()
     }
     
     // コライダーはワイヤーフレームで描画
-    if (object3dCommon) object3dCommon->SetWireframeDrawSetting();
-    for (auto& enemy : enemies_) {
-        enemy->DrawCollider();
+    if (isDrawCollider_) {
+        if (object3dCommon) object3dCommon->SetWireframeDrawSetting();
+        for (auto& enemy : enemies_) {
+            enemy->DrawCollider();
+        }
+        for (auto& bullet : bullets_) {
+            bullet->DrawCollider();
+        }
+        // 描画設定を元に戻す
+        if (object3dCommon) object3dCommon->SetCommonDrawSetting();
     }
-    for (auto& bullet : bullets_) {
-        bullet->DrawCollider();
-    }
-    // 描画設定を元に戻す
-    if (object3dCommon) object3dCommon->SetCommonDrawSetting();
     
     // 弾の描画
     for (auto& bullet : bullets_) {
@@ -1402,5 +1387,8 @@ void GamePlayScene::Draw()
         }
     }
 
-    particleEffect_.Draw();
+    thrusterEffect_.Draw();
+    explosionEffect_.Draw();
+    hitEffect_.Draw();
+    dodgeEffect_.Draw();
 }

@@ -16,6 +16,8 @@ struct LevelCurvePoint {
     Vector3 handle_left;
     Vector3 handle_right;
     float tilt;
+    float speed = 20.0f;
+    std::string event = "none";
 };
 
 struct LevelObjectData {
