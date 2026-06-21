@@ -150,7 +150,10 @@ void Player::Move() {
     reticle_->SetTranslate(reticlePosition_);
     reticle_->Update();
 
-    // --- プレイヤーの追従（Panzer Dragoon風） ---
+    // 前回の位置を保存
+    Vector3 oldPos = logicalPosition_;
+
+    // プレイヤーの追従（Panzer Dragoon風）
     // プレイヤーは照準のXY座標に向かって少し遅れて追従する
     logicalPosition_.x += (reticlePosition_.x - logicalPosition_.x) * followSpeed_;
     logicalPosition_.y += (reticlePosition_.y - logicalPosition_.y) * followSpeed_;
@@ -159,31 +162,44 @@ void Player::Move() {
     logicalPosition_.x = std::clamp(logicalPosition_.x, -playerLimitX_, playerLimitX_);
     logicalPosition_.y = std::clamp(logicalPosition_.y, playerLimitYMin_, playerLimitYMax_);
 
-    // 移動時の体の傾き計算（Panzer Dragoon風）
+    // 実際の移動量（速度）を計算。画面端で動けない時は0になる
+    Vector3 velocity = {
+        logicalPosition_.x - oldPos.x,
+        logicalPosition_.y - oldPos.y,
+        0.0f
+    };
+
+    // 移動時の体の傾き計算
     // 上下移動時のピッチ角（機首の上下）
-    float pitchAngle = (reticlePosition_.y - logicalPosition_.y) * -0.1f;
+    float pitchAngle = velocity.y * -2.0f;
     pitchAngle = std::clamp(pitchAngle, -0.6f, 0.6f);
 
     // 左右移動時のヨー角（機首の左右）
-    float yawAngle = (reticlePosition_.x - logicalPosition_.x) * 0.05f;
+    float yawAngle = velocity.x * 0.6f;
     yawAngle = std::clamp(yawAngle, -0.4f, 0.4f);
 
     // 左右移動時のバンク角（機体のロール）
-    float bankAngle = (reticlePosition_.x - logicalPosition_.x) * -0.1f;
+    float bankAngle = velocity.x * -1.5f;
     bankAngle = std::clamp(bankAngle, -0.8f, 0.8f);
+
+    // 滑らかに補間（Lerp）する
+    float lerpSpeed = 0.1f; // 傾きが戻る・変わる速さ（0.1 = 毎フレーム10%近づく）
+    currentPitch_ += (pitchAngle - currentPitch_) * lerpSpeed;
+    currentYaw_ += (yawAngle - currentYaw_) * lerpSpeed;
+    currentBank_ += (bankAngle - currentBank_) * lerpSpeed;
 
     // ローリング中なら360度回転を追加
     if (isRolling_) {
         float rollAngle = (static_cast<float>(rollTimer_) / rollMaxTime_) * 3.14159265f * 2.0f;
-        bankAngle += rollAngle * -rollDirection_;
+        currentBank_ += rollAngle * -rollDirection_;
     }
     
     // 実際のモデルの Transform にはオフセットを足して適用
     object_->SetScale(playerScale_);
     object_->SetRotation(Vector3(
-        baseRotation_.x + pitchAngle + modelRotOffset_.x,
-        baseRotation_.y + yawAngle + modelRotOffset_.y,
-        baseRotation_.z + bankAngle + modelRotOffset_.z
+        baseRotation_.x + currentPitch_ + modelRotOffset_.x,
+        baseRotation_.y + currentYaw_ + modelRotOffset_.y,
+        baseRotation_.z + currentBank_ + modelRotOffset_.z
     ));
     object_->SetTranslate(Vector3(logicalPosition_.x + modelPosOffset_.x, logicalPosition_.y + modelPosOffset_.y, logicalPosition_.z + modelPosOffset_.z));
 }

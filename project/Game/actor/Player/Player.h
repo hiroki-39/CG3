@@ -105,6 +105,11 @@ private:
     Vector3 modelRotOffset_ = { 0.0f, 0.0f, 0.0f };
     Vector3 playerScale_ = { 0.5f, 0.5f, 0.5f };
 
+    // 現在の傾き（補間用）
+    float currentPitch_ = 0.0f;
+    float currentYaw_ = 0.0f;
+    float currentBank_ = 0.0f;
+
     // 論理位置・回転 (カメラの子オブジェクトとしてのローカル座標になる)
     Vector3 logicalPosition_ = { 0.0f, -0.0f, 20.0f }; // カメラから20前方のやや下
     Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f };

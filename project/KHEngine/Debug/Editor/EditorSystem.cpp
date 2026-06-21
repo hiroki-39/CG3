@@ -14,6 +14,7 @@ void EditorSystem::Initialize(DirectXCommon* dxCommon) {
 }
 
 void EditorSystem::Draw(uint32_t gameSceneSrvIndex) {
+#ifdef USE_IMGUI
     // 1. メインのDockSpaceを作成
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->Pos);
@@ -94,9 +95,11 @@ void EditorSystem::Draw(uint32_t gameSceneSrvIndex) {
     ImGui::Begin("モデル"); ImGui::End();
     ImGui::Begin("カメラ"); ImGui::End();
     ImGui::Begin("ライト"); ImGui::End();
+#endif
 }
 
 void EditorSystem::DrawMenuBar() {
+#ifdef USE_IMGUI
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("ウィンドウ")) {
             ImGui::MenuItem("パーティクルエディタ", nullptr, &showParticleEditor_);
@@ -104,9 +107,11 @@ void EditorSystem::DrawMenuBar() {
         }
         ImGui::EndMenuBar();
     }
+#endif
 }
 
 void EditorSystem::DrawViewport(uint32_t srvIndex) {
+#ifdef USE_IMGUI
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::Begin("ゲーム画面");
     {
@@ -122,9 +127,11 @@ void EditorSystem::DrawViewport(uint32_t srvIndex) {
     }
     ImGui::End();
     ImGui::PopStyleVar();
+#endif
 }
 
 void EditorSystem::DrawParticleEditor() {
+#ifdef USE_IMGUI
     ImGui::Begin("パーティクルエディタ");
     
     ParticleManager* manager = ParticleManager::GetInstance();
@@ -205,9 +212,11 @@ void EditorSystem::DrawParticleEditor() {
     ImGui::EndChild();
 
     ImGui::End();
+#endif
 }
 
 void EditorSystem::DrawPerformance() {
+#ifdef USE_IMGUI
     ImGui::Begin("パフォーマンス");
 
     ImGuiIO& io = ImGui::GetIO();
@@ -233,5 +242,6 @@ void EditorSystem::DrawPerformance() {
     // ここに ImGui::Text("GPU Draw: %.3f ms", gpuTime); のように追加できます。
 
     ImGui::End();
+#endif
 }
 

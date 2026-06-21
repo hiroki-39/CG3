@@ -17,9 +17,11 @@ public:
     }
 
     void DrawImGui() override {
+#ifdef USE_IMGUI
         ImGui::SliderFloat("Threshold", &data_->dissolveThreshold, 0.0f, 1.0f);
         ImGui::SliderFloat("Edge Width", &data_->dissolveEdgeWidth, 0.0f, 0.2f);
         ImGui::ColorEdit3("Edge Color", data_->dissolveEdgeColor);
+#endif
     }
 
 private:

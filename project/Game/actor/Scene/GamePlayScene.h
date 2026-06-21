@@ -55,9 +55,17 @@ private:
     float gameSpeed_ = 1.0f;
     std::unique_ptr<Model> railModel_;
     std::vector<std::unique_ptr<Object3d>> railVisualizers_;
+#ifdef USE_IMGUI
     bool isDrawRail_ = true;
+#else
+    bool isDrawRail_ = false;
+#endif
     std::unique_ptr<Skybox> skybox_;
+#ifdef USE_IMGUI
     bool isPlaying_ = false;
+#else
+    bool isPlaying_ = true;
+#endif
 
     // カメラの補間用
     Vector3 currentCameraRot_ = {0.0f, 0.0f, 0.0f};
@@ -87,5 +95,9 @@ private:
     std::list<std::unique_ptr<Enemy>> enemies_;
 
     // コライダーのワイヤーフレーム描画
+#ifdef USE_IMGUI
     bool isDrawCollider_ = true;
+#else
+    bool isDrawCollider_ = false;
+#endif
 };

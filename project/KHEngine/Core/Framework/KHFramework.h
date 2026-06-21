@@ -73,7 +73,11 @@ protected:
     bool endRequest_ = false;
 
     // エディタモード
+#ifdef USE_IMGUI
     bool isEditorMode_ = true;
+#else
+    bool isEditorMode_ = false;
+#endif
 
 private:
 

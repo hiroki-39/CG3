@@ -313,6 +313,7 @@ void PostProcess::Draw(bool drawToSwapchain)
 
 void PostProcess::DrawImGui()
 {
+#ifdef USE_IMGUI
 	ImGui::Begin("Post Process Editor");
 
 	for (auto& effect : effects_) {
@@ -338,6 +339,7 @@ void PostProcess::DrawImGui()
 	}
 
 	ImGui::End();
+#endif
 }
 
 void PostProcess::SaveToJson()

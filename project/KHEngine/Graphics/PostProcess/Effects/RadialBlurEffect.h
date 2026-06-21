@@ -15,9 +15,11 @@ public:
     }
 
     void DrawImGui() override {
+#ifdef USE_IMGUI
         ImGui::SliderFloat("Center X", &data_->radialBlurCenterX, 0.0f, 1.0f);
         ImGui::SliderFloat("Center Y", &data_->radialBlurCenterY, 0.0f, 1.0f);
         ImGui::SliderFloat("Intensity", &data_->radialBlurIntensity, 0.0f, 0.1f);
+#endif
     }
 
 private:

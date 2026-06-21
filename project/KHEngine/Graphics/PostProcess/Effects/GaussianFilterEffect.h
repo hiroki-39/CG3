@@ -13,7 +13,9 @@ public:
     }
 
     void DrawImGui() override {
+#ifdef USE_IMGUI
         ImGui::SliderFloat("Sigma (Blur Strength)", &data_->gaussianSigma, 0.1f, 10.0f);
+#endif
     }
 
 private:

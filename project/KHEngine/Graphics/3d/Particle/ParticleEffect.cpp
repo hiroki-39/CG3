@@ -108,6 +108,7 @@ void ParticleEffect::Draw()
 
 void ParticleEffect::DrawImGui()
 {
+#ifdef USE_IMGUI
     ImGui::Begin("Effect Editor");
 
     static char filename[64] = "default_effect.json";
@@ -240,6 +241,7 @@ void ParticleEffect::DrawImGui()
     }
 
     ImGui::End();
+#endif
 }
 
 void ParticleEffect::SaveToJson(const std::string& filename) {

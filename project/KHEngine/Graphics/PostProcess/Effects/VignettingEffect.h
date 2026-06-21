@@ -14,8 +14,10 @@ public:
     }
 
     void DrawImGui() override {
+#ifdef USE_IMGUI
         ImGui::SliderFloat("Intensity", &data_->vignetteIntensity, 0.0f, 5.0f);
         ImGui::SliderFloat("Power", &data_->vignettePower, 0.1f, 5.0f);
+#endif
     }
 
 private:

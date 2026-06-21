@@ -12,13 +12,13 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const
     std::string modelName = "cube.obj";
     if (typeName_ == "Asteroid") {
         modelName = "monsterBall.obj"; // とりあえずあるモデルを流用
-        hp_ = 1; // 元5
+        hp_ = 3; 
     } else if (typeName_ == "Fighter") {
         modelName = "suzanne.obj"; // 猿のモデルをFighterの代わりにする
-        hp_ = 1; // 元2
+        hp_ = 3; 
     } else {
         modelName = "cube.obj";
-        hp_ = 1;
+        hp_ = 3;
     }
 
     // モデルがロードされているか確認してロード
