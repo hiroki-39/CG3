@@ -25,20 +25,20 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -159,9 +159,12 @@
     <ClCompile Include="Game\actor\Scene\TitleScene.cpp" />
     <ClCompile Include="Game\actor\Player\Player.cpp" />
     <ClCompile Include="Game\actor\Bullet\PlayerBullet.cpp" />
+    <ClCompile Include="Game\actor\Enemy\Enemy.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Primitive\Ring.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Primitive\Cylinder.cpp" />
     <ClCompile Include="Game\System\Application.cpp" />
+    <ClCompile Include="Game\System\Rail.cpp" />
+    <ClCompile Include="Game\System\RailCameraController.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Skybox\Skybox.cpp" />
     <ClCompile Include="KHEngine\Scene\AbstractSceneFactory.cpp" />
     <ClCompile Include="KHEngine\Core\Framework\BaseScene.cpp" />
@@ -202,6 +205,7 @@
     <ClCompile Include="KHEngine\Input\Input.cpp" />
     <ClCompile Include="KHEngine\Core\Utility\Log\Logger.cpp" />
     <ClCompile Include="KHEngine\Math\Matrix4x4.cpp" />
+    <ClCompile Include="KHEngine\Math\CollisionMath.cpp" />
     <ClCompile Include="KHEngine\Core\Framework\KHFramework.cpp" />
     <ClCompile Include="main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
@@ -222,6 +226,7 @@
     <ClCompile Include="KHEngine\Sound\Core\SoundManager.cpp" />
     <ClCompile Include="KHEngine\Scene\SceneManager.cpp" />
     <ClCompile Include="KHEngine\Core\Resource\ResourceLocator.cpp" />
+    <ClCompile Include="KHEngine\Scene\LevelLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Game\actor\Scene\GamePlayScene.h" />
@@ -229,7 +234,10 @@
     <ClInclude Include="Game\actor\Scene\TitleScene.h" />
     <ClInclude Include="Game\actor\Player\Player.h" />
     <ClInclude Include="Game\actor\Bullet\PlayerBullet.h" />
+    <ClInclude Include="Game\actor\Enemy\Enemy.h" />
     <ClInclude Include="Game\System\Application.h" />
+    <ClInclude Include="Game\System\Rail.h" />
+    <ClInclude Include="Game\System\RailCameraController.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Primitive\Ring.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Primitive\Cylinder.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Skybox\Skybox.h" />
@@ -271,6 +279,7 @@
     <ClInclude Include="KHEngine\Math\Vector3.h" />
     <ClInclude Include="KHEngine\Math\Vector4.h" />
     <ClInclude Include="KHEngine\Math\MathUtility.h" />
+    <ClInclude Include="KHEngine\Math\CollisionMath.h" />
     <ClInclude Include="KHEngine\Graphics\Resource\TextureManager.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Object\Object3d.h" />
     <ClInclude Include="KHEngine\Graphics\3d\Object\Object3dCommon.h" />
@@ -288,6 +297,7 @@
     <ClInclude Include="KHEngine\Scene\SceneManager.h" />
     <ClInclude Include="KHEngine\Scene\SceneFactory.h" />
     <ClInclude Include="KHEngine\Core\Resource\ResourceLocator.h" />
+    <ClInclude Include="KHEngine\Scene\LevelLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

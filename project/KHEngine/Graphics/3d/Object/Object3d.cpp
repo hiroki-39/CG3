@@ -42,13 +42,20 @@ void Object3d::Initialize(Object3dCommon* object3dCommon)
 
 void Object3d::Update()
 {
-	//Transformの更新
 	Matrix4x4 worldMatrix = transform.GetWorldMatrix();
+	if (parent_) {
+		worldMatrix = Matrix4x4::Multiply(worldMatrix, parent_->transform.GetWorldMatrix());
+	}
+	
+	Camera* currentCamera = camera;
+	if (object3dCommon && object3dCommon->GetDefaultCamera()) {
+		currentCamera = object3dCommon->GetDefaultCamera();
+	}
 
 	Matrix4x4 worldViewProjectionMatrix;
-	if (camera)
+	if (currentCamera)
 	{
-		const Matrix4x4& ViewProjectionMatrix = camera->GetViewProjectionMatrix();
+		const Matrix4x4& ViewProjectionMatrix = currentCamera->GetViewProjectionMatrix();
 		worldViewProjectionMatrix = Matrix4x4::Multiply(worldMatrix, ViewProjectionMatrix);
 	}
 	else
@@ -64,9 +71,9 @@ void Object3d::Update()
 	// 平行光源の向きの正規化
 	directionalLightData_->direction = directionalLightData_->direction.Normalize();
 
-	if (camera && cameraData_)
+	if (currentCamera && cameraData_)
 	{
-		Vector3 camPos = camera->GetTranslate();
+		Vector3 camPos = currentCamera->GetTranslate();
 		cameraData_->worldPosition = camPos;
 	}
 }

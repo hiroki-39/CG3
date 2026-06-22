@@ -33,7 +33,7 @@ void Skybox::Update()
 	}
 
 	Matrix4x4 viewMatrix = camera_->GetViewMatrix();
-	viewMatrix.m[3][0] = 0.0f; // カメラの位置を無視
+	viewMatrix.m[3][0] = 0.0f; // カメラの位置を無効化
 	viewMatrix.m[3][1] = 0.0f;
 	viewMatrix.m[3][2] = 0.0f;
 	Matrix4x4 wvpMatrix = Matrix4x4::Multiply(Matrix4x4::Scale({ 500.0f,500.0f,500.0f }), viewMatrix) * camera_->GetProjectionMatrix();

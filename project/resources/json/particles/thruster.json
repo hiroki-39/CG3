@@ -1,0 +1,87 @@
+[
+    {
+        "blendMode": 1,
+        "colorAnimSpeed": 2.0,
+        "emitterParam": {
+            "count": 2,
+            "drag": 0.0,
+            "endColor": [
+                0.0,
+                0.20000000298023224,
+                1.0,
+                0.0
+            ],
+            "endScale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "frequency": 0.009999999776482582,
+            "gravity": -9.800000190734863,
+            "isColorOverLifetime": true,
+            "isScaleOverLifetime": true,
+            "maxColor": [
+                0.5,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "maxLifeTime": 0.5,
+            "maxRotation": [
+                0.0,
+                0.0,
+                3.140000104904175
+            ],
+            "maxScale": [
+                0.05000000074505806,
+                0.05000000074505806,
+                0.05000000074505806
+            ],
+            "maxVelocity": [
+                1.5,
+                1.5,
+                -15.0
+            ],
+            "minColor": [
+                0.0,
+                0.800000011920929,
+                1.0,
+                1.0
+            ],
+            "minLifeTime": 0.20000000298023224,
+            "minRotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "minScale": [
+                0.15000000596046448,
+                0.15000000596046448,
+                0.15000000596046448
+            ],
+            "minVelocity": [
+                -1.5,
+                -1.5,
+                -5.0
+            ],
+            "useGravity": false
+        },
+        "enableColorAnim": false,
+        "endColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "name": "ThrusterFire",
+        "shapeType": 0,
+        "startColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "textureName": "white.png",
+        "uvScrollSpeed": 0.0
+    }
+]

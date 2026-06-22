@@ -1,0 +1,36 @@
+{
+    "attackInterval": 15,
+    "bulletSpeed": 20.0,
+    "color": [
+        0.15544039011001587,
+        0.15544039011001587,
+        0.15544039011001587,
+        1.0
+    ],
+    "followSpeed": 0.07999999821186066,
+    "modelName": "player.obj",
+    "modelPosOffset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "modelRotOffset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "moveLimitX": 15.0,
+    "moveLimitY": 10.0,
+    "playerLimitX": 5.0,
+    "playerLimitYMax": 3.0,
+    "playerLimitYMin": -3.0,
+    "playerScale": [
+        0.5,
+        0.5,
+        0.5
+    ],
+    "reflection": false,
+    "reticleSpeed": 0.5,
+    "rollMaxTime": 15,
+    "speed": 0.30000001192092896
+}

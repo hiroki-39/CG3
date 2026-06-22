@@ -1,0 +1,172 @@
+[
+    {
+        "blendMode": 1,
+        "colorAnimSpeed": 2.0,
+        "emitterParam": {
+            "count": 60,
+            "drag": 0.05000000074505806,
+            "endColor": [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+            ],
+            "endScale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "frequency": 0.0,
+            "gravity": 0.0,
+            "isColorOverLifetime": false,
+            "isScaleOverLifetime": false,
+            "maxColor": [
+                1.0,
+                0.4041450619697571,
+                0.0,
+                1.0
+            ],
+            "maxLifeTime": 0.800000011920929,
+            "maxRotation": [
+                0.0,
+                0.0,
+                6.28000020980835
+            ],
+            "maxScale": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "maxVelocity": [
+                15.0,
+                15.0,
+                15.0
+            ],
+            "minColor": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "minLifeTime": 0.30000001192092896,
+            "minRotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "minScale": [
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224
+            ],
+            "minVelocity": [
+                -15.0,
+                -15.0,
+                -15.0
+            ],
+            "useGravity": false
+        },
+        "enableColorAnim": false,
+        "endColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "name": "ExplosionSparks",
+        "shapeType": 0,
+        "startColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "textureName": "circle2.png",
+        "uvScrollSpeed": 0.0
+    },
+    {
+        "blendMode": 1,
+        "colorAnimSpeed": 2.0,
+        "emitterParam": {
+            "count": 3,
+            "drag": 0.0,
+            "endColor": [
+                1.0,
+                0.20000000298023224,
+                0.0,
+                0.0
+            ],
+            "endScale": [
+                25.0,
+                25.0,
+                25.0
+            ],
+            "frequency": 0.0,
+            "gravity": 0.0,
+            "isColorOverLifetime": true,
+            "isScaleOverLifetime": true,
+            "maxColor": [
+                1.0,
+                0.800000011920929,
+                0.20000000298023224,
+                1.0
+            ],
+            "maxLifeTime": 0.6000000238418579,
+            "maxRotation": [
+                3.140000104904175,
+                3.140000104904175,
+                3.140000104904175
+            ],
+            "maxScale": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "maxVelocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "minColor": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "minLifeTime": 0.30000001192092896,
+            "minRotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "minScale": [
+                0.10000000149011612,
+                0.10000000149011612,
+                0.10000000149011612
+            ],
+            "minVelocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "useGravity": false
+        },
+        "enableColorAnim": false,
+        "endColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "name": "Shockwave",
+        "shapeType": 1,
+        "startColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "textureName": "gradationLine.png",
+        "uvScrollSpeed": 0.0
+    }
+]

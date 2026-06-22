@@ -1,10 +1,11 @@
-﻿#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
+#include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 #include "KHEngine/Core/Resource/ResourceLocator.h"
 #include "KHEngine/Core/Utility/String/StringUtility.h"
 #include <cassert>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <DirectXTex.h> 
 
 // UI表示用に 1 を足すための定数（内部は生インデックスを使う）
@@ -107,7 +108,9 @@ void TextureManager::Initialize(DirectXCommon* dxCommon, SrvManager* srvManager)
 
 		// Add upload
 		auto& added = textureDatas.at(key);
+		dxCommon_->BeginTextureUploadBatch();
 		dxCommon_->AddTextureUpload(added.resource, added.intermediateResource, added.subresources);
+		dxCommon_->ExecuteTextureUploadBatch();
 
 		// デフォルトインデックスを保持（必ずこの生成白テクスチャを既定にする）
 		defaultTextureIndex_ = textureDatas.at(key).srvIndex;
@@ -153,7 +156,14 @@ void TextureManager::LoadTexture(const std::string& filePath)
 		// WIC対応ファイルから読み込み
 		hr = DirectX::LoadFromWICFile(wFilePath.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, &metadata, image);
 	}
-	assert(SUCCEEDED(hr));
+	if (FAILED(hr))
+	{
+		std::ofstream out("error_log.txt", std::ios::app);
+		out << "Failed to load texture: " << resolved << " hr: " << std::hex << hr << "\n";
+		out.close();
+		assert(SUCCEEDED(hr) && "Failed to load texture file!");
+		return;
+	}
 
 	// ミップマップの作成
 	DirectX::ScratchImage mipImages{};
@@ -169,7 +179,11 @@ void TextureManager::LoadTexture(const std::string& filePath)
 		hr = DirectX::GenerateMipMaps(
 			image.GetImages(), image.GetImageCount(), metadata,
 			DirectX::TEX_FILTER_SRGB, 0, mipImages);
-		assert(SUCCEEDED(hr));
+		if (FAILED(hr))
+		{
+			// ミップマップ生成に失敗した場合は元の画像をそのまま使う
+			mipImages = std::move(image);
+		}
 	}
 
 	// テクスチャデータを追加（key=resolved）
@@ -182,6 +196,12 @@ void TextureManager::LoadTexture(const std::string& filePath)
 	const auto& finalMetadata = mipImages.GetMetadata();
 	textureData.metadata = finalMetadata;
 	textureData.resource = dxCommon_->CreateTextureResource(finalMetadata);
+
+	if (!textureData.resource)
+	{
+		textureDatas.erase(resolved);
+		return;
+	}
 
 	// テクスチャデータの要素数番号をSRVのインデックスにする（生インデックス）
 	textureData.srvIndex = srvManager->Allocate();

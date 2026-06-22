@@ -219,6 +219,7 @@ void KHFramework::InitializeEngineSubsystems()
 	// PostProcess 初期化
 	postProcess_ = std::make_unique<PostProcess>();
 	postProcess_->Initialize(dxCommon_.get());
+	EngineServices::GetInstance()->SetPostProcess(postProcess_.get());
 
 	// バッチアップロードを実行して中間リソースを解放
 	TextureManager::GetInstance()->ExecuteUploadCommands();

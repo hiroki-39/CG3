@@ -85,6 +85,11 @@ public: //メンバ関数
 	/// </summary>
 	void SetColor(const Vector4& color);
 
+	/// <summary>
+	/// テクスチャのインデックスを上書き設定
+	/// </summary>
+	inline void SetTextureIndex(uint32_t index) { modelData.material.textureIndex = index; }
+
 	inline int32_t GetSelectLightings() const { return materialData_ ? materialData_->selectLightings : 0; }
 	inline float GetEnvironmentCoefficient() const { return materialData_ ? materialData_->environmentCoefficient : 0.0f; }
 
@@ -135,7 +140,7 @@ private: //メンバ変数
 	// 頂点データの仮想アドレス
 	VertexData* vertexData_ = nullptr;
 	// 頂点バッファビュー
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 
 
 	// インデックスバッファリソース
@@ -143,7 +148,7 @@ private: //メンバ変数
 	// インデックスデータの仮想アドレス
 	uint32_t* indexData_ = nullptr;
 	// インデックスバッファビュー
-	D3D12_INDEX_BUFFER_VIEW indexBufferView;
+	D3D12_INDEX_BUFFER_VIEW indexBufferView{};
 
 
 	// マテリアルリソース

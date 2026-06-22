@@ -1,12 +1,24 @@
 #include "PlayerBullet.h"
 
-void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& velocity) {
+void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& velocity, Object3d* parent) {
     velocity_ = velocity;
     object_ = std::make_unique<Object3d>();
     object_->Initialize(object3dCommon);
-    object_->SetModel("monsterBall.obj"); // 既存のモデルを使用
+    object_->SetModel("cube.obj");
+    object_->GetModel()->SetColor({ 0.0f, 0.8f, 1.0f, 1.0f }); // 弾を青色（水色）にする
     object_->SetTranslate(position);
-    object_->SetScale({ 0.5f, 0.5f, 0.5f }); // 弾なので小さく
+    object_->SetScale({ 1.0f, 1.0f, 1.0f });
+    // 弾はワールド座標系で飛ばすため、親(カメラ)は設定しない
+    // if (parent) {
+    //     object_->SetParent(parent);
+    // }
+
+    colliderObject_ = std::make_unique<Object3d>();
+    colliderObject_->Initialize(object3dCommon);
+    colliderObject_->SetModel("collider_sphere.obj"); // 弾の当たり判定と同じ球
+    colliderObject_->GetModel()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
+    colliderObject_->SetTranslate(position);
+    colliderObject_->SetScale({ 1.0f, 1.0f, 1.0f }); // 半径1.0
 }
 
 void PlayerBullet::Update() {
@@ -23,10 +35,20 @@ void PlayerBullet::Update() {
     }
 
     object_->Update();
+    if (colliderObject_) {
+        colliderObject_->SetTranslate(pos);
+        colliderObject_->Update();
+    }
 }
 
 void PlayerBullet::Draw() {
     if (object_) {
         object_->Draw();
+    }
+}
+
+void PlayerBullet::DrawCollider() {
+    if (colliderObject_) {
+        colliderObject_->Draw();
     }
 }

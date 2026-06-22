@@ -1,10 +1,11 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Graphics/3d/Object/Object3dCommon.h"
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 #include "KHEngine/Graphics/2d/SpriteCommon.h"
 #include "KHEngine/Input/Input.h"
 #include "KHEngine/Debug/Imgui/ImGuiManager.h"
+#include "KHEngine/Graphics/PostProcess/PostProcess.h"
 
 class AbstractSceneFactory;
 
@@ -35,6 +36,9 @@ public:
 	Input* GetInput() const { return input_; }
 	ImGuiManager* GetImGuiManager() const { return imguiManager_; }
 
+	void SetPostProcess(PostProcess* postProcess) { postProcess_ = postProcess; }
+	PostProcess* GetPostProcess() const { return postProcess_; }
+
 private:
 	EngineServices() = default;
 	~EngineServices() = default;
@@ -49,4 +53,6 @@ private:
 
 	// 追加: シーンファクトリー参照
 	AbstractSceneFactory* sceneFactory_ = nullptr;
+
+	PostProcess* postProcess_ = nullptr;
 };

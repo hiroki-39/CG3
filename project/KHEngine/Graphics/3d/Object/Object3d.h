@@ -73,6 +73,7 @@ public://メンバ関数
 	const Vector3& GetScale() const { return transform.scale; }
 	const Vector3& GetRotation() const { return transform.rotation; }
 	const Vector3& GetTranslate() const { return transform.translate; }
+	const Matrix4x4& GetmatWorld() const { return transformationMatrixData_->World; }
 	Vector4 GetDirectionalLightColor() const;
 	Vector3 GetDirectionalLightDirection() const;
 	float GetDirectionalLightIntensity() const;
@@ -103,6 +104,8 @@ public://メンバ関数
 	void SetDirectionalLightColor(const Vector4& color);
 	void SetDirectionalLightDirection(const Vector3& direction);
 	void SetDirectionalLightIntensity(float intensity);
+	
+	void SetParent(const Object3d* parent) { parent_ = parent; }
 
 	// PointLight setters
 	void SetPointLightColor(const Vector4& color);
@@ -163,6 +166,8 @@ private://メンバ変数
 	Model* model = nullptr;
 
 	Camera* camera = nullptr;
+	
+	const Object3d* parent_ = nullptr;
 
 	// 変換行列リソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResource_;

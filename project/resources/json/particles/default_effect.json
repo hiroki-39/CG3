@@ -1,0 +1,87 @@
+[
+    {
+        "blendMode": 1,
+        "colorAnimSpeed": 2.0,
+        "emitterParam": {
+            "count": 30,
+            "drag": 0.0,
+            "endColor": [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+            ],
+            "endScale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "frequency": 0.0,
+            "gravity": -9.800000190734863,
+            "isColorOverLifetime": true,
+            "isScaleOverLifetime": false,
+            "maxColor": [
+                1.0,
+                0.8999999761581421,
+                0.10000000149011612,
+                1.0
+            ],
+            "maxLifeTime": 1.0,
+            "maxRotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "maxScale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "maxVelocity": [
+                5.0,
+                5.0,
+                5.0
+            ],
+            "minColor": [
+                1.0,
+                0.20000000298023224,
+                0.0,
+                1.0
+            ],
+            "minLifeTime": 0.5,
+            "minRotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "minScale": [
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224
+            ],
+            "minVelocity": [
+                -5.0,
+                -5.0,
+                -5.0
+            ],
+            "useGravity": false
+        },
+        "enableColorAnim": false,
+        "endColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "name": "test",
+        "shapeType": 0,
+        "startColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "textureName": "gradationLine.png",
+        "uvScrollSpeed": 0.0
+    }
+]

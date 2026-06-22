@@ -38,6 +38,23 @@ public:
 	/// </summary>
 	uint32_t GetResultSrvIndex() const { return resultSrvIndex_; }
 
+	/// <summary>
+	/// 指定した名前のエフェクトのON/OFFを切り替える
+	/// </summary>
+	void SetEffectActive(const std::string& name, bool isActive) {
+		for (auto& effect : effects_) {
+			if (effect->name_ == name) {
+				effect->isActive_ = isActive;
+				break;
+			}
+		}
+	}
+
+	/// <summary>
+	/// エフェクトのデータを取得（パラメータ変更用）
+	/// </summary>
+	PostProcessData* GetData() { return &data_; }
+
 private:
 	/// <summary>
 	/// ルートシグネチャの作成

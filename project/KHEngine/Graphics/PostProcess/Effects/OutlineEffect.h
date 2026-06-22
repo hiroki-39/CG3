@@ -13,7 +13,9 @@ public:
     }
 
     void DrawImGui() override {
+#ifdef USE_IMGUI
         ImGui::SliderFloat("Threshold", &data_->outlineThreshold, 0.0f, 2.0f);
+#endif
     }
 
 private:
