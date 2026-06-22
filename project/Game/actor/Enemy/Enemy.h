@@ -4,6 +4,7 @@
 #include <string>
 #include "KHEngine/Scene/LevelLoader.h"
 #include "KHEngine/Math/CollisionMath.h"
+#include "Game/System/Rail.h"
 
 class Enemy {
 public:
@@ -16,6 +17,8 @@ public:
     void Draw();
     void DrawCollider(); // デバッグ描画用
     void OnCollision(); // 弾が当たった時の処理
+
+    void SetMovePath(std::unique_ptr<Rail> path);
 
     // Getter / Setter
     const Vector3& GetPosition() const { return position_; }
@@ -35,4 +38,8 @@ private:
     int hp_ = 3;
     bool isDead_ = false;
     std::string typeName_;
+
+    // パス移動用
+    std::unique_ptr<Rail> movePath_;
+    float pathProgress_ = 0.0f;
 };

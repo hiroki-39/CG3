@@ -21,43 +21,49 @@
 #include <filesystem>
 #include "KHEngine/Math/CollisionMath.h"
 
-static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::unique_ptr<Rail>& outRail, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies) {
+static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, Enemy* parentEnemy = nullptr) {
     const Object3d* currentObj = parentObj;
 
     if (node.type == "CURVE") {
-        if (!outRail) {
-            // カーブのポイントはローカル座標なので、オブジェクトのTransformを適用してワールド座標に変換する
-            Vector3 rotRad;
-            rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
-            rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
-            rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
-            
-            Matrix4x4 transformMatrix = Matrix4x4::MakeAffine(node.scale, rotRad, node.translation);
-            
-            auto TransformVector = [&transformMatrix](const Vector3& v) -> Vector3 {
-                return {
-                    v.x * transformMatrix.m[0][0] + v.y * transformMatrix.m[1][0] + v.z * transformMatrix.m[2][0] + transformMatrix.m[3][0],
-                    v.x * transformMatrix.m[0][1] + v.y * transformMatrix.m[1][1] + v.z * transformMatrix.m[2][1] + transformMatrix.m[3][1],
-                    v.x * transformMatrix.m[0][2] + v.y * transformMatrix.m[1][2] + v.z * transformMatrix.m[2][2] + transformMatrix.m[3][2]
-                };
+        // カーブのポイントはローカル座標なので、オブジェクトのTransformを適用してワールド座標に変換する
+        Vector3 rotRad;
+        rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
+        rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
+        rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
+        
+        Matrix4x4 transformMatrix = Matrix4x4::MakeAffine(node.scale, rotRad, node.translation);
+        
+        auto TransformVector = [&transformMatrix](const Vector3& v) -> Vector3 {
+            return {
+                v.x * transformMatrix.m[0][0] + v.y * transformMatrix.m[1][0] + v.z * transformMatrix.m[2][0] + transformMatrix.m[3][0],
+                v.x * transformMatrix.m[0][1] + v.y * transformMatrix.m[1][1] + v.z * transformMatrix.m[2][1] + transformMatrix.m[3][1],
+                v.x * transformMatrix.m[0][2] + v.y * transformMatrix.m[1][2] + v.z * transformMatrix.m[2][2] + transformMatrix.m[3][2]
             };
-            
-            std::vector<LevelCurvePoint> worldPoints = node.curvePoints;
-            for (auto& pt : worldPoints) {
-                pt.position = TransformVector(pt.position);
-                pt.handle_left = TransformVector(pt.handle_left);
-                pt.handle_right = TransformVector(pt.handle_right);
-            }
-            
-            outRail = std::make_unique<Rail>();
-            outRail->Initialize(worldPoints);
+        };
+        
+        std::vector<LevelCurvePoint> worldPoints = node.curvePoints;
+        for (auto& pt : worldPoints) {
+            pt.position = TransformVector(pt.position);
+            pt.handle_left = TransformVector(pt.handle_left);
+            pt.handle_right = TransformVector(pt.handle_right);
+        }
+        
+        auto rail = std::make_unique<Rail>();
+        rail->Initialize(worldPoints);
+
+        if (parentEnemy) {
+            parentEnemy->SetMovePath(std::move(rail));
+        } else {
+            outRails.push_back(std::move(rail));
         }
     }
 
+    Enemy* currentEnemy = parentEnemy;
     if (node.type == "EMPTY" && !node.fileName.empty()) {
         if (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos || node.fileName.find("Obstacle") != std::string::npos) {
             auto enemy = std::make_unique<Enemy>();
             enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
+            currentEnemy = enemy.get();
             enemies.push_back(std::move(enemy));
         }
     }
@@ -99,20 +105,43 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 
     // 子オブジェクトを再帰的に生成
     for (const auto& child : node.children) {
-        CreateObjectFromNode(child, currentObj, instances, outRail, common, skyboxTexIndex, enemies);
+        CreateObjectFromNode(child, currentObj, instances, outRails, common, skyboxTexIndex, enemies, currentEnemy);
     }
 }
 
-static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies) {
+static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, Enemy* parentEnemy = nullptr) {
+    if (node.type == "CURVE" && parentEnemy) {
+        Vector3 rotRad = { node.rotation.x * (std::numbers::pi_v<float> / 180.0f), node.rotation.y * (std::numbers::pi_v<float> / 180.0f), node.rotation.z * (std::numbers::pi_v<float> / 180.0f) };
+        Matrix4x4 transformMatrix = Matrix4x4::MakeAffine(node.scale, rotRad, node.translation);
+        auto TransformVector = [&transformMatrix](const Vector3& v) -> Vector3 {
+            return {
+                v.x * transformMatrix.m[0][0] + v.y * transformMatrix.m[1][0] + v.z * transformMatrix.m[2][0] + transformMatrix.m[3][0],
+                v.x * transformMatrix.m[0][1] + v.y * transformMatrix.m[1][1] + v.z * transformMatrix.m[2][1] + transformMatrix.m[3][1],
+                v.x * transformMatrix.m[0][2] + v.y * transformMatrix.m[1][2] + v.z * transformMatrix.m[2][2] + transformMatrix.m[3][2]
+            };
+        };
+        std::vector<LevelCurvePoint> worldPoints = node.curvePoints;
+        for (auto& pt : worldPoints) {
+            pt.position = TransformVector(pt.position);
+            pt.handle_left = TransformVector(pt.handle_left);
+            pt.handle_right = TransformVector(pt.handle_right);
+        }
+        auto rail = std::make_unique<Rail>();
+        rail->Initialize(worldPoints);
+        parentEnemy->SetMovePath(std::move(rail));
+    }
+
+    Enemy* currentEnemy = parentEnemy;
     if (node.type == "EMPTY" && !node.fileName.empty()) {
         if (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos || node.fileName.find("Obstacle") != std::string::npos) {
             auto enemy = std::make_unique<Enemy>();
             enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
+            currentEnemy = enemy.get();
             enemies.push_back(std::move(enemy));
         }
     }
     for (const auto& child : node.children) {
-        LoadEnemiesOnlyFromNode(child, common, skyboxTexIndex, enemies);
+        LoadEnemiesOnlyFromNode(child, common, skyboxTexIndex, enemies, currentEnemy);
     }
 }
 
@@ -234,8 +263,12 @@ void GamePlayScene::Initialize()
 
     // レールカメラコントローラの初期化
     railCameraController_ = std::make_unique<RailCameraController>();
-    if (mainRail_) {
-        railCameraController_->Initialize(mainRail_.get(), activeCamera_, cameraObject_.get());
+    if (!mainRails_.empty()) {
+        std::vector<Rail*> railsRaw;
+        for (auto& r : mainRails_) {
+            railsRaw.push_back(r.get());
+        }
+        railCameraController_->Initialize(railsRaw, activeCamera_, cameraObject_.get());
     }
 
     thrusterEffect_.Initialize(dxCommon, srvManager);
@@ -268,7 +301,7 @@ void GamePlayScene::ReloadLevel()
     enemies_.clear();
     bullets_.clear();
     railVisualizers_.clear();
-    mainRail_.reset();
+    mainRails_.clear();
     if (railCameraController_) {
         railCameraController_->Reset();
     }
@@ -277,15 +310,24 @@ void GamePlayScene::ReloadLevel()
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
     if (levelData) {
         for (const auto& objData : levelData->objects) {
-            CreateObjectFromNode(objData, nullptr, modelInstances, mainRail_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_);
+            CreateObjectFromNode(objData, nullptr, modelInstances, mainRails_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_);
         }
         OutputDebugStringA("LevelLoader: Successfully reloaded objects.\n");
+        
+        // 再初期化
+        if (railCameraController_ && !mainRails_.empty()) {
+            std::vector<Rail*> railsRaw;
+            for (auto& r : mainRails_) {
+                railsRaw.push_back(r.get());
+            }
+            railCameraController_->Initialize(railsRaw, activeCamera_, cameraObject_.get());
+        }
     } else {
         OutputDebugStringA("LevelLoader: Failed to reload level.\n");
     }
 
     // レールの可視化用オブジェクトの生成
-    if (mainRail_ && mainRail_->IsValid()) {
+    if (!mainRails_.empty()) {
         railModel_ = std::make_unique<Model>();
         
         std::string resolved = ResourceLocator::Resolve("rail.obj", ResourceLocator::AssetType::Model3D);
@@ -302,35 +344,38 @@ void GamePlayScene::ReloadLevel()
         railModel_->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 独立した赤色のマテリアル
 
         int sampleCount = 200; // 分割数を増やして滑らかな線にする
-        for (int i = 0; i < sampleCount; ++i) {
-            float t1 = static_cast<float>(i) / sampleCount;
-            float t2 = static_cast<float>(i + 1) / sampleCount;
-            
-            Vector3 p1 = mainRail_->GetPosition(t1);
-            Vector3 p2 = mainRail_->GetPosition(t2);
-            
-            Vector3 dir = { p2.x - p1.x, p2.y - p1.y, p2.z - p1.z };
-            float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-            if (length < 0.0001f) continue;
-            
-            dir.x /= length; dir.y /= length; dir.z /= length;
-            
-            Vector3 center = { (p1.x + p2.x) * 0.5f, (p1.y + p2.y) * 0.5f, (p1.z + p2.z) * 0.5f };
-            
-            auto obj = std::make_unique<Object3d>();
-            obj->Initialize(object3dCommon);
-            obj->SetModel(railModel_.get()); 
-            obj->SetTranslate(center);
-            float yaw = std::atan2(dir.x, dir.z);
-            float pitch = std::asin(-dir.y);
-            obj->SetRotation(Vector3(pitch, yaw, 0.0f));
-            
-            obj->SetScale(Vector3(0.02f, 0.02f, length)); 
-            
-            obj->SetEnvironmentCoefficient(0.0f);
-            obj->SetEnvironmentTextureIndex(skybox_->GetCubemapSrvIndex());
-            
-            railVisualizers_.push_back(std::move(obj));
+        for (auto& rail : mainRails_) {
+            if (!rail || !rail->IsValid()) continue;
+            for (int i = 0; i < sampleCount; ++i) {
+                float t1 = static_cast<float>(i) / sampleCount;
+                float t2 = static_cast<float>(i + 1) / sampleCount;
+                
+                Vector3 p1 = rail->GetPosition(t1);
+                Vector3 p2 = rail->GetPosition(t2);
+                
+                Vector3 dir = { p2.x - p1.x, p2.y - p1.y, p2.z - p1.z };
+                float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+                if (length < 0.0001f) continue;
+                
+                dir.x /= length; dir.y /= length; dir.z /= length;
+                
+                Vector3 center = { (p1.x + p2.x) * 0.5f, (p1.y + p2.y) * 0.5f, (p1.z + p2.z) * 0.5f };
+                
+                auto obj = std::make_unique<Object3d>();
+                obj->Initialize(object3dCommon);
+                obj->SetModel(railModel_.get()); 
+                obj->SetTranslate(center);
+                float yaw = std::atan2(dir.x, dir.z);
+                float pitch = std::asin(-dir.y);
+                obj->SetRotation(Vector3(pitch, yaw, 0.0f));
+                
+                obj->SetScale(Vector3(0.02f, 0.02f, length)); 
+                
+                obj->SetEnvironmentCoefficient(0.0f);
+                obj->SetEnvironmentTextureIndex(skybox_->GetCubemapSrvIndex());
+                
+                railVisualizers_.push_back(std::move(obj));
+            }
         }
     }
 }
@@ -506,7 +551,7 @@ void GamePlayScene::Update()
                 }
             }
 
-            if (mainRail_ && mainRail_->IsValid() && railCameraController_) {
+            if (!mainRails_.empty() && railCameraController_) {
                 railCameraController_->Update(gameSpeed_);
             } else {
                 // レールが無い場合のフォールバック（自動前進）
@@ -792,11 +837,11 @@ void GamePlayScene::Update()
         }
         
         // リセット時に補間用変数を初期化
-        if (mainRail_ && mainRail_->IsValid()) {
-            Vector3 railForward = mainRail_->GetForward(0.0f);
+        if (!mainRails_.empty() && mainRails_[0]->IsValid()) {
+            Vector3 railForward = mainRails_[0]->GetForward(0.0f);
             float yaw = std::atan2(railForward.x, railForward.z);
             float pitch = std::asin(-railForward.y);
-            float railTilt = mainRail_->GetTilt(0.0f);
+            float railTilt = mainRails_[0]->GetTilt(0.0f);
             currentCameraRot_ = {pitch, yaw, 0.0f};
             lastCameraYaw_ = yaw;
             currentCameraBank_ = railTilt;

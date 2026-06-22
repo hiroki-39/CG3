@@ -50,7 +50,7 @@ private:
     std::unique_ptr<Object3d> cameraObject_;
     
     // レールシステム
-    std::unique_ptr<Rail> mainRail_;
+    std::vector<std::unique_ptr<Rail>> mainRails_;
     std::unique_ptr<RailCameraController> railCameraController_;
     float gameSpeed_ = 1.0f;
     std::unique_ptr<Model> railModel_;

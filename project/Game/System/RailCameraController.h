@@ -13,10 +13,10 @@ public:
     /// <summary>
     /// 初期化
     /// </summary>
-    /// <param name="rail">追従するレール</param>
+    /// <param name="rails">追従する複数のレール</param>
     /// <param name="camera">描画用カメラ</param>
     /// <param name="parentObject">プレイヤー等の親となるオブジェクト</param>
-    void Initialize(Rail* rail, Camera* camera, Object3d* parentObject);
+    void Initialize(const std::vector<Rail*>& rails, Camera* camera, Object3d* parentObject);
 
     /// <summary>
     /// 更新処理
@@ -46,7 +46,8 @@ private:
     void ApplyTransform();
 
 private:
-    Rail* rail_ = nullptr;
+    std::vector<Rail*> rails_;
+    int currentRailIndex_ = 0;
     Camera* camera_ = nullptr;
     Object3d* parentObject_ = nullptr;
 

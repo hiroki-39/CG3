@@ -64,18 +64,47 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const
     }
 }
 
+void Enemy::SetMovePath(std::unique_ptr<Rail> path) {
+    movePath_ = std::move(path);
+    pathProgress_ = 0.0f;
+}
+
 void Enemy::Update() {
     if (isDead_) return;
 
     // 簡易的な移動や回転
-    if (typeName_ == "Asteroid") {
-        Vector3 rot = object_->GetRotation();
-        rot.x += 0.01f;
-        rot.y += 0.02f;
-        object_->SetRotation(rot);
-    } else if (typeName_ == "Fighter") {
-        // 必要に応じて移動処理を追記
-        // position_.z -= 0.1f;
+    if (movePath_ && movePath_->IsValid()) {
+        // パスが設定されている場合、パスに沿って移動する
+        float speed = movePath_->GetSpeed(pathProgress_);
+        if (speed <= 0.0f) speed = 20.0f; // デフォルトスピード
+        
+        // フレームレートを60FPSと仮定し、レールの長さとスピードから進行度を加算
+        float length = movePath_->GetTotalLength();
+        if (length > 0.0f) {
+            pathProgress_ += (speed / length) * (1.0f / 60.0f);
+        }
+        
+        if (pathProgress_ > 1.0f) {
+            pathProgress_ = 1.0f; // 終点で止まる、またはループさせるか（今回は終点停止）
+        }
+
+        position_ = movePath_->GetPosition(pathProgress_);
+        
+        // 進行方向に向ける
+        Vector3 forward = movePath_->GetForward(pathProgress_);
+        float yaw = std::atan2(forward.x, forward.z);
+        float pitch = std::asin(-forward.y);
+        object_->SetRotation(Vector3(pitch, yaw, 0.0f));
+        
+    } else {
+        if (typeName_ == "Asteroid") {
+            Vector3 rot = object_->GetRotation();
+            rot.x += 0.01f;
+            rot.y += 0.02f;
+            object_->SetRotation(rot);
+        } else if (typeName_ == "Fighter") {
+            // 必要に応じて移動処理を追記
+        }
     }
 
     object_->SetTranslate(position_);
