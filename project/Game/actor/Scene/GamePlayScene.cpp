@@ -21,37 +21,14 @@
 #include <filesystem>
 #include "KHEngine/Math/CollisionMath.h"
 
-static void CreateObjectFromNode(const LevelObjectData& node, const Matrix4x4& parentMatrix, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, Enemy* parentEnemy = nullptr) {
-    // 現在のノードのローカル行列を計算
-    Vector3 rotRad;
-    rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
-    rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
-    rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
-    Matrix4x4 localMatrix = Matrix4x4::MakeAffine(node.scale, rotRad, node.translation);
-    
-    // 親のワールド行列と掛けて、現在のワールド行列を計算
-    Matrix4x4 worldMatrix = Matrix4x4::Multiply(localMatrix, parentMatrix);
-
+static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, Enemy* parentEnemy = nullptr) {
     const Object3d* currentObj = parentObj;
 
     if (node.type == "CURVE") {
-        auto TransformVector = [&worldMatrix](const Vector3& v) -> Vector3 {
-            return {
-                v.x * worldMatrix.m[0][0] + v.y * worldMatrix.m[1][0] + v.z * worldMatrix.m[2][0] + worldMatrix.m[3][0],
-                v.x * worldMatrix.m[0][1] + v.y * worldMatrix.m[1][1] + v.z * worldMatrix.m[2][1] + worldMatrix.m[3][1],
-                v.x * worldMatrix.m[0][2] + v.y * worldMatrix.m[1][2] + v.z * worldMatrix.m[2][2] + worldMatrix.m[3][2]
-            };
-        };
-        
-        std::vector<LevelCurvePoint> worldPoints = node.curvePoints;
-        for (auto& pt : worldPoints) {
-            pt.position = TransformVector(pt.position);
-            pt.handle_left = TransformVector(pt.handle_left);
-            pt.handle_right = TransformVector(pt.handle_right);
-        }
-        
+        // Blenderのエクスポータですでにワールド座標としてcurvePointsが出力されているため、
+        // ゲーム側での再変換は不要。そのままレールを初期化する。
         auto rail = std::make_unique<Rail>();
-        rail->Initialize(worldPoints);
+        rail->Initialize(node.curvePoints);
 
         if (parentEnemy) {
             parentEnemy->SetMovePath(std::move(rail));
@@ -107,31 +84,14 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Matrix4x4& p
 
     // 子オブジェクトを再帰的に生成
     for (const auto& child : node.children) {
-        CreateObjectFromNode(child, worldMatrix, currentObj, instances, outRails, common, skyboxTexIndex, enemies, currentEnemy);
+        CreateObjectFromNode(child, currentObj, instances, outRails, common, skyboxTexIndex, enemies, currentEnemy);
     }
 }
 
-static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, const Matrix4x4& parentMatrix, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, Enemy* parentEnemy = nullptr) {
-    Vector3 rotRad = { node.rotation.x * (std::numbers::pi_v<float> / 180.0f), node.rotation.y * (std::numbers::pi_v<float> / 180.0f), node.rotation.z * (std::numbers::pi_v<float> / 180.0f) };
-    Matrix4x4 localMatrix = Matrix4x4::MakeAffine(node.scale, rotRad, node.translation);
-    Matrix4x4 worldMatrix = Matrix4x4::Multiply(localMatrix, parentMatrix);
-
+static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, Enemy* parentEnemy = nullptr) {
     if (node.type == "CURVE" && parentEnemy) {
-        auto TransformVector = [&worldMatrix](const Vector3& v) -> Vector3 {
-            return {
-                v.x * worldMatrix.m[0][0] + v.y * worldMatrix.m[1][0] + v.z * worldMatrix.m[2][0] + worldMatrix.m[3][0],
-                v.x * worldMatrix.m[0][1] + v.y * worldMatrix.m[1][1] + v.z * worldMatrix.m[2][1] + worldMatrix.m[3][1],
-                v.x * worldMatrix.m[0][2] + v.y * worldMatrix.m[1][2] + v.z * worldMatrix.m[2][2] + worldMatrix.m[3][2]
-            };
-        };
-        std::vector<LevelCurvePoint> worldPoints = node.curvePoints;
-        for (auto& pt : worldPoints) {
-            pt.position = TransformVector(pt.position);
-            pt.handle_left = TransformVector(pt.handle_left);
-            pt.handle_right = TransformVector(pt.handle_right);
-        }
         auto rail = std::make_unique<Rail>();
-        rail->Initialize(worldPoints);
+        rail->Initialize(node.curvePoints);
         parentEnemy->SetMovePath(std::move(rail));
     }
 
@@ -145,7 +105,7 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, const Matrix4x4
         }
     }
     for (const auto& child : node.children) {
-        LoadEnemiesOnlyFromNode(child, worldMatrix, common, skyboxTexIndex, enemies, currentEnemy);
+        LoadEnemiesOnlyFromNode(child, common, skyboxTexIndex, enemies, currentEnemy);
     }
 }
 
@@ -314,14 +274,8 @@ void GamePlayScene::ReloadLevel()
     // レベルデータの読み込みと配置
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
     if (levelData) {
-        Matrix4x4 identity = {
-            1,0,0,0,
-            0,1,0,0,
-            0,0,1,0,
-            0,0,0,1
-        };
         for (const auto& objData : levelData->objects) {
-            CreateObjectFromNode(objData, identity, nullptr, modelInstances, mainRails_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_);
+            CreateObjectFromNode(objData, nullptr, modelInstances, mainRails_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_);
         }
         OutputDebugStringA("LevelLoader: Successfully reloaded objects.\n");
         
@@ -448,14 +402,8 @@ void GamePlayScene::ReloadEnemiesOnly()
 
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
     if (levelData) {
-        Matrix4x4 identity = {
-            1,0,0,0,
-            0,1,0,0,
-            0,0,1,0,
-            0,0,0,1
-        };
         for (const auto& objData : levelData->objects) {
-            LoadEnemiesOnlyFromNode(objData, identity, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_);
+            LoadEnemiesOnlyFromNode(objData, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_);
         }
         OutputDebugStringA("LevelLoader: Successfully respawned enemies.\n");
 
