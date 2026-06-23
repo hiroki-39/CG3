@@ -54,7 +54,9 @@ private:
     std::unique_ptr<RailCameraController> railCameraController_;
     float gameSpeed_ = 1.0f;
     std::unique_ptr<Model> railModel_;
+    std::unique_ptr<Model> enemyRailModel_;
     std::vector<std::unique_ptr<Object3d>> railVisualizers_;
+    std::vector<std::unique_ptr<Object3d>> enemyRailVisualizers_;
 #ifdef USE_IMGUI
     bool isDrawRail_ = true;
 #else

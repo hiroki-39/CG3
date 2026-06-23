@@ -24,6 +24,7 @@ public:
     const Vector3& GetPosition() const { return position_; }
     const LevelCollider& GetCollider() const { return collider_; }
     bool IsDead() const { return isDead_; }
+    const Rail* GetMovePath() const { return movePath_.get(); }
 
     // 衝突判定用メソッド
     bool CheckCollision(const Sphere& bulletSphere) const;
