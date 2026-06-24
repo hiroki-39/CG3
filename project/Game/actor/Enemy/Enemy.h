@@ -21,7 +21,7 @@ public:
     void SetMovePath(std::unique_ptr<Rail> path);
 
     void SetSpawnProgress(float progress) { spawnProgress_ = progress; }
-    void SetTexturePath(const std::string& path) { texturePath_ = path; }
+    void SetTexturePath(const std::string& path);
 
     // Getter / Setter
     const Vector3& GetPosition() const { return position_; }
@@ -36,6 +36,7 @@ public:
 private:
     std::unique_ptr<Object3d> object_;
     std::unique_ptr<Object3d> colliderObject_; // デバッグ描画用オブジェクト
+    std::unique_ptr<Object3d> shadowObject_; // 丸影用オブジェクト
     Vector3 position_;
     Vector3 velocity_ = {0.0f, 0.0f, 0.0f};
     LevelCollider collider_; // コライダー情報

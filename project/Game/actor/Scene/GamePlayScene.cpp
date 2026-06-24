@@ -64,6 +64,14 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
         ModelManager::GetInstance()->LoadModel(modelName);
         if (ModelManager::GetInstance()->FindModel(modelName) != nullptr) {
             obj->SetModel(modelName);
+
+            if (!node.texturePath.empty()) {
+                TextureManager::GetInstance()->LoadTexture(node.texturePath);
+                uint32_t texIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath(node.texturePath);
+                if (texIndex != UINT32_MAX && obj->GetModel()) {
+                    obj->GetModel()->SetTextureIndex(texIndex);
+                }
+            }
         }
         
         obj->SetTranslate(node.translation);
@@ -758,12 +766,30 @@ void GamePlayScene::Update()
                 }
             }
 
+            // ロックオンはしていないが、近い敵がいるかどうかの判定
+            float minEnemyDist = 1000000.0f;
+            for (auto& enemy : enemies_) {
+                if (enemy->IsDead()) continue;
+                Vector3 ePos = enemy->GetPosition();
+                float d = std::sqrt((ePos.x - cameraPos.x)*(ePos.x - cameraPos.x) + 
+                                    (ePos.y - cameraPos.y)*(ePos.y - cameraPos.y) + 
+                                    (ePos.z - cameraPos.z)*(ePos.z - cameraPos.z));
+                if (d < minEnemyDist) {
+                    minEnemyDist = d;
+                }
+            }
+
             // 照準の色の更新とロックオン座標の伝達
             if (isLockOn) {
                 player_->SetReticleColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
                 player_->SetLockOn(true, lockOnPos);
             } else {
-                player_->SetReticleColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 白色
+                if (minEnemyDist < 100.0f) {
+                    // 近くに敵がいる場合はオレンジ色（警戒）
+                    player_->SetReticleColor({ 1.0f, 0.6f, 0.0f, 1.0f });
+                } else {
+                    player_->SetReticleColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 白色
+                }
                 player_->SetLockOn(false);
             }
         }

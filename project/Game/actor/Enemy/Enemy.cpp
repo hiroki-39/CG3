@@ -62,6 +62,25 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const
         colliderObject_->SetRotation(object_->GetRotation());
         colliderObject_->Update();
     }
+
+    // 丸影用オブジェクトの初期化
+    shadowObject_ = std::make_unique<Object3d>();
+    shadowObject_->Initialize(object3dCommon);
+    ModelManager::GetInstance()->LoadModel("plane.obj");
+    shadowObject_->SetModel("plane.obj");
+    
+    // 黒い半透明色に設定
+    shadowObject_->GetModel()->SetColor({ 0.0f, 0.0f, 0.0f, 0.5f });
+    shadowObject_->SetEnableLighting(false);
+    shadowObject_->SetSelectLightings(0);
+    
+    TextureManager::GetInstance()->LoadTexture("circle.png");
+    uint32_t circleTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("circle.png");
+    if (circleTex != UINT32_MAX) {
+        shadowObject_->GetModel()->SetTextureIndex(circleTex);
+    }
+    
+    shadowObject_->Update();
 }
 
 void Enemy::SetMovePath(std::unique_ptr<Rail> path) {
@@ -149,22 +168,41 @@ void Enemy::Update(const Vector3& playerPos, const Vector3& playerForward) {
 
     // コライダーオブジェクトも追従させる
     if (colliderObject_) {
-        // オフセットを足した位置
         Vector3 colliderPos = {
             position_.x + collider_.center.x,
             position_.y + collider_.center.y,
             position_.z + collider_.center.z
         };
         colliderObject_->SetTranslate(colliderPos);
-        // OBBの場合は回転も同期させる（今回はEnemy自身が回転する場合は同期）
         colliderObject_->SetRotation(object_->GetRotation());
         colliderObject_->Update();
+    }
+
+    // 丸影も追従させる（地面 Y=0.05f くらいに配置して重なり(Z-fighting)を防ぐ）
+    if (shadowObject_ && isActive_) {
+        shadowObject_->SetTranslate({ position_.x, 0.05f, position_.z });
+        
+        // 地面に張り付く向きに回転（必要に応じて）
+        // plane.obj がすでに水平なら回転0でOK
+        shadowObject_->SetRotation({ 0.0f, 0.0f, 0.0f });
+        
+        // 高度が高いほど影を小さく、薄くするなどの表現も可能
+        float height = position_.y;
+        float shadowScale = 2.0f;
+        if (height > 0.0f) {
+            shadowScale = std::fmax(0.5f, 2.0f - (height * 0.05f));
+        }
+        shadowObject_->SetScale({ shadowScale, shadowScale, shadowScale });
+        shadowObject_->Update();
     }
 }
 
 void Enemy::Draw() {
-    if (!isDead_ && object_) {
+    if (!isDead_ && isActive_ && object_) {
         object_->Draw();
+    }
+    if (!isDead_ && isActive_ && shadowObject_) {
+        shadowObject_->Draw();
     }
 }
 
@@ -232,5 +270,16 @@ bool Enemy::CheckRaycast(const Ray& ray, float* outDist) const {
             { colCenter.x + collider_.size.x * 0.5f, colCenter.y + collider_.size.y * 0.5f, colCenter.z + collider_.size.z * 0.5f }
         };
         return CollisionMath::Raycast(ray, enemyAABB, outDist);
+    }
+}
+
+void Enemy::SetTexturePath(const std::string& path) {
+    texturePath_ = path;
+    if (!texturePath_.empty() && object_ && object_->GetModel()) {
+        TextureManager::GetInstance()->LoadTexture(texturePath_);
+        uint32_t texIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath(texturePath_);
+        if (texIndex != UINT32_MAX) {
+            object_->GetModel()->SetTextureIndex(texIndex);
+        }
     }
 }
