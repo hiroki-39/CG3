@@ -53,7 +53,7 @@ private:
     std::vector<std::unique_ptr<Rail>> mainRails_;
     std::unique_ptr<RailCameraController> railCameraController_;
     float gameSpeed_ = 1.0f;
-    std::unique_ptr<Model> railModel_;
+    std::vector<std::unique_ptr<Model>> railModels_;
     std::unique_ptr<Model> enemyRailModel_;
     std::vector<std::unique_ptr<Object3d>> railVisualizers_;
     std::vector<std::unique_ptr<Object3d>> enemyRailVisualizers_;

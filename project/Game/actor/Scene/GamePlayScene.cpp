@@ -205,7 +205,7 @@ void GamePlayScene::Initialize()
         terrain->SetModel("terrain.obj");
         terrain->SetTranslate(Vector3(0.0f, -3.0f, 0.0f));
         terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-        terrain->SetScale(Vector3(1000.0f, 1000.0f, 1000.0f));
+        terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
         modelInstances.push_back(std::move(terrain));
     }
 
@@ -292,25 +292,36 @@ void GamePlayScene::ReloadLevel()
     }
 
     // レールの可視化用オブジェクトの生成
+    railVisualizers_.clear();
+    railModels_.clear();
     if (!mainRails_.empty()) {
-        railModel_ = std::make_unique<Model>();
-        
+        std::vector<Vector4> colors = {
+            {1.0f, 0.0f, 0.0f, 1.0f}, // 赤
+            {0.0f, 0.5f, 1.0f, 1.0f}, // 青
+            {1.0f, 1.0f, 0.0f, 1.0f}, // 黄色
+            {0.0f, 1.0f, 1.0f, 1.0f}, // シアン
+            {1.0f, 0.0f, 1.0f, 1.0f}, // マゼンタ
+            {1.0f, 0.5f, 0.0f, 1.0f}  // オレンジ
+        };
+
         std::string resolved = ResourceLocator::Resolve("rail.obj", ResourceLocator::AssetType::Model3D);
+        std::string directory = "resources/models";
+        std::string filename = "rail.obj";
         if (!resolved.empty()) {
             std::filesystem::path rp(reinterpret_cast<const char8_t*>(resolved.c_str()));
-            std::string directory = rp.parent_path().string();
-            std::string filename = rp.filename().string();
-            railModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), directory, filename);
-        } else {
-            // フォールバック
-            railModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), "resources/models", "rail.obj");
+            directory = rp.parent_path().string();
+            filename = rp.filename().string();
         }
-        
-        railModel_->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 独立した赤色のマテリアル
 
         int sampleCount = 200; // 分割数を増やして滑らかな線にする
+        int colorIndex = 0;
         for (auto& rail : mainRails_) {
             if (!rail || !rail->IsValid()) continue;
+
+            auto railModel = std::make_unique<Model>();
+            railModel->Initialize(ModelManager::GetInstance()->GetModelCommon(), directory, filename);
+            railModel->SetColor(colors[colorIndex % colors.size()]);
+
             for (int i = 0; i < sampleCount; ++i) {
                 float t1 = static_cast<float>(i) / sampleCount;
                 float t2 = static_cast<float>(i + 1) / sampleCount;
@@ -328,7 +339,7 @@ void GamePlayScene::ReloadLevel()
                 
                 auto obj = std::make_unique<Object3d>();
                 obj->Initialize(object3dCommon);
-                obj->SetModel(railModel_.get()); 
+                obj->SetModel(railModel.get()); 
                 obj->SetTranslate(center);
                 float yaw = std::atan2(dir.x, dir.z);
                 float pitch = std::asin(-dir.y);
@@ -341,6 +352,9 @@ void GamePlayScene::ReloadLevel()
                 
                 railVisualizers_.push_back(std::move(obj));
             }
+            
+            railModels_.push_back(std::move(railModel));
+            colorIndex++;
         }
     }
 
@@ -1473,6 +1487,9 @@ void GamePlayScene::Draw()
     if (isDrawRail_) {
         if (object3dCommon) object3dCommon->SetCommonDrawSetting();
         for (auto& vis : railVisualizers_) {
+            if (vis) vis->Draw();
+        }
+        for (auto& vis : enemyRailVisualizers_) {
             if (vis) vis->Draw();
         }
     }
