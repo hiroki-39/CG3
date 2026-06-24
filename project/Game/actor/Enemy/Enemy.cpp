@@ -69,41 +69,78 @@ void Enemy::SetMovePath(std::unique_ptr<Rail> path) {
     pathProgress_ = 0.0f;
 }
 
-void Enemy::Update() {
+void Enemy::Update(const Vector3& playerPos, const Vector3& playerForward) {
     if (isDead_) return;
 
-    // 簡易的な移動や回転
-    if (movePath_ && movePath_->IsValid()) {
-        // パスが設定されている場合、パスに沿って移動する
-        float speed = movePath_->GetSpeed(pathProgress_);
-        if (speed <= 0.0f) speed = 20.0f; // デフォルトスピード
-        
-        // フレームレートを60FPSと仮定し、レールの長さとスピードから進行度を加算
-        float length = movePath_->GetTotalLength();
-        if (length > 0.0f) {
-            pathProgress_ += (speed / length) * (1.0f / 60.0f);
+    if (!isActive_) {
+        // アクティブ化判定: プレイヤーとの距離が一定以内になったら動き出す
+        float distance = std::sqrt((position_.x - playerPos.x)*(position_.x - playerPos.x) + (position_.z - playerPos.z)*(position_.z - playerPos.z));
+        float spawnDist = (spawnProgress_ > 0.0f) ? spawnProgress_ * 300.0f : 200.0f; // 未指定なら200m
+        if (distance < spawnDist) {
+            isActive_ = true;
+        } else {
+            return; // まだ出番ではない
         }
-        
-        if (pathProgress_ > 1.0f) {
-            pathProgress_ = 1.0f; // 終点で止まる、またはループさせるか（今回は終点停止）
-        }
+    }
 
-        position_ = movePath_->GetPosition(pathProgress_);
+    if (!isAutoAI_) {
+        if (movePath_ && movePath_->IsValid()) {
+            float speed = movePath_->GetSpeed(pathProgress_);
+            if (speed <= 0.0f) speed = 20.0f;
+            float length = movePath_->GetTotalLength();
+            if (length > 0.0f) {
+                pathProgress_ += (speed / length) * (1.0f / 60.0f);
+            }
+            if (pathProgress_ >= 1.0f) {
+                pathProgress_ = 1.0f;
+                isAutoAI_ = true; // レール終端でAIに切り替え
+                // プレイヤーの少し前方、ランダムな位置にオフセットを設定
+                aiOffset_ = {
+                    (rand() % 40 - 20) * 1.0f,
+                    (rand() % 20 - 5) * 1.0f,
+                    40.0f + (rand() % 30) * 1.0f
+                };
+            }
+            position_ = movePath_->GetPosition(pathProgress_);
+            Vector3 forward = movePath_->GetForward(pathProgress_);
+            float yaw = std::atan2(forward.x, forward.z);
+            float pitch = std::asin(-forward.y);
+            object_->SetRotation(Vector3(pitch, yaw, 0.0f));
+        } else {
+            if (typeName_ == "Asteroid") {
+                Vector3 rot = object_->GetRotation();
+                rot.x += 0.01f;
+                rot.y += 0.02f;
+                object_->SetRotation(rot);
+            } else if (typeName_ == "Fighter") {
+                isAutoAI_ = true;
+                aiOffset_ = {0.0f, 0.0f, 50.0f};
+            }
+        }
+    }
+
+    if (isAutoAI_) {
+        // 自律戦闘（AI）モード：プレイヤー（カメラ）の前方を浮遊する
+        Vector3 right = { playerForward.z, 0.0f, -playerForward.x };
         
-        // 進行方向に向ける
-        Vector3 forward = movePath_->GetForward(pathProgress_);
-        float yaw = std::atan2(forward.x, forward.z);
-        float pitch = std::asin(-forward.y);
-        object_->SetRotation(Vector3(pitch, yaw, 0.0f));
-        
-    } else {
-        if (typeName_ == "Asteroid") {
-            Vector3 rot = object_->GetRotation();
-            rot.x += 0.01f;
-            rot.y += 0.02f;
-            object_->SetRotation(rot);
-        } else if (typeName_ == "Fighter") {
-            // 必要に応じて移動処理を追記
+        Vector3 targetPos = {
+            playerPos.x + playerForward.x * aiOffset_.z + right.x * aiOffset_.x,
+            playerPos.y + aiOffset_.y,
+            playerPos.z + playerForward.z * aiOffset_.z + right.z * aiOffset_.x
+        };
+
+        // 目標座標へなめらかに移動
+        float lerpSpeed = 0.05f;
+        position_.x += (targetPos.x - position_.x) * lerpSpeed;
+        position_.y += (targetPos.y - position_.y) * lerpSpeed;
+        position_.z += (targetPos.z - position_.z) * lerpSpeed;
+
+        // プレイヤーの方を向く
+        Vector3 dirToPlayer = { playerPos.x - position_.x, playerPos.y - position_.y, playerPos.z - position_.z };
+        float dist = std::sqrt(dirToPlayer.x*dirToPlayer.x + dirToPlayer.z*dirToPlayer.z);
+        if (dist > 0.001f) {
+            float yaw = std::atan2(-dirToPlayer.x, -dirToPlayer.z);
+            object_->SetRotation(Vector3(0.0f, yaw, 0.0f));
         }
     }
 

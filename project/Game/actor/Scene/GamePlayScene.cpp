@@ -42,6 +42,10 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
         if (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos || node.fileName.find("Obstacle") != std::string::npos) {
             auto enemy = std::make_unique<Enemy>();
             enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
+            enemy->SetSpawnProgress(node.spawnProgress);
+            if (!node.texturePath.empty()) {
+                enemy->SetTexturePath(node.texturePath);
+            }
             currentEnemy = enemy.get();
             enemies.push_back(std::move(enemy));
         }
@@ -100,6 +104,10 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
         if (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos || node.fileName.find("Obstacle") != std::string::npos) {
             auto enemy = std::make_unique<Enemy>();
             enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
+            enemy->SetSpawnProgress(node.spawnProgress);
+            if (!node.texturePath.empty()) {
+                enemy->SetTexturePath(node.texturePath);
+            }
             currentEnemy = enemy.get();
             enemies.push_back(std::move(enemy));
         }
@@ -667,9 +675,13 @@ void GamePlayScene::Update()
             }
         }
 
+        Vector3 cameraPos = activeCamera_->GetTranslate();
+        Vector3 rot = activeCamera_->GetRotation();
+        Vector3 cameraForward = { std::sinf(rot.y), 0.0f, std::cosf(rot.y) };
+
         // 敵の更新と当たり判定
         for (auto it = enemies_.begin(); it != enemies_.end();) {
-            (*it)->Update();
+            (*it)->Update(cameraPos, cameraForward);
 
             // プレイヤーの弾との当たり判定
             for (auto& bullet : bullets_) {

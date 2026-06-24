@@ -9,7 +9,7 @@
 class Enemy {
 public:
     void Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const std::string& typeName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo);
-    void Update();
+    void Update(const Vector3& playerPos, const Vector3& playerForward);
     void Update3DObjectOnly() {
         if (object_) object_->Update();
         if (colliderObject_) colliderObject_->Update();
@@ -19,6 +19,9 @@ public:
     void OnCollision(); // 弾が当たった時の処理
 
     void SetMovePath(std::unique_ptr<Rail> path);
+
+    void SetSpawnProgress(float progress) { spawnProgress_ = progress; }
+    void SetTexturePath(const std::string& path) { texturePath_ = path; }
 
     // Getter / Setter
     const Vector3& GetPosition() const { return position_; }
@@ -43,4 +46,10 @@ private:
     // パス移動用
     std::unique_ptr<Rail> movePath_;
     float pathProgress_ = 0.0f;
+
+    bool isActive_ = false;
+    float spawnProgress_ = 0.0f;
+    std::string texturePath_;
+    bool isAutoAI_ = false;
+    Vector3 aiOffset_ = {0.0f, 0.0f, 0.0f};
 };

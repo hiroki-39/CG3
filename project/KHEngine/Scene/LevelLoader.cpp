@@ -21,6 +21,12 @@ void LevelLoader::ParseObject(const void* jsonNodePtr, LevelObjectData& objectDa
     if (objJson.contains("file_name")) {
         objectData.fileName = objJson["file_name"].get<std::string>();
     }
+    if (objJson.contains("spawn_progress")) {
+        objectData.spawnProgress = objJson["spawn_progress"].get<float>();
+    }
+    if (objJson.contains("texture_path")) {
+        objectData.texturePath = objJson["texture_path"].get<std::string>();
+    }
 
     // トランスフォーム
     if (objJson.contains("transform")) {
