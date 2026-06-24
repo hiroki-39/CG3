@@ -143,6 +143,7 @@ class MYADDON_OT_create_fighter(bpy.types.Operator):
         empty_obj.location = context.scene.cursor.location
         empty_obj["file_name"] = "Fighter"
         empty_obj["is_enemy"] = True
+        empty_obj["spawn_progress"] = 0.0
         context.scene.collection.objects.link(empty_obj)
         context.view_layer.objects.active = empty_obj
         empty_obj.select_set(True)
@@ -285,6 +286,18 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
         #カスタムプロパティ'filen_name'
         if "file_name" in object:
             json_object["file_name"] = object["file_name"]
+
+        if "spawn_progress" in object:
+            json_object["spawn_progress"] = object["spawn_progress"]
+
+        #マテリアルの画像テクスチャ名を取得
+        if object.type == 'MESH' and len(object.material_slots) > 0:
+            mat = object.material_slots[0].material
+            if mat and mat.use_nodes:
+                for node in mat.node_tree.nodes:
+                    if node.type == 'TEX_IMAGE' and node.image:
+                        json_object["texture_path"] = node.image.name
+                        break
 
         #カスタムプロパティ'collider'
         if "collider" in object:

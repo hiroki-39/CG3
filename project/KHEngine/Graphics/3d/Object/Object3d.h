@@ -127,6 +127,9 @@ public://メンバ関数
 	inline Model* GetModel() const { return model; }
 	void SetEnvironmentTextureIndex(uint32_t index) { this->environmentTextureIndex = index; }
 	void SetEnvironmentCoefficient(float coefficient) { if (model) model->SetEnvironmentCoefficient(coefficient); }
+	void SetEnableLighting(bool enable) { if (model) model->SetEnableLighting(enable); }
+	void SetSelectLightings(int32_t v) { if (model) model->SetSelectLightings(v); }
+	int32_t GetSelectLightings() const { return model ? model->GetSelectLightings() : 0; }
 
 private://メンバ関数
 

@@ -27,6 +27,8 @@ struct LevelObjectData {
     Vector3 rotation;
     Vector3 scale;
     std::string fileName;
+    float spawnProgress = 0.0f;
+    std::string texturePath;
     
     // コライダー情報
     bool hasCollider = false;

@@ -25,31 +25,10 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
     const Object3d* currentObj = parentObj;
 
     if (node.type == "CURVE") {
-        // カーブのポイントはローカル座標なので、オブジェクトのTransformを適用してワールド座標に変換する
-        Vector3 rotRad;
-        rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
-        rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
-        rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
-        
-        Matrix4x4 transformMatrix = Matrix4x4::MakeAffine(node.scale, rotRad, node.translation);
-        
-        auto TransformVector = [&transformMatrix](const Vector3& v) -> Vector3 {
-            return {
-                v.x * transformMatrix.m[0][0] + v.y * transformMatrix.m[1][0] + v.z * transformMatrix.m[2][0] + transformMatrix.m[3][0],
-                v.x * transformMatrix.m[0][1] + v.y * transformMatrix.m[1][1] + v.z * transformMatrix.m[2][1] + transformMatrix.m[3][1],
-                v.x * transformMatrix.m[0][2] + v.y * transformMatrix.m[1][2] + v.z * transformMatrix.m[2][2] + transformMatrix.m[3][2]
-            };
-        };
-        
-        std::vector<LevelCurvePoint> worldPoints = node.curvePoints;
-        for (auto& pt : worldPoints) {
-            pt.position = TransformVector(pt.position);
-            pt.handle_left = TransformVector(pt.handle_left);
-            pt.handle_right = TransformVector(pt.handle_right);
-        }
-        
+        // Blenderのエクスポータですでにワールド座標としてcurvePointsが出力されているため、
+        // ゲーム側での再変換は不要。そのままレールを初期化する。
         auto rail = std::make_unique<Rail>();
-        rail->Initialize(worldPoints);
+        rail->Initialize(node.curvePoints);
 
         if (parentEnemy) {
             parentEnemy->SetMovePath(std::move(rail));
@@ -63,6 +42,10 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
         if (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos || node.fileName.find("Obstacle") != std::string::npos) {
             auto enemy = std::make_unique<Enemy>();
             enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
+            enemy->SetSpawnProgress(node.spawnProgress);
+            if (!node.texturePath.empty()) {
+                enemy->SetTexturePath(node.texturePath);
+            }
             currentEnemy = enemy.get();
             enemies.push_back(std::move(enemy));
         }
@@ -81,6 +64,14 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
         ModelManager::GetInstance()->LoadModel(modelName);
         if (ModelManager::GetInstance()->FindModel(modelName) != nullptr) {
             obj->SetModel(modelName);
+
+            if (!node.texturePath.empty()) {
+                TextureManager::GetInstance()->LoadTexture(node.texturePath);
+                uint32_t texIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath(node.texturePath);
+                if (texIndex != UINT32_MAX && obj->GetModel()) {
+                    obj->GetModel()->SetTextureIndex(texIndex);
+                }
+            }
         }
         
         obj->SetTranslate(node.translation);
@@ -111,23 +102,8 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 
 static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, Enemy* parentEnemy = nullptr) {
     if (node.type == "CURVE" && parentEnemy) {
-        Vector3 rotRad = { node.rotation.x * (std::numbers::pi_v<float> / 180.0f), node.rotation.y * (std::numbers::pi_v<float> / 180.0f), node.rotation.z * (std::numbers::pi_v<float> / 180.0f) };
-        Matrix4x4 transformMatrix = Matrix4x4::MakeAffine(node.scale, rotRad, node.translation);
-        auto TransformVector = [&transformMatrix](const Vector3& v) -> Vector3 {
-            return {
-                v.x * transformMatrix.m[0][0] + v.y * transformMatrix.m[1][0] + v.z * transformMatrix.m[2][0] + transformMatrix.m[3][0],
-                v.x * transformMatrix.m[0][1] + v.y * transformMatrix.m[1][1] + v.z * transformMatrix.m[2][1] + transformMatrix.m[3][1],
-                v.x * transformMatrix.m[0][2] + v.y * transformMatrix.m[1][2] + v.z * transformMatrix.m[2][2] + transformMatrix.m[3][2]
-            };
-        };
-        std::vector<LevelCurvePoint> worldPoints = node.curvePoints;
-        for (auto& pt : worldPoints) {
-            pt.position = TransformVector(pt.position);
-            pt.handle_left = TransformVector(pt.handle_left);
-            pt.handle_right = TransformVector(pt.handle_right);
-        }
         auto rail = std::make_unique<Rail>();
-        rail->Initialize(worldPoints);
+        rail->Initialize(node.curvePoints);
         parentEnemy->SetMovePath(std::move(rail));
     }
 
@@ -136,6 +112,10 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
         if (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos || node.fileName.find("Obstacle") != std::string::npos) {
             auto enemy = std::make_unique<Enemy>();
             enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
+            enemy->SetSpawnProgress(node.spawnProgress);
+            if (!node.texturePath.empty()) {
+                enemy->SetTexturePath(node.texturePath);
+            }
             currentEnemy = enemy.get();
             enemies.push_back(std::move(enemy));
         }
@@ -241,7 +221,7 @@ void GamePlayScene::Initialize()
         terrain->SetModel("terrain.obj");
         terrain->SetTranslate(Vector3(0.0f, -3.0f, 0.0f));
         terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-        terrain->SetScale(Vector3(1000.0f, 1000.0f, 1000.0f));
+        terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
         modelInstances.push_back(std::move(terrain));
     }
 
@@ -301,6 +281,7 @@ void GamePlayScene::ReloadLevel()
     enemies_.clear();
     bullets_.clear();
     railVisualizers_.clear();
+    enemyRailVisualizers_.clear();
     mainRails_.clear();
     if (railCameraController_) {
         railCameraController_->Reset();
@@ -327,25 +308,36 @@ void GamePlayScene::ReloadLevel()
     }
 
     // レールの可視化用オブジェクトの生成
+    railVisualizers_.clear();
+    railModels_.clear();
     if (!mainRails_.empty()) {
-        railModel_ = std::make_unique<Model>();
-        
+        std::vector<Vector4> colors = {
+            {1.0f, 0.0f, 0.0f, 1.0f}, // 赤
+            {0.0f, 0.5f, 1.0f, 1.0f}, // 青
+            {1.0f, 1.0f, 0.0f, 1.0f}, // 黄色
+            {0.0f, 1.0f, 1.0f, 1.0f}, // シアン
+            {1.0f, 0.0f, 1.0f, 1.0f}, // マゼンタ
+            {1.0f, 0.5f, 0.0f, 1.0f}  // オレンジ
+        };
+
         std::string resolved = ResourceLocator::Resolve("rail.obj", ResourceLocator::AssetType::Model3D);
+        std::string directory = "resources/models";
+        std::string filename = "rail.obj";
         if (!resolved.empty()) {
             std::filesystem::path rp(reinterpret_cast<const char8_t*>(resolved.c_str()));
-            std::string directory = rp.parent_path().string();
-            std::string filename = rp.filename().string();
-            railModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), directory, filename);
-        } else {
-            // フォールバック
-            railModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), "resources/models", "rail.obj");
+            directory = rp.parent_path().string();
+            filename = rp.filename().string();
         }
-        
-        railModel_->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 独立した赤色のマテリアル
 
         int sampleCount = 200; // 分割数を増やして滑らかな線にする
+        int colorIndex = 0;
         for (auto& rail : mainRails_) {
             if (!rail || !rail->IsValid()) continue;
+
+            auto railModel = std::make_unique<Model>();
+            railModel->Initialize(ModelManager::GetInstance()->GetModelCommon(), directory, filename);
+            railModel->SetColor(colors[colorIndex % colors.size()]);
+
             for (int i = 0; i < sampleCount; ++i) {
                 float t1 = static_cast<float>(i) / sampleCount;
                 float t2 = static_cast<float>(i + 1) / sampleCount;
@@ -363,7 +355,7 @@ void GamePlayScene::ReloadLevel()
                 
                 auto obj = std::make_unique<Object3d>();
                 obj->Initialize(object3dCommon);
-                obj->SetModel(railModel_.get()); 
+                obj->SetModel(railModel.get()); 
                 obj->SetTranslate(center);
                 float yaw = std::atan2(dir.x, dir.z);
                 float pitch = std::asin(-dir.y);
@@ -376,6 +368,56 @@ void GamePlayScene::ReloadLevel()
                 
                 railVisualizers_.push_back(std::move(obj));
             }
+            
+            railModels_.push_back(std::move(railModel));
+            colorIndex++;
+        }
+    }
+
+    // 敵用レールの可視化
+    enemyRailModel_ = std::make_unique<Model>();
+    std::string resolved = ResourceLocator::Resolve("rail.obj", ResourceLocator::AssetType::Model3D);
+    if (!resolved.empty()) {
+        std::filesystem::path rp(reinterpret_cast<const char8_t*>(resolved.c_str()));
+        enemyRailModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), rp.parent_path().string(), rp.filename().string());
+    } else {
+        enemyRailModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), "resources/models", "rail.obj");
+    }
+    enemyRailModel_->SetColor({0.5f, 1.0f, 0.0f, 1.0f}); // 黄緑色
+
+    int sampleCount = 100; // 敵用レールは少し分割数を減らす
+    for (auto& enemy : enemies_) {
+        const Rail* rail = enemy->GetMovePath();
+        if (!rail || !rail->IsValid()) continue;
+        for (int i = 0; i < sampleCount; ++i) {
+            float t1 = static_cast<float>(i) / sampleCount;
+            float t2 = static_cast<float>(i + 1) / sampleCount;
+            
+            Vector3 p1 = rail->GetPosition(t1);
+            Vector3 p2 = rail->GetPosition(t2);
+            
+            Vector3 dir = { p2.x - p1.x, p2.y - p1.y, p2.z - p1.z };
+            float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+            if (length < 0.0001f) continue;
+            
+            dir.x /= length; dir.y /= length; dir.z /= length;
+            
+            Vector3 center = { (p1.x + p2.x) * 0.5f, (p1.y + p2.y) * 0.5f, (p1.z + p2.z) * 0.5f };
+            
+            auto obj = std::make_unique<Object3d>();
+            obj->Initialize(object3dCommon);
+            obj->SetModel(enemyRailModel_.get()); 
+            obj->SetTranslate(center);
+            float yaw = std::atan2(dir.x, dir.z);
+            float pitch = std::asin(-dir.y);
+            obj->SetRotation(Vector3(pitch, yaw, 0.0f));
+            
+            obj->SetScale(Vector3(0.015f, 0.015f, length)); // メインより少し細く
+            
+            obj->SetEnvironmentCoefficient(0.0f);
+            obj->SetEnvironmentTextureIndex(skybox_->GetCubemapSrvIndex());
+            
+            enemyRailVisualizers_.push_back(std::move(obj));
         }
     }
 }
@@ -386,6 +428,7 @@ void GamePlayScene::ReloadEnemiesOnly()
     auto object3dCommon = services->GetObject3dCommon();
 
     enemies_.clear();
+    enemyRailVisualizers_.clear();
 
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
     if (levelData) {
@@ -393,6 +436,37 @@ void GamePlayScene::ReloadEnemiesOnly()
             LoadEnemiesOnlyFromNode(objData, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_);
         }
         OutputDebugStringA("LevelLoader: Successfully respawned enemies.\n");
+
+        // 敵用レールの可視化再構築
+        if (enemyRailModel_) {
+            int sampleCount = 100;
+            for (auto& enemy : enemies_) {
+                const Rail* rail = enemy->GetMovePath();
+                if (!rail || !rail->IsValid()) continue;
+                for (int i = 0; i < sampleCount; ++i) {
+                    float t1 = static_cast<float>(i) / sampleCount;
+                    float t2 = static_cast<float>(i + 1) / sampleCount;
+                    Vector3 p1 = rail->GetPosition(t1);
+                    Vector3 p2 = rail->GetPosition(t2);
+                    Vector3 dir = { p2.x - p1.x, p2.y - p1.y, p2.z - p1.z };
+                    float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+                    if (length < 0.0001f) continue;
+                    dir.x /= length; dir.y /= length; dir.z /= length;
+                    Vector3 center = { (p1.x + p2.x) * 0.5f, (p1.y + p2.y) * 0.5f, (p1.z + p2.z) * 0.5f };
+                    auto obj = std::make_unique<Object3d>();
+                    obj->Initialize(object3dCommon);
+                    obj->SetModel(enemyRailModel_.get()); 
+                    obj->SetTranslate(center);
+                    float yaw = std::atan2(dir.x, dir.z);
+                    float pitch = std::asin(-dir.y);
+                    obj->SetRotation(Vector3(pitch, yaw, 0.0f));
+                    obj->SetScale(Vector3(0.015f, 0.015f, length)); 
+                    obj->SetEnvironmentCoefficient(0.0f);
+                    obj->SetEnvironmentTextureIndex(skybox_->GetCubemapSrvIndex());
+                    enemyRailVisualizers_.push_back(std::move(obj));
+                }
+            }
+        }
     } else {
         OutputDebugStringA("LevelLoader: Failed to respawn enemies.\n");
     }
@@ -609,9 +683,13 @@ void GamePlayScene::Update()
             }
         }
 
+        Vector3 cameraPos = activeCamera_->GetTranslate();
+        Vector3 rot = activeCamera_->GetRotation();
+        Vector3 cameraForward = { std::sinf(rot.y), 0.0f, std::cosf(rot.y) };
+
         // 敵の更新と当たり判定
         for (auto it = enemies_.begin(); it != enemies_.end();) {
-            (*it)->Update();
+            (*it)->Update(cameraPos, cameraForward);
 
             // プレイヤーの弾との当たり判定
             for (auto& bullet : bullets_) {
@@ -688,12 +766,30 @@ void GamePlayScene::Update()
                 }
             }
 
+            // ロックオンはしていないが、近い敵がいるかどうかの判定
+            float minEnemyDist = 1000000.0f;
+            for (auto& enemy : enemies_) {
+                if (enemy->IsDead()) continue;
+                Vector3 ePos = enemy->GetPosition();
+                float d = std::sqrt((ePos.x - cameraPos.x)*(ePos.x - cameraPos.x) + 
+                                    (ePos.y - cameraPos.y)*(ePos.y - cameraPos.y) + 
+                                    (ePos.z - cameraPos.z)*(ePos.z - cameraPos.z));
+                if (d < minEnemyDist) {
+                    minEnemyDist = d;
+                }
+            }
+
             // 照準の色の更新とロックオン座標の伝達
             if (isLockOn) {
                 player_->SetReticleColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
                 player_->SetLockOn(true, lockOnPos);
             } else {
-                player_->SetReticleColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 白色
+                if (minEnemyDist < 100.0f) {
+                    // 近くに敵がいる場合はオレンジ色（警戒）
+                    player_->SetReticleColor({ 1.0f, 0.6f, 0.0f, 1.0f });
+                } else {
+                    player_->SetReticleColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 白色
+                }
                 player_->SetLockOn(false);
             }
         }
@@ -735,6 +831,7 @@ void GamePlayScene::Update()
     for (auto& model : modelInstances) if (model) model->Update();
     if (isDrawRail_) {
         for (auto& vis : railVisualizers_) if (vis) vis->Update();
+        for (auto& vis : enemyRailVisualizers_) if (vis) vis->Update();
     }
 
     // カメラ行列の取得
@@ -1428,6 +1525,9 @@ void GamePlayScene::Draw()
     if (isDrawRail_) {
         if (object3dCommon) object3dCommon->SetCommonDrawSetting();
         for (auto& vis : railVisualizers_) {
+            if (vis) vis->Draw();
+        }
+        for (auto& vis : enemyRailVisualizers_) {
             if (vis) vis->Draw();
         }
     }

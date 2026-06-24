@@ -90,6 +90,11 @@ public: //メンバ関数
 	/// </summary>
 	inline void SetTextureIndex(uint32_t index) { modelData.material.textureIndex = index; }
 
+	/// <summary>
+	/// ライティングの有効/無効を設定
+	/// </summary>
+	inline void SetEnableLighting(bool enable) { if (materialData_) materialData_->enableLighting = enable ? 1 : 0; }
+
 	inline int32_t GetSelectLightings() const { return materialData_ ? materialData_->selectLightings : 0; }
 	inline float GetEnvironmentCoefficient() const { return materialData_ ? materialData_->environmentCoefficient : 0.0f; }
 

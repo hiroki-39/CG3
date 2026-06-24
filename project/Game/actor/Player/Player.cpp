@@ -37,6 +37,8 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     reticle_->GetModel()->SetColor(reticleColor_); // 初期色
     reticle_->SetEnvironmentTextureIndex(skyboxTexIndex);
     reticle_->SetEnvironmentCoefficient(0.0f);
+    reticle_->SetEnableLighting(false); // ライティングの影響を受けないようにする
+    reticle_->SetSelectLightings(0); // どのライトも適用しない(0)
     reticle_->SetScale(Vector3(1.5f, 1.5f, 1.5f));
     
     // 照準の初期位置（カメラの奥）
