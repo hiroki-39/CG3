@@ -65,6 +65,8 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
         if (ModelManager::GetInstance()->FindModel(modelName) != nullptr) {
             obj->SetModel(modelName);
 
+            // 【注意】複数マテリアルを持つモデル（wall.objなど）全体を1枚のテクスチャで上書きしてしまうため、一時無効化
+            /*
             if (!node.texturePath.empty()) {
                 TextureManager::GetInstance()->LoadTexture(node.texturePath);
                 uint32_t texIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath(node.texturePath);
@@ -72,6 +74,7 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
                     obj->GetModel()->SetTextureIndex(texIndex);
                 }
             }
+            */
         }
         
         obj->SetTranslate(node.translation);

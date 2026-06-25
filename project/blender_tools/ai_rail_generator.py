@@ -179,12 +179,24 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
                     
             except urllib.error.HTTPError as e:
                 error_msg = e.read().decode('utf-8')
+                
+                # 429エラー(レートリミット超過)の場合の親切なメッセージ
+                if e.code == 429:
+                    self.report({'WARNING'}, "無料枠の制限(1分間に5回)に達しました。約1分待ってから再実行してください。")
+                    print("Rate limit exceeded. Please wait about 1 minute.")
+                    return {'CANCELLED'}
+
                 # 503エラー(混雑)の場合は自動リトライ
-                if e.code == 503 and attempt < max_retries - 1:
-                    wait_time = 2 ** (attempt + 1) # 2秒, 4秒と待機時間を増やす
-                    print(f"Server is busy (503). Retrying in {wait_time} seconds... (Attempt {attempt+1}/{max_retries})")
-                    time.sleep(wait_time)
-                    continue
+                if e.code == 503:
+                    if attempt < max_retries - 1:
+                        wait_time = 2 ** (attempt + 1) # 2秒, 4秒と待機時間を増やす
+                        print(f"Server is busy (503). Retrying in {wait_time} seconds... (Attempt {attempt+1}/{max_retries})")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        self.report({'ERROR'}, "AIサーバーが大変混雑しています。数分待ってから再度お試しください。")
+                        print("Server is overloaded (503) and all retries failed.")
+                        return {'CANCELLED'}
                 
                 self.report({'ERROR'}, f"HTTP Error {e.code}")
                 print(f"--- API Error Details ---\n{error_msg}\n-----------------------")
