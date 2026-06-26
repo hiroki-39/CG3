@@ -205,6 +205,9 @@ void Object3dCommon::CreateGraphicsPipeline()
 	//三角形の中を塗りつぶす
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
+	//深度クリッピングを有効にする
+	rasterizerDesc.DepthClipEnable = false;
+
 	//shaderをコンパイルする
 	Microsoft::WRL::ComPtr <IDxcBlob> vertexShaderBlob = dxCommon_->compileshader(L"resources/shaders/object3D.VS.hlsl", L"vs_6_0");
 

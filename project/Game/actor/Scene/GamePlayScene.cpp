@@ -277,10 +277,11 @@ void GamePlayScene::ReloadLevel()
     auto services = EngineServices::GetInstance();
     auto object3dCommon = services->GetObject3dCommon();
 
-    // 既存データのクリア (先頭のsuzanneとterrainは残す)
-    while (modelInstances.size() > 2) {
+    // 既存データのクリア (先頭のterrainは残す)
+    while (modelInstances.size() > 1) {
         modelInstances.pop_back();
     }
+
     enemies_.clear();
     bullets_.clear();
     railVisualizers_.clear();
@@ -1483,16 +1484,17 @@ void GamePlayScene::Draw()
         skybox_->Draw();
     }
 
-    if (object3dCommon) object3dCommon->SetCommonDrawSetting();
-
-    for (auto& model : modelInstances) if (model) model->Draw();
-
     if (spriteCommon) spriteCommon->SetCommonDrawSetting();
 
     if (isDisplaySprite)
     {
         for (auto& sprite : sprites) if (sprite) sprite->Draw();
     }
+
+    if (object3dCommon) object3dCommon->SetCommonDrawSetting();
+
+    for (auto& model : modelInstances) if (model) model->Draw();
+
 
     // 敵とコライダーの描画
     if (object3dCommon) object3dCommon->SetCommonDrawSetting();
