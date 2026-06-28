@@ -243,6 +243,9 @@ void GamePlayScene::Initialize()
     // プレイヤーをカメラオブジェクトの子にする
     player_->GetObject3d()->SetParent(cameraObject_.get());
     player_->GetReticle()->SetParent(cameraObject_.get());
+    if (player_->GetFrontReticle()) {
+        player_->GetFrontReticle()->SetParent(cameraObject_.get());
+    }
 
     // レールカメラコントローラの初期化
     railCameraController_ = std::make_unique<RailCameraController>();
