@@ -42,6 +42,7 @@ public:
         }
         if (accessory_) accessory_->Update();
         if (reticle_) reticle_->Update();
+        if (frontReticle_) frontReticle_->Update();
     }
 
     // Getter
@@ -50,6 +51,7 @@ public:
     void SetRotation(const Vector3& rotation) { baseRotation_ = rotation; }
     Object3d* GetObject3d() const { return object_.get(); }
     Object3d* GetReticle() const { return reticle_.get(); }
+    Object3d* GetFrontReticle() const { return frontReticle_.get(); }
     
     // 照準(レティクル)関連
     void SetReticleColor(const Vector4& color);
@@ -85,7 +87,8 @@ private:
 
 private:
     std::unique_ptr<Object3d> object_ = nullptr;
-    std::unique_ptr<Object3d> reticle_ = nullptr; // 照準用モデル
+    std::unique_ptr<Object3d> reticle_ = nullptr; // 奥の照準（小）
+    std::unique_ptr<Object3d> frontReticle_ = nullptr; // 手前の照準（大）
     std::unique_ptr<Object3d> accessory_ = nullptr; // 親子関係のデモ用アクセサリ
     Object3dCommon* object3dCommon_ = nullptr; // 弾生成用
     Input* input_ = nullptr;

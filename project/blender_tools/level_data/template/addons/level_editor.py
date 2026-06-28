@@ -400,7 +400,10 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
             #ファイルにjson文字列を書き込む
             file.write(json_text)
 
-        # --- OBJファイルの自動エクスポート ---
+        # --- OBJファイルの自動エクスポート（無効化） ---
+        # 毎回OBJが上書きされるのが不便なため、自動エクスポート機能は停止しました。
+        # 必要な時だけ手動でエクスポートしてください。
+        '''
         import os
         import mathutils
 
@@ -474,6 +477,7 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
 
             # 選択解除
             object.select_set(False)
+        '''
 
 
 
@@ -542,6 +546,93 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
         return {'FINISHED'}
 
 
+#オペレータ　OBJ出力
+class MYADDON_OT_export_objs(bpy.types.Operator):
+    bl_idname = "myaddon.myaddon_ot_export_objs"
+    bl_label = "OBJ出力"
+    bl_description = "シーン内のメッシュをそれぞれOBJとして一括出力します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        print("OBJの一括Exportを開始します。")
+
+        import os
+        import mathutils
+
+        blend_filepath = bpy.data.filepath
+        if not blend_filepath:
+            self.report({'ERROR'}, "まずBlenderファイルを保存してください（保存先パスを基準に出力します）")
+            return {'CANCELLED'}
+
+        json_dir = os.path.dirname(blend_filepath)
+        # resourcesフォルダを探して、その中の3dModelsに出力する
+        res_idx = json_dir.find("resources")
+        if res_idx != -1:
+            models_dir = os.path.join(json_dir[:res_idx], "resources", "3dModels")
+        else:
+            models_dir = os.path.join(json_dir, "resources", "3dModels")
+            
+        if not os.path.exists(models_dir):
+            os.makedirs(models_dir)
+
+        # 現在の選択状態をクリア
+        for obj in bpy.context.scene.objects:
+            obj.select_set(False)
+
+        export_count = 0
+        for object in bpy.context.scene.objects:
+            if object.type != 'MESH':
+                continue
+
+            file_name = object.name
+            if "file_name" in object and object["file_name"] != "":
+                file_name = object["file_name"]
+            
+            base_name = file_name.split('.')[0]
+            if not file_name.endswith(".obj"):
+                file_name += ".obj"
+
+            obj_dir = os.path.join(models_dir, base_name)
+            if not os.path.exists(obj_dir):
+                os.makedirs(obj_dir)
+
+            obj_path = os.path.join(obj_dir, file_name)
+
+            saved_location = object.location.copy()
+            saved_rotation = object.rotation_euler.copy()
+            saved_scale = object.scale.copy()
+            
+            object.select_set(True)
+            bpy.context.view_layer.objects.active = object
+
+            object.location = mathutils.Vector((0.0, 0.0, 0.0))
+            object.rotation_euler = mathutils.Euler((0.0, 0.0, 0.0), 'XYZ')
+            object.scale = mathutils.Vector((1.0, 1.0, 1.0))
+            
+            bpy.context.view_layer.update()
+
+            try:
+                if hasattr(bpy.ops.wm, "obj_export"):
+                    bpy.ops.wm.obj_export(filepath=obj_path, export_selected_objects=True, export_triangulated_mesh=True, export_normals=True)
+                else:
+                    bpy.ops.export_scene.obj(filepath=obj_path, use_selection=True, use_triangles=True, use_normals=True)
+                export_count += 1
+            except Exception as e:
+                print(f"Failed to export {obj_path}: {e}")
+
+            object.location = saved_location
+            object.rotation_euler = saved_rotation
+            object.scale = saved_scale
+            bpy.context.view_layer.update()
+
+            object.select_set(False)
+            
+        print(f"OBJの一括Exportを完了しました。（{export_count}件）")
+        self.report({'INFO'}, f"OBJの一括Exportを完了しました。（{export_count}件）")
+
+        return {'FINISHED'}
+
+
 #トップバーの拡張メニュー
 class TOPBAR_MT_my_menu(bpy.types.Menu):
     bl_idname = "TOPBAR_MT_my_menu"
@@ -556,6 +647,7 @@ class TOPBAR_MT_my_menu(bpy.types.Menu):
         self.layout.operator(MYADDON_OT_create_fighter.bl_idname, text = MYADDON_OT_create_fighter.bl_label)
         self.layout.operator(MYADDON_OT_create_asteroid.bl_idname, text = MYADDON_OT_create_asteroid.bl_label)
         self.layout.operator(MYADDON_OT_export_scene.bl_idname, text = MYADDON_OT_export_scene.bl_label)
+        self.layout.operator(MYADDON_OT_export_objs.bl_idname, text = MYADDON_OT_export_objs.bl_label)
 
 
     # サブメニューを追加する関数
@@ -571,6 +663,7 @@ classes  = (
     MYADDON_OT_create_fighter,
     MYADDON_OT_create_asteroid,
     MYADDON_OT_export_scene,
+    MYADDON_OT_export_objs,
     MYADDON_OT_add_filename,
     OBJECT_PT_file_name,
     MYADDON_OT_add_collider,

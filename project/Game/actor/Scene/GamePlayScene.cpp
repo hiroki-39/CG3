@@ -65,6 +65,8 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
         if (ModelManager::GetInstance()->FindModel(modelName) != nullptr) {
             obj->SetModel(modelName);
 
+            // 【注意】複数マテリアルを持つモデル（wall.objなど）全体を1枚のテクスチャで上書きしてしまうため、一時無効化
+            /*
             if (!node.texturePath.empty()) {
                 TextureManager::GetInstance()->LoadTexture(node.texturePath);
                 uint32_t texIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath(node.texturePath);
@@ -72,6 +74,7 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
                     obj->GetModel()->SetTextureIndex(texIndex);
                 }
             }
+            */
         }
         
         obj->SetTranslate(node.translation);
@@ -240,6 +243,9 @@ void GamePlayScene::Initialize()
     // プレイヤーをカメラオブジェクトの子にする
     player_->GetObject3d()->SetParent(cameraObject_.get());
     player_->GetReticle()->SetParent(cameraObject_.get());
+    if (player_->GetFrontReticle()) {
+        player_->GetFrontReticle()->SetParent(cameraObject_.get());
+    }
 
     // レールカメラコントローラの初期化
     railCameraController_ = std::make_unique<RailCameraController>();
@@ -274,10 +280,11 @@ void GamePlayScene::ReloadLevel()
     auto services = EngineServices::GetInstance();
     auto object3dCommon = services->GetObject3dCommon();
 
-    // 既存データのクリア (先頭のsuzanneとterrainは残す)
-    while (modelInstances.size() > 2) {
+    // 既存データのクリア (先頭のterrainは残す)
+    while (modelInstances.size() > 1) {
         modelInstances.pop_back();
     }
+
     enemies_.clear();
     bullets_.clear();
     railVisualizers_.clear();
@@ -1480,16 +1487,17 @@ void GamePlayScene::Draw()
         skybox_->Draw();
     }
 
-    if (object3dCommon) object3dCommon->SetCommonDrawSetting();
-
-    for (auto& model : modelInstances) if (model) model->Draw();
-
     if (spriteCommon) spriteCommon->SetCommonDrawSetting();
 
     if (isDisplaySprite)
     {
         for (auto& sprite : sprites) if (sprite) sprite->Draw();
     }
+
+    if (object3dCommon) object3dCommon->SetCommonDrawSetting();
+
+    for (auto& model : modelInstances) if (model) model->Draw();
+
 
     // 敵とコライダーの描画
     if (object3dCommon) object3dCommon->SetCommonDrawSetting();

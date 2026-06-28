@@ -69,13 +69,14 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const
     ModelManager::GetInstance()->LoadModel("plane.obj");
     shadowObject_->SetModel("plane.obj");
     
-    // 黒い半透明色に設定
-    shadowObject_->GetModel()->SetColor({ 0.0f, 0.0f, 0.0f, 0.5f });
+    // 【デバッグ用】真っ黒の不透明(alpha=1.0)にして、確実に四角形が見えるかテスト
+    shadowObject_->GetModel()->SetColor({ 0.0f, 0.0f, 0.0f, 1.0f });
     shadowObject_->SetEnableLighting(false);
     shadowObject_->SetSelectLightings(0);
     
-    TextureManager::GetInstance()->LoadTexture("circle.png");
-    uint32_t circleTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("circle.png");
+    // テクスチャを貼る（エンジンのアルファテストで丸く切り抜かれるか確認）
+    TextureManager::GetInstance()->LoadTexture("circle2.png");
+    uint32_t circleTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("circle2.png");
     if (circleTex != UINT32_MAX) {
         shadowObject_->GetModel()->SetTextureIndex(circleTex);
     }
@@ -113,11 +114,11 @@ void Enemy::Update(const Vector3& playerPos, const Vector3& playerForward) {
             if (pathProgress_ >= 1.0f) {
                 pathProgress_ = 1.0f;
                 isAutoAI_ = true; // レール終端でAIに切り替え
-                // プレイヤーの少し前方、ランダムな位置にオフセットを設定
+                // カメラの視野（画面内）に確実に収まり、重なりを防ぐ程度の小さなオフセット
                 aiOffset_ = {
-                    (rand() % 40 - 20) * 1.0f,
-                    (rand() % 20 - 5) * 1.0f,
-                    40.0f + (rand() % 30) * 1.0f
+                    ((float)rand() / RAND_MAX * 20.0f - 10.0f),   // X: -10 ~ 10
+                    ((float)rand() / RAND_MAX * 10.0f - 5.0f),    // Y: -5 ~ 5
+                    80.0f + ((float)rand() / RAND_MAX * 20.0f)    // Z: 80 ~ 100
                 };
             }
             position_ = movePath_->GetPosition(pathProgress_);
@@ -142,13 +143,17 @@ void Enemy::Update(const Vector3& playerPos, const Vector3& playerForward) {
         // 自律戦闘（AI）モード：プレイヤー（カメラ）の前方を浮遊する
         Vector3 right = { playerForward.z, 0.0f, -playerForward.x };
         
+        // 揺れ（スウェイ）を無くし、一旦カメラ内にピタッと滞在するだけにする
+        float swayX = 0.0f;
+        float swayY = 0.0f;
+
         Vector3 targetPos = {
-            playerPos.x + playerForward.x * aiOffset_.z + right.x * aiOffset_.x,
-            playerPos.y + aiOffset_.y,
-            playerPos.z + playerForward.z * aiOffset_.z + right.z * aiOffset_.x
+            playerPos.x + playerForward.x * aiOffset_.z + right.x * (aiOffset_.x + swayX),
+            playerPos.y + aiOffset_.y + swayY,
+            playerPos.z + playerForward.z * aiOffset_.z + right.z * (aiOffset_.x + swayX)
         };
 
-        // 目標座標へなめらかに移動
+        // 目標座標へなめらかに移動（少し早めについてくるようにする）
         float lerpSpeed = 0.05f;
         position_.x += (targetPos.x - position_.x) * lerpSpeed;
         position_.y += (targetPos.y - position_.y) * lerpSpeed;
@@ -159,7 +164,9 @@ void Enemy::Update(const Vector3& playerPos, const Vector3& playerForward) {
         float dist = std::sqrt(dirToPlayer.x*dirToPlayer.x + dirToPlayer.z*dirToPlayer.z);
         if (dist > 0.001f) {
             float yaw = std::atan2(-dirToPlayer.x, -dirToPlayer.z);
-            object_->SetRotation(Vector3(0.0f, yaw, 0.0f));
+            // フワフワした動きに合わせて少し機体を傾ける（ロール）とさらに良くなる
+            float roll = (targetPos.x - position_.x) * 0.05f;
+            object_->SetRotation(Vector3(0.0f, yaw, roll));
         }
     }
 
@@ -178,20 +185,18 @@ void Enemy::Update(const Vector3& playerPos, const Vector3& playerForward) {
         colliderObject_->Update();
     }
 
-    // 丸影も追従させる（地面 Y=0.05f くらいに配置して重なり(Z-fighting)を防ぐ）
+    // 丸影のデバッグ表示
     if (shadowObject_ && isActive_) {
-        shadowObject_->SetTranslate({ position_.x, 0.05f, position_.z });
+        // 地形に完全に埋まらないよう、少し高めの Y=0.5f くらいに置いてみる
+        float shadowY = 0.5f; 
+        shadowObject_->SetTranslate({ position_.x, shadowY, position_.z });
         
-        // 地面に張り付く向きに回転（必要に応じて）
-        // plane.obj がすでに水平なら回転0でOK
-        shadowObject_->SetRotation({ 0.0f, 0.0f, 0.0f });
+        // 壁のように立たないようにX軸を90度（1.570796f）回転して床に寝かせる
+        // ※もしこれでカリングされて見えない場合は -1.570796f か 180度に直します
+        shadowObject_->SetRotation({ 1.570796f, 0.0f, 0.0f });
         
-        // 高度が高いほど影を小さく、薄くするなどの表現も可能
-        float height = position_.y;
+        // 分かりやすいように少し大きめの四角にする
         float shadowScale = 2.0f;
-        if (height > 0.0f) {
-            shadowScale = std::fmax(0.5f, 2.0f - (height * 0.05f));
-        }
         shadowObject_->SetScale({ shadowScale, shadowScale, shadowScale });
         shadowObject_->Update();
     }

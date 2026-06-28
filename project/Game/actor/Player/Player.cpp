@@ -30,16 +30,30 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     //accessory_->SetTranslate(Vector3(1.5f, 1.0f, 0.0f)); // プレイヤーの右上に配置
     //accessory_->SetParent(object_.get()); // 親子関係を設定
 
-    // 照準の初期化
+    // 奥の照準（小）の初期化
     reticle_ = std::make_unique<Object3d>();
     reticle_->Initialize(object3dCommon);
-    reticle_->SetModel("crossHair.obj"); // 照準モデルとして使用
-    reticle_->GetModel()->SetColor(reticleColor_); // 初期色
+    reticle_->SetModel("crossHair.obj");
+    reticle_->GetModel()->SetColor(reticleColor_);
     reticle_->SetEnvironmentTextureIndex(skyboxTexIndex);
     reticle_->SetEnvironmentCoefficient(0.0f);
-    reticle_->SetEnableLighting(false); // ライティングの影響を受けないようにする
-    reticle_->SetSelectLightings(0); // どのライトも適用しない(0)
-    reticle_->SetScale(Vector3(1.5f, 1.5f, 1.5f));
+    reticle_->SetEnableLighting(false);
+    reticle_->SetSelectLightings(0);
+    reticle_->SetScale(Vector3(1.6f, 1.6f, 1.6f)); // 奥の照準は1.2f
+    
+    // 手前の照準（大）の初期化
+    frontReticle_ = std::make_unique<Object3d>();
+    frontReticle_->Initialize(object3dCommon);
+    frontReticle_->SetModel("crossHair.obj");
+    // 手前の照準は少し透明度を下げて邪魔にならないようにする
+    Vector4 frontColor = reticleColor_;
+    frontColor.w = 1.0f; // ★モデル共有のため0.5fにすると奥の照準まで消える可能性があるので1.0fに戻す
+    frontReticle_->GetModel()->SetColor(frontColor);
+    frontReticle_->SetEnvironmentTextureIndex(skyboxTexIndex);
+    frontReticle_->SetEnvironmentCoefficient(0.0f);
+    frontReticle_->SetEnableLighting(false);
+    frontReticle_->SetSelectLightings(0);
+    frontReticle_->SetScale(Vector3(1.7f, 1.7f, 1.7f)); // 手前の照準は1.7f
     
     // 照準の初期位置（カメラの奥）
     reticlePosition_ = { 0.0f, 0.0f, 40.0f }; 
@@ -65,8 +79,11 @@ void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d*
 }
 
 void Player::Draw() {
-        if (reticle_) {
+    if (reticle_) {
         reticle_->Draw();
+    }
+    if (frontReticle_) {
+        frontReticle_->Draw();
     }
         if (object_) {
         object_->Draw();
@@ -81,6 +98,11 @@ void Player::SetReticleColor(const Vector4& color) {
     reticleColor_ = color;
     if (reticle_) {
         reticle_->GetModel()->SetColor(reticleColor_);
+    }
+    if (frontReticle_) {
+        Vector4 frontColor = reticleColor_;
+        frontColor.w = 1.0f; // 手前も透過させない（モデル共有問題回避）
+        frontReticle_->GetModel()->SetColor(frontColor);
     }
 }
 
@@ -147,15 +169,29 @@ void Player::Move() {
         reticlePosition_.x += currentReticleSpeed;
     }
 
-    // 移動制限
+    // 照準の移動制限
+    // Y座標の下限を厳しくして（例: -2.0f など）、地面に潜らないようにする
+    float reticleLimitYMin = -2.0f; // これ以上は下に行かない
     reticlePosition_.x = std::clamp(reticlePosition_.x, -moveLimitX_, moveLimitX_);
-    reticlePosition_.y = std::clamp(reticlePosition_.y, -moveLimitY_, moveLimitY_);
+    reticlePosition_.y = std::clamp(reticlePosition_.y, reticleLimitYMin, moveLimitY_);
 
-    // 照準のZ座標はプレイヤーより一定距離奥に保つ
+    // 奥照準のZ座標はプレイヤーより一定距離奥に保つ
     reticlePosition_.z = logicalPosition_.z + 40.0f;
     
     reticle_->SetTranslate(reticlePosition_);
     reticle_->Update();
+
+    // 手前照準（大）の計算と更新
+    // 自機座標と奥照準座標の中間に配置する（Lerpのような補間）
+    if (frontReticle_) {
+        Vector3 frontReticlePos = {
+            logicalPosition_.x + (reticlePosition_.x - logicalPosition_.x) * 0.4f,
+            logicalPosition_.y + (reticlePosition_.y - logicalPosition_.y) * 0.4f,
+            logicalPosition_.z + (reticlePosition_.z - logicalPosition_.z) * 0.4f
+        };
+        frontReticle_->SetTranslate(frontReticlePos);
+        frontReticle_->Update();
+    }
 
     // 前回の位置を保存
     Vector3 oldPos = logicalPosition_;
