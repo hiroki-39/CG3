@@ -5,6 +5,8 @@
 #include <memory>
 #include <list>
 
+class Enemy;
+
 class Player {
 public:
     /// <summary>
@@ -58,9 +60,10 @@ public:
     const Vector4& GetReticleColor() const { return reticleColor_; }
     Vector3 GetReticleWorldPosition() const;
 
-    void SetLockOn(bool isLockOn, const Vector3& targetPos = { 0, 0, 0 }) {
+    void SetLockOn(bool isLockOn, const Vector3& targetPos = { 0, 0, 0 }, Enemy* targetEnemy = nullptr) {
         isLockOn_ = isLockOn;
         lockOnTargetPos_ = targetPos;
+        lockOnTargetEnemy_ = targetEnemy;
     }
 
     bool IsBoosting() const { return isBoosting_; }
@@ -138,8 +141,9 @@ private:
 
     // ロックオン関連
     bool isLockOn_ = false;
-    Vector3 lockOnTargetPos_ = {0.0f, 0.0f, 0.0f};
-
+    Vector3 lockOnTargetPos_ = { 0, 0, 0 };
+    Enemy* lockOnTargetEnemy_ = nullptr;
+    
     // ブースト状態
     bool isBoosting_ = false;
 

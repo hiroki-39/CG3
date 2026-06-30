@@ -109,8 +109,8 @@ void ParticleEffect::Draw()
     {
         if (node->numInstance == 0) continue;
         uint32_t texIndex = TextureManager::GetInstance()->GetSrvIndex(node->emitter.GetTextureName());
-        int blendIndex = static_cast<int>(node->emitter.GetBlendMode());
-        node->renderer.Draw(node->numInstance, texIndex, blendIndex);
+        BlendMode blendMode = node->emitter.GetBlendMode();
+        node->renderer.Draw(node->numInstance, texIndex, blendMode);
     }
 }
 

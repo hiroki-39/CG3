@@ -505,6 +505,7 @@ void GamePlayScene::Update()
 {
     auto services = EngineServices::GetInstance();
     auto input = services->GetInput();
+    float dt = services->GetDeltaTime();
 
     // ホットリロードのトリガー (F5キー)
     if (input && input->TriggerKey(DIK_F5)) {
@@ -559,7 +560,7 @@ void GamePlayScene::Update()
             if (input->PushKey(DIK_LSHIFT) || input->PushKey(DIK_RSHIFT)) {
                 currentMoveSpeed *= 25.0f; // Shiftキーで超高速移動
             }
-            float moveStep = currentMoveSpeed * kDeltaTime_;
+            float moveStep = currentMoveSpeed * dt;
             Vector3 pos = activeCamera_->GetTranslate();
             Vector3 rot = activeCamera_->GetRotation();
             float yaw = rot.y;
@@ -742,6 +743,7 @@ void GamePlayScene::Update()
             float length = std::sqrtf(rayDir.x * rayDir.x + rayDir.y * rayDir.y + rayDir.z * rayDir.z);
 
             Vector3 lockOnPos = { 0, 0, 0 };
+            Enemy* lockOnEnemy = nullptr;
 
             if (length > 0.0001f) {
                 rayDir.x /= length;
@@ -750,7 +752,7 @@ void GamePlayScene::Update()
 
                 Ray ray = { cameraPos, rayDir };
 
-                float closestDist = 1000000.0f;
+                float bestScore = 1000000.0f;
 
                 // 全ての敵に対してレイキャストを行う
                 for (auto& enemy : enemies_) {
@@ -760,14 +762,32 @@ void GamePlayScene::Update()
                     bool hit = enemy->CheckRaycast(ray, &dist);
 
                     if (hit) {
-                        if (dist < closestDist) {
-                            closestDist = dist;
+                        // 敵の中心位置を取得してレイ方向との角度を計算
+                        Vector3 enemyPos = enemy->GetPosition();
+                        Vector3 toEnemy = { enemyPos.x - cameraPos.x, enemyPos.y - cameraPos.y, enemyPos.z - cameraPos.z };
+                        float toEnemyLen = std::sqrt(toEnemy.x*toEnemy.x + toEnemy.y*toEnemy.y + toEnemy.z*toEnemy.z);
+                        if (toEnemyLen > 0.0f) {
+                            toEnemy.x /= toEnemyLen;
+                            toEnemy.y /= toEnemyLen;
+                            toEnemy.z /= toEnemyLen;
+                        }
+                        
+                        // 内積から角度（ラジアン）を求める
+                        float dot = ray.direction.x * toEnemy.x + ray.direction.y * toEnemy.y + ray.direction.z * toEnemy.z;
+                        float angle = std::acos(std::clamp(dot, -1.0f, 1.0f));
+                        
+                        // 角度（照準の中心にどれだけ近いか）を最優先し、距離も少し考慮するスコア
+                        float score = angle * 100.0f + dist * 0.1f;
+
+                        if (score < bestScore) {
+                            bestScore = score;
                             lockOnPos = {
                                 ray.origin.x + ray.direction.x * dist,
                                 ray.origin.y + ray.direction.y * dist,
                                 ray.origin.z + ray.direction.z * dist
                             };
                             isLockOn = true;
+                            lockOnEnemy = enemy.get();
                         }
                     }
                 }
@@ -789,7 +809,7 @@ void GamePlayScene::Update()
             // 照準の色の更新とロックオン座標の伝達
             if (isLockOn) {
                 player_->SetReticleColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
-                player_->SetLockOn(true, lockOnPos);
+                player_->SetLockOn(true, lockOnPos, lockOnEnemy);
             } else {
                 if (minEnemyDist < 100.0f) {
                     // 近くに敵がいる場合はオレンジ色（警戒）
@@ -881,10 +901,10 @@ void GamePlayScene::Update()
         worldPos.z += backward.z * offsetDistance;
 
         thrusterEffect_.SetPosition(worldPos); // スラスターは常に自機の尻尾に追従
-        thrusterEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
-        explosionEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
-        hitEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
-        dodgeEffect_.Update(kDeltaTime_, viewMatrix, projectionMatrix, billboardMatrix);
+        thrusterEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
+        explosionEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
+        hitEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
+        dodgeEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
     }
 
 #ifdef USE_IMGUI

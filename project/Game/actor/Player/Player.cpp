@@ -39,7 +39,7 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     reticle_->SetEnvironmentCoefficient(0.0f);
     reticle_->SetEnableLighting(false);
     reticle_->SetSelectLightings(0);
-    reticle_->SetScale(Vector3(1.6f, 1.6f, 1.6f)); // 奥の照準は1.2f
+    reticle_->SetScale(Vector3(1.6f, 1.6f, 1.6f));
     
     // 手前の照準（大）の初期化
     frontReticle_ = std::make_unique<Object3d>();
@@ -47,13 +47,13 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     frontReticle_->SetModel("crossHair.obj");
     // 手前の照準は少し透明度を下げて邪魔にならないようにする
     Vector4 frontColor = reticleColor_;
-    frontColor.w = 1.0f; // ★モデル共有のため0.5fにすると奥の照準まで消える可能性があるので1.0fに戻す
+    frontColor.w = 1.0f;
     frontReticle_->GetModel()->SetColor(frontColor);
     frontReticle_->SetEnvironmentTextureIndex(skyboxTexIndex);
     frontReticle_->SetEnvironmentCoefficient(0.0f);
     frontReticle_->SetEnableLighting(false);
     frontReticle_->SetSelectLightings(0);
-    frontReticle_->SetScale(Vector3(1.7f, 1.7f, 1.7f)); // 手前の照準は1.7f
+    frontReticle_->SetScale(Vector3(1.7f, 1.7f, 1.7f)); 
     
     // 照準の初期位置（カメラの奥）
     reticlePosition_ = { 0.0f, 0.0f, 40.0f }; 
@@ -297,7 +297,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d*
 
         // 弾を生成
         std::unique_ptr<PlayerBullet> newBullet = std::make_unique<PlayerBullet>();
-        newBullet->Initialize(object3dCommon_, playerPos, velocity, parentCamera);
+        newBullet->Initialize(object3dCommon_, playerPos, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
         bullets.push_back(std::move(newBullet));
     }
 }

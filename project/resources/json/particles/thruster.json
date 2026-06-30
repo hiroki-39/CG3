@@ -1,6 +1,6 @@
 [
     {
-        "blendMode": 1,
+        "blendMode": 2,
         "colorAnimSpeed": 2.0,
         "emitterParam": {
             "count": 2,

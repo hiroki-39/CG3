@@ -32,7 +32,7 @@ public: //構造体
 		int32_t selectLightings;
 		float shininess;
 		float environmentCoefficient;
-		float padding1;
+		float fresnelF0; // padding1から変更
 		Vector3 specularColor;
 	};
 

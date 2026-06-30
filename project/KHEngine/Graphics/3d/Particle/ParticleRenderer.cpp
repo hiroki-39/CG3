@@ -7,7 +7,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-static D3D12_BLEND_DESC MakeBlendDescForMode(int mode)
+static D3D12_BLEND_DESC MakeBlendDescForMode(BlendMode mode)
 {
 	D3D12_BLEND_DESC desc{};
 	desc.AlphaToCoverageEnable = FALSE;
@@ -16,7 +16,7 @@ static D3D12_BLEND_DESC MakeBlendDescForMode(int mode)
 
 	switch (mode)
 	{
-	case 0: // Alpha
+	case BlendMode::Alpha: // Alpha
 		desc.RenderTarget[0].BlendEnable = TRUE;
 		desc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
 		desc.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
@@ -25,7 +25,7 @@ static D3D12_BLEND_DESC MakeBlendDescForMode(int mode)
 		desc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
 		desc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
 		break;
-	case 1: // Additive
+	case BlendMode::Additive: // Additive
 		desc.RenderTarget[0].BlendEnable = TRUE;
 		desc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
 		desc.RenderTarget[0].DestBlend = D3D12_BLEND_ONE;
@@ -34,7 +34,7 @@ static D3D12_BLEND_DESC MakeBlendDescForMode(int mode)
 		desc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ONE;
 		desc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
 		break;
-	case 2: // Multiply
+	case BlendMode::Multiply: // Multiply
 		desc.RenderTarget[0].BlendEnable = TRUE;
 		desc.RenderTarget[0].SrcBlend = D3D12_BLEND_DEST_COLOR;
 		desc.RenderTarget[0].DestBlend = D3D12_BLEND_ZERO;
@@ -43,7 +43,7 @@ static D3D12_BLEND_DESC MakeBlendDescForMode(int mode)
 		desc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
 		desc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
 		break;
-	case 3: // PreMultiplied
+	case BlendMode::PreMultiplied: // PreMultiplied
 		desc.RenderTarget[0].BlendEnable = TRUE;
 		desc.RenderTarget[0].SrcBlend = D3D12_BLEND_ONE;
 		desc.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
@@ -52,7 +52,8 @@ static D3D12_BLEND_DESC MakeBlendDescForMode(int mode)
 		desc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
 		desc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
 		break;
-	default: // None
+	case BlendMode::None: // None
+	default:
 		desc.RenderTarget[0].BlendEnable = FALSE;
 		desc.RenderTarget[0].SrcBlend = D3D12_BLEND_ONE;
 		desc.RenderTarget[0].DestBlend = D3D12_BLEND_ZERO;
@@ -191,13 +192,13 @@ void ParticleRenderer::Initialize(DirectXCommon* dxCommon, SrvManager* srvManage
 	commonPsoDesc.SampleDesc.Count = 1;
 	commonPsoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
 
-	// PSO をブレンドモードごとに生成（5 モードを想定）
-	const int kBlendCount = 5;
+	// PSO をブレンドモードごとに生成
+	const int kBlendCount = static_cast<int>(BlendMode::Count);
 	psoForBlendMode_.resize(kBlendCount);
 	for (int i = 0; i < kBlendCount; ++i)
 	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = commonPsoDesc;
-		psoDesc.BlendState = MakeBlendDescForMode(i);
+		psoDesc.BlendState = MakeBlendDescForMode(static_cast<BlendMode>(i));
 
 		ComPtr<ID3D12PipelineState> pso = nullptr;
 		hr = dxCommon_->GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso));
@@ -249,31 +250,26 @@ void ParticleRenderer::CreateMaterialBuffer(size_t sizeInBytes, const void* init
 	materialCBVAddress_ = materialResource_->GetGPUVirtualAddress();
 }
 
-void ParticleRenderer::Draw(uint32_t numInstances, uint32_t textureSrvIndex, int blendIndex)
+void ParticleRenderer::Draw(uint32_t numInstances, uint32_t textureSrvIndex, BlendMode blendMode)
 {
 	if (numInstances == 0) return;
-	auto cmdList = dxCommon_->GetCommandList();
+	auto commandList = dxCommon_->GetCommandList();
 
-	// ルートシグネチャ / PSO / トポロジ / VB をセット
-	cmdList->SetGraphicsRootSignature(rootSignature_.Get());
-	if (blendIndex < 0 || blendIndex >= static_cast<int>(psoForBlendMode_.size())) blendIndex = 0;
-	cmdList->SetPipelineState(psoForBlendMode_[blendIndex].Get());
+	commandList->SetGraphicsRootSignature(rootSignature_.Get());
+	commandList->SetPipelineState(GetPipelineStateForBlend(blendMode).Get());
 
-	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	cmdList->IASetVertexBuffers(0, 1, &vertexBufferView_);
+	commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	// マテリアル CBV（内部保持アドレスを使用）
-	if (materialCBVAddress_ != 0)
-	{
-		cmdList->SetGraphicsRootConstantBufferView(0, materialCBVAddress_);
-	}
+	// 定数バッファ (マテリアル)
+	commandList->SetGraphicsRootConstantBufferView(0, materialCBVAddress_);
 
-	// インスタンス SRV は root parameter 1 のテーブルに入れる
+	// インスタンシング用の SRV (Structured Buffer) をセット
 	srvManager_->SetGraphicsRootDescriptorTable(1, instancingSrvIndex_);
 
-	// テクスチャ SRV (root parameter 2)
+	// テクスチャの SRV をセット
 	srvManager_->SetGraphicsRootDescriptorTable(2, textureSrvIndex);
 
-	// 描画
-	cmdList->DrawInstanced(static_cast<UINT>(vertexCount_), numInstances, 0, 0);
+	// 描画コール (四角形なので 6 頂点 × インスタンス数)
+	commandList->DrawInstanced(vertexCount_, numInstances, 0, 0);
 }

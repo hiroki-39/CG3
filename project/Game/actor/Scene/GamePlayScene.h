@@ -74,8 +74,6 @@ private:
     float lastCameraYaw_ = 0.0f;
     float currentCameraBank_ = 0.0f;
 
-    float kDeltaTime_local_override = 0.0f;
-
     // 乱数
     std::random_device seedGenerator;
     std::mt19937 randomEngine{ seedGenerator() };
