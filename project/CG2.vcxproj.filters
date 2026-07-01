@@ -1,15 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="ソース ファイル">
+    <Filter Include="繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="ヘッダー ファイル">
+    <Filter Include="繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="リソース ファイル">
+    <Filter Include="繝ｪ繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
@@ -19,369 +19,369 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Input\Input.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Core\OS\WinApp.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Core\Graphics\DirectXCommon.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Core\Utility\Log\Logger.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Core\Utility\String\StringUtility.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Core\Graphics\D3DResourceLeakChecker.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Core\Utility\Timer\Timer.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\2d\SpriteCommon.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\2d\Sprite.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Math\Matrix4x4.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Object\Object3dCommon.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Object\Object3d.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Model\Model.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelCommon.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Model\ModelManager.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Camera\Camera.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\Resource\Descriptor\SrvManager.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\Resource\Texture\TextureManager.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleManager.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleEmitter.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleRenderer.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Particle\ParticleEffect.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Debug\Imgui\ImGuiManager.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Sound\Core\Sound.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Sound\Core\SoundManager.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="externals\imgui\imgui.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="externals\imgui\imgui_demo.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="externals\imgui\imgui_draw.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="externals\imgui\imgui_impl_dx12.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="externals\imgui\imgui_impl_win32.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="externals\imgui\imgui_tables.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="externals\imgui\imgui_widgets.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\Billboard\Billboard.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Core\Utility\Crash\CrashDump.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Core\Framework\KHFramework.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Core\Services\EngineServices.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Core\Framework\BaseScene.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Scene\SceneManager.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Scene\AbstractSceneFactory.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Core\Resource\ResourceLocator.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Scene\LevelLoader.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Skybox\Skybox.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Primitive\Ring.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\3d\Primitive\Cylinder.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="Game\actor\Scene\GamePlayScene.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="Game\Scene\GamePlayScene.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="Game\actor\Scene\GameSceneFactory.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="Game\Scene\GameSceneFactory.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="Game\actor\Scene\TitleScene.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="Game\Scene\TitleScene.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="Game\System\Application.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="Game\System\Rail.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="Game\System\RailCameraController.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="Game\actor\Player\Player.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="Game\Actor\Player\Player.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="Game\actor\Bullet\PlayerBullet.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="Game\Actor\Bullet\PlayerBullet.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="KHEngine\Graphics\PostProcess\PostProcess.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="KHEngine\Input\Input.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Core\OS\WinApp.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Core\Graphics\DirectXCommon.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Core\Utility\Log\Logger.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Core\Utility\String\StringUtility.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Core\Graphics\D3DResourceLeakChecker.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Core\Utility\Timer\Timer.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\2d\SpriteCommon.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\2d\Sprite.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Math\Vector2.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Math\Vector3.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Math\Vector4.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Math\Transform.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Math\Matrix4x4.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Math\MathUtility.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Math\MathCommon.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\Resource\TextureManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Object\Object3dCommon.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Object\Object3d.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Model\Model.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Model\ModelCommon.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Model\ModelManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Camera\Camera.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\Resource\Descriptor\SrvManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\Resource\Texture\TextureManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleEmitter.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Particle\Particle.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleRenderer.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Particle\ParticleEffect.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Debug\Imgui\ImGuiManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Sound\Core\Sound.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Sound\Core\SoundManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\imconfig.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\imgui.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\imgui_impl_dx12.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\imgui_impl_win32.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\imgui_internal.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\imstb_rectpack.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\imstb_textedit.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\imstb_truetype.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\Billboard\Billboard.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Core\Application\Application.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Core\Utility\Crash\CrashDump.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Core\Framework\KHFramework.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Scene\GamePlayScene.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Core\Services\EngineServices.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Scene\TitleScene.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Core\Framework\BaseScene.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Scene\SceneManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Scene\AbstractSceneFactory.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Scene\SceneFactory.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Core\Resource\ResourceLocator.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Scene\LevelLoader.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Skybox\Skybox.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Primitive\Ring.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\3d\Primitive\Cylinder.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\Camera\Camera.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="Game\actor\Scene\GamePlayScene.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="Game\Scene\GamePlayScene.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="Game\actor\Scene\GameSceneFactory.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="Game\Scene\GameSceneFactory.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="Game\actor\Scene\TitleScene.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="Game\Scene\TitleScene.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="Game\System\Application.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="Game\System\Rail.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="Game\System\RailCameraController.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="Game\actor\Player\Player.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="Game\Actor\Player\Player.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="Game\actor\Bullet\PlayerBullet.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="Game\Actor\Bullet\PlayerBullet.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\PostProcess\PostProcess.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -1,4 +1,4 @@
-#include "RailCameraController.h"
+﻿#include "RailCameraController.h"
 
 void RailCameraController::Initialize(const std::vector<Rail*>& rails, Camera* camera, Object3d* parentObject) {
     rails_ = rails;
