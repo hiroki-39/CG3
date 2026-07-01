@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "GamePlayScene.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Core/Utility/Log/Logger.h"
@@ -708,6 +708,23 @@ void GamePlayScene::Update()
 
                 isHit = (*it)->CheckCollision(bulletSphere);
 
+                // CCD (Continuous Collision Detection): すり抜け防止
+                if (!isHit) {
+                    Vector3 prev = bullet->GetPreviousPosition();
+                    Vector3 curr = bullet->GetPosition();
+                    Vector3 diff = { curr.x - prev.x, curr.y - prev.y, curr.z - prev.z };
+                    float moveLen = std::sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
+                    if (moveLen > 0.0001f) {
+                        Ray moveRay = { prev, { diff.x/moveLen, diff.y/moveLen, diff.z/moveLen } };
+                        float hitDist = 0.0f;
+                        if ((*it)->CheckRaycast(moveRay, &hitDist)) {
+                            if (hitDist <= moveLen + 1.0f) { // 弾の半径分だけ余裕を持たせる
+                                isHit = true;
+                            }
+                        }
+                    }
+                }
+
                 if (isHit) {
                     bullet->OnCollision();
                     (*it)->OnCollision();
@@ -765,7 +782,7 @@ void GamePlayScene::Update()
                         // 敵の中心位置を取得してレイ方向との角度を計算
                         Vector3 enemyPos = enemy->GetPosition();
                         Vector3 toEnemy = { enemyPos.x - cameraPos.x, enemyPos.y - cameraPos.y, enemyPos.z - cameraPos.z };
-                        float toEnemyLen = std::sqrt(toEnemy.x*toEnemy.x + toEnemy.y*toEnemy.y + toEnemy.z*toEnemy.z);
+                        float toEnemyLen = std::sqrt(toEnemy.x * toEnemy.x + toEnemy.y * toEnemy.y + toEnemy.z * toEnemy.z);
                         if (toEnemyLen > 0.0f) {
                             toEnemy.x /= toEnemyLen;
                             toEnemy.y /= toEnemyLen;

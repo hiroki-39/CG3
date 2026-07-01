@@ -1,9 +1,10 @@
-﻿#include "Player.h"
+#include "Player.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Debug/Imgui/ImGuiManager.h"
 #include "externals/nlohmann/json.hpp"
 #include <fstream>
 #include <algorithm>
+#include "Game/Actor/Enemy/Enemy.h"
 
 void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex) {
     object3dCommon_ = object3dCommon;
@@ -265,14 +266,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d*
         const Matrix4x4& mat = object_->GetmatWorld();
         Vector3 playerPos = { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
         
-        Vector3 targetPos;
-        if (isLockOn_) {
-            targetPos = lockOnTargetPos_;
-        } else {
-            // ロックオンしていない場合は、そのまま画面奥（カメラのRay線上など）に飛ばしたいが
-            // 今回はレティクルのワールド座標を使う
-            targetPos = GetReticleWorldPosition();
-        }
+        Vector3 targetPos = GetReticleWorldPosition();
         
         // 照準(またはロックオン座標)に向かうベクトルを計算
         Vector3 direction = {
