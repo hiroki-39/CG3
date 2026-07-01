@@ -5,6 +5,8 @@
 #include "KHEngine/Core/Utility/Crash/CrashDump.h"
 #include "KHEngine/Sound/Core/SoundManager.h"
 #include "KHEngine/Debug/Editor/EditorSystem.cpp"
+#include "KHEngine/Core/Services/EngineServices.h"
+#include <chrono>
 
 void KHFramework::Run()
 {
@@ -14,13 +16,21 @@ void KHFramework::Run()
 	// --- ゲーム初期化 ---
 	Initialize();
 
-	// 固定 60fps
-	constexpr float kDeltaTime = 1.0f / 60.0f;
-
 	// --- メインループ ---
+	auto prevTime = std::chrono::high_resolution_clock::now();
+
 	while (!endRequest_)
 	{
-		FrameworkUpdate(kDeltaTime);
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float deltaTime = std::chrono::duration<float>(currentTime - prevTime).count();
+		prevTime = currentTime;
+
+		// 異常な遅延（ブレークポイントでの停止等）の対策として上限を設ける
+		if (deltaTime > 0.1f) deltaTime = 0.1f;
+
+		EngineServices::GetInstance()->SetDeltaTime(deltaTime);
+
+		FrameworkUpdate(deltaTime);
 		Update();
 
 		FrameworkDrawBegin();

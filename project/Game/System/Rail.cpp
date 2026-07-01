@@ -1,4 +1,4 @@
-#include "Rail.h"
+﻿#include "Rail.h"
 #include <algorithm>
 #include <cmath>
 

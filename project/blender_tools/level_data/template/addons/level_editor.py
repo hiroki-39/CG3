@@ -170,6 +170,26 @@ class MYADDON_OT_create_asteroid(bpy.types.Operator):
         print("障害物(Asteroid)ダミーを生成しました。")
         return {'FINISHED'}
 
+#オペレータ　ゲームカメラ生成
+class MYADDON_OT_create_game_camera(bpy.types.Operator):
+    bl_idname = "myaddon.create_game_camera"
+    bl_label = "ゲームカメラ生成"
+    bl_description = "ゲーム内の視野角(FOV)を再現したカメラを生成します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        camera_data = bpy.data.cameras.new(name="GameCameraData")
+        camera_data.lens_unit = 'FOV'
+        camera_data.angle = math.radians(45.0) # ゲームのFOVに合わせて45度に設定
+        camera_obj = bpy.data.objects.new("GameCamera", camera_data)
+        camera_obj.location = context.scene.cursor.location
+        camera_obj.rotation_euler = (math.radians(90), 0, 0) # 真っ直ぐ前を向くように(Y軸プラス方向)
+        context.scene.collection.objects.link(camera_obj)
+        context.view_layer.objects.active = camera_obj
+        camera_obj.select_set(True)
+        print("ゲームカメラを生成しました。")
+        return {'FINISHED'}
+
 #オペレータ　カスタムプロパティ['file_name']追加
 class MYADDON_OT_add_filename(bpy.types.Operator):
     bl_idname = "myaddon.myaddon_ot_add_filename"
@@ -646,6 +666,7 @@ class TOPBAR_MT_my_menu(bpy.types.Menu):
         self.layout.operator(MYADDON_OT_create_ico_sphere.bl_idname, text = MYADDON_OT_create_ico_sphere.bl_label)
         self.layout.operator(MYADDON_OT_create_fighter.bl_idname, text = MYADDON_OT_create_fighter.bl_label)
         self.layout.operator(MYADDON_OT_create_asteroid.bl_idname, text = MYADDON_OT_create_asteroid.bl_label)
+        self.layout.operator(MYADDON_OT_create_game_camera.bl_idname, text = MYADDON_OT_create_game_camera.bl_label)
         self.layout.operator(MYADDON_OT_export_scene.bl_idname, text = MYADDON_OT_export_scene.bl_label)
         self.layout.operator(MYADDON_OT_export_objs.bl_idname, text = MYADDON_OT_export_objs.bl_label)
 
@@ -662,6 +683,7 @@ classes  = (
     MYADDON_OT_create_ico_sphere,
     MYADDON_OT_create_fighter,
     MYADDON_OT_create_asteroid,
+    MYADDON_OT_create_game_camera,
     MYADDON_OT_export_scene,
     MYADDON_OT_export_objs,
     MYADDON_OT_add_filename,

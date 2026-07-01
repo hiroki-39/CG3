@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "KHEngine/Scene/AbstractSceneFactory.h"
 #include "TitleScene.h"
 #include "GamePlayScene.h"

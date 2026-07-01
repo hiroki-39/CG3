@@ -1,20 +1,20 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "Application.h"
 #include <Windows.h>
 #include <combaseapi.h>
 #include "KHEngine/Core/Utility/Log/Logger.h"
 #include "KHEngine/Core/Utility/Crash/CrashDump.h"
 #include "KHEngine/Core/Services/EngineServices.h"
-#include "Game/actor/Scene/GameSceneFactory.h"
+#include "Game/Scene/GameSceneFactory.h"
 #include <memory>
 
-// 初期化
+// 蛻晄悄蛹・
 void Application::Initialize()
 {
-    // 基底クラスの初期化
+    // 蝓ｺ蠎輔け繝ｩ繧ｹ縺ｮ蛻晄悄蛹・
     KHFramework::Initialize();
 
-    // フレームワークの共通オブジェクトを EngineServices に登録
+    // 繝輔Ξ繝ｼ繝繝ｯ繝ｼ繧ｯ縺ｮ蜈ｱ騾壹が繝悶ず繧ｧ繧ｯ繝医ｒ EngineServices 縺ｫ逋ｻ骭ｲ
     EngineServices* services = EngineServices::GetInstance();
     services->SetObject3dCommon(object3dCommon_.get());
     services->SetDirectXCommon(dxCommon_.get());
@@ -23,60 +23,60 @@ void Application::Initialize()
     services->SetInput(input_.get());
     services->SetImGuiManager(imguiManager_.get());
 
-    // シーンマネージャーとシーンファクトリーの生成と初期設定
+    // 繧ｷ繝ｼ繝ｳ繝槭ロ繝ｼ繧ｸ繝｣繝ｼ縺ｨ繧ｷ繝ｼ繝ｳ繝輔ぃ繧ｯ繝医Μ繝ｼ縺ｮ逕滓・縺ｨ蛻晄悄險ｭ螳・
     sceneFactory_ = std::make_unique<GameSceneFactory>();
     services->SetSceneFactory(sceneFactory_.get());
 
-    // SceneManager を生成してファクトリーを設定
+    // SceneManager 繧堤函謌舌＠縺ｦ繝輔ぃ繧ｯ繝医Μ繝ｼ繧定ｨｭ螳・
     sceneManager_ = std::make_unique<SceneManager>();
     sceneManager_->SetSceneFactory(sceneFactory_.get());
 
-    // 起動時はタイトルシーンを予約してから Update を呼ぶ
+    // 襍ｷ蜍墓凾縺ｯ繧ｿ繧､繝医Ν繧ｷ繝ｼ繝ｳ繧剃ｺ育ｴ・＠縺ｦ縺九ｉ Update 繧貞他縺ｶ
     sceneManager_->ChangeScene("TITLE");
 
-    // 予約された初期シーンを即時切替・初期化する
+    // 莠育ｴ・＆繧後◆蛻晄悄繧ｷ繝ｼ繝ｳ繧貞叉譎ょ・譖ｿ繝ｻ蛻晄悄蛹悶☆繧・
     if (sceneManager_)
     {
         sceneManager_->Update();
     }
 }
 
-// 終了処理
+// 邨ゆｺ・・逅・
 void Application::Finalize()
 {
-    // シーンマネージーの破棄（内部で現在シーンの Finalize/Delete を行う）
+    // 繧ｷ繝ｼ繝ｳ繝槭ロ繝ｼ繧ｸ繝ｼ縺ｮ遐ｴ譽・ｼ亥・驛ｨ縺ｧ迴ｾ蝨ｨ繧ｷ繝ｼ繝ｳ縺ｮ Finalize/Delete 繧定｡後≧・・
     if (sceneManager_)
     {
         sceneManager_.reset();
     }
 
-    // シーンファクトリーの破棄
+    // 繧ｷ繝ｼ繝ｳ繝輔ぃ繧ｯ繝医Μ繝ｼ縺ｮ遐ｴ譽・
     if (sceneFactory_)
     {
         sceneFactory_.reset();
     }
 
-    // 基底クラスの終了処理
+    // 蝓ｺ蠎輔け繝ｩ繧ｹ縺ｮ邨ゆｺ・・逅・
     KHFramework::Finalize();
 }
 
-// 更新処理
+// 譖ｴ譁ｰ蜃ｦ逅・
 void Application::Update()
 {
-    // 基底クラスの更新処理（フレーム開始・ImGui Begin 等を含む）
+    // 蝓ｺ蠎輔け繝ｩ繧ｹ縺ｮ譖ｴ譁ｰ蜃ｦ逅・ｼ医ヵ繝ｬ繝ｼ繝髢句ｧ九・ImGui Begin 遲峨ｒ蜷ｫ繧・・
     KHFramework::Update();
 
-    // シーンマネージャー更新（シーンの Update を呼ぶ）
+    // 繧ｷ繝ｼ繝ｳ繝槭ロ繝ｼ繧ｸ繝｣繝ｼ譖ｴ譁ｰ・医す繝ｼ繝ｳ縺ｮ Update 繧貞他縺ｶ・・
     if (sceneManager_)
     {
         sceneManager_->Update();
     }
 }
 
-// 描画処理
+// 謠冗判蜃ｦ逅・
 void Application::Draw()
 {
-    // シーンマネージャーに描画を委譲
+    // 繧ｷ繝ｼ繝ｳ繝槭ロ繝ｼ繧ｸ繝｣繝ｼ縺ｫ謠冗判繧貞ｧ碑ｭｲ
     if (sceneManager_)
     {
         sceneManager_->Draw();

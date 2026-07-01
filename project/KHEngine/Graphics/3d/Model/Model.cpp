@@ -141,6 +141,7 @@ void Model::CreateMaterialResource()
 	materialData_->shininess = 40.0f;
 	materialData_->specularColor = { 1.0f,1.0f,1.0f };
 	materialData_->environmentCoefficient = 0.0f;
+	materialData_->fresnelF0 = 0.04f; // 非金属のデフォルト
 }
 
 Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std::string & filename)

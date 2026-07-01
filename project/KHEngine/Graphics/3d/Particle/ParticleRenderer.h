@@ -31,12 +31,13 @@ public:
 	uint32_t GetInstancingSrvIndex() const { return instancingSrvIndex_; }
 
 	// 描画：numInstances は FillInstancingBuffer で書き込んだ個数
-	void Draw(uint32_t numInstances, uint32_t textureSrvIndex, int blendIndex);
+	void Draw(uint32_t numInstances, uint32_t textureSrvIndex, BlendMode blendMode);
 
 	// RootSignature と PSO 取得（必要なら外部参照用）
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> GetRootSignature() const { return rootSignature_; }
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> GetPipelineStateForBlend(int blendIndex) const
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> GetPipelineStateForBlend(BlendMode blendMode) const
 	{
+		int blendIndex = static_cast<int>(blendMode);
 		if (blendIndex < 0 || blendIndex >= static_cast<int>(psoForBlendMode_.size())) return nullptr;
 		return psoForBlendMode_[blendIndex];
 	}

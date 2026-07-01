@@ -13,7 +13,7 @@ struct Material
     int32_t selectLightings;
     float32_t shininess;
     float32_t environmentCoefficient;
-    float32_t padding1;
+    float32_t fresnelF0;
     float32_t3 specularColor;
 };
 
@@ -114,75 +114,78 @@ PixelShaderOutput main(VertexShaderOutput input)
             break;
         case 4:
             {
-             // DirectionalLight
-                NdotL = dot(normal, -gDirectionlLight.direction);
-                cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
-
-             float32_t3 diffuseDirectionalLight = gMaterial.color.rgb * textureColor.rgb * gDirectionlLight.color.rgb * cos * gDirectionlLight.intensity;
-             float32_t3 specularDirectionalLight = gDirectionlLight.color.rgb * gDirectionlLight.intensity * specularPow * float32_t3(1.0f, 1.0f, 1.0f);
+                // DirectionalLight
+                float32_t3 diffuseDirectionalLight = {0,0,0};
+                float32_t3 specularDirectionalLight = {0,0,0};
+                if (gDirectionlLight.intensity > 0.0f)
+                {
+                    NdotL = dot(normal, -gDirectionlLight.direction);
+                    cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
+                    diffuseDirectionalLight = gMaterial.color.rgb * textureColor.rgb * gDirectionlLight.color.rgb * cos * gDirectionlLight.intensity;
+                    specularDirectionalLight = gDirectionlLight.color.rgb * gDirectionlLight.intensity * specularPow * float32_t3(1.0f, 1.0f, 1.0f);
+                }
                 
-             // ===== PointLight =====
-             float32_t3 pointLightDirection = normalize(input.worldPosition - gPointLight.direction);
+                // ===== PointLight =====
+                float32_t3 diffusePointLight = {0,0,0};
+                float32_t3 specularPointLight = {0,0,0};
+                float32_t distance = length(gPointLight.direction - input.worldPosition);
+                
+                if (gPointLight.intensity > 0.0f && distance <= gPointLight.radius)
+                {
+                    float32_t3 pointLightDirection = normalize(input.worldPosition - gPointLight.direction);
+                    float32_t factor = pow(saturate(-distance / gPointLight.radius + 1.0), gPointLight.decry);
+                    
+                    // Diffuse
+                    float NdotL_Point = dot(normal, -pointLightDirection);
+                    float cosPoint = pow(NdotL_Point * 0.5f + 0.5f, 2.0f);
+                    diffusePointLight = gMaterial.color.rgb * textureColor.rgb * gPointLight.color.rgb * cosPoint * gPointLight.intensity * factor;
 
-            float32_t distance = length(gPointLight.direction - input.worldPosition);
-            float32_t factor = pow(saturate(-distance / gPointLight.radius + 1.0), gPointLight.decry);
-            
-                // Diffuse
-                float NdotL_Point = dot(normal, -pointLightDirection);
-                float cosPoint = pow(NdotL_Point * 0.5f + 0.5f, 2.0f);
-
-            float32_t3 diffusePointLight = gMaterial.color.rgb * textureColor.rgb * gPointLight.color.rgb * cosPoint * gPointLight.intensity * factor;
-
-            // Blinn-Phong Specular
-            float32_t3 halfVectorPoint = normalize(-pointLightDirection + toEye);
-
-                float NdotH_Point = dot(normal, halfVectorPoint);
-                float specularPowPoint = pow(saturate(NdotH_Point), gMaterial.shininess);
-
-            float32_t3 specularPointLight = gPointLight.color.rgb * gPointLight.intensity * specularPowPoint * float32_t3(1.0f, 1.0f, 1.0f) * factor;
+                    // Blinn-Phong Specular
+                    float32_t3 halfVectorPoint = normalize(-pointLightDirection + toEye);
+                    float NdotH_Point = dot(normal, halfVectorPoint);
+                    float specularPowPoint = pow(saturate(NdotH_Point), gMaterial.shininess);
+                    specularPointLight = gPointLight.color.rgb * gPointLight.intensity * specularPowPoint * float32_t3(1.0f, 1.0f, 1.0f) * factor;
+                }
 
                 // ===== 全部足す =====
                 output.color.rgb = diffuseDirectionalLight + specularDirectionalLight + diffusePointLight + specularPointLight;
-
                 output.color.a = gMaterial.color.a * textureColor.a;
             }
             break;
         case 5:
             {
              // ===== SpotLight =====
-            
-             // 表面 → 光源方向
-            float32_t3 spotLightDirection = normalize(input.worldPosition - gSpotLight.position);
+                float32_t3 diffuseSpotLight = {0,0,0};
+                float32_t3 specularSpotLight = {0,0,0};
+                float32_t distance = length(gSpotLight.position - input.worldPosition);
+                
+                if (gSpotLight.intensity > 0.0f && distance <= gSpotLight.distance)
+                {
+                    // 表面 → 光源方向
+                    float32_t3 spotLightDirection = normalize(input.worldPosition - gSpotLight.position);
+                    float32_t attenuation = pow(saturate(-distance / gSpotLight.distance + 1.0f), gSpotLight.decay);
 
-            // 距離減衰
-            float32_t distance = length(gSpotLight.position - input.worldPosition);
+                    // 角度（Falloff）
+                    float cosAngle = dot(spotLightDirection, gSpotLight.direction);
+                    float falloffFactor = saturate((cosAngle - gSpotLight.cosAngle) / (1.0f - gSpotLight.cosAngle));
 
-            float32_t attenuation = pow(saturate(-distance / gSpotLight.distance + 1.0f), gSpotLight.decay);
+                    if (falloffFactor > 0.0f)
+                    {
+                        // ===== Diffuse =====
+                        float NdotL = dot(normal, -spotLightDirection);
+                        float cosDiffuse = pow(NdotL * 0.5f + 0.5f, 2.0f);
+                        diffuseSpotLight = gMaterial.color.rgb * textureColor.rgb * gSpotLight.color.rgb * cosDiffuse * gSpotLight.intensity * attenuation * falloffFactor;
 
-                // 角度（Falloff）
-                float cosAngle = dot(spotLightDirection, gSpotLight.direction);
-
-                float falloffFactor = saturate((cosAngle - gSpotLight.cosAngle) / (1.0f - gSpotLight.cosAngle));
-
-             // ===== Diffuse =====
-                float NdotL = dot(normal, -spotLightDirection);
-
-                float cosDiffuse = pow(NdotL * 0.5f + 0.5f, 2.0f);
-
-           float32_t3 diffuseSpotLight = gMaterial.color.rgb * textureColor.rgb * gSpotLight.color.rgb * cosDiffuse * gSpotLight.intensity * attenuation * falloffFactor;
-
-           // ===== Specular (Blinn-Phong) =====
-           float32_t3 halfVector = normalize(-spotLightDirection + toEye);
-
-                float NdotH = dot(normal, halfVector);
-
-                float specularPow = pow(saturate(NdotH), gMaterial.shininess);
-
-           float32_t3 specularSpotLight = gSpotLight.color.rgb * gSpotLight.intensity * specularPow * float32_t3(1.0f, 1.0f, 1.0f) * attenuation * falloffFactor;
+                        // ===== Specular (Blinn-Phong) =====
+                        float32_t3 halfVector = normalize(-spotLightDirection + toEye);
+                        float NdotH = dot(normal, halfVector);
+                        float specularPow = pow(saturate(NdotH), gMaterial.shininess);
+                        specularSpotLight = gSpotLight.color.rgb * gSpotLight.intensity * specularPow * float32_t3(1.0f, 1.0f, 1.0f) * attenuation * falloffFactor;
+                    }
+                }
 
                 // ===== 出力 =====
                 output.color.rgb = diffuseSpotLight + specularSpotLight;
-
                 output.color.a = gMaterial.color.a * textureColor.a;
             }
             break;
@@ -199,8 +202,13 @@ PixelShaderOutput main(VertexShaderOutput input)
         // 環境マップをサンプリング
         float32_t3 environmentColor = gEnvironmentMap.Sample(gSampler, reflectVector).rgb;
         
-        // 環境マップの色を加算（鏡面反射として扱う）
-        output.color.rgb += environmentColor * gMaterial.environmentCoefficient;
+        // フレネル反射 (Schlick近似)
+        float cosTheta = saturate(dot(toEye, normal));
+        float f0 = gMaterial.fresnelF0;
+        float fresnel = f0 + (1.0f - f0) * pow(1.0f - cosTheta, 5.0f);
+        
+        // 環境マップの色を加算（フレネルを適用）
+        output.color.rgb += environmentColor * gMaterial.environmentCoefficient * fresnel;
     }    // 半透明のピクセル（アンチエイリアスのフチなど）も破棄して黒いフチを消す
     if (output.color.a <= 0.5f) {
         discard;

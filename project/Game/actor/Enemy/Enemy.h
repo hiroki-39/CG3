@@ -25,6 +25,9 @@ public:
 
     // Getter / Setter
     const Vector3& GetPosition() const { return position_; }
+    Vector3 GetColliderCenter() const {
+        return { position_.x + collider_.center.x, position_.y + collider_.center.y, position_.z + collider_.center.z };
+    }
     const LevelCollider& GetCollider() const { return collider_; }
     bool IsDead() const { return isDead_; }
     const Rail* GetMovePath() const { return movePath_.get(); }

@@ -1,4 +1,4 @@
-#include "Enemy.h"
+﻿#include "Enemy.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 
@@ -132,9 +132,33 @@ void Enemy::Update(const Vector3& playerPos, const Vector3& playerForward) {
                 rot.x += 0.01f;
                 rot.y += 0.02f;
                 object_->SetRotation(rot);
-            } else if (typeName_ == "Fighter") {
+            } else if (typeName_ == "Turret") {
+                // その場にとどまる
+                Vector3 rot = object_->GetRotation();
+                // プレイヤーの方向を向く
+                Vector3 toPlayer = { playerPos.x - position_.x, playerPos.y - position_.y, playerPos.z - position_.z };
+                float yaw = std::atan2(toPlayer.x, toPlayer.z);
+                float pitch = std::asin(std::clamp(-toPlayer.y / std::sqrt(toPlayer.x*toPlayer.x + toPlayer.y*toPlayer.y + toPlayer.z*toPlayer.z), -1.0f, 1.0f));
+                // 補間でゆっくり向く
+                rot.x += (pitch - rot.x) * 0.1f;
+                rot.y += (yaw - rot.y) * 0.1f;
+                object_->SetRotation(rot);
+            } else if (typeName_ == "Drone") {
+                // プレイヤーに向かってまっすぐ突っ込む
+                Vector3 toPlayer = { playerPos.x - position_.x, playerPos.y - position_.y, playerPos.z - position_.z };
+                float length = std::sqrt(toPlayer.x*toPlayer.x + toPlayer.y*toPlayer.y + toPlayer.z*toPlayer.z);
+                if (length > 0.0f) {
+                    position_.x += (toPlayer.x / length) * 0.8f;
+                    position_.y += (toPlayer.y / length) * 0.8f;
+                    position_.z += (toPlayer.z / length) * 0.8f;
+                }
+            } else {
                 isAutoAI_ = true;
-                aiOffset_ = {0.0f, 0.0f, 50.0f};
+                aiOffset_ = {
+                    ((float)rand() / RAND_MAX * 40.0f - 20.0f),   // X: -20 ~ 20 (広げる)
+                    ((float)rand() / RAND_MAX * 20.0f - 10.0f),    // Y: -10 ~ 10 (広げる)
+                    50.0f + ((float)rand() / RAND_MAX * 50.0f)     // Z: 50 ~ 100 (広げる)
+                };
             }
         }
     }
@@ -143,9 +167,10 @@ void Enemy::Update(const Vector3& playerPos, const Vector3& playerForward) {
         // 自律戦闘（AI）モード：プレイヤー（カメラ）の前方を浮遊する
         Vector3 right = { playerForward.z, 0.0f, -playerForward.x };
         
-        // 揺れ（スウェイ）を無くし、一旦カメラ内にピタッと滞在するだけにする
-        float swayX = 0.0f;
-        float swayY = 0.0f;
+        // 揺れ（スウェイ）を一時的にオフ
+        float swayX = 0.0f; // std::sin(pathProgress_ * 10.0f) * 5.0f;
+        float swayY = 0.0f; // std::cos(pathProgress_ * 8.0f) * 3.0f;
+        pathProgress_ += 0.01f; // スウェイのための時間進行用
 
         Vector3 targetPos = {
             playerPos.x + playerForward.x * aiOffset_.z + right.x * (aiOffset_.x + swayX),

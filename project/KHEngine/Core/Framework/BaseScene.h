@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <vector>
 #include <memory>
 #include "KHEngine/Graphics/2d/Sprite.h"
@@ -29,7 +29,6 @@ protected:
     // シーン共通データ
     std::vector<std::unique_ptr<Sprite>> sprites;
     bool isDisplaySprite = true;
-    const float kDeltaTime_ = 1.0f / 60.0f;
 
     // AddSprite: unique_ptr 受け取り版（所有権を明確化)
     void AddSprite(std::unique_ptr<Sprite> s)

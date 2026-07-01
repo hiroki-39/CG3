@@ -39,6 +39,9 @@ public:
 	void SetPostProcess(PostProcess* postProcess) { postProcess_ = postProcess; }
 	PostProcess* GetPostProcess() const { return postProcess_; }
 
+	void SetDeltaTime(float dt) { deltaTime_ = dt; }
+	float GetDeltaTime() const { return deltaTime_; }
+
 private:
 	EngineServices() = default;
 	~EngineServices() = default;
@@ -55,4 +58,6 @@ private:
 	AbstractSceneFactory* sceneFactory_ = nullptr;
 
 	PostProcess* postProcess_ = nullptr;
+
+	float deltaTime_ = 1.0f / 60.0f;
 };
