@@ -62,6 +62,8 @@ void Model::Initialize(DirectXCommon* dxCommon, const ModelData& data)
 
 void Model::Draw()
 {
+	if (modelData.vertices.empty() || modelData.indices.empty()) return;
+
 	//VBVの設定
 	dxCommon->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView);
 
@@ -80,6 +82,8 @@ void Model::Draw()
 
 void Model::CreateBufferResource()
 {
+	if (modelData.vertices.empty() || modelData.indices.empty()) return;
+
 	/*--- 頂点バッファ用リソースを作る ---*/
 
 	//頂点リソースを作る

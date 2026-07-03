@@ -2,6 +2,7 @@ import bpy
 import json
 import urllib.request
 import urllib.error
+import math
 
 class AIRailGeneratorProperties(bpy.types.PropertyGroup):
     api_key: bpy.props.StringProperty(
@@ -83,7 +84,6 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
         props = context.scene.ai_rail_props
         api_key = props.api_key
         
-        # UIのパラメータからプロンプトを自動生成
         sit_names = {
             'CANYON': '渓谷フライト（狭い谷間を縫うような激しい切り返しと起伏）',
             'BATTLESHIP': '巨大戦艦急襲（巨大な対象の周囲を大きく旋回・急上昇・急降下する映画的カメラワーク）',
@@ -99,52 +99,59 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
         }
         freq_names = {'NONE': '全くなし', 'LOW': '少ない', 'NORMAL': '普通', 'HIGH': '非常に多い'}
         
-        auto_prompt = f"以下のパラメータに従って、全長 {props.rail_length}m のカメラレールを生成してください。\n"
+        auto_prompt = f"以下のパラメータに従って、全長およそ {props.rail_length}m のカメラレールセクション配列と敵配置データを生成してください。\n"
         auto_prompt += f"・レールの始点の高さ(Z座標): {props.start_z} m からスタートしてください。\n"
         auto_prompt += f"・シチュエーション（演出テーマ）: {sit_names[props.situation]}\n"
         auto_prompt += f"・コース全体の緩急（ペーシング）: {pace_names[props.pacing]}\n"
         auto_prompt += f"・起伏の激しさ (1〜10): レベル {props.intensity}\n"
-        auto_prompt += f"・道中のイベント発生頻度: {freq_names[props.event_freq]}\n"
-        auto_prompt += f"・【重要】Z座標(高さ)の下限: 絶対に {props.min_z} mを下回らない（マイナスに行かない等）ようにしてください。\n"
+        auto_prompt += f"・敵の配置頻度: {freq_names[props.event_freq]}\n"
+        auto_prompt += f"・【重要】Z座標(高さ)の下限: レールの高さは絶対に {props.min_z} mを下回らないように設計してください。\n"
         
         if props.prompt:
             auto_prompt += f"\n【追加のユーザー要望】\n{props.prompt}\n"
-            
-        print("Generated Auto Prompt:\n", auto_prompt)
 
         if not api_key:
             self.report({'ERROR'}, "API Key is missing!")
             return {'CANCELLED'}
 
-        # Gemini APIリクエストの準備
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key.strip()}"
         
-        system_prompt = """
+        system_prompt = f"""
 あなたは「スターフォックス」や「パンツァードラグーン」のような名作3Dレールシューティングゲームの、超一流のレベルデザイナーです。
-指定されたシチュエーションに基づいて、ベジェ曲線の制御点（位置、左ハンドル、右ハンドル）、速度、イベント情報、そして「敵や障害物の配置情報」をJSON形式で出力してください。
+指定されたシチュエーションに基づいて、ステージを構成する「セクション（レールの形状）」の並びと、各セクションに配置する「敵の情報」をJSON形式で出力してください。
 
-【プロのレベルデザイン要求】
-1. 単なる数学的な曲線ではなく、プレイヤーの手に汗握るような「ダイナミックな演出」と「カメラワークの緩急」を意識してください。
-2. 急旋回、急降下、見せ場となる長い直線など、シチュエーションに応じたドラマチックな軌道を計算して座標を生成してください。
-3. ベジェハンドルの長さを工夫してください。ハンドルを長くして滑らかな大旋回を作ったり、ハンドルを短くして鋭角な回避行動を表現してください。
+【出力JSONフォーマット】
+必ず以下のJSONスキーマに従い、JSONテキストのみを出力してください。マークダウン(```json)や解説は一切含めないでください。
 
-必ず以下のJSONスキーマに従い、JSONテキストのみを出力してください。マークダウン(```json)や余分な解説を含めないでください。
-{
-  "points": [
-    {
-      "position": {"x": 0.0, "y": 0.0, "z": 0.0},
-      "handle_left": {"x": 0.0, "y": -5.0, "z": 0.0},
-      "handle_right": {"x": 0.0, "y": 5.0, "z": 0.0},
-      "speed": 10.0,
-      "event": "none"
-    }
+{{
+  "segments": [
+    {{
+      "type": "STRACTION_TYPE",
+      "length": 50.0,
+      "speed": 12.0,
+      "enemies": [
+        {{
+          "type": "drone",
+          "progress": 0.5,
+          "offset_x": -8.0,
+          "offset_z": 3.0
+        }}
+      ]
+    }}
   ]
-}
-【重要ルール】
-・レールの始点(1つ目の制御点)のX座標とY座標は、必ず (0.0, 0.0) にしてください。Z座標についてはユーザーリクエストの指定に従ってください。
-・レールが伸びる基本の進行方向は、必ず「+Y方向」(Y軸の正の方向) としてください。
-・長さや曲がり具合は、+Y方向に進みながらX軸(左右)やZ軸(上下)を変化させて表現してください。
-・ハンドルの座標は絶対座標(グローバル座標)で指定してください。進行方向が+Yなので、基本的なハンドルはY軸方向に伸ばす(+Yや-Y)形になります。
+}}
+
+【セクションの種類 ("type")】
+- "STRAIGHT": 直進するセクション。
+- "CURVE_RIGHT": 右に90度旋回するセクション（lengthは旋回半径として扱われます。最低でも30以上の大きめの値を推奨）。
+- "CURVE_LEFT": 左に90度旋回するセクション（lengthは旋回半径として扱われます。最低でも30以上の大きめの値を推奨）。
+- "CLIMB": 上昇するセクション。
+- "DIVE": 下降するセクション（Z軸下限 {props.min_z}m を下回らないよう注意）。
+
+【敵配置のルール ("enemies")】
+- "progress": そのセクション内での出現位置を 0.0（セクション開始点）から 1.0（セクション終了点）の間で指定。
+- "offset_x": レール（自機）の進行方向から見た左右のオフセット（マイナスが左、プラスが右）。
+- "offset_z": レール（自機）の進行方向から見た上下のオフセット（マイナスが下、プラスが上）。
 """
         payload = {
             "contents": [{
@@ -166,93 +173,193 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
                 with urllib.request.urlopen(req) as response:
                     res_body = response.read().decode('utf-8')
                     res_json = json.loads(res_body)
-                    
-                    # Geminiのレスポンスからテキストを抽出
                     generated_text = res_json['candidates'][0]['content']['parts'][0]['text']
+                    stage_data = json.loads(generated_text)
                     
-                    # JSONとしてパース
-                    rail_data = json.loads(generated_text)
-                    
-                    self.create_rail(rail_data)
-                    self.report({'INFO'}, "Rail generated successfully!")
+                    self.create_stage(stage_data, props.start_z)
+                    self.report({'INFO'}, "Stage elements generated successfully!")
                     return {'FINISHED'}
                     
             except urllib.error.HTTPError as e:
-                error_msg = e.read().decode('utf-8')
-                
-                # 429エラー(レートリミット超過)の場合の親切なメッセージ
                 if e.code == 429:
-                    self.report({'WARNING'}, "無料枠の制限(1分間に5回)に達しました。約1分待ってから再実行してください。")
-                    print("Rate limit exceeded. Please wait about 1 minute.")
+                    self.report({'WARNING'}, "レートリミットに達しました。1分待ってください。")
                     return {'CANCELLED'}
-
-                # 503エラー(混雑)の場合は自動リトライ
-                if e.code == 503:
-                    if attempt < max_retries - 1:
-                        wait_time = 2 ** (attempt + 1) # 2秒, 4秒と待機時間を増やす
-                        print(f"Server is busy (503). Retrying in {wait_time} seconds... (Attempt {attempt+1}/{max_retries})")
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        self.report({'ERROR'}, "AIサーバーが大変混雑しています。数分待ってから再度お試しください。")
-                        print("Server is overloaded (503) and all retries failed.")
-                        return {'CANCELLED'}
-                
+                if e.code == 503 and attempt < max_retries - 1:
+                    time.sleep(2 ** (attempt + 1))
+                    continue
                 self.report({'ERROR'}, f"HTTP Error {e.code}")
-                print(f"--- API Error Details ---\n{error_msg}\n-----------------------")
-                return {'CANCELLED'}
-            except urllib.error.URLError as e:
-                self.report({'ERROR'}, f"API Request failed: {e.reason}")
-                return {'CANCELLED'}
-            except json.JSONDecodeError as e:
-                self.report({'ERROR'}, f"Failed to parse AI response as JSON: {e}")
-                if 'generated_text' in locals():
-                    print(generated_text)
                 return {'CANCELLED'}
             except Exception as e:
                 self.report({'ERROR'}, f"An error occurred: {e}")
                 return {'CANCELLED'}
 
-    def create_rail(self, data):
-        points = data.get("points", [])
-        if not points:
+    def create_stage(self, data, start_z):
+        segments = data.get("segments", [])
+        if not segments:
             return
 
-        # カーブデータとオブジェクトの作成
+        # 1. カーブオブジェクトのセットアップ
         curve_data = bpy.data.curves.new('AIRailCurve', type='CURVE')
         curve_data.dimensions = '3D'
         curve_obj = bpy.data.objects.new('AIRail', curve_data)
         bpy.context.scene.collection.objects.link(curve_obj)
         
-        # スプラインの作成
         spline = curve_data.splines.new('BEZIER')
-        spline.bezier_points.add(len(points) - 1)
         
-        for i, pt_data in enumerate(points):
-            bp = spline.bezier_points[i]
-            
-            pos = pt_data.get("position", {"x":0, "y":0, "z":0})
-            hl = pt_data.get("handle_left", {"x":-1, "y":0, "z":0})
-            hr = pt_data.get("handle_right", {"x":1, "y":0, "z":0})
-            
-            bp.co = (pos["x"], pos["y"], pos["z"])
-            bp.handle_left = (hl["x"], hl["y"], hl["z"])
-            bp.handle_right = (hr["x"], hr["y"], hr["z"])
-            
-            # カスタムプロパティの設定 (オブジェクトに保存)
-            # 制御点(BezierSplinePoint)には直接カスタムプロパティを付けられないため、
-            # オブジェクト自体に speed_0, event_0 のような名前で保存します。
-            curve_obj[f"speed_{i}"] = float(pt_data.get("speed", 1.0))
-            curve_obj[f"event_{i}"] = str(pt_data.get("event", "none"))
+        # 幾何学計算用データ
+        current_pos = [0.0, 0.0, start_z]
+        current_angle = math.radians(90.0) # 初期方向：+Y方向 (90度)
+        
+        bezier_points_data = []
+        enemy_spawn_list = []
 
-        # オブジェクトを選択状態にする
+        # 最初の点
+        bezier_points_data.append({
+            "pos": tuple(current_pos),
+            "handle_left": (current_pos[0], current_pos[1] - 5.0, current_pos[2]),
+            "handle_right": (current_pos[0], current_pos[1] + 5.0, current_pos[2]),
+            "speed": float(segments[0].get("speed", 10.0)),
+            "event": "START"
+        })
+
+        # 各セクションをパース
+        for seg_idx, seg in enumerate(segments):
+            seg_type = seg.get("type", "STRAIGHT")
+            length = float(seg.get("length", 50.0))
+            speed = float(seg.get("speed", 12.0))
+            enemies = seg.get("enemies", [])
+            
+            seg_start_pos = list(current_pos)
+            seg_start_angle = current_angle
+
+            # --- 直線、上昇、下降の処理 ---
+            if seg_type in ["STRAIGHT", "CLIMB", "DIVE"]:
+                z_offset = length * 0.3 if seg_type == "CLIMB" else (-length * 0.3 if seg_type == "DIVE" else 0.0)
+                dx = length * math.cos(current_angle)
+                dy = length * math.sin(current_angle)
+                
+                current_pos[0] += dx
+                current_pos[1] += dy
+                current_pos[2] += z_offset
+                
+                # ハンドルの長さ（滑らかにつなぐためのベジェの重み）
+                h_len = length * 0.2
+                hl = (current_pos[0] - h_len * math.cos(current_angle), current_pos[1] - h_len * math.sin(current_angle), current_pos[2])
+                hr = (current_pos[0] + h_len * math.cos(current_angle), current_pos[1] + h_len * math.sin(current_angle), current_pos[2])
+                
+                bezier_points_data.append({
+                    "pos": tuple(current_pos), "handle_left": hl, "handle_right": hr, "speed": speed, "event": seg_type
+                })
+                
+                # 敵の配置（直線用リニア補間）
+                for enemy in enemies:
+                    prog = max(0.0, min(1.0, float(enemy.get("progress", 0.5))))
+                    ox = float(enemy.get("offset_x", 0.0))
+                    oz = float(enemy.get("offset_z", 0.0))
+                    
+                    ex_c = seg_start_pos[0] + dx * prog
+                    ey_c = seg_start_pos[1] + dy * prog
+                    ez_c = seg_start_pos[2] + z_offset * prog
+                    
+                    right_angle = current_angle - math.radians(90.0)
+                    ex = ex_c + ox * math.cos(right_angle)
+                    ey = ey_c + ox * math.sin(right_angle)
+                    ez = ez_c + oz
+                    enemy_spawn_list.append({"type": enemy.get("type", "drone"), "loc": (ex, ey, ez), "seg": seg_idx})
+
+            # --- 右旋回・左旋回の処理（90度カーブを細かく割って超滑らかにする） ---
+            elif seg_type in ["CURVE_RIGHT", "CURVE_LEFT"]:
+                is_right = (seg_type == "CURVE_RIGHT")
+                radius = max(10.0, length) # 最低半径を保証
+                
+                # 回転の中心点を計算
+                center_offset_angle = current_angle - math.radians(90.0) if is_right else current_angle + math.radians(90.0)
+                cx = current_pos[0] + radius * math.cos(center_offset_angle)
+                cy = current_pos[1] + radius * math.sin(center_offset_angle)
+                
+                # 90度を何分割するか（6分割 = 15度ずつ打つことで超滑らかに）
+                steps = 6
+                angle_step = math.radians(90.0) / steps
+                
+                start_arc_angle = current_angle + math.radians(90.0) if is_right else current_angle - math.radians(90.0)
+                
+                for step in range(1, steps + 1):
+                    # 現在のステップの角度
+                    if is_right:
+                        arc_angle = start_arc_angle - angle_step * step
+                        current_angle = arc_angle - math.radians(90.0)
+                    else:
+                        arc_angle = start_arc_angle + angle_step * step
+                        current_angle = arc_angle + math.radians(90.0)
+                        
+                    # 新しい点の座標
+                    current_pos[0] = cx + radius * math.cos(arc_angle)
+                    current_pos[1] = cy + radius * math.sin(arc_angle)
+                    
+                    # カーブの滑らかさを保つ接線ハンドルの計算
+                    # ベジェ曲線で円弧を近似するための最適なハンドルの長さ
+                    h_len = radius * (4.0 / 3.0) * math.tan(angle_step / 4.0)
+                    
+                    hl = (current_pos[0] - h_len * math.cos(current_angle), current_pos[1] - h_len * math.sin(current_angle), current_pos[2])
+                    hr = (current_pos[0] + h_len * math.cos(current_angle), current_pos[1] + h_len * math.sin(current_angle), current_pos[2])
+                    
+                    bezier_points_data.append({
+                        "pos": tuple(current_pos), "handle_left": hl, "handle_right": hr, "speed": speed, "event": f"{seg_type}_{step}"
+                    })
+                
+                # 敵の配置（円弧に沿った補間計算）
+                for enemy in enemies:
+                    prog = max(0.0, min(1.0, float(enemy.get("progress", 0.5))))
+                    ox = float(enemy.get("offset_x", 0.0))
+                    oz = float(enemy.get("offset_z", 0.0))
+                    
+                    # 進行度に応じた円弧上の角度
+                    e_step_angle = math.radians(90.0) * prog
+                    if is_right:
+                        e_arc_angle = start_arc_angle - e_step_angle
+                        e_current_angle = e_arc_angle - math.radians(90.0)
+                    else:
+                        e_arc_angle = start_arc_angle + e_step_angle
+                        e_current_angle = e_arc_angle + math.radians(90.0)
+                        
+                    ex_c = cx + radius * math.cos(e_arc_angle)
+                    ey_c = cy + radius * math.sin(e_arc_angle)
+                    
+                    right_angle = e_current_angle - math.radians(90.0)
+                    ex = ex_c + ox * math.cos(right_angle)
+                    ey = ey_c + ox * math.sin(right_angle)
+                    ez = current_pos[2] + oz
+                    enemy_spawn_list.append({"type": enemy.get("type", "drone"), "loc": (ex, ey, ez), "seg": seg_idx})
+
+        # 3. Blenderのベジェ曲線オブジェクトに一気に反映
+        spline.bezier_points.add(len(bezier_points_data) - 1)
+        for idx, pt in enumerate(bezier_points_data):
+            bp = spline.bezier_points[idx]
+            bp.co = pt["pos"]
+            bp.handle_left = pt["handle_left"]
+            bp.handle_right = pt["handle_right"]
+            # ハンドルの種類をFREEにして、計算通りの綺麗な向きに固定する
+            bp.handle_left_type = 'FREE'
+            bp.handle_right_type = 'FREE'
+            
+            curve_obj[f"speed_{idx}"] = pt["speed"]
+            curve_obj[f"event_{idx}"] = pt["event"]
+
+        # 4. 敵オブジェクトを配置
+        for e_idx, enemy in enumerate(enemy_spawn_list):
+            bpy.ops.mesh.primitive_ico_sphere_add(radius=2.0, location=enemy["loc"])
+            enemy_obj = bpy.context.active_object
+            enemy_obj.name = f"Enemy_{enemy['type']}_Seg{enemy['seg']}_{e_idx}"
+            enemy_obj["enemy_type"] = enemy["type"]
+            enemy_obj["parent_rail"] = curve_obj.name
+
+        # レールを選択状態にする
         bpy.context.view_layer.objects.active = curve_obj
         curve_obj.select_set(True)
 
-        # ---- 敵・障害物の自動配置は無効化（手動配置に移行） ----
 
 class AIRAIL_PT_Panel(bpy.types.Panel):
-    bl_label = "AI Rail Generator"
+    bl_label = "AI自動レール生成"
     bl_idname = "AIRAIL_PT_Panel"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
@@ -275,7 +382,7 @@ class AIRAIL_PT_Panel(bpy.types.Panel):
         box.prop(props, "min_z")
         
         layout.prop(props, "prompt", text="追加要望(任意)")
-        layout.operator(AIRAIL_OT_Generate.bl_idname, text="AIでレールを自動生成", icon='OUTLINER_OB_CURVE')
+        layout.operator(AIRAIL_OT_Generate.bl_idname, text="AIでステージ・敵を自動生成", icon='OUTLINER_OB_CURVE')
 
 classes = (
     AIRailGeneratorProperties,

@@ -1,0 +1,9 @@
+Failed to load texture: wall.png.002 hr: 80070002
+Failed to load texture: wall.png.002 hr: 80070002
+Failed to load texture: wall.png.002 hr: 80070002
+Failed to load texture: wall.png.002 hr: 80070002
+Failed to load texture: wall.png.002 hr: 80070002
+Failed to load texture: wall.png.002 hr: 80070002
+Failed to load texture: wall.png.002 hr: 80070002
+Failed to load texture: wall.png.002 hr: 80070002
+Failed to load texture: wall.png.002 hr: 80070002

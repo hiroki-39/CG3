@@ -21,7 +21,7 @@
 #include <filesystem>
 #include "KHEngine/Math/CollisionMath.h"
 
-static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, Enemy* parentEnemy = nullptr) {
+static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, Enemy* parentEnemy = nullptr) {
     const Object3d* currentObj = parentObj;
 
     if (node.type == "CURVE") {
@@ -38,20 +38,35 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
     }
 
     Enemy* currentEnemy = parentEnemy;
-    if (node.type == "EMPTY" && !node.fileName.empty()) {
-        if (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos || node.fileName.find("Obstacle") != std::string::npos) {
-            auto enemy = std::make_unique<Enemy>();
-            enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
-            enemy->SetSpawnProgress(node.spawnProgress);
-            if (!node.texturePath.empty()) {
-                enemy->SetTexturePath(node.texturePath);
-            }
-            currentEnemy = enemy.get();
-            enemies.push_back(std::move(enemy));
-        }
-    }
+    
+    // オブジェクトの種別判定
+    bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName == "Invisible") || (node.fileName == "ColliderOnly");
+    bool isEnemy = (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos);
 
-    if (node.type == "MESH") {
+    if (isObstacle) {
+        // Obstacleとして生成
+        auto obstacle = std::make_unique<Obstacle>();
+        // Blenderのrotationは度数法だがObstacleはInitializeでそのまま保持するためラジアン変換する
+        Vector3 rotRad;
+        rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
+        rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
+        rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
+        obstacle->Initialize(common, node.translation, node.scale, rotRad, node.fileName, skyboxTexIndex, node.collider);
+        obstacle->SetSpawnProgress(node.spawnProgress);
+        if (!node.texturePath.empty()) {
+            obstacle->SetTexturePath(node.texturePath);
+        }
+        obstacles.push_back(std::move(obstacle));
+    } else if (isEnemy) {
+        auto enemy = std::make_unique<Enemy>();
+        enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
+        enemy->SetSpawnProgress(node.spawnProgress);
+        if (!node.texturePath.empty()) {
+            enemy->SetTexturePath(node.texturePath);
+        }
+        currentEnemy = enemy.get();
+        enemies.push_back(std::move(enemy));
+    } else if (node.type == "MESH") {
         auto obj = std::make_unique<Object3d>();
         obj->Initialize(common);
         
@@ -64,17 +79,6 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
         ModelManager::GetInstance()->LoadModel(modelName);
         if (ModelManager::GetInstance()->FindModel(modelName) != nullptr) {
             obj->SetModel(modelName);
-
-            // 【注意】複数マテリアルを持つモデル（wall.objなど）全体を1枚のテクスチャで上書きしてしまうため、一時無効化
-            /*
-            if (!node.texturePath.empty()) {
-                TextureManager::GetInstance()->LoadTexture(node.texturePath);
-                uint32_t texIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath(node.texturePath);
-                if (texIndex != UINT32_MAX && obj->GetModel()) {
-                    obj->GetModel()->SetTextureIndex(texIndex);
-                }
-            }
-            */
         }
         
         obj->SetTranslate(node.translation);
@@ -99,11 +103,11 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 
     // 子オブジェクトを再帰的に生成
     for (const auto& child : node.children) {
-        CreateObjectFromNode(child, currentObj, instances, outRails, common, skyboxTexIndex, enemies, currentEnemy);
+        CreateObjectFromNode(child, currentObj, instances, outRails, common, skyboxTexIndex, enemies, obstacles, currentEnemy);
     }
 }
 
-static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, Enemy* parentEnemy = nullptr) {
+static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, Enemy* parentEnemy = nullptr) {
     if (node.type == "CURVE" && parentEnemy) {
         auto rail = std::make_unique<Rail>();
         rail->Initialize(node.curvePoints);
@@ -111,20 +115,35 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
     }
 
     Enemy* currentEnemy = parentEnemy;
-    if (node.type == "EMPTY" && !node.fileName.empty()) {
-        if (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos || node.fileName.find("Obstacle") != std::string::npos) {
-            auto enemy = std::make_unique<Enemy>();
-            enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
-            enemy->SetSpawnProgress(node.spawnProgress);
-            if (!node.texturePath.empty()) {
-                enemy->SetTexturePath(node.texturePath);
-            }
-            currentEnemy = enemy.get();
-            enemies.push_back(std::move(enemy));
+
+    bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName == "Invisible") || (node.fileName == "ColliderOnly");
+    bool isEnemy = (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos);
+
+    if (isObstacle) {
+        auto obstacle = std::make_unique<Obstacle>();
+        Vector3 rotRad;
+        rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
+        rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
+        rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
+        obstacle->Initialize(common, node.translation, node.scale, rotRad, node.fileName, skyboxTexIndex, node.collider);
+        obstacle->SetSpawnProgress(node.spawnProgress);
+        if (!node.texturePath.empty()) {
+            obstacle->SetTexturePath(node.texturePath);
         }
+        obstacles.push_back(std::move(obstacle));
+    } else if (isEnemy) {
+        auto enemy = std::make_unique<Enemy>();
+        enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
+        enemy->SetSpawnProgress(node.spawnProgress);
+        if (!node.texturePath.empty()) {
+            enemy->SetTexturePath(node.texturePath);
+        }
+        currentEnemy = enemy.get();
+        enemies.push_back(std::move(enemy));
     }
+
     for (const auto& child : node.children) {
-        LoadEnemiesOnlyFromNode(child, common, skyboxTexIndex, enemies, currentEnemy);
+        LoadEnemiesOnlyFromNode(child, common, skyboxTexIndex, enemies, obstacles, currentEnemy);
     }
 }
 
@@ -286,6 +305,7 @@ void GamePlayScene::ReloadLevel()
     }
 
     enemies_.clear();
+    obstacles_.clear();
     bullets_.clear();
     railVisualizers_.clear();
     enemyRailVisualizers_.clear();
@@ -298,7 +318,7 @@ void GamePlayScene::ReloadLevel()
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
     if (levelData) {
         for (const auto& objData : levelData->objects) {
-            CreateObjectFromNode(objData, nullptr, modelInstances, mainRails_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_);
+            CreateObjectFromNode(objData, nullptr, modelInstances, mainRails_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_, obstacles_);
         }
         OutputDebugStringA("LevelLoader: Successfully reloaded objects.\n");
         
@@ -435,12 +455,13 @@ void GamePlayScene::ReloadEnemiesOnly()
     auto object3dCommon = services->GetObject3dCommon();
 
     enemies_.clear();
+    obstacles_.clear();
     enemyRailVisualizers_.clear();
 
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
     if (levelData) {
         for (const auto& objData : levelData->objects) {
-            LoadEnemiesOnlyFromNode(objData, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_);
+            LoadEnemiesOnlyFromNode(objData, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_, obstacles_);
         }
         OutputDebugStringA("LevelLoader: Successfully respawned enemies.\n");
 
@@ -740,6 +761,56 @@ void GamePlayScene::Update()
                 explosionEffect_.SetPosition((*it)->GetPosition());
                 explosionEffect_.Play();
                 it = enemies_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+
+        // 障害物の更新と当たり判定
+        for (auto it = obstacles_.begin(); it != obstacles_.end();) {
+            (*it)->Update();
+
+            // プレイヤーの弾との当たり判定
+            for (auto& bullet : bullets_) {
+                if (bullet->IsDead()) continue;
+
+                Sphere bulletSphere = { bullet->GetPosition(), 1.0f };
+                bool isHit = false;
+
+                isHit = (*it)->CheckCollision(bulletSphere);
+
+                // CCD (Continuous Collision Detection): すり抜け防止
+                if (!isHit) {
+                    Vector3 prev = bullet->GetPreviousPosition();
+                    Vector3 curr = bullet->GetPosition();
+                    Vector3 diff = { curr.x - prev.x, curr.y - prev.y, curr.z - prev.z };
+                    float moveLen = std::sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
+                    if (moveLen > 0.0001f) {
+                        Ray moveRay = { prev, { diff.x/moveLen, diff.y/moveLen, diff.z/moveLen } };
+                        float hitDist = 0.0f;
+                        if ((*it)->CheckRaycast(moveRay, &hitDist)) {
+                            if (hitDist <= moveLen + 1.0f) { // 弾の半径分だけ余裕を持たせる
+                                isHit = true;
+                            }
+                        }
+                    }
+                }
+
+                if (isHit) {
+                    bullet->OnCollision();
+                    (*it)->OnCollision();
+                    
+                    // パーティクルの再生
+                    hitEffect_.SetPosition(bulletSphere.center);
+                    hitEffect_.Play();
+                }
+            }
+
+            if ((*it)->IsDead()) {
+                // 破壊エフェクト
+                explosionEffect_.SetPosition((*it)->GetPosition());
+                explosionEffect_.Play();
+                it = obstacles_.erase(it);
             } else {
                 ++it;
             }
@@ -1541,12 +1612,18 @@ void GamePlayScene::Draw()
     for (auto& enemy : enemies_) {
         enemy->Draw();
     }
+    for (auto& obstacle : obstacles_) {
+        obstacle->Draw();
+    }
     
     // コライダーはワイヤーフレームで描画
     if (isDrawCollider_) {
         if (object3dCommon) object3dCommon->SetWireframeDrawSetting();
         for (auto& enemy : enemies_) {
             enemy->DrawCollider();
+        }
+        for (auto& obstacle : obstacles_) {
+            obstacle->DrawCollider();
         }
         for (auto& bullet : bullets_) {
             bullet->DrawCollider();

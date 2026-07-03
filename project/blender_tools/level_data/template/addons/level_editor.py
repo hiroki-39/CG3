@@ -585,12 +585,16 @@ class MYADDON_OT_export_objs(bpy.types.Operator):
             return {'CANCELLED'}
 
         json_dir = os.path.dirname(blend_filepath)
-        # resourcesフォルダを探して、その中の3dModelsに出力する
-        res_idx = json_dir.find("resources")
-        if res_idx != -1:
-            models_dir = os.path.join(json_dir[:res_idx], "resources", "3dModels")
+        # プロジェクトルート（blender_toolsより上の階層）を探す
+        bt_idx = json_dir.find("blender_tools")
+        if bt_idx != -1:
+            models_dir = os.path.join(json_dir[:bt_idx], "resources", "3dModels")
         else:
-            models_dir = os.path.join(json_dir, "resources", "3dModels")
+            res_idx = json_dir.find("resources")
+            if res_idx != -1:
+                models_dir = os.path.join(json_dir[:res_idx], "resources", "3dModels")
+            else:
+                models_dir = os.path.join(json_dir, "resources", "3dModels")
             
         if not os.path.exists(models_dir):
             os.makedirs(models_dir)

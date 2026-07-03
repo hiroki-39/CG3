@@ -2,27 +2,6 @@
     "name": "Scene",
     "objects": [
         {
-            "type": "CAMERA",
-            "name": "GameCamera",
-            "transform": {
-                "translation": [
-                    0.0,
-                    6.0,
-                    20.0
-                ],
-                "rotation": [
-                    90.00000762939453,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
             "type": "MESH",
             "name": "wall",
             "transform": {
@@ -42,7 +21,135 @@
                     1.0
                 ]
             },
-            "texture_path": "wall.png"
+            "texture_path": "wall.png.001"
+        },
+        {
+            "type": "MESH",
+            "name": "Obstacle_Rock",
+            "transform": {
+                "translation": [
+                    0.0,
+                    250.4429931640625,
+                    11.816800117492676
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    16.38604736328125,
+                    10.159177780151367,
+                    7.976621627807617
+                ]
+            },
+            "file_name": "Obstacle_Rock",
+            "texture_path": "wall.png.002"
+        },
+        {
+            "type": "MESH",
+            "name": "立方体",
+            "transform": {
+                "translation": [
+                    0.0,
+                    250.4429931640625,
+                    16.83861541748047
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    16.550233840942383,
+                    10.399999618530273,
+                    2.969517469406128
+                ]
+            },
+            "file_name": "Invisible",
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.0,
+                    2.0,
+                    2.0
+                ]
+            }
+        },
+        {
+            "type": "MESH",
+            "name": "立方体.001",
+            "transform": {
+                "translation": [
+                    11.447344779968262,
+                    250.4429931640625,
+                    6.815199851989746
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.099999904632568,
+                    10.399999618530273,
+                    7.130161762237549
+                ]
+            },
+            "file_name": "Invisible",
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.0,
+                    2.0,
+                    2.0
+                ]
+            }
+        },
+        {
+            "type": "MESH",
+            "name": "立方体.002",
+            "transform": {
+                "translation": [
+                    -11.44729995727539,
+                    250.4429931640625,
+                    6.815199851989746
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.099999904632568,
+                    10.399999618530273,
+                    7.130161762237549
+                ]
+            },
+            "file_name": "Invisible",
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.0,
+                    2.0,
+                    2.0
+                ]
+            }
         },
         {
             "type": "EMPTY",
@@ -687,6 +794,27 @@
                     "tilt": 0.0
                 }
             ]
+        },
+        {
+            "type": "CAMERA",
+            "name": "GameCamera",
+            "transform": {
+                "translation": [
+                    0.0,
+                    -8.579995155334473,
+                    20.0
+                ],
+                "rotation": [
+                    90.00000762939453,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
         }
     ]
 }
