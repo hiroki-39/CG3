@@ -21,7 +21,7 @@
                     1.0
                 ]
             },
-            "texture_path": "wall.png.001"
+            "texture_path": "wall.png"
         },
         {
             "type": "MESH",
@@ -44,112 +44,7 @@
                 ]
             },
             "file_name": "Obstacle_Rock",
-            "texture_path": "wall.png.002"
-        },
-        {
-            "type": "MESH",
-            "name": "立方体",
-            "transform": {
-                "translation": [
-                    0.0,
-                    250.4429931640625,
-                    16.83861541748047
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    16.550233840942383,
-                    10.399999618530273,
-                    2.969517469406128
-                ]
-            },
-            "file_name": "Invisible",
-            "collider": {
-                "type": "OBB",
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    2.0,
-                    2.0,
-                    2.0
-                ]
-            }
-        },
-        {
-            "type": "MESH",
-            "name": "立方体.001",
-            "transform": {
-                "translation": [
-                    11.447344779968262,
-                    250.4429931640625,
-                    6.815199851989746
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    5.099999904632568,
-                    10.399999618530273,
-                    7.130161762237549
-                ]
-            },
-            "file_name": "Invisible",
-            "collider": {
-                "type": "OBB",
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    2.0,
-                    2.0,
-                    2.0
-                ]
-            }
-        },
-        {
-            "type": "MESH",
-            "name": "立方体.002",
-            "transform": {
-                "translation": [
-                    -11.44729995727539,
-                    250.4429931640625,
-                    6.815199851989746
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    5.099999904632568,
-                    10.399999618530273,
-                    7.130161762237549
-                ]
-            },
-            "file_name": "Invisible",
-            "collider": {
-                "type": "OBB",
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    2.0,
-                    2.0,
-                    2.0
-                ]
-            }
+            "texture_path": "Obstacle_Rock.png"
         },
         {
             "type": "EMPTY",

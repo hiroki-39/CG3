@@ -38,10 +38,9 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
     }
 
     Enemy* currentEnemy = parentEnemy;
-    
     // オブジェクトの種別判定
-    bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName == "Invisible") || (node.fileName == "ColliderOnly");
-    bool isEnemy = (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos);
+    bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName.find("Invisible") != std::string::npos) || (node.fileName.find("ColliderOnly") != std::string::npos);
+    bool isEnemy = (node.fileName.find("Fighter") != std::string::npos || node.fileName.find("Asteroid") != std::string::npos || node.fileName.find("Enemy") != std::string::npos);
 
     if (isObstacle) {
         // Obstacleとして生成
@@ -116,8 +115,8 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
 
     Enemy* currentEnemy = parentEnemy;
 
-    bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName == "Invisible") || (node.fileName == "ColliderOnly");
-    bool isEnemy = (node.fileName == "Fighter" || node.fileName == "Asteroid" || node.fileName.find("Enemy") != std::string::npos);
+    bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName.find("Invisible") != std::string::npos) || (node.fileName.find("ColliderOnly") != std::string::npos);
+    bool isEnemy = (node.fileName.find("Fighter") != std::string::npos || node.fileName.find("Asteroid") != std::string::npos || node.fileName.find("Enemy") != std::string::npos);
 
     if (isObstacle) {
         auto obstacle = std::make_unique<Obstacle>();

@@ -21,7 +21,7 @@ void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, co
     object_->SetRotation(rotation_);
 
     std::string modelName = fileName;
-    if (modelName == "ColliderOnly" || modelName == "Invisible") {
+    if (modelName.find("ColliderOnly") != std::string::npos || modelName.find("Invisible") != std::string::npos) {
         // 見えない壁（当たり判定専用）の場合はモデルを読み込まない
         isVisible_ = false;
         isDestructible_ = false; // デフォルトで壊れないようにする
@@ -112,7 +112,7 @@ void Obstacle::SetTexturePath(const std::string& path) {
     if (!texturePath_.empty() && object_ && object_->GetModel()) {
         TextureManager::GetInstance()->LoadTexture(texturePath_);
         uint32_t texIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath(texturePath_);
-        if (texIndex != UINT32_MAX) {
+        if (texIndex != TextureManager::GetInstance()->GetDefaultTextureIndex()) {
             object_->GetModel()->SetTextureIndex(texIndex);
         }
     }
