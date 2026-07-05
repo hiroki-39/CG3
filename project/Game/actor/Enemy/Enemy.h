@@ -13,6 +13,7 @@ public:
     void Update3DObjectOnly() {
         if (object_) object_->Update();
         if (colliderObject_) colliderObject_->Update();
+        if (shadowObject_) shadowObject_->Update();
     }
     void Draw();
     void DrawCollider(); // デバッグ描画用

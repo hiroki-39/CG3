@@ -36,6 +36,11 @@ void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, co
         if (ModelManager::GetInstance()->FindModel(modelName)) {
             object_->SetModel(modelName);
             isVisible_ = true;
+            
+            // 一時的な対応: Obstacle_Rock は壊れないようにする
+            if (modelName.find("Obstacle_Rock") != std::string::npos) {
+                isDestructible_ = false;
+            }
         }
     }
     

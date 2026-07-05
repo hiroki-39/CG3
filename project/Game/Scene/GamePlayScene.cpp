@@ -947,6 +947,12 @@ void GamePlayScene::Update()
         for (auto& vis : railVisualizers_) if (vis) vis->Update();
         for (auto& vis : enemyRailVisualizers_) if (vis) vis->Update();
     }
+    
+    // ポーズ中でもカメラが動いた場合に行列を更新する
+    if (!isPlaying_) {
+        for (auto& enemy : enemies_) if (enemy) enemy->Update3DObjectOnly();
+        for (auto& obstacle : obstacles_) if (obstacle) obstacle->Update3DObjectOnly();
+    }
 
     // カメラ行列の取得
     Matrix4x4 cameraMatrix = Matrix4x4::Identity();

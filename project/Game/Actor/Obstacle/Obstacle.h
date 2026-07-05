@@ -12,6 +12,8 @@ public:
     // 今後の拡張（落ちてくる岩、崩れる柱などのアニメーション）用にUpdateを用意しておく
     void Update();
     
+
+    
     void Update3DObjectOnly() {
         if (object_) object_->Update();
         if (colliderObject_) colliderObject_->Update();
