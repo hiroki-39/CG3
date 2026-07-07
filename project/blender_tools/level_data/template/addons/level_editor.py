@@ -223,7 +223,7 @@ class MYADDON_OT_add_collider(bpy.types.Operator):
 class OBJECT_PT_file_name(bpy.types.Panel):
     """オブジェクトのファイルネームパネル"""
     bl_idname = "OBJECT_PT_file_name"
-    bl_label = "FileName"
+    bl_label = "ファイル名"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "object"
@@ -241,7 +241,7 @@ class OBJECT_PT_file_name(bpy.types.Panel):
 class OBJECT_PT_collider(bpy.types.Panel):
     """オブジェクトのコライダーパネル"""
     bl_idname = "OBJECT_PT_collider"
-    bl_label = "Collider"
+    bl_label = "コライダー設定"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "object"
@@ -250,18 +250,44 @@ class OBJECT_PT_collider(bpy.types.Panel):
         #パネルに項目を追加
         if "collider" in context.object:
             # カスタムプロパティをUIから直接変更できるようにする
-            self.layout.prop(context.object, '["collider_type"]', text="Type (SPHERE/AABB/OBB)")
-            self.layout.prop(context.object, '["collider_center"]', text= "Center Offset")
+            self.layout.prop(context.object, '["collider_type"]', text="形状 (SPHERE/BOX)")
+            self.layout.prop(context.object, '["collider_center"]', text="中心のズレ")
             
             # タイプに応じたプロパティの表示
             c_type = context.object.get("collider_type", "")
             if c_type == 'SPHERE':
-                self.layout.prop(context.object, '["collider_radius"]', text= "Radius")
+                self.layout.prop(context.object, '["collider_radius"]', text="半径")
             else:
-                self.layout.prop(context.object, '["collider_size"]', text= "Size")
+                self.layout.prop(context.object, '["collider_size"]', text="サイズ")
         else:
             #プロパティがなければ、プロパティ追加のオペレータを表示
             self.layout.operator(MYADDON_OT_add_collider.bl_idname)
+
+#オペレータ カスタムプロパティ['is_destructible']追加
+class MYADDON_OT_add_destructible(bpy.types.Operator):
+    bl_idname = "myaddon.myaddon_ot_add_destructible"
+    bl_label = "Destructibleフラグ 追加"
+    bl_description = "['is_destructible']カスタムプロパティを追加します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        context.object["is_destructible"] = True
+        return {'FINISHED'}
+
+#パネル Destructible
+class OBJECT_PT_destructible(bpy.types.Panel):
+    """オブジェクトの破壊フラグパネル"""
+    bl_idname = "OBJECT_PT_destructible"
+    bl_label = "破壊可能フラグ"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "object"
+
+    def draw(self, context):
+        if "is_destructible" in context.object:
+            self.layout.prop(context.object, '["is_destructible"]', text="破壊可能（チェックで壊れる）")
+        else:
+            self.layout.operator(MYADDON_OT_add_destructible.bl_idname)
 
 #オペレータ　シーン出力
 class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
@@ -309,6 +335,12 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
 
         if "spawn_progress" in object:
             json_object["spawn_progress"] = object["spawn_progress"]
+
+        # 破壊フラグ
+        if "is_destructible" in object:
+            json_object["is_destructible"] = bool(object["is_destructible"])
+        else:
+            json_object["is_destructible"] = True # デフォルトは破壊可能
 
         #マテリアルの画像テクスチャ名を取得
         if object.type == 'MESH' and len(object.material_slots) > 0:
@@ -585,12 +617,16 @@ class MYADDON_OT_export_objs(bpy.types.Operator):
             return {'CANCELLED'}
 
         json_dir = os.path.dirname(blend_filepath)
-        # resourcesフォルダを探して、その中の3dModelsに出力する
-        res_idx = json_dir.find("resources")
-        if res_idx != -1:
-            models_dir = os.path.join(json_dir[:res_idx], "resources", "3dModels")
+        # プロジェクトルート（blender_toolsより上の階層）を探す
+        bt_idx = json_dir.find("blender_tools")
+        if bt_idx != -1:
+            models_dir = os.path.join(json_dir[:bt_idx], "resources", "3dModels")
         else:
-            models_dir = os.path.join(json_dir, "resources", "3dModels")
+            res_idx = json_dir.find("resources")
+            if res_idx != -1:
+                models_dir = os.path.join(json_dir[:res_idx], "resources", "3dModels")
+            else:
+                models_dir = os.path.join(json_dir, "resources", "3dModels")
             
         if not os.path.exists(models_dir):
             os.makedirs(models_dir)
@@ -690,6 +726,8 @@ classes  = (
     OBJECT_PT_file_name,
     MYADDON_OT_add_collider,
     OBJECT_PT_collider,
+    MYADDON_OT_add_destructible,
+    OBJECT_PT_destructible,
 )
 
 #登録の関数

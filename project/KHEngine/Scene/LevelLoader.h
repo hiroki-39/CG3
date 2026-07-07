@@ -29,6 +29,7 @@ struct LevelObjectData {
     std::string fileName;
     float spawnProgress = 0.0f;
     std::string texturePath;
+    bool isDestructible = true;
     
     // コライダー情報
     bool hasCollider = false;

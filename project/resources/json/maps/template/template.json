@@ -2,27 +2,6 @@
     "name": "Scene",
     "objects": [
         {
-            "type": "CAMERA",
-            "name": "GameCamera",
-            "transform": {
-                "translation": [
-                    0.0,
-                    6.0,
-                    20.0
-                ],
-                "rotation": [
-                    90.00000762939453,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
             "type": "MESH",
             "name": "wall",
             "transform": {
@@ -42,7 +21,140 @@
                     1.0
                 ]
             },
+            "is_destructible": true,
             "texture_path": "wall.png"
+        },
+        {
+            "type": "MESH",
+            "name": "Obstacle_Rock",
+            "transform": {
+                "translation": [
+                    0.0,
+                    250.4429931640625,
+                    10.0
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    20.0,
+                    10.0,
+                    10.0
+                ]
+            },
+            "file_name": "Obstacle_Rock",
+            "is_destructible": false,
+            "texture_path": "Obstacle_Rock.png"
+        },
+        {
+            "type": "EMPTY",
+            "name": "Invisible",
+            "transform": {
+                "translation": [
+                    0.0,
+                    250.4429931640625,
+                    15.962987899780273
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    20.238174438476562,
+                    10.0,
+                    4.093770503997803
+                ]
+            },
+            "file_name": "Invisible",
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.0,
+                    2.0,
+                    2.0
+                ]
+            }
+        },
+        {
+            "type": "EMPTY",
+            "name": "Invisible.001",
+            "transform": {
+                "translation": [
+                    12.013400077819824,
+                    250.4429931640625,
+                    5.792749881744385
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    8.199999809265137,
+                    10.0,
+                    6.084798812866211
+                ]
+            },
+            "file_name": "Invisible",
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.0,
+                    2.0,
+                    2.0
+                ]
+            }
+        },
+        {
+            "type": "EMPTY",
+            "name": "Invisible.002",
+            "transform": {
+                "translation": [
+                    -12.013400077819824,
+                    250.4429931640625,
+                    5.792749881744385
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    8.199999809265137,
+                    10.0,
+                    6.0
+                ]
+            },
+            "file_name": "Invisible",
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.0,
+                    2.0,
+                    2.0
+                ]
+            }
         },
         {
             "type": "EMPTY",
@@ -65,6 +177,7 @@
                 ]
             },
             "file_name": "Fighter",
+            "is_destructible": true,
             "collider": {
                 "type": "OBB",
                 "center": [
@@ -99,6 +212,7 @@
                             1.0
                         ]
                     },
+                    "is_destructible": true,
                     "curve_points_debug": "Script is updated!",
                     "curve_points": [
                         {
@@ -180,6 +294,7 @@
                 ]
             },
             "file_name": "Fighter",
+            "is_destructible": true,
             "collider": {
                 "type": "OBB",
                 "center": [
@@ -215,6 +330,7 @@
                 ]
             },
             "file_name": "Fighter",
+            "is_destructible": true,
             "collider": {
                 "type": "OBB",
                 "center": [
@@ -250,6 +366,7 @@
                 ]
             },
             "file_name": "Fighter",
+            "is_destructible": true,
             "collider": {
                 "type": "OBB",
                 "center": [
@@ -285,6 +402,7 @@
                 ]
             },
             "file_name": "Fighter",
+            "is_destructible": true,
             "collider": {
                 "type": "OBB",
                 "center": [
@@ -320,6 +438,7 @@
                 ]
             },
             "file_name": "Fighter",
+            "is_destructible": true,
             "collider": {
                 "type": "OBB",
                 "center": [
@@ -355,6 +474,7 @@
                 ]
             },
             "file_name": "Fighter",
+            "is_destructible": true,
             "collider": {
                 "type": "OBB",
                 "center": [
@@ -390,6 +510,7 @@
                 ]
             },
             "file_name": "Fighter",
+            "is_destructible": true,
             "collider": {
                 "type": "OBB",
                 "center": [
@@ -424,6 +545,7 @@
                     1.0
                 ]
             },
+            "is_destructible": true,
             "curve_points_debug": "Script is updated!",
             "curve_points": [
                 {
@@ -485,6 +607,7 @@
                     1.0
                 ]
             },
+            "is_destructible": true,
             "curve_points_debug": "Script is updated!",
             "curve_points": [
                 {
@@ -687,6 +810,28 @@
                     "tilt": 0.0
                 }
             ]
+        },
+        {
+            "type": "CAMERA",
+            "name": "GameCamera",
+            "transform": {
+                "translation": [
+                    0.0,
+                    -8.579995155334473,
+                    20.0
+                ],
+                "rotation": [
+                    90.00000762939453,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_destructible": true
         }
     ]
 }

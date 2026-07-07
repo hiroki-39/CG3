@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Graphics/2d/Sprite.h"
 #include "KHEngine/Graphics/3d/Object/Object3d.h"
 #include "KHEngine/Sound/Core/Sound.h"
@@ -17,6 +17,7 @@
 #include "Game/System/Rail.h"
 #include "Game/System/RailCameraController.h"
 #include "Game/Actor/Enemy/Enemy.h"
+#include "Game/Actor/Obstacle/Obstacle.h"
 #include <vector>
 #include <list>
 #include <random>
@@ -94,8 +95,10 @@ private:
 
     // 謨ｵ繝ｪ繧ｹ繝・
     std::list<std::unique_ptr<Enemy>> enemies_;
+    // 障害物リスト
+    std::list<std::unique_ptr<Obstacle>> obstacles_;
 
-    // 繧ｳ繝ｩ繧､繝繝ｼ縺ｮ繝ｯ繧､繝､繝ｼ繝輔Ξ繝ｼ繝謠冗判
+    // 繧ｳ繝ｩ繧､繝€繝ｼ縺ｮ繝ｯ繧､繝､繝ｼ繝輔Ξ繝ｼ繝謠冗判
 #ifdef USE_IMGUI
     bool isDrawCollider_ = true;
 #else

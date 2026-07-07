@@ -1,4 +1,4 @@
-﻿#include "Enemy.h"
+#include "Enemy.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 
@@ -308,7 +308,7 @@ void Enemy::SetTexturePath(const std::string& path) {
     if (!texturePath_.empty() && object_ && object_->GetModel()) {
         TextureManager::GetInstance()->LoadTexture(texturePath_);
         uint32_t texIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath(texturePath_);
-        if (texIndex != UINT32_MAX) {
+        if (texIndex != TextureManager::GetInstance()->GetDefaultTextureIndex()) {
             object_->GetModel()->SetTextureIndex(texIndex);
         }
     }

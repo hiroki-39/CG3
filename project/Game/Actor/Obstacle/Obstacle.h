@@ -4,34 +4,32 @@
 #include <string>
 #include "KHEngine/Scene/LevelLoader.h"
 #include "KHEngine/Math/CollisionMath.h"
-#include "Game/System/Rail.h"
 
-class Enemy {
+class Obstacle {
 public:
-    void Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const std::string& typeName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo);
-    void Update(const Vector3& playerPos, const Vector3& playerForward);
+    void Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const Vector3& rotation, const std::string& fileName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo, bool isDestructible = true);
+    
+    // 今後の拡張（落ちてくる岩、崩れる柱などのアニメーション）用にUpdateを用意しておく
+    void Update();
+    
+
+    
     void Update3DObjectOnly() {
         if (object_) object_->Update();
         if (colliderObject_) colliderObject_->Update();
-        if (shadowObject_) shadowObject_->Update();
     }
+    
     void Draw();
     void DrawCollider(); // デバッグ描画用
-    void OnCollision(); // 弾が当たった時の処理
-
-    void SetMovePath(std::unique_ptr<Rail> path);
+    void OnCollision(); // 弾などが当たった時の処理
 
     void SetSpawnProgress(float progress) { spawnProgress_ = progress; }
     void SetTexturePath(const std::string& path);
 
-    // Getter / Setter
+    // Getter
     const Vector3& GetPosition() const { return position_; }
-    Vector3 GetColliderCenter() const {
-        return { position_.x + collider_.center.x, position_.y + collider_.center.y, position_.z + collider_.center.z };
-    }
     const LevelCollider& GetCollider() const { return collider_; }
     bool IsDead() const { return isDead_; }
-    const Rail* GetMovePath() const { return movePath_.get(); }
 
     // 衝突判定用メソッド
     bool CheckCollision(const Sphere& bulletSphere) const;
@@ -40,21 +38,15 @@ public:
 private:
     std::unique_ptr<Object3d> object_;
     std::unique_ptr<Object3d> colliderObject_; // デバッグ描画用オブジェクト
-    std::unique_ptr<Object3d> shadowObject_; // 丸影用オブジェクト
     Vector3 position_;
-    Vector3 velocity_ = {0.0f, 0.0f, 0.0f};
+    Vector3 rotation_;
     LevelCollider collider_; // コライダー情報
-    int hp_ = 3;
     bool isDead_ = false;
-    std::string typeName_;
-
-    // パス移動用
-    std::unique_ptr<Rail> movePath_;
-    float pathProgress_ = 0.0f;
-
-    bool isActive_ = false;
+    bool isVisible_ = true;
+    bool isDestructible_ = true;
+    
     float spawnProgress_ = 0.0f;
     std::string texturePath_;
-    bool isAutoAI_ = false;
-    Vector3 aiOffset_ = {0.0f, 0.0f, 0.0f};
+    
+    // アニメーション用変数などが必要になればここに追加する
 };
