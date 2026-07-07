@@ -50,7 +50,7 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
         rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
         rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
         rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
-        obstacle->Initialize(common, node.translation, node.scale, rotRad, node.fileName, skyboxTexIndex, node.collider);
+        obstacle->Initialize(common, node.translation, node.scale, rotRad, node.fileName, skyboxTexIndex, node.collider, node.isDestructible);
         obstacle->SetSpawnProgress(node.spawnProgress);
         if (!node.texturePath.empty()) {
             obstacle->SetTexturePath(node.texturePath);
@@ -124,7 +124,7 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
         rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
         rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
         rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
-        obstacle->Initialize(common, node.translation, node.scale, rotRad, node.fileName, skyboxTexIndex, node.collider);
+        obstacle->Initialize(common, node.translation, node.scale, rotRad, node.fileName, skyboxTexIndex, node.collider, node.isDestructible);
         obstacle->SetSpawnProgress(node.spawnProgress);
         if (!node.texturePath.empty()) {
             obstacle->SetTexturePath(node.texturePath);

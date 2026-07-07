@@ -7,7 +7,7 @@
 
 class Obstacle {
 public:
-    void Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const Vector3& rotation, const std::string& fileName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo);
+    void Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const Vector3& rotation, const std::string& fileName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo, bool isDestructible = true);
     
     // 今後の拡張（落ちてくる岩、崩れる柱などのアニメーション）用にUpdateを用意しておく
     void Update();

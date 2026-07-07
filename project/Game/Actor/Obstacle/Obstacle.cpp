@@ -2,10 +2,10 @@
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 
-void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const Vector3& rotation, const std::string& fileName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo) {
+void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const Vector3& rot, const std::string& fileName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo, bool isDestructible) {
     position_ = pos;
-    rotation_ = rotation;
     collider_ = colliderInfo;
+    isDestructible_ = isDestructible; // パラメータからフラグをセット
 
     // Blender側でコライダー設定が省略された場合のデフォルト処理
     if (collider_.type.empty()) {
@@ -17,6 +17,8 @@ void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, co
     object_ = std::make_unique<Object3d>();
     object_->Initialize(object3dCommon);
     object_->SetTranslate(position_);
+    
+    rotation_ = rot;
     object_->SetScale(scale);
     object_->SetRotation(rotation_);
 
@@ -24,7 +26,6 @@ void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, co
     if (modelName.find("ColliderOnly") != std::string::npos || modelName.find("Invisible") != std::string::npos) {
         // 見えない壁（当たり判定専用）の場合はモデルを読み込まない
         isVisible_ = false;
-        isDestructible_ = false; // デフォルトで壊れないようにする
     } else {
         if (modelName.empty()) {
             modelName = "cube.obj"; // デフォルト
@@ -36,11 +37,6 @@ void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, co
         if (ModelManager::GetInstance()->FindModel(modelName)) {
             object_->SetModel(modelName);
             isVisible_ = true;
-            
-            // 一時的な対応: Obstacle_Rock は壊れないようにする
-            if (modelName.find("Obstacle_Rock") != std::string::npos) {
-                isDestructible_ = false;
-            }
         }
     }
     

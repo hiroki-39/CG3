@@ -27,6 +27,9 @@ void LevelLoader::ParseObject(const void* jsonNodePtr, LevelObjectData& objectDa
     if (objJson.contains("texture_path")) {
         objectData.texturePath = objJson["texture_path"].get<std::string>();
     }
+    if (objJson.contains("is_destructible")) {
+        objectData.isDestructible = objJson["is_destructible"].get<bool>();
+    }
 
     // トランスフォーム
     if (objJson.contains("transform")) {
