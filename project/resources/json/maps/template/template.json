@@ -157,6 +157,131 @@
             }
         },
         {
+            "type": "EMPTY",
+            "name": "Enemy_Fighter",
+            "transform": {
+                "translation": [
+                    27.084087371826172,
+                    491.13427734375,
+                    20.780223846435547
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "file_name": "Fighter",
+            "is_enemy": true,
+            "enemy_type": "SHOOTER",
+            "enemy_max_y": 5.0,
+            "enemy_min_y": 0.0,
+            "enemy_formation_id": -1,
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    5.0,
+                    5.0,
+                    5.0
+                ]
+            }
+        },
+        {
+            "type": "EMPTY",
+            "name": "Enemy_Fighter.001",
+            "transform": {
+                "translation": [
+                    -6.041552543640137,
+                    537.900146484375,
+                    27.751310348510742
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "file_name": "Fighter",
+            "spawn_progress": 0.0,
+            "is_enemy": true,
+            "enemy_type": "SHOOTER",
+            "enemy_max_y": 10.0,
+            "enemy_min_y": 0.0,
+            "enemy_formation_id": -1,
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.0,
+                    2.0,
+                    2.0
+                ]
+            }
+        },
+        {
+            "type": "EMPTY",
+            "name": "Enemy_Fighter.002",
+            "transform": {
+                "translation": [
+                    -17.50151824951172,
+                    496.0163879394531,
+                    19.059139251708984
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "file_name": "Fighter",
+            "spawn_progress": 0.0,
+            "is_enemy": true,
+            "enemy_type": "SHOOTER",
+            "enemy_max_y": 10.0,
+            "enemy_min_y": -10.0,
+            "enemy_formation_id": -1,
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.0,
+                    2.0,
+                    2.0
+                ]
+            }
+        },
+        {
             "type": "CURVE",
             "name": "rail.01",
             "transform": {

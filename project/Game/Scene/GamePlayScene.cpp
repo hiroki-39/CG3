@@ -260,6 +260,9 @@ void GamePlayScene::Initialize()
     
     // プレイヤーをカメラオブジェクトの子にする
     player_->GetObject3d()->SetParent(cameraObject_.get());
+    if (player_->GetColliderObject()) {
+        player_->GetColliderObject()->SetParent(cameraObject_.get());
+    }
     player_->GetReticle()->SetParent(cameraObject_.get());
     if (player_->GetFrontReticle()) {
         player_->GetFrontReticle()->SetParent(cameraObject_.get());
@@ -769,19 +772,33 @@ void GamePlayScene::Update()
         for (auto it = enemyBullets_.begin(); it != enemyBullets_.end();) {
             (*it)->Update();
 
-            if (!(*it)->IsDead() && player_ && !player_->IsBoosting() && player_->ConsumeDodgeTrigger() == false) {
+            if (!(*it)->IsDead() && player_ && !player_->IsDead()) {
                 Sphere bulletSphere = { (*it)->GetPosition(), 1.0f }; // 弾の当たり判定サイズは適宜調整
                 
-                // プレイヤー側の当たり判定（現状 Playerクラスに CheckCollision がないため簡易球判定）
-                Vector3 pPos = player_->GetTranslate();
-                Sphere playerSphere = { pPos, 2.0f }; // 仮のプレイヤーサイズ
+                // プレイヤー側の当たり判定（OBB）
+                const Matrix4x4& wMat = player_->GetColliderObject()->GetmatWorld();
+                Vector3 pWorldPos = { wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] };
+                Vector3 playerBoxSize = { 4.0f, 4.0f, 4.0f }; // collider scale と一致させる
                 
-                if (CollisionMath::IsCollision(bulletSphere, playerSphere)) {
+                // 回転行列の抽出と正規化
+                Matrix4x4 rotMat = wMat;
+                for (int i = 0; i < 3; ++i) {
+                    float len = std::sqrt(rotMat.m[i][0]*rotMat.m[i][0] + rotMat.m[i][1]*rotMat.m[i][1] + rotMat.m[i][2]*rotMat.m[i][2]);
+                    if (len > 0.0001f) {
+                        rotMat.m[i][0] /= len;
+                        rotMat.m[i][1] /= len;
+                        rotMat.m[i][2] /= len;
+                    }
+                }
+                
+                OBB playerOBB = CollisionMath::CreateOBB(pWorldPos, playerBoxSize, rotMat);
+                
+                if (CollisionMath::IsCollision(bulletSphere, playerOBB)) {
                     (*it)->OnCollision();
                     hitEffect_.SetPosition((*it)->GetPosition());
                     hitEffect_.Play();
                     
-                    // TODO: プレイヤーのHP減少処理
+                    player_->OnCollision();
                 }
             }
 
@@ -1662,6 +1679,9 @@ void GamePlayScene::Draw()
         }
         for (auto& bullet : enemyBullets_) {
             bullet->DrawCollider();
+        }
+        if (player_) {
+            player_->DrawCollider();
         }
         // 描画設定を元に戻す
         if (object3dCommon) object3dCommon->SetCommonDrawSetting();

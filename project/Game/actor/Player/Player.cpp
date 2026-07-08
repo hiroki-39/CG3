@@ -63,11 +63,37 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
         pp->SetEffectActive("Grayscale", false);
     }
+    // コライダー可視化用オブジェクト
+    ModelManager::GetInstance()->LoadModel("collider_cube.obj");
+    colliderObject_ = std::make_unique<Object3d>();
+    colliderObject_->Initialize(object3dCommon);
+    colliderObject_->SetModel("collider_cube.obj"); // 立方体のモデル
+    colliderObject_->GetModel()->SetColor({ 0.0f, 1.0f, 1.0f, 1.0f }); // 水色
+    colliderObject_->SetEnvironmentCoefficient(0.0f);
+    colliderObject_->SetEnableLighting(false);
+    colliderObject_->SetScale({ 4.0f, 4.0f, 4.0f }); // プレイヤーの当たり判定のサイズ(幅, 高さ, 奥行き)
+}
+
+void Player::OnCollision() {
+    if (invincibilityTimer_ > 0 || isDead_ || isRolling_) return; // 無敵中、死亡時、またはローリング中（回避）は無効
+    
+    hp_--;
+    if (hp_ <= 0) {
+        isDead_ = true;
+    } else {
+        invincibilityTimer_ = 60; // 1秒間無敵
+        
+        // 被弾時カメラシェイクやポストエフェクトなどを入れるのも良い
+    }
 }
 
 void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera) {
     Move();
     Attack(bullets, parentCamera);
+
+    if (invincibilityTimer_ > 0) {
+        invincibilityTimer_--;
+    }
 
     object_->Update();
     if (accessory_) {
@@ -76,6 +102,13 @@ void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d*
         rot.y += 0.05f;
         accessory_->SetRotation(rot);
         accessory_->Update();
+    }
+    
+    if (colliderObject_) {
+        // 親の設定はGamePlayScene側で行う
+        colliderObject_->SetTranslate(object_->GetTranslate());
+        colliderObject_->SetRotation(object_->GetRotation());
+        colliderObject_->Update();
     }
 }
 
@@ -86,13 +119,29 @@ void Player::Draw() {
     if (frontReticle_) {
         frontReticle_->Draw();
     }
+    
+    // 無敵時間中は点滅させる (4フレームに1回非表示)
+    bool shouldDrawPlayer = true;
+    if (invincibilityTimer_ > 0) {
+        if ((invincibilityTimer_ / 4) % 2 == 0) {
+            shouldDrawPlayer = false;
+        }
+    }
+    
+    if (shouldDrawPlayer) {
         if (object_) {
-        object_->Draw();
+            object_->Draw();
+        }
+        if (accessory_) {
+            accessory_->Draw();
+        }
     }
-    if (accessory_) {
-        accessory_->Draw();
-    }
+}
 
+void Player::DrawCollider() {
+    if (colliderObject_) {
+        colliderObject_->Draw();
+    }
 }
 
 void Player::SetReticleColor(const Vector4& color) {

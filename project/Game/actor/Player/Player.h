@@ -27,6 +27,10 @@ public:
     /// </summary>
     void Draw();
 
+    void DrawCollider();
+    
+    Object3d* GetColliderObject() const { return colliderObject_.get(); }
+
     void Update3DObjectOnly() {
         if (object_) {
             object_->SetScale(playerScale_);
@@ -41,6 +45,12 @@ public:
                 logicalPosition_.z + modelPosOffset_.z
             ));
             object_->Update();
+            
+            if (colliderObject_) {
+                const Matrix4x4& wMat = object_->GetmatWorld();
+                colliderObject_->SetTranslate({ wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] });
+                colliderObject_->Update();
+            }
         }
         if (accessory_) accessory_->Update();
         if (reticle_) reticle_->Update();
@@ -77,6 +87,11 @@ public:
         return false;
     }
 
+    void OnCollision();
+    bool IsDead() const { return isDead_; }
+    int GetHp() const { return hp_; }
+    int GetMaxHp() const { return maxHp_; }
+
 private:
     /// <summary>
     /// 遘ｻ蜍募・逅・    /// </summary>
@@ -88,6 +103,7 @@ private:
 
 private:
     std::unique_ptr<Object3d> object_ = nullptr;
+    std::unique_ptr<Object3d> colliderObject_ = nullptr;
     std::unique_ptr<Object3d> reticle_ = nullptr; // 奥の照準
     std::unique_ptr<Object3d> frontReticle_ = nullptr; // 手前の照準
     std::unique_ptr<Object3d> accessory_ = nullptr; // アクセサリ
@@ -147,4 +163,10 @@ private:
 
     // 蝗樣∩繝医Μ繧ｬ繝ｼ
     bool isDodgeTriggered_ = false;
+
+    // HP・被弾関連
+    int hp_ = 10000;
+    int maxHp_ = 10000;
+    int invincibilityTimer_ = 0;
+    bool isDead_ = false;
 };
