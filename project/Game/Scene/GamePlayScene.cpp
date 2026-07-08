@@ -58,7 +58,7 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
         obstacles.push_back(std::move(obstacle));
     } else if (isEnemy) {
         auto enemy = std::make_unique<Enemy>();
-        enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
+        enemy->Initialize(common, node, skyboxTexIndex);
         enemy->SetSpawnProgress(node.spawnProgress);
         if (!node.texturePath.empty()) {
             enemy->SetTexturePath(node.texturePath);
@@ -132,7 +132,7 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
         obstacles.push_back(std::move(obstacle));
     } else if (isEnemy) {
         auto enemy = std::make_unique<Enemy>();
-        enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
+        enemy->Initialize(common, node, skyboxTexIndex);
         enemy->SetSpawnProgress(node.spawnProgress);
         if (!node.texturePath.empty()) {
             enemy->SetTexturePath(node.texturePath);
@@ -717,7 +717,7 @@ void GamePlayScene::Update()
 
         // 敵の更新と当たり判定
         for (auto it = enemies_.begin(); it != enemies_.end();) {
-            (*it)->Update(cameraPos, cameraForward);
+            (*it)->Update(cameraPos, cameraForward, player_.get(), enemyBullets_);
 
             // プレイヤーの弾との当たり判定
             for (auto& bullet : bullets_) {
@@ -760,6 +760,33 @@ void GamePlayScene::Update()
                 explosionEffect_.SetPosition((*it)->GetPosition());
                 explosionEffect_.Play();
                 it = enemies_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+
+        // 敵弾の更新とプレイヤーとの当たり判定
+        for (auto it = enemyBullets_.begin(); it != enemyBullets_.end();) {
+            (*it)->Update();
+
+            if (!(*it)->IsDead() && player_ && !player_->IsBoosting() && player_->ConsumeDodgeTrigger() == false) {
+                Sphere bulletSphere = { (*it)->GetPosition(), 1.0f }; // 弾の当たり判定サイズは適宜調整
+                
+                // プレイヤー側の当たり判定（現状 Playerクラスに CheckCollision がないため簡易球判定）
+                Vector3 pPos = player_->GetTranslate();
+                Sphere playerSphere = { pPos, 2.0f }; // 仮のプレイヤーサイズ
+                
+                if (CollisionMath::IsCollision(bulletSphere, playerSphere)) {
+                    (*it)->OnCollision();
+                    hitEffect_.SetPosition((*it)->GetPosition());
+                    hitEffect_.Play();
+                    
+                    // TODO: プレイヤーのHP減少処理
+                }
+            }
+
+            if ((*it)->IsDead()) {
+                it = enemyBullets_.erase(it);
             } else {
                 ++it;
             }
@@ -1633,12 +1660,18 @@ void GamePlayScene::Draw()
         for (auto& bullet : bullets_) {
             bullet->DrawCollider();
         }
+        for (auto& bullet : enemyBullets_) {
+            bullet->DrawCollider();
+        }
         // 描画設定を元に戻す
         if (object3dCommon) object3dCommon->SetCommonDrawSetting();
     }
     
     // 弾の描画
     for (auto& bullet : bullets_) {
+        bullet->Draw();
+    }
+    for (auto& bullet : enemyBullets_) {
         bullet->Draw();
     }
     

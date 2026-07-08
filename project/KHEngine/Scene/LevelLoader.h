@@ -40,6 +40,15 @@ struct LevelObjectData {
     
     // カーブ（レール）の制御点
     std::vector<LevelCurvePoint> curvePoints;
+    
+    // 敵プロパティ
+    bool isEnemy = false;
+    std::string enemyType = "RUSHER";
+    std::string enemyTargetName = "";
+    Vector3 enemyTargetPos;
+    float enemyMaxY = 10.0f;
+    float enemyMinY = -10.0f;
+    int enemyFormationId = -1;
 };
 
 struct LevelData {

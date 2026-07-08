@@ -31,6 +31,31 @@ void LevelLoader::ParseObject(const void* jsonNodePtr, LevelObjectData& objectDa
         objectData.isDestructible = objJson["is_destructible"].get<bool>();
     }
 
+    // 敵フラグと設定
+    if (objJson.contains("is_enemy")) {
+        objectData.isEnemy = objJson["is_enemy"].get<bool>();
+    }
+    if (objJson.contains("enemy_type")) {
+        objectData.enemyType = objJson["enemy_type"].get<std::string>();
+    }
+    if (objJson.contains("enemy_target_name")) {
+        objectData.enemyTargetName = objJson["enemy_target_name"].get<std::string>();
+    }
+    if (objJson.contains("enemy_target_pos")) {
+        auto etp = objJson["enemy_target_pos"];
+        // Blender(Z-up) -> DirectX(Y-up)
+        objectData.enemyTargetPos = Vector3(etp[0], etp[2], etp[1]);
+    }
+    if (objJson.contains("enemy_max_y")) {
+        objectData.enemyMaxY = objJson["enemy_max_y"].get<float>();
+    }
+    if (objJson.contains("enemy_min_y")) {
+        objectData.enemyMinY = objJson["enemy_min_y"].get<float>();
+    }
+    if (objJson.contains("enemy_formation_id")) {
+        objectData.enemyFormationId = objJson["enemy_formation_id"].get<int>();
+    }
+
     // トランスフォーム
     if (objJson.contains("transform")) {
         const auto& transform = objJson["transform"];

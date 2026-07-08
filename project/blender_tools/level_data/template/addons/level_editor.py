@@ -142,6 +142,7 @@ class MYADDON_OT_create_fighter(bpy.types.Operator):
         empty_obj.empty_display_size = 2.0
         empty_obj.location = context.scene.cursor.location
         empty_obj["file_name"] = "Fighter"
+        empty_obj.is_enemy_flag = True
         empty_obj["is_enemy"] = True
         empty_obj["spawn_progress"] = 0.0
         context.scene.collection.objects.link(empty_obj)
@@ -289,6 +290,25 @@ class OBJECT_PT_destructible(bpy.types.Panel):
         else:
             self.layout.operator(MYADDON_OT_add_destructible.bl_idname)
 
+#パネル Enemy Settings
+class OBJECT_PT_enemy_settings(bpy.types.Panel):
+    """オブジェクトの敵設定パネル"""
+    bl_idname = "OBJECT_PT_enemy_settings"
+    bl_label = "敵設定 (Enemy Settings)"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "object"
+
+    def draw(self, context):
+        obj = context.object
+        self.layout.prop(obj, "is_enemy_flag")
+        if obj.is_enemy_flag:
+            self.layout.prop(obj, "enemy_type")
+            self.layout.prop(obj, "enemy_target")
+            self.layout.prop(obj, "enemy_max_y")
+            self.layout.prop(obj, "enemy_min_y")
+            self.layout.prop(obj, "enemy_formation_id")
+
 #オペレータ　シーン出力
 class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     bl_idname = "myaddon.myaddon_ot_export_scene"
@@ -335,6 +355,22 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
 
         if "spawn_progress" in object:
             json_object["spawn_progress"] = object["spawn_progress"]
+
+        # 敵フラグと設定
+        is_enemy = getattr(object, "is_enemy_flag", False) or object.get("is_enemy", False)
+        if is_enemy:
+            json_object["is_enemy"] = True
+            if hasattr(object, "enemy_type"):
+                json_object["enemy_type"] = object.enemy_type
+            if hasattr(object, "enemy_target") and object.enemy_target:
+                json_object["enemy_target_name"] = object.enemy_target.name
+                json_object["enemy_target_pos"] = (object.enemy_target.location.x, object.enemy_target.location.y, object.enemy_target.location.z)
+            if hasattr(object, "enemy_max_y"):
+                json_object["enemy_max_y"] = object.enemy_max_y
+            if hasattr(object, "enemy_min_y"):
+                json_object["enemy_min_y"] = object.enemy_min_y
+            if hasattr(object, "enemy_formation_id"):
+                json_object["enemy_formation_id"] = object.enemy_formation_id
 
         # 破壊フラグ
         if "is_destructible" in object:
@@ -728,6 +764,7 @@ classes  = (
     OBJECT_PT_collider,
     MYADDON_OT_add_destructible,
     OBJECT_PT_destructible,
+    OBJECT_PT_enemy_settings,
 )
 
 #登録の関数
@@ -749,6 +786,27 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     
+    # プロパティの登録
+    bpy.types.Object.is_enemy_flag = bpy.props.BoolProperty(name="Is Enemy", default=False)
+    bpy.types.Object.enemy_type = bpy.props.EnumProperty(
+        items=[
+            ('RUSHER', "Rusher (突進)", ""),
+            ('SHOOTER', "Shooter (弾)", ""),
+            ('HOMING', "Homing (ホーミング)", ""),
+            ('TURRET', "Turret (固定砲台)", "")
+        ],
+        name="Enemy Type",
+        default='RUSHER'
+    )
+    bpy.types.Object.enemy_target = bpy.props.PointerProperty(
+        type=bpy.types.Object,
+        name="Target Position",
+        description="移動先となるオブジェクト(Emptyなど)"
+    )
+    bpy.types.Object.enemy_max_y = bpy.props.FloatProperty(name="Max Y", default=10.0)
+    bpy.types.Object.enemy_min_y = bpy.props.FloatProperty(name="Min Y", default=-10.0)
+    bpy.types.Object.enemy_formation_id = bpy.props.IntProperty(name="Formation ID", default=-1)
+
     #メニューに項目を追加
     bpy.types.TOPBAR_MT_editor_menus.append(
         TOPBAR_MT_my_menu.submenu
@@ -768,6 +826,13 @@ def unregister():
         )
         #描画関数を3Dビューから削除
         bpy.types.SpaceView3D.draw_handler_remove(DrawCollider.handle, 'WINDOW')
+
+        del bpy.types.Object.is_enemy_flag
+        del bpy.types.Object.enemy_type
+        del bpy.types.Object.enemy_target
+        del bpy.types.Object.enemy_max_y
+        del bpy.types.Object.enemy_min_y
+        del bpy.types.Object.enemy_formation_id
     except:
         pass
 
