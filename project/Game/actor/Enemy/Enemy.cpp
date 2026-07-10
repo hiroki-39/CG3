@@ -1,24 +1,49 @@
 #include "Enemy.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
+#include "Game/Actor/Player/Player.h"
+#include "Game/Actor/Bullet/EnemyBullet.h"
 
-void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const std::string& typeName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo) {
-    position_ = pos;
-    typeName_ = typeName;
+void Enemy::Initialize(Object3dCommon* object3dCommon, const LevelObjectData& nodeData, uint32_t skyboxTexIndex) {
+    object3dCommon_ = object3dCommon;
+    position_ = nodeData.translation;
+    spawnPos_ = position_;
+    typeName_ = nodeData.enemyType;
+    if (typeName_.empty()) typeName_ = "RUSHER";
+
+    targetPos_ = nodeData.enemyTargetPos;
+    maxY_ = nodeData.enemyMaxY;
+    minY_ = nodeData.enemyMinY;
+    formationId_ = nodeData.enemyFormationId;
+    
+    // 拡張AI用プロパティの読み込み
+    behavior_ = nodeData.enemyBehavior;
+    moveSpeed_ = nodeData.enemySpeed;
+    shootInterval_ = nodeData.enemyShootInterval;
+    spawnDist_ = nodeData.enemySpawnDist;
+    
     isDead_ = false;
-    collider_ = colliderInfo;
+    collider_ = nodeData.collider;
 
     // タイプごとの設定
     std::string modelName = "cube.obj";
-    if (typeName_ == "Asteroid") {
-        modelName = "monsterBall.obj"; // とりあえずあるモデルを流用
+    if (typeName_ == "RUSHER") {
+        modelName = "suzanne.obj";
         hp_ = 2; 
-    } else if (typeName_ == "Fighter") {
-        modelName = "suzanne.obj"; // 猿のモデルをFighterの代わりにする
-        hp_ = 2; 
-    } else {
+    } else if (typeName_ == "SHOOTER" || typeName_ == "HOMING") {
+        modelName = "suzanne.obj";
+        hp_ = 3; 
+    } else if (typeName_ == "TURRET") {
         modelName = "cube.obj";
-        hp_ = 2;
+        hp_ = 5;
+    } else { // fallback
+        if (nodeData.fileName == "Asteroid") {
+            modelName = "monsterBall.obj";
+            hp_ = 2;
+        } else {
+            modelName = "cube.obj";
+            hp_ = 2;
+        }
     }
 
     // モデルがロードされているか確認してロード
@@ -30,7 +55,7 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const
     object_->SetTranslate(position_);
     
     // 敵本体のスケールには引数で受け取ったBlender上のscaleをそのまま設定する
-    object_->SetScale(scale);
+    object_->SetScale(nodeData.scale);
     
     object_->SetEnvironmentTextureIndex(skyboxTexIndex);
 
@@ -38,17 +63,18 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const
     colliderObject_ = std::make_unique<Object3d>();
     colliderObject_->Initialize(object3dCommon);
     if (collider_.type == "SPHERE") {
-        ModelManager::GetInstance()->LoadModel("collider_sphere.obj");
-        colliderObject_->SetModel("collider_sphere.obj"); // 球の代用
+        ModelManager::GetInstance()->LoadModel("collider_sphere_enemy.obj");
+        colliderObject_->SetModel("collider_sphere_enemy.obj"); // 球の代用
         colliderObject_->SetScale({collider_.radius, collider_.radius, collider_.radius});
     } else {
-        ModelManager::GetInstance()->LoadModel("collider_cube.obj");
-        colliderObject_->SetModel("collider_cube.obj");
+        ModelManager::GetInstance()->LoadModel("collider_cube_enemy.obj");
+        colliderObject_->SetModel("collider_cube_enemy.obj");
         colliderObject_->SetScale({collider_.size.x, collider_.size.y, collider_.size.z});
     }
     
     // コライダー専用のモデルなので、色を赤にしても他のモデルに影響しない
     colliderObject_->GetModel()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
+    colliderObject_->SetEnvironmentCoefficient(0.0f);
 
     // 初期位置にコライダーオブジェクトを追従させる
     object_->Update();
@@ -89,109 +115,153 @@ void Enemy::SetMovePath(std::unique_ptr<Rail> path) {
     pathProgress_ = 0.0f;
 }
 
-void Enemy::Update(const Vector3& playerPos, const Vector3& playerForward) {
+void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Player* player, std::list<std::unique_ptr<EnemyBullet>>& enemyBullets) {
     if (isDead_) return;
 
+    Vector3 playerWorldPos = cameraPos;
+    if (player && player->GetObject3d()) {
+        const Matrix4x4& mat = player->GetObject3d()->GetmatWorld();
+        playerWorldPos = { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
+    }
+
+    if (invincibilityTimer_ > 0) {
+        invincibilityTimer_--;
+        // 無敵時間中は点滅させる（赤色）
+        if (invincibilityTimer_ % 10 < 5) {
+            object_->GetModel()->SetColor({ 1.0f, 0.5f, 0.5f, 1.0f });
+        } else {
+            object_->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        }
+    } else {
+        object_->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+    }
+
     if (!isActive_) {
-        // アクティブ化判定: プレイヤーとの距離が一定以内になったら動き出す
-        float distance = std::sqrt((position_.x - playerPos.x)*(position_.x - playerPos.x) + (position_.z - playerPos.z)*(position_.z - playerPos.z));
-        float spawnDist = (spawnProgress_ > 0.0f) ? spawnProgress_ * 300.0f : 200.0f; // 未指定なら200m
-        if (distance < spawnDist) {
+        // アクティブ化判定: プレイヤー（またはカメラ）との距離が一定以内になったら動き出す
+        float distance = std::sqrt((position_.x - playerWorldPos.x)*(position_.x - playerWorldPos.x) + (position_.z - playerWorldPos.z)*(position_.z - playerWorldPos.z));
+        float distThreshold = (spawnProgress_ > 0.0f) ? spawnProgress_ * 300.0f : spawnDist_; 
+        if (distance < distThreshold) {
             isActive_ = true;
         } else {
             return; // まだ出番ではない
         }
     }
 
-    if (!isAutoAI_) {
-        if (movePath_ && movePath_->IsValid()) {
-            float speed = movePath_->GetSpeed(pathProgress_);
-            if (speed <= 0.0f) speed = 20.0f;
-            float length = movePath_->GetTotalLength();
-            if (length > 0.0f) {
-                pathProgress_ += (speed / length) * (1.0f / 60.0f);
-            }
-            if (pathProgress_ >= 1.0f) {
-                pathProgress_ = 1.0f;
-                isAutoAI_ = true; // レール終端でAIに切り替え
-                // カメラの視野（画面内）に確実に収まり、重なりを防ぐ程度の小さなオフセット
-                aiOffset_ = {
-                    ((float)rand() / RAND_MAX * 20.0f - 10.0f),   // X: -10 ~ 10
-                    ((float)rand() / RAND_MAX * 10.0f - 5.0f),    // Y: -5 ~ 5
-                    80.0f + ((float)rand() / RAND_MAX * 20.0f)    // Z: 80 ~ 100
-                };
-            }
-            position_ = movePath_->GetPosition(pathProgress_);
-            Vector3 forward = movePath_->GetForward(pathProgress_);
-            float yaw = std::atan2(forward.x, forward.z);
-            float pitch = std::asin(-forward.y);
-            object_->SetRotation(Vector3(pitch, yaw, 0.0f));
-        } else {
-            if (typeName_ == "Asteroid") {
-                Vector3 rot = object_->GetRotation();
-                rot.x += 0.01f;
-                rot.y += 0.02f;
-                object_->SetRotation(rot);
-            } else if (typeName_ == "Turret") {
-                // その場にとどまる
-                Vector3 rot = object_->GetRotation();
-                // プレイヤーの方向を向く
-                Vector3 toPlayer = { playerPos.x - position_.x, playerPos.y - position_.y, playerPos.z - position_.z };
-                float yaw = std::atan2(toPlayer.x, toPlayer.z);
-                float pitch = std::asin(std::clamp(-toPlayer.y / std::sqrt(toPlayer.x*toPlayer.x + toPlayer.y*toPlayer.y + toPlayer.z*toPlayer.z), -1.0f, 1.0f));
-                // 補間でゆっくり向く
-                rot.x += (pitch - rot.x) * 0.1f;
-                rot.y += (yaw - rot.y) * 0.1f;
-                object_->SetRotation(rot);
-            } else if (typeName_ == "Drone") {
-                // プレイヤーに向かってまっすぐ突っ込む
-                Vector3 toPlayer = { playerPos.x - position_.x, playerPos.y - position_.y, playerPos.z - position_.z };
-                float length = std::sqrt(toPlayer.x*toPlayer.x + toPlayer.y*toPlayer.y + toPlayer.z*toPlayer.z);
-                if (length > 0.0f) {
-                    position_.x += (toPlayer.x / length) * 0.8f;
-                    position_.y += (toPlayer.y / length) * 0.8f;
-                    position_.z += (toPlayer.z / length) * 0.8f;
-                }
-            } else {
-                isAutoAI_ = true;
-                aiOffset_ = {
-                    ((float)rand() / RAND_MAX * 40.0f - 20.0f),   // X: -20 ~ 20 (広げる)
-                    ((float)rand() / RAND_MAX * 20.0f - 10.0f),    // Y: -10 ~ 10 (広げる)
-                    50.0f + ((float)rand() / RAND_MAX * 50.0f)     // Z: 50 ~ 100 (広げる)
-                };
-            }
-        }
+    // スポナーによる遅延待機
+    if (spawnDelay_ > 0) {
+        spawnDelay_--;
+        // 遅延中は画面に映らないように奥に配置するか、更新をスキップする
+        return; 
     }
 
-    if (isAutoAI_) {
-        // 自律戦闘（AI）モード：プレイヤー（カメラ）の前方を浮遊する
-        Vector3 right = { playerForward.z, 0.0f, -playerForward.x };
-        
-        // 揺れ（スウェイ）を一時的にオフ
-        float swayX = 0.0f; // std::sin(pathProgress_ * 10.0f) * 5.0f;
-        float swayY = 0.0f; // std::cos(pathProgress_ * 8.0f) * 3.0f;
-        pathProgress_ += 0.01f; // スウェイのための時間進行用
+    activeTimer_++;
 
-        Vector3 targetPos = {
-            playerPos.x + playerForward.x * aiOffset_.z + right.x * (aiOffset_.x + swayX),
-            playerPos.y + aiOffset_.y + swayY,
-            playerPos.z + playerForward.z * aiOffset_.z + right.z * (aiOffset_.x + swayX)
+    // --- 行動パターンの実行 ---
+    if (behavior_ == "PATH") {
+        if (movePath_ && movePath_->IsValid()) {
+            pathProgress_ += (moveSpeed_ * 0.5f) / movePath_->GetTotalLength();
+            if (pathProgress_ > 1.0f) {
+                isDead_ = true; // パスの終端で消滅
+            } else {
+                position_ = movePath_->GetPosition(pathProgress_);
+                Vector3 forward = movePath_->GetForward(pathProgress_);
+                float yaw = std::atan2(forward.x, forward.z);
+                float pitch = std::asin(std::clamp(-forward.y, -1.0f, 1.0f));
+                object_->SetRotation({pitch, yaw, 0.0f});
+            }
+        }
+    } else if (behavior_ == "STRAIGHT") {
+        // ローカルの前方（Z軸）へ直進
+        Vector3 rot = object_->GetRotation();
+        float yaw = rot.y;
+        float pitch = rot.x;
+        Vector3 forward = {
+            std::sin(yaw) * std::cos(pitch),
+            -std::sin(pitch),
+            std::cos(yaw) * std::cos(pitch)
         };
+        position_.x += forward.x * moveSpeed_;
+        position_.y += forward.y * moveSpeed_;
+        position_.z += forward.z * moveSpeed_;
+        
+        // カメラの後ろ（手前）を通り過ぎたら消滅
+        if (position_.z < cameraPos.z - 50.0f) {
+            isDead_ = true;
+        }
+    } else if (behavior_ == "CROSS") {
+        // 横切る
+        if (activeTimer_ == 1) {
+            // 出現位置によって左へ行くか右へ行くか決める
+            dashVelocity_.x = (position_.x > 0) ? -moveSpeed_ : moveSpeed_;
+        }
+        position_.x += dashVelocity_.x;
+        // 画面外に出たら消滅
+        if (std::abs(position_.x - cameraPos.x) > 300.0f) {
+            isDead_ = true;
+        }
+    } else if (behavior_ == "APPROACH") {
+        // 接近してきてから離脱する
+        if (activeTimer_ < 60) {
+            // プレイヤー前方へ接近
+            Vector3 target = { playerWorldPos.x, playerWorldPos.y + 10.0f, playerWorldPos.z + 100.0f };
+            position_.x += (target.x - position_.x) * 0.05f * moveSpeed_;
+            position_.y += (target.y - position_.y) * 0.05f * moveSpeed_;
+            position_.z += (target.z - position_.z) * 0.05f * moveSpeed_;
+            
+            // プレイヤーの方を向く
+            Vector3 dir = { playerWorldPos.x - position_.x, playerWorldPos.y - position_.y, playerWorldPos.z - position_.z };
+            float yaw = std::atan2(dir.x, dir.z);
+            object_->SetRotation({0, yaw, 0});
+        } else if (activeTimer_ < 180) {
+            // 滞在して攻撃（フワフワ）
+            position_.y += std::sin(activeTimer_ * 0.1f) * 0.1f;
+            Vector3 dir = { playerWorldPos.x - position_.x, playerWorldPos.y - position_.y, playerWorldPos.z - position_.z };
+            float yaw = std::atan2(dir.x, dir.z);
+            object_->SetRotation({0, yaw, 0});
+        } else {
+            // 離脱（画面手前や上空へ逃げる）
+            position_.y += moveSpeed_;
+            position_.z -= moveSpeed_ * 2.0f;
+            if (position_.z < cameraPos.z - 50.0f || position_.y > maxY_ + 50.0f) {
+                isDead_ = true;
+            }
+        }
+    } else if (behavior_ == "STAY") {
+        // 固定砲台（動かずプレイヤーを向く）
+        Vector3 rot = object_->GetRotation();
+        Vector3 toPlayer = { playerWorldPos.x - position_.x, playerWorldPos.y - position_.y, playerWorldPos.z - position_.z };
+        float yaw = std::atan2(toPlayer.x, toPlayer.z);
+        float pitch = std::asin(std::clamp(-toPlayer.y / std::sqrt(toPlayer.x*toPlayer.x + toPlayer.y*toPlayer.y + toPlayer.z*toPlayer.z), -1.0f, 1.0f));
+        rot.y += (yaw - rot.y) * 0.1f;
+        rot.x += (pitch - rot.x) * 0.1f;
+        object_->SetRotation(rot);
+    } else {
+        // フォールバック（以前のRUSHERなどの挙動を残したい場合）
+        // とりあえずSTAYと同様に扱うか、前方直進にする
+        position_.z -= moveSpeed_;
+    }
 
-        // 目標座標へなめらかに移動（少し早めについてくるようにする）
-        float lerpSpeed = 0.05f;
-        position_.x += (targetPos.x - position_.x) * lerpSpeed;
-        position_.y += (targetPos.y - position_.y) * lerpSpeed;
-        position_.z += (targetPos.z - position_.z) * lerpSpeed;
+    // (isAutoAI_ のブロックは削除済)
 
-        // プレイヤーの方を向く
-        Vector3 dirToPlayer = { playerPos.x - position_.x, playerPos.y - position_.y, playerPos.z - position_.z };
-        float dist = std::sqrt(dirToPlayer.x*dirToPlayer.x + dirToPlayer.z*dirToPlayer.z);
-        if (dist > 0.001f) {
-            float yaw = std::atan2(-dirToPlayer.x, -dirToPlayer.z);
-            // フワフワした動きに合わせて少し機体を傾ける（ロール）とさらに良くなる
-            float roll = (targetPos.x - position_.x) * 0.05f;
-            object_->SetRotation(Vector3(0.0f, yaw, roll));
+    // 高さの制限（クランプ）
+    if (position_.y > maxY_) position_.y = maxY_;
+    if (position_.y < minY_) position_.y = minY_;
+
+    // 弾の発射処理
+    if (shootInterval_ > 0 && isActive_ && !isDead_) {
+        attackTimer_++;
+        if (attackTimer_ >= shootInterval_) {
+            attackTimer_ = 0;
+            auto bullet = std::make_unique<EnemyBullet>();
+            bool isHoming = (typeName_ == "HOMING"); // 誘導弾を撃たせたい場合は名前をHOMINGにする
+            Vector3 toPlayer = { playerWorldPos.x - position_.x, playerWorldPos.y - position_.y, playerWorldPos.z - position_.z };
+            float len = std::sqrt(toPlayer.x*toPlayer.x + toPlayer.y*toPlayer.y + toPlayer.z*toPlayer.z);
+            if (len > 0.0f) {
+                toPlayer = { toPlayer.x/len, toPlayer.y/len, toPlayer.z/len };
+            }
+            Vector3 velocity = { toPlayer.x * 2.5f, toPlayer.y * 2.5f, toPlayer.z * 2.5f };
+            bullet->Initialize(object3dCommon_, position_, velocity, isHoming, player);
+            enemyBullets.push_back(std::move(bullet));
         }
     }
 
@@ -243,7 +313,11 @@ void Enemy::DrawCollider() {
 }
 
 void Enemy::OnCollision() {
+    if (invincibilityTimer_ > 0) return; // 無敵時間中はダメージを受けない
+
     hp_--;
+    invincibilityTimer_ = 30; // 30フレーム無敵
+    
     if (hp_ <= 0) {
         isDead_ = true;
     }

@@ -21,28 +21,38 @@
 #include <filesystem>
 #include "KHEngine/Math/CollisionMath.h"
 
-static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, Enemy* parentEnemy = nullptr) {
+static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, std::vector<Enemy*> parentEnemies = {})
+{
     const Object3d* currentObj = parentObj;
 
-    if (node.type == "CURVE") {
+    if (node.type == "CURVE")
+    {
         // Blenderのエクスポータですでにワールド座標としてcurvePointsが出力されているため、
         // ゲーム側での再変換は不要。そのままレールを初期化する。
-        auto rail = std::make_unique<Rail>();
-        rail->Initialize(node.curvePoints);
-
-        if (parentEnemy) {
-            parentEnemy->SetMovePath(std::move(rail));
-        } else {
+        if (!parentEnemies.empty())
+        {
+            for (Enemy* e : parentEnemies)
+            {
+                auto rail = std::make_unique<Rail>();
+                rail->Initialize(node.curvePoints);
+                e->SetMovePath(std::move(rail));
+            }
+        }
+        else
+        {
+            auto rail = std::make_unique<Rail>();
+            rail->Initialize(node.curvePoints);
             outRails.push_back(std::move(rail));
         }
     }
 
-    Enemy* currentEnemy = parentEnemy;
+    std::vector<Enemy*> currentEnemies = parentEnemies;
     // オブジェクトの種別判定
     bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName.find("Invisible") != std::string::npos) || (node.fileName.find("ColliderOnly") != std::string::npos);
     bool isEnemy = (node.fileName.find("Fighter") != std::string::npos || node.fileName.find("Asteroid") != std::string::npos || node.fileName.find("Enemy") != std::string::npos);
 
-    if (isObstacle) {
+    if (isObstacle)
+    {
         // Obstacleとして生成
         auto obstacle = std::make_unique<Obstacle>();
         // Blenderのrotationは度数法だがObstacleはInitializeでそのまま保持するためラジアン変換する
@@ -52,73 +62,132 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
         rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
         obstacle->Initialize(common, node.translation, node.scale, rotRad, node.fileName, skyboxTexIndex, node.collider, node.isDestructible);
         obstacle->SetSpawnProgress(node.spawnProgress);
-        if (!node.texturePath.empty()) {
+        if (!node.texturePath.empty())
+        {
             obstacle->SetTexturePath(node.texturePath);
         }
         obstacles.push_back(std::move(obstacle));
-    } else if (isEnemy) {
-        auto enemy = std::make_unique<Enemy>();
-        enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
-        enemy->SetSpawnProgress(node.spawnProgress);
-        if (!node.texturePath.empty()) {
-            enemy->SetTexturePath(node.texturePath);
+    }
+    else if (isEnemy)
+    {
+        currentEnemies.clear();
+        int count = std::max<int>(1, node.spawnCount);
+        for (int i = 0; i < count; ++i)
+        {
+            auto enemy = std::make_unique<Enemy>();
+
+            // 陣形によるオフセット計算
+            Vector3 offset = { 0, 0, 0 };
+            if (node.formationType == "LINE")
+            {
+                offset.z = i * node.formationSpacing;
+            }
+            else if (node.formationType == "V_SHAPE")
+            {
+                if (i > 0)
+                {
+                    float side = (i % 2 == 1) ? 1.0f : -1.0f;
+                    int row = (i + 1) / 2;
+                    offset.x = side * row * node.formationSpacing;
+                    offset.z = row * node.formationSpacing;
+                }
+            }
+            else if (node.formationType == "HORIZONTAL")
+            {
+                if (i > 0)
+                {
+                    float side = (i % 2 == 1) ? 1.0f : -1.0f;
+                    int row = (i + 1) / 2;
+                    offset.x = side * row * node.formationSpacing;
+                }
+            }
+
+            // オフセットを適用した新しいノードデータを作成して初期化
+            LevelObjectData spawnNode = node;
+            spawnNode.translation.x += offset.x;
+            spawnNode.translation.y += offset.y;
+            spawnNode.translation.z += offset.z;
+
+            enemy->Initialize(common, spawnNode, skyboxTexIndex);
+            enemy->SetSpawnProgress(node.spawnProgress);
+            enemy->SetSpawnDelay(i * node.spawnInterval); // 時間差出現
+
+            if (!node.texturePath.empty())
+            {
+                enemy->SetTexturePath(node.texturePath);
+            }
+
+            // パスの引き継ぎ（親ではなく、スポナーが持っているパスを全敵に渡す）
+            currentEnemies.push_back(enemy.get());
+
+            enemies.push_back(std::move(enemy));
         }
-        currentEnemy = enemy.get();
-        enemies.push_back(std::move(enemy));
-    } else if (node.type == "MESH") {
+    }
+    else if (node.type == "MESH")
+    {
         auto obj = std::make_unique<Object3d>();
         obj->Initialize(common);
-        
+
         std::string modelName = node.fileName;
-        if (modelName.empty()) {
+        if (modelName.empty())
+        {
             modelName = node.name + ".obj";
         }
-        
+
         // ロードされていない可能性を考慮
         ModelManager::GetInstance()->LoadModel(modelName);
-        if (ModelManager::GetInstance()->FindModel(modelName) != nullptr) {
+        if (ModelManager::GetInstance()->FindModel(modelName) != nullptr)
+        {
             obj->SetModel(modelName);
         }
-        
+
         obj->SetTranslate(node.translation);
-        
+
         // Blender出力は恐らく度数法(Degree)なのでラジアンに変換
         Vector3 rotRad;
         rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
         rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
         rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
         obj->SetRotation(rotRad);
-        
+
         obj->SetScale(node.scale);
         obj->SetEnvironmentTextureIndex(skyboxTexIndex);
-        
-        if (parentObj) {
+
+        if (parentObj)
+        {
             obj->SetParent(parentObj);
         }
-        
+
         currentObj = obj.get();
         instances.push_back(std::move(obj));
     }
 
     // 子オブジェクトを再帰的に生成
-    for (const auto& child : node.children) {
-        CreateObjectFromNode(child, currentObj, instances, outRails, common, skyboxTexIndex, enemies, obstacles, currentEnemy);
+    for (const auto& child : node.children)
+    {
+        CreateObjectFromNode(child, currentObj, instances, outRails, common, skyboxTexIndex, enemies, obstacles, currentEnemies);
     }
 }
 
-static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, Enemy* parentEnemy = nullptr) {
-    if (node.type == "CURVE" && parentEnemy) {
-        auto rail = std::make_unique<Rail>();
-        rail->Initialize(node.curvePoints);
-        parentEnemy->SetMovePath(std::move(rail));
+static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, std::vector<Enemy*> parentEnemies = {})
+{
+    if (node.type == "CURVE" && !parentEnemies.empty())
+    {
+        for (Enemy* e : parentEnemies)
+        {
+            auto rail = std::make_unique<Rail>();
+            rail->Initialize(node.curvePoints);
+            e->SetMovePath(std::move(rail));
+        }
     }
 
-    Enemy* currentEnemy = parentEnemy;
+    std::vector<Enemy*> currentEnemies = parentEnemies;
 
     bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName.find("Invisible") != std::string::npos) || (node.fileName.find("ColliderOnly") != std::string::npos);
     bool isEnemy = (node.fileName.find("Fighter") != std::string::npos || node.fileName.find("Asteroid") != std::string::npos || node.fileName.find("Enemy") != std::string::npos);
 
-    if (isObstacle) {
+    if (isObstacle)
+    {
         auto obstacle = std::make_unique<Obstacle>();
         Vector3 rotRad;
         rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
@@ -126,23 +195,68 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
         rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
         obstacle->Initialize(common, node.translation, node.scale, rotRad, node.fileName, skyboxTexIndex, node.collider, node.isDestructible);
         obstacle->SetSpawnProgress(node.spawnProgress);
-        if (!node.texturePath.empty()) {
+        if (!node.texturePath.empty())
+        {
             obstacle->SetTexturePath(node.texturePath);
         }
         obstacles.push_back(std::move(obstacle));
-    } else if (isEnemy) {
-        auto enemy = std::make_unique<Enemy>();
-        enemy->Initialize(common, node.translation, node.scale, node.fileName, skyboxTexIndex, node.collider);
-        enemy->SetSpawnProgress(node.spawnProgress);
-        if (!node.texturePath.empty()) {
-            enemy->SetTexturePath(node.texturePath);
+    }
+    else if (isEnemy)
+    {
+        currentEnemies.clear();
+        int count = std::max<int>(1, node.spawnCount);
+        for (int i = 0; i < count; ++i)
+        {
+            auto enemy = std::make_unique<Enemy>();
+
+            // 陣形によるオフセット計算
+            Vector3 offset = { 0, 0, 0 };
+            if (node.formationType == "LINE")
+            {
+                offset.z = i * node.formationSpacing;
+            }
+            else if (node.formationType == "V_SHAPE")
+            {
+                if (i > 0)
+                {
+                    float side = (i % 2 == 1) ? 1.0f : -1.0f;
+                    int row = (i + 1) / 2;
+                    offset.x = side * row * node.formationSpacing;
+                    offset.z = row * node.formationSpacing;
+                }
+            }
+            else if (node.formationType == "HORIZONTAL")
+            {
+                if (i > 0)
+                {
+                    float side = (i % 2 == 1) ? 1.0f : -1.0f;
+                    int row = (i + 1) / 2;
+                    offset.x = side * row * node.formationSpacing;
+                }
+            }
+
+            // オフセットを適用した新しいノードデータを作成して初期化
+            LevelObjectData spawnNode = node;
+            spawnNode.translation.x += offset.x;
+            spawnNode.translation.y += offset.y;
+            spawnNode.translation.z += offset.z;
+
+            enemy->Initialize(common, spawnNode, skyboxTexIndex);
+            enemy->SetSpawnProgress(node.spawnProgress);
+            enemy->SetSpawnDelay(i * node.spawnInterval); // 時間差出現
+
+            if (!node.texturePath.empty())
+            {
+                enemy->SetTexturePath(node.texturePath);
+            }
+            currentEnemies.push_back(enemy.get());
+            enemies.push_back(std::move(enemy));
         }
-        currentEnemy = enemy.get();
-        enemies.push_back(std::move(enemy));
     }
 
-    for (const auto& child : node.children) {
-        LoadEnemiesOnlyFromNode(child, common, skyboxTexIndex, enemies, obstacles, currentEnemy);
+    for (const auto& child : node.children)
+    {
+        LoadEnemiesOnlyFromNode(child, common, skyboxTexIndex, enemies, obstacles, currentEnemies);
     }
 }
 
@@ -159,14 +273,14 @@ void GamePlayScene::Initialize()
     camera = std::make_unique<Camera>();
     camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
     camera->SetRotation({ 0.0f, 0.0f, 0.0f }); // 回転を0度にする
-    
+
     // デバッグカメラ作成
     debugCamera_ = std::make_unique<Camera>();
     debugCamera_->SetTranslate({ 0.0f, 6.0f, -20.0f });
     debugCamera_->SetRotation({ 0.0f, 0.0f, 0.0f });
-    
+
     activeCamera_ = camera.get();
-    
+
     if (object3dCommon)
     {
         object3dCommon->SetDefaultCamera(activeCamera_);
@@ -184,7 +298,7 @@ void GamePlayScene::Initialize()
 
     // スカイボックスの初期化
     skybox_ = std::make_unique<Skybox>();
-    skybox_->Initialize(dxCommon,"resources/skybox.dds");
+    skybox_->Initialize(dxCommon, "resources/skybox.dds");
 
     // モデル読み込み
     ModelManager::GetInstance()->LoadModel("plane.obj");
@@ -199,7 +313,7 @@ void GamePlayScene::Initialize()
     texManager->LoadTexture("uvChecker.png");
     texManager->LoadTexture("monsterBall.png");
     texManager->LoadTexture("checkerBoard.png");
-	texManager->LoadTexture("resources/skybox.dds");
+    texManager->LoadTexture("resources/skybox.dds");
     texManager->LoadTexture("circle.png");
     texManager->LoadTexture("circle2.png");
     texManager->LoadTexture("gradationLine.png");
@@ -257,19 +371,26 @@ void GamePlayScene::Initialize()
     player_ = std::make_unique<Player>();
     player_->Initialize(object3dCommon, skybox_->GetCubemapSrvIndex());
     player_->LoadSettings("resources/json/player/player_settings.json");
-    
+
     // プレイヤーをカメラオブジェクトの子にする
     player_->GetObject3d()->SetParent(cameraObject_.get());
+    if (player_->GetColliderObject())
+    {
+        player_->GetColliderObject()->SetParent(cameraObject_.get());
+    }
     player_->GetReticle()->SetParent(cameraObject_.get());
-    if (player_->GetFrontReticle()) {
+    if (player_->GetFrontReticle())
+    {
         player_->GetFrontReticle()->SetParent(cameraObject_.get());
     }
 
     // レールカメラコントローラの初期化
     railCameraController_ = std::make_unique<RailCameraController>();
-    if (!mainRails_.empty()) {
+    if (!mainRails_.empty())
+    {
         std::vector<Rail*> railsRaw;
-        for (auto& r : mainRails_) {
+        for (auto& r : mainRails_)
+        {
             railsRaw.push_back(r.get());
         }
         railCameraController_->Initialize(railsRaw, activeCamera_, cameraObject_.get());
@@ -299,7 +420,8 @@ void GamePlayScene::ReloadLevel()
     auto object3dCommon = services->GetObject3dCommon();
 
     // 既存データのクリア (先頭のterrainは残す)
-    while (modelInstances.size() > 1) {
+    while (modelInstances.size() > 1)
+    {
         modelInstances.pop_back();
     }
 
@@ -309,34 +431,42 @@ void GamePlayScene::ReloadLevel()
     railVisualizers_.clear();
     enemyRailVisualizers_.clear();
     mainRails_.clear();
-    if (railCameraController_) {
+    if (railCameraController_)
+    {
         railCameraController_->Reset();
     }
 
     // レベルデータの読み込みと配置
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
-    if (levelData) {
-        for (const auto& objData : levelData->objects) {
+    if (levelData)
+    {
+        for (const auto& objData : levelData->objects)
+        {
             CreateObjectFromNode(objData, nullptr, modelInstances, mainRails_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_, obstacles_);
         }
         OutputDebugStringA("LevelLoader: Successfully reloaded objects.\n");
-        
+
         // 再初期化
-        if (railCameraController_ && !mainRails_.empty()) {
+        if (railCameraController_ && !mainRails_.empty())
+        {
             std::vector<Rail*> railsRaw;
-            for (auto& r : mainRails_) {
+            for (auto& r : mainRails_)
+            {
                 railsRaw.push_back(r.get());
             }
             railCameraController_->Initialize(railsRaw, activeCamera_, cameraObject_.get());
         }
-    } else {
+    }
+    else
+    {
         OutputDebugStringA("LevelLoader: Failed to reload level.\n");
     }
 
     // レールの可視化用オブジェクトの生成
     railVisualizers_.clear();
     railModels_.clear();
-    if (!mainRails_.empty()) {
+    if (!mainRails_.empty())
+    {
         std::vector<Vector4> colors = {
             {1.0f, 0.0f, 0.0f, 1.0f}, // 赤
             {0.0f, 0.5f, 1.0f, 1.0f}, // 青
@@ -349,7 +479,8 @@ void GamePlayScene::ReloadLevel()
         std::string resolved = ResourceLocator::Resolve("rail.obj", ResourceLocator::AssetType::Model3D);
         std::string directory = "resources/models";
         std::string filename = "rail.obj";
-        if (!resolved.empty()) {
+        if (!resolved.empty())
+        {
             std::filesystem::path rp(reinterpret_cast<const char8_t*>(resolved.c_str()));
             directory = rp.parent_path().string();
             filename = rp.filename().string();
@@ -357,44 +488,46 @@ void GamePlayScene::ReloadLevel()
 
         int sampleCount = 200; // 分割数を増やして滑らかな線にする
         int colorIndex = 0;
-        for (auto& rail : mainRails_) {
+        for (auto& rail : mainRails_)
+        {
             if (!rail || !rail->IsValid()) continue;
 
             auto railModel = std::make_unique<Model>();
             railModel->Initialize(ModelManager::GetInstance()->GetModelCommon(), directory, filename);
             railModel->SetColor(colors[colorIndex % colors.size()]);
 
-            for (int i = 0; i < sampleCount; ++i) {
+            for (int i = 0; i < sampleCount; ++i)
+            {
                 float t1 = static_cast<float>(i) / sampleCount;
                 float t2 = static_cast<float>(i + 1) / sampleCount;
-                
+
                 Vector3 p1 = rail->GetPosition(t1);
                 Vector3 p2 = rail->GetPosition(t2);
-                
+
                 Vector3 dir = { p2.x - p1.x, p2.y - p1.y, p2.z - p1.z };
                 float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
                 if (length < 0.0001f) continue;
-                
+
                 dir.x /= length; dir.y /= length; dir.z /= length;
-                
+
                 Vector3 center = { (p1.x + p2.x) * 0.5f, (p1.y + p2.y) * 0.5f, (p1.z + p2.z) * 0.5f };
-                
+
                 auto obj = std::make_unique<Object3d>();
                 obj->Initialize(object3dCommon);
-                obj->SetModel(railModel.get()); 
+                obj->SetModel(railModel.get());
                 obj->SetTranslate(center);
                 float yaw = std::atan2(dir.x, dir.z);
                 float pitch = std::asin(-dir.y);
                 obj->SetRotation(Vector3(pitch, yaw, 0.0f));
-                
-                obj->SetScale(Vector3(0.02f, 0.02f, length)); 
-                
+
+                obj->SetScale(Vector3(0.02f, 0.02f, length));
+
                 obj->SetEnvironmentCoefficient(0.0f);
                 obj->SetEnvironmentTextureIndex(skybox_->GetCubemapSrvIndex());
-                
+
                 railVisualizers_.push_back(std::move(obj));
             }
-            
+
             railModels_.push_back(std::move(railModel));
             colorIndex++;
         }
@@ -403,46 +536,51 @@ void GamePlayScene::ReloadLevel()
     // 敵用レールの可視化
     enemyRailModel_ = std::make_unique<Model>();
     std::string resolved = ResourceLocator::Resolve("rail.obj", ResourceLocator::AssetType::Model3D);
-    if (!resolved.empty()) {
+    if (!resolved.empty())
+    {
         std::filesystem::path rp(reinterpret_cast<const char8_t*>(resolved.c_str()));
         enemyRailModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), rp.parent_path().string(), rp.filename().string());
-    } else {
+    }
+    else
+    {
         enemyRailModel_->Initialize(ModelManager::GetInstance()->GetModelCommon(), "resources/models", "rail.obj");
     }
-    enemyRailModel_->SetColor({0.5f, 1.0f, 0.0f, 1.0f}); // 黄緑色
+    enemyRailModel_->SetColor({ 0.5f, 1.0f, 0.0f, 1.0f }); // 黄緑色
 
     int sampleCount = 100; // 敵用レールは少し分割数を減らす
-    for (auto& enemy : enemies_) {
+    for (auto& enemy : enemies_)
+    {
         const Rail* rail = enemy->GetMovePath();
         if (!rail || !rail->IsValid()) continue;
-        for (int i = 0; i < sampleCount; ++i) {
+        for (int i = 0; i < sampleCount; ++i)
+        {
             float t1 = static_cast<float>(i) / sampleCount;
             float t2 = static_cast<float>(i + 1) / sampleCount;
-            
+
             Vector3 p1 = rail->GetPosition(t1);
             Vector3 p2 = rail->GetPosition(t2);
-            
+
             Vector3 dir = { p2.x - p1.x, p2.y - p1.y, p2.z - p1.z };
             float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
             if (length < 0.0001f) continue;
-            
+
             dir.x /= length; dir.y /= length; dir.z /= length;
-            
+
             Vector3 center = { (p1.x + p2.x) * 0.5f, (p1.y + p2.y) * 0.5f, (p1.z + p2.z) * 0.5f };
-            
+
             auto obj = std::make_unique<Object3d>();
             obj->Initialize(object3dCommon);
-            obj->SetModel(enemyRailModel_.get()); 
+            obj->SetModel(enemyRailModel_.get());
             obj->SetTranslate(center);
             float yaw = std::atan2(dir.x, dir.z);
             float pitch = std::asin(-dir.y);
             obj->SetRotation(Vector3(pitch, yaw, 0.0f));
-            
+
             obj->SetScale(Vector3(0.015f, 0.015f, length)); // メインより少し細く
-            
+
             obj->SetEnvironmentCoefficient(0.0f);
             obj->SetEnvironmentTextureIndex(skybox_->GetCubemapSrvIndex());
-            
+
             enemyRailVisualizers_.push_back(std::move(obj));
         }
     }
@@ -458,19 +596,24 @@ void GamePlayScene::ReloadEnemiesOnly()
     enemyRailVisualizers_.clear();
 
     auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
-    if (levelData) {
-        for (const auto& objData : levelData->objects) {
+    if (levelData)
+    {
+        for (const auto& objData : levelData->objects)
+        {
             LoadEnemiesOnlyFromNode(objData, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_, obstacles_);
         }
         OutputDebugStringA("LevelLoader: Successfully respawned enemies.\n");
 
         // 敵用レールの可視化再構築
-        if (enemyRailModel_) {
+        if (enemyRailModel_)
+        {
             int sampleCount = 100;
-            for (auto& enemy : enemies_) {
+            for (auto& enemy : enemies_)
+            {
                 const Rail* rail = enemy->GetMovePath();
                 if (!rail || !rail->IsValid()) continue;
-                for (int i = 0; i < sampleCount; ++i) {
+                for (int i = 0; i < sampleCount; ++i)
+                {
                     float t1 = static_cast<float>(i) / sampleCount;
                     float t2 = static_cast<float>(i + 1) / sampleCount;
                     Vector3 p1 = rail->GetPosition(t1);
@@ -482,19 +625,21 @@ void GamePlayScene::ReloadEnemiesOnly()
                     Vector3 center = { (p1.x + p2.x) * 0.5f, (p1.y + p2.y) * 0.5f, (p1.z + p2.z) * 0.5f };
                     auto obj = std::make_unique<Object3d>();
                     obj->Initialize(object3dCommon);
-                    obj->SetModel(enemyRailModel_.get()); 
+                    obj->SetModel(enemyRailModel_.get());
                     obj->SetTranslate(center);
                     float yaw = std::atan2(dir.x, dir.z);
                     float pitch = std::asin(-dir.y);
                     obj->SetRotation(Vector3(pitch, yaw, 0.0f));
-                    obj->SetScale(Vector3(0.015f, 0.015f, length)); 
+                    obj->SetScale(Vector3(0.015f, 0.015f, length));
                     obj->SetEnvironmentCoefficient(0.0f);
                     obj->SetEnvironmentTextureIndex(skybox_->GetCubemapSrvIndex());
                     enemyRailVisualizers_.push_back(std::move(obj));
                 }
             }
         }
-    } else {
+    }
+    else
+    {
         OutputDebugStringA("LevelLoader: Failed to respawn enemies.\n");
     }
 }
@@ -512,8 +657,10 @@ void GamePlayScene::Finalize()
     activeCamera_ = nullptr;
 }
 
-namespace {
-    float LerpAngle(float a, float b, float t) {
+namespace
+{
+    float LerpAngle(float a, float b, float t)
+    {
         float diff = b - a;
         while (diff < -3.14159265f) diff += 6.2831853f;
         while (diff > 3.14159265f) diff -= 6.2831853f;
@@ -528,17 +675,22 @@ void GamePlayScene::Update()
     float dt = services->GetDeltaTime();
 
     // ホットリロードのトリガー (F5キー)
-    if (input && input->TriggerKey(DIK_F5)) {
+    if (input && input->TriggerKey(DIK_F5))
+    {
         ReloadLevel();
     }
 
     // --- カメラ切り替え ---
-    if (isPlaying_) {
+    if (isPlaying_)
+    {
         activeCamera_ = camera.get();
-    } else {
+    }
+    else
+    {
         activeCamera_ = debugCamera_.get();
     }
-    if (auto objCommon = services->GetObject3dCommon()) {
+    if (auto objCommon = services->GetObject3dCommon())
+    {
         objCommon->SetDefaultCamera(activeCamera_);
     }
 
@@ -577,7 +729,8 @@ void GamePlayScene::Update()
 
             // WASDキーでカメラ移動（カメラのyawに沿った前後左右）
             float currentMoveSpeed = kMoveSpeed;
-            if (input->PushKey(DIK_LSHIFT) || input->PushKey(DIK_RSHIFT)) {
+            if (input->PushKey(DIK_LSHIFT) || input->PushKey(DIK_RSHIFT))
+            {
                 currentMoveSpeed *= 25.0f; // Shiftキーで超高速移動
             }
             float moveStep = currentMoveSpeed * dt;
@@ -589,11 +742,12 @@ void GamePlayScene::Update()
             Vector3 forward = { std::sinf(yaw), 0.0f, std::cosf(yaw) };
             Vector3 right = { std::cosf(yaw), 0.0f, -std::sinf(yaw) };
 
-            auto normalize = [](Vector3 v) {
-                float len = std::sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
-                if (len > 1e-6f) { v.x /= len; v.y /= len; v.z /= len; }
-                return v;
-            };
+            auto normalize = [](Vector3 v)
+                {
+                    float len = std::sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+                    if (len > 1e-6f) { v.x /= len; v.y /= len; v.z /= len; }
+                    return v;
+                };
 
             forward = normalize(forward);
             right = normalize(right);
@@ -638,31 +792,40 @@ void GamePlayScene::Update()
         {
             // === ブースト機能の処理 ===
             auto pp = EngineServices::GetInstance()->GetPostProcess();
-            if (player_ && player_->IsBoosting()) {
+            if (player_ && player_->IsBoosting())
+            {
                 gameSpeed_ = 1.5f; // スピードアップ
                 thrusterEffect_.SetBaseColor({ 1.0f, 0.2f, 0.0f, 1.0f }); // 赤色
-                if (pp) {
+                if (pp)
+                {
                     pp->SetEffectActive("RadialBlur", true);
                     pp->GetData()->radialBlurIntensity = 0.1f;
                 }
-            } else {
+            }
+            else
+            {
                 gameSpeed_ = 1.0f; // 通常スピード
                 thrusterEffect_.SetBaseColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 通常（元の色）
-                if (pp) {
+                if (pp)
+                {
                     pp->SetEffectActive("RadialBlur", false);
                 }
             }
 
-            if (!mainRails_.empty() && railCameraController_) {
+            if (!mainRails_.empty() && railCameraController_)
+            {
                 railCameraController_->Update(gameSpeed_);
-            } else {
+            }
+            else
+            {
                 // レールが無い場合のフォールバック（自動前進）
                 const float kAutoSpeed = 0.05f;
                 Vector3 camPos = activeCamera_->GetTranslate();
                 camPos.z += kAutoSpeed;
                 activeCamera_->SetTranslate(camPos);
 
-                if (cameraObject_) {
+                if (cameraObject_)
+                {
                     cameraObject_->SetTranslate(camPos);
                     cameraObject_->Update();
                 }
@@ -671,42 +834,53 @@ void GamePlayScene::Update()
     }
 
     // プレイヤーの更新
-    if (player_) {
-        if (isPlaying_) {
+    if (player_)
+    {
+        if (isPlaying_)
+        {
             player_->Update(bullets_, cameraObject_.get());
-            
+
             // 回避エフェクトの再生
-            if (player_->ConsumeDodgeTrigger()) {
+            if (player_->ConsumeDodgeTrigger())
+            {
                 const Matrix4x4& wMat = player_->GetObject3d()->GetmatWorld();
                 // ワールド座標を取得
                 Vector3 pPos = { wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] };
-                
+
                 // 進行方向（Z軸）
                 Vector3 forward = { wMat.m[2][0], wMat.m[2][1], wMat.m[2][2] };
-                float len = std::sqrt(forward.x*forward.x + forward.y*forward.y + forward.z*forward.z);
-                if (len > 0.0001f) {
+                float len = std::sqrt(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
+                if (len > 0.0001f)
+                {
                     forward.x /= len; forward.y /= len; forward.z /= len;
                 }
-                
+
                 // 自機より少し手前（進行方向の逆）に出す
                 Vector3 effectPos = { pPos.x - forward.x * 2.0f, pPos.y - forward.y * 2.0f, pPos.z - forward.z * 2.0f };
-                
+
                 dodgeEffect_.SetPosition(effectPos);
                 dodgeEffect_.Play();
             }
-        } else {
+        }
+        else
+        {
             // ゲーム停止中でも、Object3dの更新(カメラ行列の反映など)は必要
             player_->Update3DObjectOnly();
         }
     }
 
     // 弾の更新
-    if (isPlaying_) {
-        for (auto it = bullets_.begin(); it != bullets_.end(); ) {
+    if (isPlaying_)
+    {
+        for (auto it = bullets_.begin(); it != bullets_.end(); )
+        {
             (*it)->Update();
-            if ((*it)->IsDead()) {
+            if ((*it)->IsDead())
+            {
                 it = bullets_.erase(it);
-            } else {
+            }
+            else
+            {
                 ++it;
             }
         }
@@ -716,11 +890,13 @@ void GamePlayScene::Update()
         Vector3 cameraForward = { std::sinf(rot.y), 0.0f, std::cosf(rot.y) };
 
         // 敵の更新と当たり判定
-        for (auto it = enemies_.begin(); it != enemies_.end();) {
-            (*it)->Update(cameraPos, cameraForward);
+        for (auto it = enemies_.begin(); it != enemies_.end();)
+        {
+            (*it)->Update(cameraPos, cameraForward, player_.get(), enemyBullets_);
 
             // プレイヤーの弾との当たり判定
-            for (auto& bullet : bullets_) {
+            for (auto& bullet : bullets_)
+            {
                 if (bullet->IsDead()) continue;
 
                 Sphere bulletSphere = { bullet->GetPosition(), 1.0f };
@@ -729,48 +905,107 @@ void GamePlayScene::Update()
                 isHit = (*it)->CheckCollision(bulletSphere);
 
                 // CCD (Continuous Collision Detection): すり抜け防止
-                if (!isHit) {
+                if (!isHit)
+                {
                     Vector3 prev = bullet->GetPreviousPosition();
                     Vector3 curr = bullet->GetPosition();
                     Vector3 diff = { curr.x - prev.x, curr.y - prev.y, curr.z - prev.z };
-                    float moveLen = std::sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
-                    if (moveLen > 0.0001f) {
-                        Ray moveRay = { prev, { diff.x/moveLen, diff.y/moveLen, diff.z/moveLen } };
+                    float moveLen = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+                    if (moveLen > 0.0001f)
+                    {
+                        Ray moveRay = { prev, { diff.x / moveLen, diff.y / moveLen, diff.z / moveLen } };
                         float hitDist = 0.0f;
-                        if ((*it)->CheckRaycast(moveRay, &hitDist)) {
-                            if (hitDist <= moveLen + 1.0f) { // 弾の半径分だけ余裕を持たせる
+                        if ((*it)->CheckRaycast(moveRay, &hitDist))
+                        {
+                            if (hitDist <= moveLen + 1.0f)
+                            { // 弾の半径分だけ余裕を持たせる
                                 isHit = true;
                             }
                         }
                     }
                 }
 
-                if (isHit) {
+                if (isHit)
+                {
                     bullet->OnCollision();
                     (*it)->OnCollision();
-                    
+
                     // パーティクルの再生
                     hitEffect_.SetPosition(bulletSphere.center);
                     hitEffect_.Play();
                 }
             }
 
-            if ((*it)->IsDead()) {
+            if ((*it)->IsDead())
+            {
                 // 破壊エフェクト
                 explosionEffect_.SetPosition((*it)->GetPosition());
                 explosionEffect_.Play();
                 it = enemies_.erase(it);
-            } else {
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        // 敵弾の更新とプレイヤーとの当たり判定
+        for (auto it = enemyBullets_.begin(); it != enemyBullets_.end();)
+        {
+            (*it)->Update();
+
+            if (!(*it)->IsDead() && player_ && !player_->IsDead())
+            {
+                Sphere bulletSphere = { (*it)->GetPosition(), 1.0f }; // 弾の当たり判定サイズは適宜調整
+
+                // プレイヤー側の当たり判定（OBB）
+                const Matrix4x4& wMat = player_->GetColliderObject()->GetmatWorld();
+                Vector3 pWorldPos = { wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] };
+                Vector3 playerBoxSize = player_->GetColliderSize();
+
+                // 回転行列の抽出と正規化
+                Matrix4x4 rotMat = wMat;
+                for (int i = 0; i < 3; ++i)
+                {
+                    float len = std::sqrt(rotMat.m[i][0] * rotMat.m[i][0] + rotMat.m[i][1] * rotMat.m[i][1] + rotMat.m[i][2] * rotMat.m[i][2]);
+                    if (len > 0.0001f)
+                    {
+                        rotMat.m[i][0] /= len;
+                        rotMat.m[i][1] /= len;
+                        rotMat.m[i][2] /= len;
+                    }
+                }
+
+                OBB playerOBB = CollisionMath::CreateOBB(pWorldPos, playerBoxSize, rotMat);
+
+                if (CollisionMath::IsCollision(bulletSphere, playerOBB))
+                {
+                    (*it)->OnCollision();
+                    hitEffect_.SetPosition((*it)->GetPosition());
+                    hitEffect_.Play();
+
+                    player_->OnCollision();
+                }
+            }
+
+            if ((*it)->IsDead())
+            {
+                it = enemyBullets_.erase(it);
+            }
+            else
+            {
                 ++it;
             }
         }
 
         // 障害物の更新と当たり判定
-        for (auto it = obstacles_.begin(); it != obstacles_.end();) {
+        for (auto it = obstacles_.begin(); it != obstacles_.end();)
+        {
             (*it)->Update();
 
             // プレイヤーの弾との当たり判定
-            for (auto& bullet : bullets_) {
+            for (auto& bullet : bullets_)
+            {
                 if (bullet->IsDead()) continue;
 
                 Sphere bulletSphere = { bullet->GetPosition(), 1.0f };
@@ -779,45 +1014,54 @@ void GamePlayScene::Update()
                 isHit = (*it)->CheckCollision(bulletSphere);
 
                 // CCD (Continuous Collision Detection): すり抜け防止
-                if (!isHit) {
+                if (!isHit)
+                {
                     Vector3 prev = bullet->GetPreviousPosition();
                     Vector3 curr = bullet->GetPosition();
                     Vector3 diff = { curr.x - prev.x, curr.y - prev.y, curr.z - prev.z };
-                    float moveLen = std::sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
-                    if (moveLen > 0.0001f) {
-                        Ray moveRay = { prev, { diff.x/moveLen, diff.y/moveLen, diff.z/moveLen } };
+                    float moveLen = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+                    if (moveLen > 0.0001f)
+                    {
+                        Ray moveRay = { prev, { diff.x / moveLen, diff.y / moveLen, diff.z / moveLen } };
                         float hitDist = 0.0f;
-                        if ((*it)->CheckRaycast(moveRay, &hitDist)) {
-                            if (hitDist <= moveLen + 1.0f) { // 弾の半径分だけ余裕を持たせる
+                        if ((*it)->CheckRaycast(moveRay, &hitDist))
+                        {
+                            if (hitDist <= moveLen + 1.0f)
+                            { // 弾の半径分だけ余裕を持たせる
                                 isHit = true;
                             }
                         }
                     }
                 }
 
-                if (isHit) {
+                if (isHit)
+                {
                     bullet->OnCollision();
                     (*it)->OnCollision();
-                    
+
                     // パーティクルの再生
                     hitEffect_.SetPosition(bulletSphere.center);
                     hitEffect_.Play();
                 }
             }
 
-            if ((*it)->IsDead()) {
+            if ((*it)->IsDead())
+            {
                 // 破壊エフェクト
                 explosionEffect_.SetPosition((*it)->GetPosition());
                 explosionEffect_.Play();
                 it = obstacles_.erase(it);
-            } else {
+            }
+            else
+            {
                 ++it;
             }
         }
 
         // --- 照準（レティクル）のロックオン判定 (Raycast) ---
         bool isLockOn = false;
-        if (player_ && player_->GetObject3d() && player_->GetReticle() && activeCamera_) {
+        if (player_ && player_->GetObject3d() && player_->GetReticle() && activeCamera_)
+        {
             Vector3 cameraPos = activeCamera_->GetTranslate();
             Vector3 reticlePos = player_->GetReticleWorldPosition();
 
@@ -832,7 +1076,8 @@ void GamePlayScene::Update()
             Vector3 lockOnPos = { 0, 0, 0 };
             Enemy* lockOnEnemy = nullptr;
 
-            if (length > 0.0001f) {
+            if (length > 0.0001f)
+            {
                 rayDir.x /= length;
                 rayDir.y /= length;
                 rayDir.z /= length;
@@ -842,31 +1087,35 @@ void GamePlayScene::Update()
                 float bestScore = 1000000.0f;
 
                 // 全ての敵に対してレイキャストを行う
-                for (auto& enemy : enemies_) {
+                for (auto& enemy : enemies_)
+                {
                     if (enemy->IsDead()) continue;
-                    
+
                     float dist = 0.0f;
                     bool hit = enemy->CheckRaycast(ray, &dist);
 
-                    if (hit) {
+                    if (hit)
+                    {
                         // 敵の中心位置を取得してレイ方向との角度を計算
                         Vector3 enemyPos = enemy->GetPosition();
                         Vector3 toEnemy = { enemyPos.x - cameraPos.x, enemyPos.y - cameraPos.y, enemyPos.z - cameraPos.z };
                         float toEnemyLen = std::sqrt(toEnemy.x * toEnemy.x + toEnemy.y * toEnemy.y + toEnemy.z * toEnemy.z);
-                        if (toEnemyLen > 0.0f) {
+                        if (toEnemyLen > 0.0f)
+                        {
                             toEnemy.x /= toEnemyLen;
                             toEnemy.y /= toEnemyLen;
                             toEnemy.z /= toEnemyLen;
                         }
-                        
+
                         // 内積から角度（ラジアン）を求める
                         float dot = ray.direction.x * toEnemy.x + ray.direction.y * toEnemy.y + ray.direction.z * toEnemy.z;
                         float angle = std::acos(std::clamp(dot, -1.0f, 1.0f));
-                        
+
                         // 角度（照準の中心にどれだけ近いか）を最優先し、距離も少し考慮するスコア
                         float score = angle * 100.0f + dist * 0.1f;
 
-                        if (score < bestScore) {
+                        if (score < bestScore)
+                        {
                             bestScore = score;
                             lockOnPos = {
                                 ray.origin.x + ray.direction.x * dist,
@@ -882,26 +1131,34 @@ void GamePlayScene::Update()
 
             // ロックオンはしていないが、近い敵がいるかどうかの判定
             float minEnemyDist = 1000000.0f;
-            for (auto& enemy : enemies_) {
+            for (auto& enemy : enemies_)
+            {
                 if (enemy->IsDead()) continue;
                 Vector3 ePos = enemy->GetPosition();
-                float d = std::sqrt((ePos.x - cameraPos.x)*(ePos.x - cameraPos.x) + 
-                                    (ePos.y - cameraPos.y)*(ePos.y - cameraPos.y) + 
-                                    (ePos.z - cameraPos.z)*(ePos.z - cameraPos.z));
-                if (d < minEnemyDist) {
+                float d = std::sqrt((ePos.x - cameraPos.x) * (ePos.x - cameraPos.x) +
+                    (ePos.y - cameraPos.y) * (ePos.y - cameraPos.y) +
+                    (ePos.z - cameraPos.z) * (ePos.z - cameraPos.z));
+                if (d < minEnemyDist)
+                {
                     minEnemyDist = d;
                 }
             }
 
             // 照準の色の更新とロックオン座標の伝達
-            if (isLockOn) {
+            if (isLockOn)
+            {
                 player_->SetReticleColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
                 player_->SetLockOn(true, lockOnPos, lockOnEnemy);
-            } else {
-                if (minEnemyDist < 100.0f) {
+            }
+            else
+            {
+                if (minEnemyDist < 100.0f)
+                {
                     // 近くに敵がいる場合はオレンジ色（警戒）
                     player_->SetReticleColor({ 1.0f, 0.6f, 0.0f, 1.0f });
-                } else {
+                }
+                else
+                {
                     player_->SetReticleColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 白色
                 }
                 player_->SetLockOn(false);
@@ -909,19 +1166,27 @@ void GamePlayScene::Update()
         }
 
         // 当たり判定で死んだ弾を削除
-        for (auto it = bullets_.begin(); it != bullets_.end(); ) {
-            if ((*it)->IsDead()) {
+        for (auto it = bullets_.begin(); it != bullets_.end(); )
+        {
+            if ((*it)->IsDead())
+            {
                 it = bullets_.erase(it);
-            } else {
+            }
+            else
+            {
                 ++it;
             }
         }
 
-    } else {
-        for (auto& bullet : bullets_) {
+    }
+    else
+    {
+        for (auto& bullet : bullets_)
+        {
             bullet->Update3DObjectOnly();
         }
-        for (auto& enemy : enemies_) {
+        for (auto& enemy : enemies_)
+        {
             enemy->Update3DObjectOnly();
         }
     }
@@ -943,13 +1208,15 @@ void GamePlayScene::Update()
     // カメラ更新（入力反映後に行う）
     if (activeCamera_) activeCamera_->Update();
     for (auto& model : modelInstances) if (model) model->Update();
-    if (isDrawRail_) {
+    if (isDrawRail_)
+    {
         for (auto& vis : railVisualizers_) if (vis) vis->Update();
         for (auto& vis : enemyRailVisualizers_) if (vis) vis->Update();
     }
-    
+
     // ポーズ中でもカメラが動いた場合に行列を更新する
-    if (!isPlaying_) {
+    if (!isPlaying_)
+    {
         for (auto& enemy : enemies_) if (enemy) enemy->Update3DObjectOnly();
         for (auto& obstacle : obstacles_) if (obstacle) obstacle->Update3DObjectOnly();
     }
@@ -960,14 +1227,16 @@ void GamePlayScene::Update()
     Matrix4x4 projectionMatrix = Matrix4x4::Identity();
     Matrix4x4 billboardMatrix = Matrix4x4::Identity();
 
-    if (activeCamera_) {
+    if (activeCamera_)
+    {
         cameraMatrix = activeCamera_->GetWorldMatrix();
         viewMatrix = activeCamera_->GetViewMatrix();
         projectionMatrix = activeCamera_->GetProjectionMatrix();
         billboardMatrix = Billboard::CreateFromCamera(activeCamera_, true);
     }
 
-    if (skybox_) {
+    if (skybox_)
+    {
         skybox_->SetCamera(activeCamera_);
         skybox_->Update();
     }
@@ -978,14 +1247,16 @@ void GamePlayScene::Update()
     }
 
     // エフェクトの更新はプレイ中・停止中（エディタ操作中）に関わらず常に実行する
-    if (player_ && player_->GetObject3d()) {
+    if (player_ && player_->GetObject3d())
+    {
         const Matrix4x4& wMat = player_->GetObject3d()->GetmatWorld();
         Vector3 worldPos = { wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] };
-        
+
         // 自機の後方（ローカルZ軸の逆方向）へオフセットをかける
         Vector3 backward = { -wMat.m[2][0], -wMat.m[2][1], -wMat.m[2][2] };
         float length = std::sqrt(backward.x * backward.x + backward.y * backward.y + backward.z * backward.z);
-        if (length > 0.0f) {
+        if (length > 0.0f)
+        {
             backward.x /= length; backward.y /= length; backward.z /= length;
         }
         float offsetDistance = 1.8f; // 尻尾までの距離（必要に応じて調整）
@@ -1003,25 +1274,32 @@ void GamePlayScene::Update()
 #ifdef USE_IMGUI
 
     ImGui::Begin("Game Control");
-    
+
     bool doReset = false;
 
     // シーン切り替えとプレイ状態
-    if (isPlaying_) {
-        if (ImGui::Button("Stop (Pause)", ImVec2(120, 40))) {
+    if (isPlaying_)
+    {
+        if (ImGui::Button("Stop (Pause)", ImVec2(120, 40)))
+        {
             isPlaying_ = false;
         }
         ImGui::SameLine();
-        if (ImGui::Button("Reset", ImVec2(120, 40))) {
+        if (ImGui::Button("Reset", ImVec2(120, 40)))
+        {
             doReset = true;
         }
         ImGui::Text("Status: PLAYING");
-    } else {
-        if (ImGui::Button("Play (Start)", ImVec2(120, 40))) {
+    }
+    else
+    {
+        if (ImGui::Button("Play (Start)", ImVec2(120, 40)))
+        {
             isPlaying_ = true;
         }
         ImGui::SameLine();
-        if (ImGui::Button("Reset", ImVec2(120, 40))) {
+        if (ImGui::Button("Reset", ImVec2(120, 40)))
+        {
             doReset = true;
         }
         ImGui::Text("Status: STOPPED (Free Camera Mode)");
@@ -1029,48 +1307,56 @@ void GamePlayScene::Update()
     }
 
     ImGui::Separator();
-    if (ImGui::Button("Reload Level (F5)", ImVec2(160, 40))) {
+    if (ImGui::Button("Reload Level (F5)", ImVec2(160, 40)))
+    {
         ReloadLevel();
     }
     ImGui::SameLine();
-    if (ImGui::Button("Respawn Enemies", ImVec2(160, 40))) {
+    if (ImGui::Button("Respawn Enemies", ImVec2(160, 40)))
+    {
         ReloadEnemiesOnly();
     }
 
     ImGui::Separator();
-    if (railCameraController_) {
+    if (railCameraController_)
+    {
         float p = railCameraController_->GetProgress();
-        if (ImGui::SliderFloat("ゲーム時間 (Rail Progress)", &p, 0.0f, 1.0f)) {
+        if (ImGui::SliderFloat("ゲーム時間 (Rail Progress)", &p, 0.0f, 1.0f))
+        {
             railCameraController_->SetProgress(p);
         }
     }
     ImGui::SliderFloat("ゲームスピード (Game Speed)", &gameSpeed_, 0.0f, 5.0f);
 
     // リセット処理：レール進行度を0に戻し、カメラとプレイヤーを始点に移動させる
-    if (doReset) {
+    if (doReset)
+    {
         isPlaying_ = false;
-        if (railCameraController_) {
+        if (railCameraController_)
+        {
             railCameraController_->Reset();
         }
-        
+
         // リセット時に補間用変数を初期化
-        if (!mainRails_.empty() && mainRails_[0]->IsValid()) {
+        if (!mainRails_.empty() && mainRails_[0]->IsValid())
+        {
             Vector3 railForward = mainRails_[0]->GetForward(0.0f);
             float yaw = std::atan2(railForward.x, railForward.z);
             float pitch = std::asin(-railForward.y);
             float railTilt = mainRails_[0]->GetTilt(0.0f);
-            currentCameraRot_ = {pitch, yaw, 0.0f};
+            currentCameraRot_ = { pitch, yaw, 0.0f };
             lastCameraYaw_ = yaw;
             currentCameraBank_ = railTilt;
         }
     }
-    
+
     ImGui::Separator();
     ImGui::Checkbox("レールを表示 (Draw Rail)", &isDrawRail_);
     ImGui::Checkbox("コライダーを表示 (Draw Collider)", &isDrawCollider_);
     ImGui::End();
 
-    if (player_) {
+    if (player_)
+    {
         player_->DrawUI();
     }
 
@@ -1119,21 +1405,26 @@ void GamePlayScene::Update()
 
     std::vector<Object3d*> allModels;
     std::vector<std::string> modelNames;
-    
+
     int index = 0;
-    for (auto& obj : modelInstances) {
-        if (obj) {
+    for (auto& obj : modelInstances)
+    {
+        if (obj)
+        {
             allModels.push_back(obj.get());
             modelNames.push_back("Model " + std::to_string(index));
         }
         index++;
     }
-    if (player_) {
-        if (player_->GetObject3d()) {
+    if (player_)
+    {
+        if (player_->GetObject3d())
+        {
             allModels.push_back(player_->GetObject3d());
             modelNames.push_back("Player");
         }
-        if (player_->GetReticle()) {
+        if (player_->GetReticle())
+        {
             allModels.push_back(player_->GetReticle());
             modelNames.push_back("Player Reticle");
         }
@@ -1147,14 +1438,15 @@ void GamePlayScene::Update()
         if (currentModelIndex >= allModels.size()) currentModelIndex = 0;
 
         std::vector<const char*> namePtrs;
-        for (const auto& name : modelNames) {
+        for (const auto& name : modelNames)
+        {
             namePtrs.push_back(name.c_str());
         }
 
         ImGui::Combo("対象モデル", &currentModelIndex, namePtrs.data(), (int)namePtrs.size());
 
         Object3d* obj = allModels[currentModelIndex];
-        
+
         // Translate / Rotation / Scale
         Vector3 t = obj->GetTranslate();
         float tArr[3] = { t.x, t.y, t.z };
@@ -1277,14 +1569,17 @@ void GamePlayScene::Update()
         int lightingMode = sampleModel ? sampleModel->GetSelectLightings() : 0;
 
         // ヘルパー: ライティングモードがどのライトを使うか
-        auto usesDirectional = [](int mode) {
-            return mode == 1 || mode == 2 || mode == 3 || mode == 4;
+        auto usesDirectional = [](int mode)
+            {
+                return mode == 1 || mode == 2 || mode == 3 || mode == 4;
             };
-        auto usesPoint = [](int mode) {
-            return mode == 4;
+        auto usesPoint = [](int mode)
+            {
+                return mode == 4;
             };
-        auto usesSpot = [](int mode) {
-            return mode == 5;
+        auto usesSpot = [](int mode)
+            {
+                return mode == 5;
             };
 
         // Directional
@@ -1614,47 +1909,70 @@ void GamePlayScene::Draw()
 
     // 敵とコライダーの描画
     if (object3dCommon) object3dCommon->SetCommonDrawSetting();
-    for (auto& enemy : enemies_) {
+    for (auto& enemy : enemies_)
+    {
         enemy->Draw();
     }
-    for (auto& obstacle : obstacles_) {
+    for (auto& obstacle : obstacles_)
+    {
         obstacle->Draw();
     }
-    
+
     // コライダーはワイヤーフレームで描画
-    if (isDrawCollider_) {
+    if (isDrawCollider_)
+    {
         if (object3dCommon) object3dCommon->SetWireframeDrawSetting();
-        for (auto& enemy : enemies_) {
+        for (auto& enemy : enemies_)
+        {
             enemy->DrawCollider();
         }
-        for (auto& obstacle : obstacles_) {
+        for (auto& obstacle : obstacles_)
+        {
             obstacle->DrawCollider();
         }
-        for (auto& bullet : bullets_) {
+        for (auto& bullet : bullets_)
+        {
             bullet->DrawCollider();
+        }
+        for (auto& bullet : enemyBullets_)
+        {
+            bullet->DrawCollider();
+        }
+        if (player_)
+        {
+            player_->DrawCollider();
         }
         // 描画設定を元に戻す
         if (object3dCommon) object3dCommon->SetCommonDrawSetting();
     }
-    
+
     // 弾の描画
-    for (auto& bullet : bullets_) {
+    for (auto& bullet : bullets_)
+    {
         bullet->Draw();
     }
-    
+    for (auto& bullet : enemyBullets_)
+    {
+        bullet->Draw();
+    }
+
     // プレイヤーの描画
-    if (player_) {
+    if (player_)
+    {
         if (object3dCommon) object3dCommon->SetCommonDrawSetting();
         player_->Draw();
     }
 
     // レールの描画
-    if (isDrawRail_) {
+    if (isDrawRail_)
+    {
         if (object3dCommon) object3dCommon->SetCommonDrawSetting();
-        for (auto& vis : railVisualizers_) {
+        for (auto& vis : railVisualizers_)
+        {
             if (vis) vis->Draw();
         }
-        for (auto& vis : enemyRailVisualizers_) {
+        for (auto& vis : enemyRailVisualizers_)
+        {
             if (vis) vis->Draw();
         }
     }

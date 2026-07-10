@@ -40,6 +40,27 @@ struct LevelObjectData {
     
     // カーブ（レール）の制御点
     std::vector<LevelCurvePoint> curvePoints;
+    
+    // 敵プロパティ
+    bool isEnemy = false;
+    std::string enemyType = "RUSHER";
+    std::string enemyTargetName = "";
+    Vector3 enemyTargetPos;
+    float enemyMaxY = 10.0f;
+    float enemyMinY = -10.0f;
+    int enemyFormationId = -1;
+
+    // スポナー設定
+    int spawnCount = 1;
+    int spawnInterval = 30;
+    std::string formationType = "NONE";
+    float formationSpacing = 10.0f;
+
+    // 敵拡張プロパティ
+    std::string enemyBehavior = "STRAIGHT";
+    float enemySpeed = 1.0f;
+    int enemyShootInterval = 180;
+    float enemySpawnDist = 800.0f;
 };
 
 struct LevelData {

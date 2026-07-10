@@ -1,44 +1,41 @@
-#include "PlayerBullet.h"
-#include "Game/Actor/Enemy/Enemy.h"
+#include "EnemyBullet.h"
+#include "Game/Actor/Player/Player.h"
 #include <cmath>
 
-void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& velocity, Object3d* parent, Enemy* targetEnemy) {
+void EnemyBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& velocity, bool isHoming, Player* targetPlayer) {
     velocity_ = velocity;
-    targetEnemy_ = targetEnemy;
+    isHoming_ = isHoming;
+    targetPlayer_ = targetPlayer;
+    
     object_ = std::make_unique<Object3d>();
     object_->Initialize(object3dCommon);
     object_->SetModel("cube.obj");
-    object_->GetModel()->SetColor({ 0.5f, 1.0f, 0.0f, 1.0f }); // 弾を黄緑色にする
+    object_->GetModel()->SetColor({ 1.0f, 0.5f, 0.0f, 1.0f }); // 敵の弾をオレンジ色にする
     object_->SetTranslate(position);
-    object_->SetScale({ 4.0f, 4.0f, 4.0f }); // 見やすいようにモデルを大きくする
-    // 弾はワールド座標系で飛ばすため、親(カメラ)は設定しない
-    // if (parent) {
-    //     object_->SetParent(parent);
-    // }
+    object_->SetScale({ 4.0f, 4.0f, 4.0f }); 
 
     colliderObject_ = std::make_unique<Object3d>();
     colliderObject_->Initialize(object3dCommon);
-    colliderObject_->SetModel("collider_sphere_player.obj"); // 弾の当たり判定と同じ球
-    colliderObject_->GetModel()->SetColor({ 0.0f, 1.0f, 0.0f, 1.0f }); // 緑色
+    colliderObject_->SetModel("collider_sphere_enemy.obj"); 
+    colliderObject_->GetModel()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); 
     colliderObject_->SetTranslate(position);
-    colliderObject_->SetScale({ 4.0f, 4.0f, 4.0f }); // 当たり判定を大きくする
+    colliderObject_->SetScale({ 4.0f, 4.0f, 4.0f }); 
     previousPosition_ = position;
 }
 
-void PlayerBullet::Update() {
+void EnemyBullet::Update() {
     previousPosition_ = object_->GetTranslate();
     Vector3 pos = previousPosition_;
 
     // ホーミング処理
-    if (targetEnemy_ && !targetEnemy_->IsDead()) {
-        Vector3 targetPos = targetEnemy_->GetColliderCenter();
+    if (isHoming_ && targetPlayer_) {
+        Vector3 targetPos = targetPlayer_->GetTranslate();
         Vector3 toTarget = {
             targetPos.x - pos.x,
             targetPos.y - pos.y,
             targetPos.z - pos.z
         };
 
-        // ターゲットへの方向を正規化
         float length = std::sqrt(toTarget.x * toTarget.x + toTarget.y * toTarget.y + toTarget.z * toTarget.z);
         if (length > 0.0f) {
             toTarget.x /= length;
@@ -46,16 +43,13 @@ void PlayerBullet::Update() {
             toTarget.z /= length;
         }
 
-        // 現在の速度ベクトルの長さ（スピード）を取得
         float speed = std::sqrt(velocity_.x * velocity_.x + velocity_.y * velocity_.y + velocity_.z * velocity_.z);
 
-        // 現在の速度ベクトルを少しずつターゲット方向へ向ける（ホーミングの強さ：0.15f 程度）
-        float homingStrength = 0.15f;
+        float homingStrength = 0.08f; // プレイヤーのホーミングより少し弱めにする
         velocity_.x += (toTarget.x * speed - velocity_.x) * homingStrength;
         velocity_.y += (toTarget.y * speed - velocity_.y) * homingStrength;
         velocity_.z += (toTarget.z * speed - velocity_.z) * homingStrength;
 
-        // 再度長さをspeedに合わせる（速度が変わらないようにする）
         float newLength = std::sqrt(velocity_.x * velocity_.x + velocity_.y * velocity_.y + velocity_.z * velocity_.z);
         if (newLength > 0.0f) {
             velocity_.x = (velocity_.x / newLength) * speed;
@@ -82,13 +76,13 @@ void PlayerBullet::Update() {
     }
 }
 
-void PlayerBullet::Draw() {
+void EnemyBullet::Draw() {
     if (object_) {
         object_->Draw();
     }
 }
 
-void PlayerBullet::DrawCollider() {
+void EnemyBullet::DrawCollider() {
     if (colliderObject_) {
         colliderObject_->Draw();
     }

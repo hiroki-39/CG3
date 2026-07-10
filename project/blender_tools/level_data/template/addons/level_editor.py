@@ -142,6 +142,7 @@ class MYADDON_OT_create_fighter(bpy.types.Operator):
         empty_obj.empty_display_size = 2.0
         empty_obj.location = context.scene.cursor.location
         empty_obj["file_name"] = "Fighter"
+        empty_obj.is_enemy_flag = True
         empty_obj["is_enemy"] = True
         empty_obj["spawn_progress"] = 0.0
         context.scene.collection.objects.link(empty_obj)
@@ -289,6 +290,38 @@ class OBJECT_PT_destructible(bpy.types.Panel):
         else:
             self.layout.operator(MYADDON_OT_add_destructible.bl_idname)
 
+#パネル Enemy Settings
+class OBJECT_PT_enemy_settings(bpy.types.Panel):
+    """オブジェクトの敵設定パネル"""
+    bl_idname = "OBJECT_PT_enemy_settings"
+    bl_label = "敵設定 (Enemy Settings)"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "object"
+
+    def draw(self, context):
+        obj = context.object
+        self.layout.prop(obj, "is_enemy_flag")
+        if obj.is_enemy_flag:
+            self.layout.prop(obj, "enemy_type")
+            self.layout.prop(obj, "enemy_target")
+            self.layout.prop(obj, "enemy_max_y")
+            self.layout.prop(obj, "enemy_min_y")
+            
+            box = self.layout.box()
+            box.label(text="AI・行動パターン")
+            box.prop(obj, "enemy_behavior")
+            box.prop(obj, "enemy_speed")
+            box.prop(obj, "enemy_shoot_interval")
+            box.prop(obj, "enemy_spawn_dist")
+            
+            box = self.layout.box()
+            box.label(text="スポナー・編隊設定")
+            box.prop(obj, "enemy_spawn_count")
+            box.prop(obj, "enemy_spawn_interval")
+            box.prop(obj, "enemy_formation_type")
+            box.prop(obj, "enemy_formation_spacing")
+
 #オペレータ　シーン出力
 class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     bl_idname = "myaddon.myaddon_ot_export_scene"
@@ -335,6 +368,38 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
 
         if "spawn_progress" in object:
             json_object["spawn_progress"] = object["spawn_progress"]
+
+        # 敵フラグと設定
+        is_enemy = getattr(object, "is_enemy_flag", False) or object.get("is_enemy", False)
+        if is_enemy:
+            json_object["is_enemy"] = True
+            if hasattr(object, "enemy_type"):
+                json_object["enemy_type"] = object.enemy_type
+            if hasattr(object, "enemy_target") and object.enemy_target:
+                json_object["enemy_target_name"] = object.enemy_target.name
+                json_object["enemy_target_pos"] = (object.enemy_target.location.x, object.enemy_target.location.y, object.enemy_target.location.z)
+            if hasattr(object, "enemy_max_y"):
+                json_object["enemy_max_y"] = object.enemy_max_y
+            if hasattr(object, "enemy_min_y"):
+                json_object["enemy_min_y"] = object.enemy_min_y
+                
+            # 新規追加のプロパティを日本語キーで出力
+            if hasattr(object, "enemy_behavior"):
+                json_object["行動パターン"] = object.enemy_behavior
+            if hasattr(object, "enemy_spawn_count"):
+                json_object["出現数"] = object.enemy_spawn_count
+            if hasattr(object, "enemy_spawn_interval"):
+                json_object["出現間隔"] = object.enemy_spawn_interval
+            if hasattr(object, "enemy_formation_type"):
+                json_object["陣形"] = object.enemy_formation_type
+            if hasattr(object, "enemy_formation_spacing"):
+                json_object["陣形間隔"] = object.enemy_formation_spacing
+            if hasattr(object, "enemy_speed"):
+                json_object["移動速度"] = object.enemy_speed
+            if hasattr(object, "enemy_shoot_interval"):
+                json_object["射撃間隔"] = object.enemy_shoot_interval
+            if hasattr(object, "enemy_spawn_dist"):
+                json_object["出現距離"] = object.enemy_spawn_dist
 
         # 破壊フラグ
         if "is_destructible" in object:
@@ -728,6 +793,7 @@ classes  = (
     OBJECT_PT_collider,
     MYADDON_OT_add_destructible,
     OBJECT_PT_destructible,
+    OBJECT_PT_enemy_settings,
 )
 
 #登録の関数
@@ -749,6 +815,55 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     
+    # プロパティの登録
+    bpy.types.Object.is_enemy_flag = bpy.props.BoolProperty(name="Is Enemy", default=False)
+    bpy.types.Object.enemy_type = bpy.props.EnumProperty(
+        items=[
+            ('RUSHER', "Rusher (突進)", ""),
+            ('SHOOTER', "Shooter (弾)", ""),
+            ('HOMING', "Homing (ホーミング)", ""),
+            ('TURRET', "Turret (固定砲台)", "")
+        ],
+        name="Enemy Type",
+        default='RUSHER'
+    )
+    bpy.types.Object.enemy_target = bpy.props.PointerProperty(
+        type=bpy.types.Object,
+        name="Target Position",
+        description="移動先となるオブジェクト(Emptyなど)"
+    )
+    bpy.types.Object.enemy_max_y = bpy.props.FloatProperty(name="Max Y", default=10.0)
+    bpy.types.Object.enemy_min_y = bpy.props.FloatProperty(name="Min Y", default=-10.0)
+    
+    # 拡張プロパティ
+    bpy.types.Object.enemy_behavior = bpy.props.EnumProperty(
+        items=[
+            ('STRAIGHT', "STRAIGHT (直進)", ""),
+            ('CROSS', "CROSS (横切る)", ""),
+            ('APPROACH', "APPROACH (接近・離脱)", ""),
+            ('STAY', "STAY (固定砲台)", ""),
+            ('PATH', "PATH (カーブに沿う)", "")
+        ],
+        name="行動パターン",
+        default='STRAIGHT'
+    )
+    bpy.types.Object.enemy_spawn_count = bpy.props.IntProperty(name="出現数", default=1, min=1)
+    bpy.types.Object.enemy_spawn_interval = bpy.props.IntProperty(name="出現間隔(F)", default=30, min=0)
+    bpy.types.Object.enemy_formation_type = bpy.props.EnumProperty(
+        items=[
+            ('NONE', "NONE (同じ場所・時間差)", ""),
+            ('LINE', "LINE (縦一列)", ""),
+            ('V_SHAPE', "V_SHAPE (V字編隊)", ""),
+            ('HORIZONTAL', "HORIZONTAL (横一列)", "")
+        ],
+        name="陣形",
+        default='NONE'
+    )
+    bpy.types.Object.enemy_formation_spacing = bpy.props.FloatProperty(name="陣形間隔", default=10.0)
+    bpy.types.Object.enemy_speed = bpy.props.FloatProperty(name="移動速度", default=1.0)
+    bpy.types.Object.enemy_shoot_interval = bpy.props.IntProperty(name="射撃間隔(F)", default=180, min=0)
+    bpy.types.Object.enemy_spawn_dist = bpy.props.FloatProperty(name="出現距離", default=800.0)
+
     #メニューに項目を追加
     bpy.types.TOPBAR_MT_editor_menus.append(
         TOPBAR_MT_my_menu.submenu
@@ -768,6 +883,21 @@ def unregister():
         )
         #描画関数を3Dビューから削除
         bpy.types.SpaceView3D.draw_handler_remove(DrawCollider.handle, 'WINDOW')
+
+        del bpy.types.Object.is_enemy_flag
+        del bpy.types.Object.enemy_type
+        del bpy.types.Object.enemy_target
+        del bpy.types.Object.enemy_max_y
+        del bpy.types.Object.enemy_min_y
+        
+        del bpy.types.Object.enemy_behavior
+        del bpy.types.Object.enemy_spawn_count
+        del bpy.types.Object.enemy_spawn_interval
+        del bpy.types.Object.enemy_formation_type
+        del bpy.types.Object.enemy_formation_spacing
+        del bpy.types.Object.enemy_speed
+        del bpy.types.Object.enemy_shoot_interval
+        del bpy.types.Object.enemy_spawn_dist
     except:
         pass
 
