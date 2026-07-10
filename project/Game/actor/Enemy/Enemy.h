@@ -71,4 +71,5 @@ private:
     int formationId_ = -1;
     int invincibilityTimer_ = 0;
     int attackTimer_ = 0;
+    Vector3 dashVelocity_ = {0.0f, 0.0f, 0.0f};
 };

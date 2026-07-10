@@ -18,8 +18,8 @@ void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& pos
 
     colliderObject_ = std::make_unique<Object3d>();
     colliderObject_->Initialize(object3dCommon);
-    colliderObject_->SetModel("collider_sphere.obj"); // 弾の当たり判定と同じ球
-    colliderObject_->GetModel()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
+    colliderObject_->SetModel("collider_sphere_player.obj"); // 弾の当たり判定と同じ球
+    colliderObject_->GetModel()->SetColor({ 0.0f, 1.0f, 0.0f, 1.0f }); // 緑色
     colliderObject_->SetTranslate(position);
     colliderObject_->SetScale({ 4.0f, 4.0f, 4.0f }); // 当たり判定を大きくする
     previousPosition_ = position;

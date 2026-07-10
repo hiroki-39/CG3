@@ -3,6 +3,30 @@
     "objects": [
         {
             "type": "MESH",
+            "name": "Obstacle_Rock",
+            "transform": {
+                "translation": [
+                    -120.35221862792969,
+                    250.4429931640625,
+                    10.0
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    20.0,
+                    10.0,
+                    10.0
+                ]
+            },
+            "file_name": "Obstacle_Rock",
+            "is_destructible": true,
+            "texture_path": "Obstacle_Rock.png"
+        },
+        {
+            "type": "MESH",
             "name": "wall",
             "transform": {
                 "translation": [
@@ -22,40 +46,16 @@
                 ]
             },
             "is_destructible": true,
-            "texture_path": "wall.png"
-        },
-        {
-            "type": "MESH",
-            "name": "Obstacle_Rock",
-            "transform": {
-                "translation": [
-                    -120.53011322021484,
-                    250.4429931640625,
-                    10.0
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    20.0,
-                    10.0,
-                    10.0
-                ]
-            },
-            "file_name": "Obstacle_Rock",
-            "is_destructible": false,
-            "texture_path": "Obstacle_Rock.png"
+            "texture_path": "wall.png.001"
         },
         {
             "type": "EMPTY",
             "name": "Invisible",
             "transform": {
                 "translation": [
-                    -120.53011322021484,
+                    -120.35221862792969,
                     250.4429931640625,
-                    15.962987899780273
+                    15.793132781982422
                 ],
                 "rotation": [
                     0.0,
@@ -89,7 +89,7 @@
             "name": "Invisible.001",
             "transform": {
                 "translation": [
-                    -108.51671600341797,
+                    -108.33882141113281,
                     250.4429931640625,
                     5.792749881744385
                 ],
@@ -125,7 +125,7 @@
             "name": "Invisible.002",
             "transform": {
                 "translation": [
-                    -132.54351806640625,
+                    -132.36563110351562,
                     250.4429931640625,
                     5.792749881744385
                 ],
@@ -161,8 +161,8 @@
             "name": "Enemy_Fighter",
             "transform": {
                 "translation": [
-                    27.084087371826172,
-                    491.13427734375,
+                    68.41349792480469,
+                    394.7359924316406,
                     20.780223846435547
                 ],
                 "rotation": [
@@ -179,8 +179,8 @@
             "file_name": "Fighter",
             "is_enemy": true,
             "enemy_type": "SHOOTER",
-            "enemy_max_y": 5.0,
-            "enemy_min_y": 0.0,
+            "enemy_max_y": 20.0,
+            "enemy_min_y": 5.0,
             "enemy_formation_id": -1,
             "is_destructible": true,
             "collider": {
@@ -195,7 +195,70 @@
                     5.0,
                     5.0
                 ]
-            }
+            },
+            "children": [
+                {
+                    "type": "CURVE",
+                    "name": "ベジエカーブ",
+                    "transform": {
+                        "translation": [
+                            -25.252025604248047,
+                            0.000274658203125,
+                            -0.7802238464355469
+                        ],
+                        "rotation": [
+                            0.0,
+                            -0.0,
+                            -179.99998474121094
+                        ],
+                        "scale": [
+                            23.2359676361084,
+                            23.2359676361084,
+                            23.2359676361084
+                        ]
+                    },
+                    "is_destructible": true,
+                    "curve_points_debug": "Script is updated!",
+                    "curve_points": [
+                        {
+                            "position": {
+                                "x": 66.3974380493164,
+                                "y": 394.73626708984375,
+                                "z": 20.0
+                            },
+                            "handle_left": {
+                                "x": 86.67168426513672,
+                                "y": 394.73626708984375,
+                                "z": 20.0
+                            },
+                            "handle_right": {
+                                "x": 46.123199462890625,
+                                "y": 394.73626708984375,
+                                "z": 20.0
+                            },
+                            "tilt": 0.0
+                        },
+                        {
+                            "position": {
+                                "x": 14.466997146606445,
+                                "y": 394.73626708984375,
+                                "z": 20.0
+                            },
+                            "handle_left": {
+                                "x": 34.74123764038086,
+                                "y": 394.73626708984375,
+                                "z": 20.0
+                            },
+                            "handle_right": {
+                                "x": -5.807247161865234,
+                                "y": 394.73626708984375,
+                                "z": 20.0
+                            },
+                            "tilt": 0.0
+                        }
+                    ]
+                }
+            ]
         },
         {
             "type": "EMPTY",
@@ -203,7 +266,7 @@
             "transform": {
                 "translation": [
                     -6.041552543640137,
-                    537.900146484375,
+                    367.00836181640625,
                     27.751310348510742
                 ],
                 "rotation": [
@@ -221,8 +284,8 @@
             "spawn_progress": 0.0,
             "is_enemy": true,
             "enemy_type": "SHOOTER",
-            "enemy_max_y": 10.0,
-            "enemy_min_y": 0.0,
+            "enemy_max_y": 20.0,
+            "enemy_min_y": 5.0,
             "enemy_formation_id": -1,
             "is_destructible": true,
             "collider": {
@@ -245,7 +308,7 @@
             "transform": {
                 "translation": [
                     -17.50151824951172,
-                    496.0163879394531,
+                    283.87030029296875,
                     19.059139251708984
                 ],
                 "rotation": [
@@ -263,8 +326,8 @@
             "spawn_progress": 0.0,
             "is_enemy": true,
             "enemy_type": "SHOOTER",
-            "enemy_max_y": 10.0,
-            "enemy_min_y": -10.0,
+            "enemy_max_y": 20.0,
+            "enemy_min_y": 5.0,
             "enemy_formation_id": -1,
             "is_destructible": true,
             "collider": {

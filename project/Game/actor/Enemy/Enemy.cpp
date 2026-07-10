@@ -57,17 +57,18 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const LevelObjectData& no
     colliderObject_ = std::make_unique<Object3d>();
     colliderObject_->Initialize(object3dCommon);
     if (collider_.type == "SPHERE") {
-        ModelManager::GetInstance()->LoadModel("collider_sphere.obj");
-        colliderObject_->SetModel("collider_sphere.obj"); // 球の代用
+        ModelManager::GetInstance()->LoadModel("collider_sphere_enemy.obj");
+        colliderObject_->SetModel("collider_sphere_enemy.obj"); // 球の代用
         colliderObject_->SetScale({collider_.radius, collider_.radius, collider_.radius});
     } else {
-        ModelManager::GetInstance()->LoadModel("collider_cube.obj");
-        colliderObject_->SetModel("collider_cube.obj");
+        ModelManager::GetInstance()->LoadModel("collider_cube_enemy.obj");
+        colliderObject_->SetModel("collider_cube_enemy.obj");
         colliderObject_->SetScale({collider_.size.x, collider_.size.y, collider_.size.z});
     }
     
     // コライダー専用のモデルなので、色を赤にしても他のモデルに影響しない
     colliderObject_->GetModel()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
+    colliderObject_->SetEnvironmentCoefficient(0.0f);
 
     // 初期位置にコライダーオブジェクトを追従させる
     object_->Update();
@@ -166,16 +167,30 @@ void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Playe
                 rot.x += (pitch - rot.x) * 0.1f;
                 object_->SetRotation(rot);
             } else if (typeName_ == "RUSHER") {
-                // プレイヤーに向かってまっすぐ突っ込む
-                Vector3 toPlayer = { playerWorldPos.x - position_.x, playerWorldPos.y - position_.y, playerWorldPos.z - position_.z };
-                float length = std::sqrt(toPlayer.x*toPlayer.x + toPlayer.y*toPlayer.y + toPlayer.z*toPlayer.z);
-                if (length > 0.0f) {
-                    position_.x += (toPlayer.x / length) * 0.8f;
-                    position_.y += (toPlayer.y / length) * 0.8f;
-                    position_.z += (toPlayer.z / length) * 0.8f;
-                    // プレイヤーの方向を向く
+                attackTimer_++;
+                if (attackTimer_ < 120) {
+                    // 2秒間(120フレーム)はプレイヤーの方を向きながら待機
+                    Vector3 toPlayer = { playerWorldPos.x - position_.x, playerWorldPos.y - position_.y, playerWorldPos.z - position_.z };
                     float yaw = std::atan2(toPlayer.x, toPlayer.z);
                     object_->SetRotation({0, yaw, 0});
+                    
+                    // 待機中は少しフワフワさせる演出（任意）
+                    position_.y += std::sin(attackTimer_ * 0.1f) * 0.05f;
+
+                    // 突進開始直前に方向を決定する
+                    if (attackTimer_ == 119) {
+                        float length = std::sqrt(toPlayer.x*toPlayer.x + toPlayer.y*toPlayer.y + toPlayer.z*toPlayer.z);
+                        if (length > 0.0f) {
+                            dashVelocity_.x = (toPlayer.x / length) * 1.5f; // 突進スピード
+                            dashVelocity_.y = (toPlayer.y / length) * 1.5f;
+                            dashVelocity_.z = (toPlayer.z / length) * 1.5f;
+                        }
+                    }
+                } else {
+                    // 突進！
+                    position_.x += dashVelocity_.x;
+                    position_.y += dashVelocity_.y;
+                    position_.z += dashVelocity_.z;
                 }
             } else {
                 // SHOOTER, HOMINGなどは、プレイヤー前方に追従して浮遊する（固定砲台と差別化）
@@ -195,8 +210,8 @@ void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Playe
         float swayY = std::cos(pathProgress_ * 2.5f) * 1.5f;
         pathProgress_ += 0.02f; // スウェイのための時間進行用
 
-        // 目標座標（Target Positionが指定されていなければプレイヤー前方を基準にする）
-        Vector3 basePos = playerWorldPos;
+        // 目標座標（Target Positionが指定されていなければカメラ前方を基準にする）
+        Vector3 basePos = cameraPos;
         if (targetPos_.x != 0.0f || targetPos_.y != 0.0f || targetPos_.z != 0.0f) {
             basePos = targetPos_;
         }
@@ -233,7 +248,7 @@ void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Playe
     if (typeName_ == "SHOOTER" || typeName_ == "HOMING" || typeName_ == "TURRET") {
         if (isActive_ && !isDead_) {
             attackTimer_++;
-            if (attackTimer_ >= 90) { // 1.5秒ごとに発射
+            if (attackTimer_ >= 180) { // 3秒ごとに発射（間隔を延長して弱体化）
                 attackTimer_ = 0;
                 auto bullet = std::make_unique<EnemyBullet>();
                 bool isHoming = (typeName_ == "HOMING");

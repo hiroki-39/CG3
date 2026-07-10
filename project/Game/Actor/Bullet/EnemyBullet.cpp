@@ -16,7 +16,7 @@ void EnemyBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& posi
 
     colliderObject_ = std::make_unique<Object3d>();
     colliderObject_->Initialize(object3dCommon);
-    colliderObject_->SetModel("collider_sphere.obj"); 
+    colliderObject_->SetModel("collider_sphere_enemy.obj"); 
     colliderObject_->GetModel()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); 
     colliderObject_->SetTranslate(position);
     colliderObject_->SetScale({ 4.0f, 4.0f, 4.0f }); 

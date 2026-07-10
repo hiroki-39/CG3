@@ -64,14 +64,14 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
         pp->SetEffectActive("Grayscale", false);
     }
     // コライダー可視化用オブジェクト
-    ModelManager::GetInstance()->LoadModel("collider_cube.obj");
+    ModelManager::GetInstance()->LoadModel("collider_cube_player.obj");
     colliderObject_ = std::make_unique<Object3d>();
     colliderObject_->Initialize(object3dCommon);
-    colliderObject_->SetModel("collider_cube.obj"); // 立方体のモデル
-    colliderObject_->GetModel()->SetColor({ 0.0f, 1.0f, 1.0f, 1.0f }); // 水色
+    colliderObject_->SetModel("collider_cube_player.obj"); // プレイヤー専用の立方体モデル
+    colliderObject_->GetModel()->SetColor({ 0.0f, 1.0f, 0.0f, 1.0f }); // 緑色
     colliderObject_->SetEnvironmentCoefficient(0.0f);
     colliderObject_->SetEnableLighting(false);
-    colliderObject_->SetScale({ 4.0f, 4.0f, 4.0f }); // プレイヤーの当たり判定のサイズ(幅, 高さ, 奥行き)
+    colliderObject_->SetScale(colliderSize_); // プレイヤーの当たり判定のサイズ
 }
 
 void Player::OnCollision() {
@@ -363,6 +363,21 @@ void Player::LoadSettings(const std::string& filepath) {
         if (j.contains("bulletSpeed")) bulletSpeed_ = j["bulletSpeed"];
         if (j.contains("modelName")) modelName_ = j["modelName"];
         if (j.contains("reflection")) reflection_ = j["reflection"];
+        if (j.contains("playerScale")) {
+            playerScale_ = { j["playerScale"][0], j["playerScale"][1], j["playerScale"][2] };
+        }
+        if (j.contains("colliderSize")) {
+            colliderSize_ = { j["colliderSize"][0], j["colliderSize"][1], j["colliderSize"][2] };
+            if (colliderObject_) {
+                colliderObject_->SetScale(colliderSize_);
+            }
+        }
+        if (j.contains("hp")) {
+            hp_ = j["hp"];
+        }
+        if (j.contains("maxHp")) {
+            maxHp_ = j["maxHp"];
+        }
         if (j.contains("color")) {
             auto c = j["color"];
             if (c.is_array() && c.size() == 4) {
@@ -376,10 +391,6 @@ void Player::LoadSettings(const std::string& filepath) {
         if (j.contains("modelRotOffset")) {
             auto arr = j["modelRotOffset"];
             if (arr.is_array() && arr.size() == 3) modelRotOffset_ = { arr[0], arr[1], arr[2] };
-        }
-        if (j.contains("playerScale")) {
-            auto arr = j["playerScale"];
-            if (arr.is_array() && arr.size() == 3) playerScale_ = { arr[0], arr[1], arr[2] };
         }
         file.close();
         
@@ -414,6 +425,9 @@ void Player::SaveSettings(const std::string& filepath) {
     j["modelPosOffset"] = { modelPosOffset_.x, modelPosOffset_.y, modelPosOffset_.z };
     j["modelRotOffset"] = { modelRotOffset_.x, modelRotOffset_.y, modelRotOffset_.z };
     j["playerScale"] = { playerScale_.x, playerScale_.y, playerScale_.z };
+    j["colliderSize"] = { colliderSize_.x, colliderSize_.y, colliderSize_.z };
+    j["hp"] = hp_;
+    j["maxHp"] = maxHp_;
 
     std::filesystem::path p(filepath);
     if (p.has_parent_path()) {
@@ -482,9 +496,14 @@ void Player::DrawUI() {
             modelRotOffset_ = { rotOffset[0], rotOffset[1], rotOffset[2] };
         }
         float scale[3] = { playerScale_.x, playerScale_.y, playerScale_.z };
-        if (ImGui::DragFloat3("Scale", scale, 0.05f)) {
-            playerScale_ = { scale[0], scale[1], scale[2] };
+        if (ImGui::DragFloat3("Player Scale", &playerScale_.x, 0.01f)) {
+            object_->SetScale(playerScale_);
         }
+        if (ImGui::DragFloat3("Collider Size", &colliderSize_.x, 0.1f)) {
+            if (colliderObject_) colliderObject_->SetScale(colliderSize_);
+        }
+        ImGui::DragInt("HP", &hp_);
+        ImGui::DragInt("Max HP", &maxHp_);
     }
     
     if (ImGui::CollapsingHeader("Movement Settings", ImGuiTreeNodeFlags_DefaultOpen)) {

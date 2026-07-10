@@ -778,7 +778,7 @@ void GamePlayScene::Update()
                 // プレイヤー側の当たり判定（OBB）
                 const Matrix4x4& wMat = player_->GetColliderObject()->GetmatWorld();
                 Vector3 pWorldPos = { wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] };
-                Vector3 playerBoxSize = { 4.0f, 4.0f, 4.0f }; // collider scale と一致させる
+                Vector3 playerBoxSize = player_->GetColliderSize();
                 
                 // 回転行列の抽出と正規化
                 Matrix4x4 rotMat = wMat;
