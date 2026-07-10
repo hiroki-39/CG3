@@ -26,6 +26,7 @@ public:
     void SetMovePath(std::unique_ptr<Rail> path);
 
     void SetSpawnProgress(float progress) { spawnProgress_ = progress; }
+    void SetSpawnDelay(int delay) { spawnDelay_ = delay; }
     void SetTexturePath(const std::string& path);
 
     // Getter / Setter
@@ -64,7 +65,15 @@ private:
     bool isAutoAI_ = false;
     Vector3 aiOffset_ = {0.0f, 0.0f, 0.0f};
 
-    // 拡張AI用プロパティ
+    // 拡張AI用プロパティ（新規追加分）
+    std::string behavior_ = "STRAIGHT"; // 行動パターン
+    float moveSpeed_ = 1.0f;            // 移動速度
+    int shootInterval_ = 180;           // 射撃間隔
+    float spawnDist_ = 800.0f;          // 出現距離
+    int spawnDelay_ = 0;                // スポナーで生成された時の遅延（フレーム数）
+    int activeTimer_ = 0;               // アクティブになってからの経過時間
+
+    // 拡張AI用プロパティ（既存）
     Vector3 targetPos_;
     float maxY_ = 10.0f;
     float minY_ = -10.0f;

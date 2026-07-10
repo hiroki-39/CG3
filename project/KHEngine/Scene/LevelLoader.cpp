@@ -56,6 +56,34 @@ void LevelLoader::ParseObject(const void* jsonNodePtr, LevelObjectData& objectDa
         objectData.enemyFormationId = objJson["enemy_formation_id"].get<int>();
     }
 
+    // スポナー設定（日本語対応）
+    if (objJson.contains("出現数")) {
+        objectData.spawnCount = objJson["出現数"].get<int>();
+    }
+    if (objJson.contains("出現間隔")) {
+        objectData.spawnInterval = objJson["出現間隔"].get<int>();
+    }
+    if (objJson.contains("陣形")) {
+        objectData.formationType = objJson["陣形"].get<std::string>();
+    }
+    if (objJson.contains("陣形間隔")) {
+        objectData.formationSpacing = objJson["陣形間隔"].get<float>();
+    }
+
+    // 敵拡張プロパティ（日本語対応）
+    if (objJson.contains("行動パターン")) {
+        objectData.enemyBehavior = objJson["行動パターン"].get<std::string>();
+    }
+    if (objJson.contains("移動速度")) {
+        objectData.enemySpeed = objJson["移動速度"].get<float>();
+    }
+    if (objJson.contains("射撃間隔")) {
+        objectData.enemyShootInterval = objJson["射撃間隔"].get<int>();
+    }
+    if (objJson.contains("出現距離")) {
+        objectData.enemySpawnDist = objJson["出現距離"].get<float>();
+    }
+
     // トランスフォーム
     if (objJson.contains("transform")) {
         const auto& transform = objJson["transform"];

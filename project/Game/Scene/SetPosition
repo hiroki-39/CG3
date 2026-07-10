@@ -1,0 +1,33 @@
+GamePlayScene.cpp:    player_->Initialize(object3dCommon, skybox_->GetCubemapSrvIndex());
+GamePlayScene.cpp:    player_->LoadSettings("resources/json/player/player_settings.json");
+GamePlayScene.cpp:    player_->GetObject3d()->SetParent(cameraObject_.get());
+GamePlayScene.cpp:    if (player_->GetColliderObject()) {
+GamePlayScene.cpp:        player_->GetColliderObject()->SetParent(cameraObject_.get());
+GamePlayScene.cpp:    player_->GetReticle()->SetParent(cameraObject_.get());
+GamePlayScene.cpp:    if (player_->GetFrontReticle()) {
+GamePlayScene.cpp:        player_->GetFrontReticle()->SetParent(cameraObject_.get());
+GamePlayScene.cpp:            if (player_ && player_->IsBoosting()) {
+GamePlayScene.cpp:            player_->Update(bullets_, cameraObject_.get());
+GamePlayScene.cpp:            if (player_->ConsumeDodgeTrigger()) {
+GamePlayScene.cpp:                const Matrix4x4& wMat = player_->GetObject3d()->GetmatWorld();
+GamePlayScene.cpp:            player_->Update3DObjectOnly();
+GamePlayScene.cpp:            if (!(*it)->IsDead() && player_ && !player_->IsDead()) {
+GamePlayScene.cpp:                const Matrix4x4& wMat = player_->GetColliderObject()->GetmatWorld();
+GamePlayScene.cpp:                Vector3 playerBoxSize = player_->GetColliderSize();
+GamePlayScene.cpp:                    player_->OnCollision();
+GamePlayScene.cpp:        if (player_ && player_->GetObject3d() && player_->GetReticle() && activeCamera_) {
+GamePlayScene.cpp:            Vector3 reticlePos = player_->GetReticleWorldPosition();
+GamePlayScene.cpp:                player_->SetReticleColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
+GamePlayScene.cpp:                player_->SetLockOn(true, lockOnPos, lockOnEnemy);
+GamePlayScene.cpp:                    player_->SetReticleColor({ 1.0f, 0.6f, 0.0f, 1.0f });
+GamePlayScene.cpp:                    player_->SetReticleColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 白色
+GamePlayScene.cpp:                player_->SetLockOn(false);
+GamePlayScene.cpp:    if (player_ && player_->GetObject3d()) {
+GamePlayScene.cpp:        const Matrix4x4& wMat = player_->GetObject3d()->GetmatWorld();
+GamePlayScene.cpp:        player_->DrawUI();
+GamePlayScene.cpp:        if (player_->GetObject3d()) {
+GamePlayScene.cpp:            allModels.push_back(player_->GetObject3d());
+GamePlayScene.cpp:        if (player_->GetReticle()) {
+GamePlayScene.cpp:            allModels.push_back(player_->GetReticle());
+GamePlayScene.cpp:            player_->DrawCollider();
+GamePlayScene.cpp:        player_->Draw();
