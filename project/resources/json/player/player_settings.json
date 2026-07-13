@@ -19,11 +19,11 @@
         0.0,
         0.0
     ],
-    "moveLimitX": 15.0,
-    "moveLimitY": 12.399999618530273,
-    "playerLimitX": 6.300000190734863,
-    "playerLimitYMax": 3.700000047683716,
-    "playerLimitYMin": -3.9000000953674316,
+    "moveLimitX": 40.0,
+    "moveLimitY": 25.0,
+    "playerLimitX": 25.0,
+    "playerLimitYMax": 20.0,
+    "playerLimitYMin": -5.0,
     "playerScale": [
         0.5,
         0.5,

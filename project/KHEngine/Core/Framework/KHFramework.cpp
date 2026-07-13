@@ -102,12 +102,10 @@ void KHFramework::FrameworkUpdate(float /*deltaTime*/)
 	{
 		imguiManager_->Begin();
 
-		if (EngineServices::GetInstance()->GetEditorMode())
-		{
-			// エディタモード：最初にドッキング空間を作り、その中にビューポートを表示
-			// （他のImGui::Beginより前に呼ぶ必要があるためここで行う）
-			EditorSystem::GetInstance()->Draw(postProcess_->GetResultSrvIndex());
-		}
+		// エディタモード：最初にドッキング空間を作り、その中にビューポートを表示
+		// （他のImGui::Beginより前に呼ぶ必要があるためここで行う）
+		// フルスクリーンモードでもDockSpaceのレイアウトを維持するため、常に呼び出す
+		EditorSystem::GetInstance()->Draw(postProcess_->GetResultSrvIndex());
 
 		// ポストプロセスのエディタウィンドウを表示
 		if (postProcess_)

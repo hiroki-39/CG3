@@ -817,10 +817,9 @@ void GamePlayScene::Update()
                     pp->SetEffectActive("RadialBlur", false);
                 }
             }
-
             if (!mainRails_.empty() && railCameraController_)
             {
-                railCameraController_->Update(gameSpeed_);
+                railCameraController_->Update(gameSpeed_, player_->GetTranslate());
             }
             else
             {

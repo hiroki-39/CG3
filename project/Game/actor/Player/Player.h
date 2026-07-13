@@ -116,16 +116,16 @@ private:
     Vector3 reticlePosition_ = { 0.0f, 0.0f, 40.0f }; // 照準の座標
     Vector4 reticleColor_ = { 1.0f, 1.0f, 1.0f, 1.0f }; // 照準の色
 
-    // 繝励Ξ繧､繝､繝ｼ險ｭ螳壹ヱ繝ｩ繝｡繝ｼ繧ｿ
+    // プレイヤー設定パラメータ
     float speed_ = 0.3f;
     float reticleSpeed_ = 0.5f;
-    float moveLimitX_ = 15.0f;
-    float moveLimitY_ = 10.0f;
+    float moveLimitX_ = 40.0f;     // 照準のX移動限界（拡張）
+    float moveLimitY_ = 25.0f;     // 照準のY移動限界（拡張）
     int attackInterval_ = 15;
     int rollMaxTime_ = 15;
-    float playerLimitX_ = 4.0f;
-    float playerLimitYMin_ = 2.0f;
-    float playerLimitYMax_ = 8.0f;
+    float playerLimitX_ = 25.0f;   // プレイヤーの実際のX移動限界（大幅拡張）
+    float playerLimitYMin_ = -5.0f;// 下への移動限界（拡張）
+    float playerLimitYMax_ = 20.0f;// 上への移動限界（大幅拡張）
     float followSpeed_ = 0.08f;
     float bulletSpeed_ = 3.0f;
 

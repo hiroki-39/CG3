@@ -220,10 +220,8 @@ void Player::Move() {
     }
 
     // 照準の移動制限
-    // Y座標の下限を厳しくして（例: -2.0f など）、地面に潜らないようにする
-    float reticleLimitYMin = -2.0f; // これ以上は下に行かない
     reticlePosition_.x = std::clamp(reticlePosition_.x, -moveLimitX_, moveLimitX_);
-    reticlePosition_.y = std::clamp(reticlePosition_.y, reticleLimitYMin, moveLimitY_);
+    reticlePosition_.y = std::clamp(reticlePosition_.y, playerLimitYMin_, moveLimitY_);
 
     // 奥照準のZ座標はプレイヤーより一定距離奥に保つ
     reticlePosition_.z = logicalPosition_.z + 40.0f;
