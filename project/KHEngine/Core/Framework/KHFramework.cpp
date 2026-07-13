@@ -102,7 +102,7 @@ void KHFramework::FrameworkUpdate(float /*deltaTime*/)
 	{
 		imguiManager_->Begin();
 
-		if (isEditorMode_)
+		if (EngineServices::GetInstance()->GetEditorMode())
 		{
 			// エディタモード：最初にドッキング空間を作り、その中にビューポートを表示
 			// （他のImGui::Beginより前に呼ぶ必要があるためここで行う）
@@ -137,14 +137,17 @@ void KHFramework::FrameworkDrawEnd()
 	if (postProcess_)
 	{
 		// エディタモードなら専用のテクスチャへ、ゲームモードなら直接Swapchainへ出力
-		postProcess_->Draw(!isEditorMode_);
+		postProcess_->Draw(!EngineServices::GetInstance()->GetEditorMode());
 	}
 
 	// ImGui 描画準備と描画
 	if (imguiManager_)
 	{
 		imguiManager_->End();
-		imguiManager_->Draw();
+		if (EngineServices::GetInstance()->GetEditorMode())
+		{
+			imguiManager_->Draw();
+		}
 	}
 
 	if (dxCommon_)

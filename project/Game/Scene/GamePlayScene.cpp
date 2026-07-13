@@ -674,6 +674,12 @@ void GamePlayScene::Update()
     auto input = services->GetInput();
     float dt = services->GetDeltaTime();
 
+    // 0キーでUI表示（エディターモード）に戻す
+    if (input && input->TriggerKey(DIK_0))
+    {
+        services->SetEditorMode(true);
+    }
+
     // ホットリロードのトリガー (F5キー)
     if (input && input->TriggerKey(DIK_F5))
     {
@@ -1289,6 +1295,11 @@ void GamePlayScene::Update()
         {
             doReset = true;
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Full Screen (Hide UI)", ImVec2(160, 40)))
+        {
+            EngineServices::GetInstance()->SetEditorMode(false);
+        }
         ImGui::Text("Status: PLAYING");
     }
     else
@@ -1296,6 +1307,12 @@ void GamePlayScene::Update()
         if (ImGui::Button("Play (Start)", ImVec2(120, 40)))
         {
             isPlaying_ = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Play Full Screen", ImVec2(160, 40)))
+        {
+            isPlaying_ = true;
+            EngineServices::GetInstance()->SetEditorMode(false);
         }
         ImGui::SameLine();
         if (ImGui::Button("Reset", ImVec2(120, 40)))
