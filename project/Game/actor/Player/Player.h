@@ -119,13 +119,13 @@ private:
     // プレイヤー設定パラメータ
     float speed_ = 0.3f;
     float reticleSpeed_ = 0.5f;
-    float moveLimitX_ = 40.0f;     // 照準のX移動限界（拡張）
-    float moveLimitY_ = 25.0f;     // 照準のY移動限界（拡張）
+    float moveLimitX_ = 25.0f;     // 照準のX移動限界（自機限界と合わせる）
+    float moveLimitY_ = 12.0f;     // 照準のY移動限界（自機限界と合わせる）
     int attackInterval_ = 15;
     int rollMaxTime_ = 15;
-    float playerLimitX_ = 25.0f;   // プレイヤーの実際のX移動限界（大幅拡張）
-    float playerLimitYMin_ = -5.0f;// 下への移動限界（拡張）
-    float playerLimitYMax_ = 20.0f;// 上への移動限界（大幅拡張）
+    float playerLimitX_ = 25.0f;   // プレイヤーの実際のX移動限界
+    float playerLimitYMin_ = -5.0f;// 下への移動限界
+    float playerLimitYMax_ = 12.0f;// 上への移動限界（カメラ内に収まるよう狭める）
     float followSpeed_ = 0.08f;
     float bulletSpeed_ = 3.0f;
 

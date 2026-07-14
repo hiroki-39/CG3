@@ -260,24 +260,44 @@ void Player::Move() {
         0.0f
     };
 
-    // 移動時の体の傾き計算
-    // 上下移動時のピッチ角（機首の上下）
-    float pitchAngle = velocity.y * -2.0f;
-    pitchAngle = std::clamp(pitchAngle, -0.6f, 0.6f);
+    // --- 機体の傾き計算 ---
+    // 速度ベースだと画面端でvelocityが0になった瞬間に傾きが急に戻る違和感があるため、
+    // キー入力（向かおうとする意志）ベースでターゲット角度を決定する
+    float targetPitch = 0.0f;
+    float targetYaw = 0.0f;
+    float targetBank = 0.0f;
 
-    // 左右移動時のヨー角（機首の左右）
-    float yawAngle = velocity.x * 0.6f;
-    yawAngle = std::clamp(yawAngle, -0.4f, 0.4f);
+    if (input_->PushKey(DIK_W) || input_->PushKey(DIK_UP)) {
+        targetPitch = -0.4f; // 機首を上に向ける
+    }
+    if (input_->PushKey(DIK_S) || input_->PushKey(DIK_DOWN)) {
+        targetPitch = 0.4f;  // 機首を下に向ける
+    }
+    
+    if (input_->PushKey(DIK_A) || input_->PushKey(DIK_LEFT)) {
+        targetYaw = -0.2f; // 左を向く
+        targetBank = 0.8f; // 左に傾く（バンク）
+    }
+    if (input_->PushKey(DIK_D) || input_->PushKey(DIK_RIGHT)) {
+        targetYaw = 0.2f;  // 右を向く
+        targetBank = -0.8f; // 右に傾く（バンク）
+    }
 
-    // 左右移動時のバンク角（機体のロール）
-    float bankAngle = velocity.x * -1.5f;
-    bankAngle = std::clamp(bankAngle, -0.8f, 0.8f);
+    // --- 上限の壁などに当たった際の処理 ---
+    // 移動キーを押していても、壁に当たって実際の速度がゼロになっている場合は傾きを戻す
+    if (std::abs(velocity.x) < 0.01f) {
+        targetYaw = 0.0f;
+        targetBank = 0.0f;
+    }
+    if (std::abs(velocity.y) < 0.01f) {
+        targetPitch = 0.0f;
+    }
 
     // 滑らかに補間（Lerp）する
     float lerpSpeed = 0.1f; // 傾きが戻る・変わる速さ（0.1 = 毎フレーム10%近づく）
-    currentPitch_ += (pitchAngle - currentPitch_) * lerpSpeed;
-    currentYaw_ += (yawAngle - currentYaw_) * lerpSpeed;
-    currentBank_ += (bankAngle - currentBank_) * lerpSpeed;
+    currentPitch_ += (targetPitch - currentPitch_) * lerpSpeed;
+    currentYaw_ += (targetYaw - currentYaw_) * lerpSpeed;
+    currentBank_ += (targetBank - currentBank_) * lerpSpeed;
 
     // 最終的なバンク角（ローリング角度は累積させずに一時的に足す）
     float finalBank = currentBank_;
