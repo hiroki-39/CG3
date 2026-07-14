@@ -1,4 +1,4 @@
-﻿#include "RailCameraController.h"
+#include "RailCameraController.h"
 
 void RailCameraController::Initialize(const std::vector<Rail*>& rails, Camera* camera, Object3d* parentObject) {
     rails_ = rails;
@@ -7,10 +7,10 @@ void RailCameraController::Initialize(const std::vector<Rail*>& rails, Camera* c
     progress_ = 0.0f;
     currentRailIndex_ = 0;
 
-    ApplyTransform();
+    ApplyTransform({0.0f, 0.0f, 0.0f});
 }
 
-void RailCameraController::Update(float gameSpeed) {
+void RailCameraController::Update(float gameSpeed, const Vector3& playerLocalPos) {
     if (rails_.empty() || currentRailIndex_ >= rails_.size() || !rails_[currentRailIndex_]->IsValid()) return;
     
     Rail* currentRail = rails_[currentRailIndex_];
@@ -39,16 +39,16 @@ void RailCameraController::Update(float gameSpeed) {
         }
     }
 
-    ApplyTransform();
+    ApplyTransform(playerLocalPos);
 }
 
 void RailCameraController::Reset() {
     progress_ = 0.0f;
     currentRailIndex_ = 0;
-    ApplyTransform();
+    ApplyTransform({0.0f, 0.0f, 0.0f});
 }
 
-void RailCameraController::ApplyTransform() {
+void RailCameraController::ApplyTransform(const Vector3& playerLocalPos) {
     if (rails_.empty() || currentRailIndex_ >= rails_.size() || !rails_[currentRailIndex_]->IsValid()) return;
     Rail* currentRail = rails_[currentRailIndex_];
 
@@ -82,16 +82,57 @@ void RailCameraController::ApplyTransform() {
     Vector3 cameraRot(targetPitch, targetYaw, railTilt);
 
     if (parentObject_) {
-        // カメラは y+0.2f だが、自機の親オブジェクトのYオフセットが元々どのように使われていたかを考慮。
-        // （元の実装では parentObject_ (cameraObject_) も y+0.2f を適用していたためそれに合わせる）
+        // プレイヤーの親（アンカー）はレールに完全に沿わせる（傾きやパンは入れない）
         parentObject_->SetTranslate(eye);
         parentObject_->SetRotation(cameraRot);
         parentObject_->Update();
     }
 
     if (camera_) {
-        camera_->SetTranslate(eye);
-        camera_->SetRotation(cameraRot);
+        // カメラ（実際の視点）にはプレイヤーの位置に応じた首振り（パン・ピッチ）を入れる
+        // プレイヤーが大きく動いても画面内に収まるようにする
+        // カメラがプレイヤーの方を向きすぎると正面（進行方向）が見えなくなるため、
+        // 首振り（パン）はごく僅かに抑え、平行移動（パララックス）で画面内に収める
+        float panStrengthX = 0.002f; // ほぼ正面を向いたままにする
+        float panStrengthY = 0.002f;
+
+        // パララックス強度（プレイヤーの移動の何割をカメラがついていくか）
+        // 高め（0.6〜0.7）にすると、プレイヤーが画面外に出にくく、かつ正面を向き続けられる
+        float parallaxStrengthX = 0.7f; 
+        float parallaxStrengthY = 0.6f;
+
+        Vector3 cameraEye = eye;
+        
+        // レールの右方向と上方向ベクトルを計算（近似）
+        Vector3 right = {
+            std::cos(-railTilt) * std::cos(targetYaw),
+            std::sin(-railTilt),
+            -std::cos(-railTilt) * std::sin(targetYaw)
+        };
+        Vector3 up = {
+            -std::sin(targetPitch) * std::sin(targetYaw),
+            std::cos(targetPitch),
+            std::sin(targetPitch) * std::cos(targetYaw)
+        };
+        
+        // パララックス：プレイヤーの移動にカメラがしっかり並行移動でついていく
+        cameraEye.x += right.x * playerLocalPos.x * parallaxStrengthX;
+        cameraEye.y += right.y * playerLocalPos.x * parallaxStrengthX;
+        cameraEye.z += right.z * playerLocalPos.x * parallaxStrengthX;
+
+        cameraEye.x += up.x * playerLocalPos.y * parallaxStrengthY;
+        cameraEye.y += up.y * playerLocalPos.y * parallaxStrengthY;
+        cameraEye.z += up.z * playerLocalPos.y * parallaxStrengthY;
+        
+        float panYaw = playerLocalPos.x * panStrengthX;
+        float panPitch = playerLocalPos.y * panStrengthY;
+
+        Vector3 finalCameraRot = cameraRot;
+        finalCameraRot.y += panYaw;
+        finalCameraRot.x -= panPitch; // Yが上のとき、見上げるにはX回転がマイナス方向
+
+        camera_->SetTranslate(cameraEye);
+        camera_->SetRotation(finalCameraRot);
         camera_->Update();
     }
 }

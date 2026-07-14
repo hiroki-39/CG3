@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Graphics/3d/Camera/Camera.h"
 #include "KHEngine/Graphics/3d/Object/Object3d.h"
 #include "Game/System/Rail.h"
@@ -22,7 +22,8 @@ public:
     /// 更新処理
     /// </summary>
     /// <param name="gameSpeed">ゲームスピードの倍率</param>
-    void Update(float gameSpeed = 1.0f);
+    /// <param name="playerLocalPos">プレイヤーのローカルオフセット（パンやパララックス用）</param>
+    void Update(float gameSpeed = 1.0f, const Vector3& playerLocalPos = {0.0f, 0.0f, 0.0f});
 
     /// <summary>
     /// レールの先頭にリセットする
@@ -39,11 +40,11 @@ public:
     /// </summary>
     void SetProgress(float p) {
         progress_ = std::clamp(p, 0.0f, 1.0f);
-        ApplyTransform();
+        ApplyTransform({0.0f, 0.0f, 0.0f});
     }
 
 private:
-    void ApplyTransform();
+    void ApplyTransform(const Vector3& playerLocalPos);
 
 private:
     std::vector<Rail*> rails_;

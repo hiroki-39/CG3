@@ -42,6 +42,9 @@ public:
 	void SetDeltaTime(float dt) { deltaTime_ = dt; }
 	float GetDeltaTime() const { return deltaTime_; }
 
+	void SetEditorMode(bool mode) { isEditorMode_ = mode; }
+	bool GetEditorMode() const { return isEditorMode_; }
+
 private:
 	EngineServices() = default;
 	~EngineServices() = default;
@@ -60,4 +63,10 @@ private:
 	PostProcess* postProcess_ = nullptr;
 
 	float deltaTime_ = 1.0f / 60.0f;
+
+#ifdef USE_IMGUI
+	bool isEditorMode_ = true;
+#else
+	bool isEditorMode_ = false;
+#endif
 };

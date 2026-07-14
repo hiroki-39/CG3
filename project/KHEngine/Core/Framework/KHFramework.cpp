@@ -102,12 +102,10 @@ void KHFramework::FrameworkUpdate(float /*deltaTime*/)
 	{
 		imguiManager_->Begin();
 
-		if (isEditorMode_)
-		{
-			// エディタモード：最初にドッキング空間を作り、その中にビューポートを表示
-			// （他のImGui::Beginより前に呼ぶ必要があるためここで行う）
-			EditorSystem::GetInstance()->Draw(postProcess_->GetResultSrvIndex());
-		}
+		// エディタモード：最初にドッキング空間を作り、その中にビューポートを表示
+		// （他のImGui::Beginより前に呼ぶ必要があるためここで行う）
+		// フルスクリーンモードでもDockSpaceのレイアウトを維持するため、常に呼び出す
+		EditorSystem::GetInstance()->Draw(postProcess_->GetResultSrvIndex());
 
 		// ポストプロセスのエディタウィンドウを表示
 		if (postProcess_)
@@ -137,14 +135,17 @@ void KHFramework::FrameworkDrawEnd()
 	if (postProcess_)
 	{
 		// エディタモードなら専用のテクスチャへ、ゲームモードなら直接Swapchainへ出力
-		postProcess_->Draw(!isEditorMode_);
+		postProcess_->Draw(!EngineServices::GetInstance()->GetEditorMode());
 	}
 
 	// ImGui 描画準備と描画
 	if (imguiManager_)
 	{
 		imguiManager_->End();
-		imguiManager_->Draw();
+		if (EngineServices::GetInstance()->GetEditorMode())
+		{
+			imguiManager_->Draw();
+		}
 	}
 
 	if (dxCommon_)

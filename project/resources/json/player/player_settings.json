@@ -1,6 +1,11 @@
 {
     "attackInterval": 15,
-    "bulletSpeed": 20.0,
+    "bulletSpeed": 10.0,
+    "colliderSize": [
+        4.0,
+        4.0,
+        4.0
+    ],
     "color": [
         0.15544039011001587,
         0.15544039011001587,
@@ -8,6 +13,8 @@
         1.0
     ],
     "followSpeed": 0.07999999821186066,
+    "hp": 9997,
+    "maxHp": 10000,
     "modelName": "player.obj",
     "modelPosOffset": [
         0.0,
@@ -19,11 +26,11 @@
         0.0,
         0.0
     ],
-    "moveLimitX": 15.0,
-    "moveLimitY": 12.399999618530273,
-    "playerLimitX": 6.300000190734863,
-    "playerLimitYMax": 3.700000047683716,
-    "playerLimitYMin": -3.9000000953674316,
+    "moveLimitX": 25.0,
+    "moveLimitY": 12.0,
+    "playerLimitX": 25.0,
+    "playerLimitYMax": 12.0,
+    "playerLimitYMin": -5.0,
     "playerScale": [
         0.5,
         0.5,

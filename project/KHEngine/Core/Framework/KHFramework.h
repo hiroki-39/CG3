@@ -72,13 +72,6 @@ protected:
     // 終了要求
     bool endRequest_ = false;
 
-    // エディタモード
-#ifdef USE_IMGUI
-    bool isEditorMode_ = true;
-#else
-    bool isEditorMode_ = false;
-#endif
-
 private:
 
     // ===== Framework 内部処理 =====
