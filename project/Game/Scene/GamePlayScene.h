@@ -81,10 +81,11 @@ private:
     std::mt19937 randomEngine{ seedGenerator() };
 
     // エフェクト群
-    ParticleEffect thrusterEffect_;   // プレイヤースラスター用
-    ParticleEffect explosionEffect_;  // 敵撃破時の爆発用
-    ParticleEffect hitEffect_;        // 弾着弾時のヒット用
+    ParticleEffect thrusterEffect_;   // スラスター用
+    ParticleEffect explosionEffect_;  // 敵の爆発用
+    ParticleEffect hitEffect_;        // 弾のヒット用
     ParticleEffect dodgeEffect_;      // 回避エフェクト用
+    ParticleEffect trailEffect_;      // 翼端のトレイル用回避エフェクト用
 
     // ImGuiのエディタで編集するエフェクトのインデックス (0:Thruster, 1:Explosion, 2:Hit)
     int currentEditEffectIndex_ = 0;

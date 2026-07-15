@@ -5,6 +5,7 @@
 #include <fstream>
 #include <algorithm>
 #include "Game/Actor/Enemy/Enemy.h"
+#include "KHEngine/Graphics/3d/Particle/ParticleManager.h"
 
 void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex) {
     object3dCommon_ = object3dCommon;
@@ -20,7 +21,7 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
     object_->SetScale(playerScale_);
      
-    //// アクセサリの初期化
+    //// 繧｢繧ｯ繧ｻ繧ｵ繝ｪ縺ｮ蛻晄悄蛹・
     //accessory_ = std::make_unique<Object3d>();
     //accessory_->Initialize(object3dCommon);
     //accessory_->SetModel("suzanne.obj");
@@ -28,10 +29,10 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     //accessory_->SetEnvironmentTextureIndex(skyboxTexIndex);
     //accessory_->SetEnvironmentCoefficient(0.0f);
     //accessory_->SetScale(Vector3(0.3f, 0.3f, 0.3f));
-    //accessory_->SetTranslate(Vector3(1.5f, 1.0f, 0.0f)); // プレイヤーの右上に配置
-    //accessory_->SetParent(object_.get()); // 親子関係を設定
+    //accessory_->SetTranslate(Vector3(1.5f, 1.0f, 0.0f)); // 繝励Ξ繧､繝､繝ｼ縺ｮ蜿ｳ荳翫↓驟咲ｽｮ
+    //accessory_->SetParent(object_.get()); // 隕ｪ蟄宣未菫ゅｒ險ｭ螳・
 
-    // 奥の照準（小）の初期化
+    // 螂･縺ｮ辣ｧ貅厄ｼ亥ｰ擾ｼ峨・蛻晄悄蛹・
     reticle_ = std::make_unique<Object3d>();
     reticle_->Initialize(object3dCommon);
     reticle_->SetModel("crossHair.obj");
@@ -42,11 +43,11 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     reticle_->SetSelectLightings(0);
     reticle_->SetScale(Vector3(1.6f, 1.6f, 1.6f));
     
-    // 手前の照準（大）の初期化
+    // 謇句燕縺ｮ辣ｧ貅厄ｼ亥､ｧ・峨・蛻晄悄蛹・
     frontReticle_ = std::make_unique<Object3d>();
     frontReticle_->Initialize(object3dCommon);
     frontReticle_->SetModel("crossHair.obj");
-    // 手前の照準は少し透明度を下げて邪魔にならないようにする
+    // 謇句燕縺ｮ辣ｧ貅悶・蟆代＠騾乗・蠎ｦ繧剃ｸ九￡縺ｦ驍ｪ鬲斐↓縺ｪ繧峨↑縺・ｈ縺・↓縺吶ｋ
     Vector4 frontColor = reticleColor_;
     frontColor.w = 1.0f;
     frontReticle_->GetModel()->SetColor(frontColor);
@@ -56,34 +57,34 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     frontReticle_->SetSelectLightings(0);
     frontReticle_->SetScale(Vector3(1.7f, 1.7f, 1.7f)); 
     
-    // 照準の初期位置（カメラの奥）
+    // 辣ｧ貅悶・蛻晄悄菴咲ｽｮ・医き繝｡繝ｩ縺ｮ螂･・・
     reticlePosition_ = { 0.0f, 0.0f, 40.0f }; 
 
-    // 初期状態としてグレースケールをOFFにしておく
+    // 蛻晄悄迥ｶ諷九→縺励※繧ｰ繝ｬ繝ｼ繧ｹ繧ｱ繝ｼ繝ｫ繧丹FF縺ｫ縺励※縺翫￥
     if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
         pp->SetEffectActive("Grayscale", false);
     }
-    // コライダー可視化用オブジェクト
+    // 繧ｳ繝ｩ繧､繝繝ｼ蜿ｯ隕門喧逕ｨ繧ｪ繝悶ず繧ｧ繧ｯ繝・
     ModelManager::GetInstance()->LoadModel("collider_cube_player.obj");
     colliderObject_ = std::make_unique<Object3d>();
     colliderObject_->Initialize(object3dCommon);
-    colliderObject_->SetModel("collider_cube_player.obj"); // プレイヤー専用の立方体モデル
-    colliderObject_->GetModel()->SetColor({ 0.0f, 1.0f, 0.0f, 1.0f }); // 緑色
+    colliderObject_->SetModel("collider_cube_player.obj"); // 繝励Ξ繧､繝､繝ｼ蟆ら畑縺ｮ遶区婿菴薙Δ繝・Ν
+    colliderObject_->GetModel()->SetColor({ 0.0f, 1.0f, 0.0f, 1.0f }); // 邱題牡
     colliderObject_->SetEnvironmentCoefficient(0.0f);
     colliderObject_->SetEnableLighting(false);
-    colliderObject_->SetScale(colliderSize_); // プレイヤーの当たり判定のサイズ
+    colliderObject_->SetScale(colliderSize_); // 繝励Ξ繧､繝､繝ｼ縺ｮ蠖薙◆繧雁愛螳壹・繧ｵ繧､繧ｺ
 }
 
 void Player::OnCollision() {
-    if (invincibilityTimer_ > 0 || isDead_ || isRolling_) return; // 無敵中、死亡時、またはローリング中（回避）は無効
+    if (invincibilityTimer_ > 0 || isDead_ || isRolling_) return; // 辟｡謨ｵ荳ｭ縲∵ｭｻ莠｡譎ゅ√∪縺溘・繝ｭ繝ｼ繝ｪ繝ｳ繧ｰ荳ｭ・亥屓驕ｿ・峨・辟｡蜉ｹ
     
     hp_--;
     if (hp_ <= 0) {
         isDead_ = true;
     } else {
-        invincibilityTimer_ = 60; // 1秒間無敵
+        invincibilityTimer_ = 60; // 1遘帝俣辟｡謨ｵ
         
-        // 被弾時カメラシェイクやポストエフェクトなどを入れるのも良い
+        // 陲ｫ蠑ｾ譎ゅき繝｡繝ｩ繧ｷ繧ｧ繧､繧ｯ繧・・繧ｹ繝医お繝輔ぉ繧ｯ繝医↑縺ｩ繧貞・繧後ｋ縺ｮ繧り憶縺・
     }
 }
 
@@ -96,8 +97,9 @@ void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d*
     }
 
     object_->Update();
+    
     if (accessory_) {
-        // アクセサリを回転させるデモ
+        // 繧｢繧ｯ繧ｻ繧ｵ繝ｪ繧貞屓霆｢縺輔○繧九ョ繝｢
         Vector3 rot = accessory_->GetRotation();
         rot.y += 0.05f;
         accessory_->SetRotation(rot);
@@ -105,7 +107,7 @@ void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d*
     }
     
     if (colliderObject_) {
-        // 親の設定はGamePlayScene側で行う
+        // 隕ｪ縺ｮ險ｭ螳壹・GamePlayScene蛛ｴ縺ｧ陦後≧
         colliderObject_->SetTranslate(object_->GetTranslate());
         colliderObject_->SetRotation(object_->GetRotation());
         colliderObject_->Update();
@@ -120,7 +122,7 @@ void Player::Draw() {
         frontReticle_->Draw();
     }
     
-    // 無敵時間中は点滅させる (4フレームに1回非表示)
+    // 辟｡謨ｵ譎る俣荳ｭ縺ｯ轤ｹ貊・＆縺帙ｋ (4繝輔Ξ繝ｼ繝�縺ｫ1蝗樣撼陦ｨ遉ｺ)
     bool shouldDrawPlayer = true;
     if (invincibilityTimer_ > 0) {
         if ((invincibilityTimer_ / 4) % 2 == 0) {
@@ -151,14 +153,14 @@ void Player::SetReticleColor(const Vector4& color) {
     }
     if (frontReticle_) {
         Vector4 frontColor = reticleColor_;
-        frontColor.w = 1.0f; // 手前も透過させない（モデル共有問題回避）
+        frontColor.w = 1.0f; // 謇句燕繧る城℃縺輔○縺ｪ縺・ｼ医Δ繝・Ν蜈ｱ譛牙撫鬘悟屓驕ｿ・・
         frontReticle_->GetModel()->SetColor(frontColor);
     }
 }
 
 Vector3 Player::GetReticleWorldPosition() const {
     if (!reticle_) return {0,0,0};
-    // 照準オブジェクトのワールド座標をマトリックスから取得
+    // 辣ｧ貅悶が繝悶ず繧ｧ繧ｯ繝医・繝ｯ繝ｼ繝ｫ繝牙ｺｧ讓吶ｒ繝槭ヨ繝ｪ繝・け繧ｹ縺九ｉ蜿門ｾ・
     const Matrix4x4& mat = reticle_->GetmatWorld();
     return { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
 }
@@ -166,28 +168,28 @@ Vector3 Player::GetReticleWorldPosition() const {
 void Player::Move() {
     if (!input_) return;
 
-    // --- ローリング回避の開始判定 ---
+    // --- 繝ｭ繝ｼ繝ｪ繝ｳ繧ｰ蝗樣∩縺ｮ髢句ｧ句愛螳・---
     if (!isRolling_) {
         if (input_->TriggerKey(DIK_Q)) {
             isRolling_ = true;
             rollTimer_ = 0;
-            rollDirection_ = -1.0f; // 左
+            rollDirection_ = -1.0f; // 蟾ｦ
             isDodgeTriggered_ = true;
         } else if (input_->TriggerKey(DIK_E)) {
             isRolling_ = true;
             rollTimer_ = 0;
-            rollDirection_ = 1.0f; // 右
+            rollDirection_ = 1.0f; // 蜿ｳ
             isDodgeTriggered_ = true;
         }
     }
 
     if (isRolling_) {
         rollTimer_++;
-        // ローリング中はレティクルを強制的に移動させる
-        float rollMoveSpeed = 0.2f; // フレーム減少に合わせて少しだけ調整
+        // 繝ｭ繝ｼ繝ｪ繝ｳ繧ｰ荳ｭ縺ｯ繝ｬ繝・ぅ繧ｯ繝ｫ繧貞ｼｷ蛻ｶ逧・↓遘ｻ蜍輔＆縺帙ｋ
+        float rollMoveSpeed = 0.2f; // 繝輔Ξ繝ｼ繝�貂帛ｰ代↓蜷医ｏ縺帙※蟆代＠縺�縺題ｪｿ謨ｴ
         reticlePosition_.x += rollDirection_ * rollMoveSpeed;
 
-        // 一定時間でローリング終了
+        // 荳螳壽凾髢薙〒繝ｭ繝ｼ繝ｪ繝ｳ繧ｰ邨ゆｺ・
         if (rollTimer_ >= rollMaxTime_) {
             isRolling_ = false;
             // if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
@@ -196,7 +198,7 @@ void Player::Move() {
         }
     }
 
-    // --- ブースト判定 ---
+    // --- 繝悶・繧ｹ繝亥愛螳・---
     isBoosting_ = input_->PushKey(DIK_LSHIFT);
     float currentReticleSpeed = reticleSpeed_;
     float currentFollowSpeed = followSpeed_;
@@ -205,7 +207,7 @@ void Player::Move() {
         currentFollowSpeed *= 1.5f;
     }
 
-    // --- 照準（レティクル）の移動 ---
+    // --- 辣ｧ貅厄ｼ医Ξ繝・ぅ繧ｯ繝ｫ・峨・遘ｻ蜍・---
     if (input_->PushKey(DIK_W) || input_->PushKey(DIK_UP)) {
         reticlePosition_.y += currentReticleSpeed;
     }
@@ -219,18 +221,18 @@ void Player::Move() {
         reticlePosition_.x += currentReticleSpeed;
     }
 
-    // 照準の移動制限
+    // 辣ｧ貅悶・遘ｻ蜍募宛髯・
     reticlePosition_.x = std::clamp(reticlePosition_.x, -moveLimitX_, moveLimitX_);
     reticlePosition_.y = std::clamp(reticlePosition_.y, playerLimitYMin_, moveLimitY_);
 
-    // 奥照準のZ座標はプレイヤーより一定距離奥に保つ
+    // 螂･辣ｧ貅悶・Z蠎ｧ讓吶・繝励Ξ繧､繝､繝ｼ繧医ｊ荳螳夊ｷ晞屬螂･縺ｫ菫昴▽
     reticlePosition_.z = logicalPosition_.z + 40.0f;
     
     reticle_->SetTranslate(reticlePosition_);
     reticle_->Update();
 
-    // 手前照準（大）の計算と更新
-    // 自機座標と奥照準座標の中間に配置する（Lerpのような補間）
+    // 謇句燕辣ｧ貅厄ｼ亥､ｧ・峨・險育ｮ励→譖ｴ譁ｰ
+    // 閾ｪ讖溷ｺｧ讓吶→螂･辣ｧ貅門ｺｧ讓吶・荳ｭ髢薙↓驟咲ｽｮ縺吶ｋ・・erp縺ｮ繧医≧縺ｪ陬憺俣・・
     if (frontReticle_) {
         Vector3 frontReticlePos = {
             logicalPosition_.x + (reticlePosition_.x - logicalPosition_.x) * 0.4f,
@@ -241,50 +243,50 @@ void Player::Move() {
         frontReticle_->Update();
     }
 
-    // 前回の位置を保存
+    // 蜑榊屓縺ｮ菴咲ｽｮ繧剃ｿ晏ｭ・
     Vector3 oldPos = logicalPosition_;
 
-    // プレイヤーの追従（Panzer Dragoon風）
-    // プレイヤーは照準のXY座標に向かって少し遅れて追従する
+    // 繝励Ξ繧､繝､繝ｼ縺ｮ霑ｽ蠕難ｼ・anzer Dragoon鬚ｨ・・
+    // 繝励Ξ繧､繝､繝ｼ縺ｯ辣ｧ貅悶・XY蠎ｧ讓吶↓蜷代°縺｣縺ｦ蟆代＠驕・ｌ縺ｦ霑ｽ蠕薙☆繧・
     logicalPosition_.x += (reticlePosition_.x - logicalPosition_.x) * currentFollowSpeed;
     logicalPosition_.y += (reticlePosition_.y - logicalPosition_.y) * currentFollowSpeed;
 
-    // プレイヤーがカメラ外に出ないように制限
+    // 繝励Ξ繧､繝､繝ｼ縺後き繝｡繝ｩ螟悶↓蜃ｺ縺ｪ縺・ｈ縺・↓蛻ｶ髯・
     logicalPosition_.x = std::clamp(logicalPosition_.x, -playerLimitX_, playerLimitX_);
     logicalPosition_.y = std::clamp(logicalPosition_.y, playerLimitYMin_, playerLimitYMax_);
 
-    // 実際の移動量（速度）を計算。画面端で動けない時は0になる
+    // 螳滄圀縺ｮ遘ｻ蜍暮㍼・磯溷ｺｦ・峨ｒ險育ｮ励ら判髱｢遶ｯ縺ｧ蜍輔￠縺ｪ縺・凾縺ｯ0縺ｫ縺ｪ繧・
     Vector3 velocity = {
         logicalPosition_.x - oldPos.x,
         logicalPosition_.y - oldPos.y,
         0.0f
     };
 
-    // --- 機体の傾き計算 ---
-    // 速度ベースだと画面端でvelocityが0になった瞬間に傾きが急に戻る違和感があるため、
-    // キー入力（向かおうとする意志）ベースでターゲット角度を決定する
+    // --- 讖滉ｽ薙・蛯ｾ縺崎ｨ育ｮ・---
+    // 騾溷ｺｦ繝吶・繧ｹ縺�縺ｨ逕ｻ髱｢遶ｯ縺ｧvelocity縺・縺ｫ縺ｪ縺｣縺溽椪髢薙↓蛯ｾ縺阪′諤･縺ｫ謌ｻ繧矩＆蜥梧─縺後≠繧九◆繧√・
+    // 繧ｭ繝ｼ蜈･蜉幢ｼ亥髄縺九♀縺・→縺吶ｋ諢丞ｿ暦ｼ峨・繝ｼ繧ｹ縺ｧ繧ｿ繝ｼ繧ｲ繝・ヨ隗貞ｺｦ繧呈ｱｺ螳壹☆繧・
     float targetPitch = 0.0f;
     float targetYaw = 0.0f;
     float targetBank = 0.0f;
 
     if (input_->PushKey(DIK_W) || input_->PushKey(DIK_UP)) {
-        targetPitch = -0.4f; // 機首を上に向ける
+        targetPitch = -0.4f; // 讖滄ｦ悶ｒ荳翫↓蜷代￠繧・
     }
     if (input_->PushKey(DIK_S) || input_->PushKey(DIK_DOWN)) {
-        targetPitch = 0.4f;  // 機首を下に向ける
+        targetPitch = 0.4f;  // 讖滄ｦ悶ｒ荳九↓蜷代￠繧・
     }
     
     if (input_->PushKey(DIK_A) || input_->PushKey(DIK_LEFT)) {
-        targetYaw = -0.2f; // 左を向く
-        targetBank = 0.8f; // 左に傾く（バンク）
+        targetYaw = -0.2f; // 蟾ｦ繧貞髄縺・
+        targetBank = 0.8f; // 蟾ｦ縺ｫ蛯ｾ縺擾ｼ医ヰ繝ｳ繧ｯ・・
     }
     if (input_->PushKey(DIK_D) || input_->PushKey(DIK_RIGHT)) {
-        targetYaw = 0.2f;  // 右を向く
-        targetBank = -0.8f; // 右に傾く（バンク）
+        targetYaw = 0.2f;  // 蜿ｳ繧貞髄縺・
+        targetBank = -0.8f; // 蜿ｳ縺ｫ蛯ｾ縺擾ｼ医ヰ繝ｳ繧ｯ・・
     }
 
-    // --- 上限の壁などに当たった際の処理 ---
-    // 移動キーを押していても、壁に当たって実際の速度がゼロになっている場合は傾きを戻す
+    // --- 荳企剞縺ｮ螢√↑縺ｩ縺ｫ蠖薙◆縺｣縺滄圀縺ｮ蜃ｦ逅・---
+    // 遘ｻ蜍輔く繝ｼ繧呈款縺励※縺・※繧ゅ∝｣√↓蠖薙◆縺｣縺ｦ螳滄圀縺ｮ騾溷ｺｦ縺後ぞ繝ｭ縺ｫ縺ｪ縺｣縺ｦ縺・ｋ蝣ｴ蜷医・蛯ｾ縺阪ｒ謌ｻ縺・
     if (std::abs(velocity.x) < 0.01f) {
         targetYaw = 0.0f;
         targetBank = 0.0f;
@@ -293,20 +295,20 @@ void Player::Move() {
         targetPitch = 0.0f;
     }
 
-    // 滑らかに補間（Lerp）する
-    float lerpSpeed = 0.1f; // 傾きが戻る・変わる速さ（0.1 = 毎フレーム10%近づく）
+    // 貊代ｉ縺九↓陬憺俣・・erp・峨☆繧・
+    float lerpSpeed = 0.1f; // 蛯ｾ縺阪′謌ｻ繧九・螟峨ｏ繧矩溘＆・・.1 = 豈弱ヵ繝ｬ繝ｼ繝�10%霑代▼縺擾ｼ・
     currentPitch_ += (targetPitch - currentPitch_) * lerpSpeed;
     currentYaw_ += (targetYaw - currentYaw_) * lerpSpeed;
     currentBank_ += (targetBank - currentBank_) * lerpSpeed;
 
-    // 最終的なバンク角（ローリング角度は累積させずに一時的に足す）
+    // 譛邨ら噪縺ｪ繝舌Φ繧ｯ隗抵ｼ医Ο繝ｼ繝ｪ繝ｳ繧ｰ隗貞ｺｦ縺ｯ邏ｯ遨阪＆縺帙★縺ｫ荳譎ら噪縺ｫ雜ｳ縺呻ｼ・
     float finalBank = currentBank_;
     if (isRolling_) {
         float rollAngle = (static_cast<float>(rollTimer_) / rollMaxTime_) * 3.14159265f * 2.0f;
         finalBank += rollAngle * -rollDirection_;
     }
     
-    // 実際のモデルの Transform にはオフセットを足して適用
+    // 螳滄圀縺ｮ繝｢繝・Ν縺ｮ Transform 縺ｫ縺ｯ繧ｪ繝輔そ繝・ヨ繧定ｶｳ縺励※驕ｩ逕ｨ
     object_->SetScale(playerScale_);
     object_->SetRotation(Vector3(
         baseRotation_.x + currentPitch_ + modelRotOffset_.x,
@@ -319,30 +321,36 @@ void Player::Move() {
 void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera) {
     if (!input_) return;
 
-    // 発射間隔のタイマー更新
+    // 逋ｺ蟆・俣髫斐・繧ｿ繧､繝槭・譖ｴ譁ｰ
     if (attackTimer_ > 0) {
         attackTimer_--;
     }
 
-    // タイマーが0以下なら発射可能
-    // スペースキーまたはマウス左クリックで発射
+    // 繧ｿ繧､繝槭・縺・莉･荳九↑繧臥匱蟆・庄閭ｽ
+    // 繧ｹ繝壹・繧ｹ繧ｭ繝ｼ縺ｾ縺溘・繝槭え繧ｹ蟾ｦ繧ｯ繝ｪ繝・け縺ｧ逋ｺ蟆・
     if (attackTimer_ <= 0 && (input_->PushKey(DIK_SPACE))) {
-        attackTimer_ = attackInterval_; // タイマーリセット
+        attackTimer_ = attackInterval_; // 繧ｿ繧､繝槭・繝ｪ繧ｻ繝・ヨ
         
-        // プレイヤーのワールド座標を取得する (object_はカメラの子なのでGetTranslateはローカル座標になってしまう)
+        // 繝励Ξ繧､繝､繝ｼ縺ｮ繝ｯ繝ｼ繝ｫ繝牙ｺｧ讓吶ｒ蜿門ｾ励☆繧・(object_縺ｯ繧ｫ繝｡繝ｩ縺ｮ蟄舌↑縺ｮ縺ｧGetTranslate縺ｯ繝ｭ繝ｼ繧ｫ繝ｫ蠎ｧ讓吶↓縺ｪ縺｣縺ｦ縺励∪縺・
         const Matrix4x4& mat = object_->GetmatWorld();
         Vector3 playerPos = { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
         
         Vector3 targetPos = GetReticleWorldPosition();
         
-        // 照準(またはロックオン座標)に向かうベクトルを計算
+        // --- 辣ｧ貅悶い繧ｷ繧ｹ繝茨ｼ亥ｼｱ繧・ｼ・---
+        // 繧ｿ繝ｼ繧ｲ繝・ヨ縺瑚ｿ代￥縺ｫ縺・ｋ蝣ｴ蜷医∫匱蟆・ｧ貞ｺｦ縺�縺代ｒ謨ｵ縺ｮ譁ｹ縺ｸ蟆代＠陬懈ｭ｣縺吶ｋ・医・繝ｼ繝溘Φ繧ｰ蠑ｾ縺ｫ縺ｯ縺励↑縺・ｼ・
+        if (assistTarget_ && !assistTarget_->IsDead()) {
+            targetPos = assistTarget_->GetColliderCenter();
+        }
+        
+        // 辣ｧ貅・縺ｾ縺溘・繝ｭ繝・け繧ｪ繝ｳ蠎ｧ讓・縺ｫ蜷代°縺・・繧ｯ繝医Ν繧定ｨ育ｮ・
         Vector3 direction = {
             targetPos.x - playerPos.x,
             targetPos.y - playerPos.y,
             targetPos.z - playerPos.z
         };
         
-        // 正規化
+        // 豁｣隕丞喧
         float length = std::sqrtf(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
         if (length > 0.0f) {
             direction.x /= length;
@@ -356,7 +364,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d*
             direction.z * bulletSpeed_
         };
 
-        // 弾を生成
+        // 蠑ｾ繧堤函謌・
         std::unique_ptr<PlayerBullet> newBullet = std::make_unique<PlayerBullet>();
         newBullet->Initialize(object3dCommon_, playerPos, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
         bullets.push_back(std::move(newBullet));
@@ -412,7 +420,7 @@ void Player::LoadSettings(const std::string& filepath) {
         }
         file.close();
         
-        // 読み込んだ設定を反映
+        // 隱ｭ縺ｿ霎ｼ繧薙□險ｭ螳壹ｒ蜿肴丐
         if (object_) {
             object_->SetModel(modelName_);
             object_->GetModel()->SetColor(color_);
@@ -464,7 +472,7 @@ void Player::DrawUI() {
     ImGui::Begin("Player Editor");
     
     if (ImGui::CollapsingHeader("Model Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // モデル変更
+        // 繝｢繝・Ν螟画峩
         const char* models[] = { "cube.obj", "player.obj", "monsterBall.obj","suzanne.obj"};
         int currentModel = 0;
         for (int i = 0; i < 3; ++i) {
@@ -477,7 +485,7 @@ void Player::DrawUI() {
             modelName_ = models[currentModel];
             if (object_) {
                 object_->SetModel(modelName_);
-                // モデルを変えた場合、再度色と反射係数をセットする
+                // 繝｢繝・Ν繧貞､峨∴縺溷ｴ蜷医€∝・蠎ｦ濶ｲ縺ｨ蜿榊ｰ・ｿよ焚繧偵そ繝・ヨ縺吶ｋ
                 object_->GetModel()->SetColor(color_);
                 object_->SetEnvironmentTextureIndex(skyboxTexIndex_);
                 object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
@@ -487,7 +495,7 @@ void Player::DrawUI() {
             }
         }
         
-        // 色変更
+        // 濶ｲ螟画峩
         float col[4] = { color_.x, color_.y, color_.z, color_.w };
         if (ImGui::ColorEdit4("Color", col)) {
             color_ = { col[0], col[1], col[2], col[3] };
@@ -496,7 +504,7 @@ void Player::DrawUI() {
             }
         }
         
-        // 映り込み切り替え
+        // 譏繧願ｾｼ縺ｿ蛻・ｊ譖ｿ縺・
         if (ImGui::Checkbox("Reflection", &reflection_)) {
             if (object_) {
                 object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
@@ -534,16 +542,38 @@ void Player::DrawUI() {
         ImGui::DragFloat("Player Limit Y Max", &playerLimitYMax_, 0.1f, 1.0f, 50.0f);
         ImGui::DragInt("Roll Max Time", &rollMaxTime_, 1, 1, 60);
     }
-    
-    if (ImGui::CollapsingHeader("Combat Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::DragInt("Attack Interval", &attackInterval_, 1, 1, 60);
-        ImGui::DragFloat("Bullet Speed", &bulletSpeed_, 0.1f, 0.1f, 20.0f);
-    }
-    
     if (ImGui::Button("Save Settings")) {
         SaveSettings("resources/json/player/player_settings.json");
     }
     
     ImGui::End();
 #endif
+}
+
+bool Player::IsBanking() const {
+    // 軽く移動しただけでは出さず、深く旋回（バンク）・急上昇急降下（ピッチ）した時のみトレイルを出す
+    // しきい値を厳しめに設定 (バンク: 0.3 -> 0.65, ピッチ: 0.2 -> 0.35)
+    return std::abs(currentBank_) > 0.65f || isRolling_ || std::abs(currentPitch_) > 0.35f;
+}
+
+Vector3 Player::GetLeftWingPosition() const {
+    const Matrix4x4& mat = object_->GetmatWorld();
+    float wingSpan = 3.8f;
+    Vector3 leftWingLocal = { -wingSpan, 0.0f, -0.5f };
+    return Vector3{
+        leftWingLocal.x * mat.m[0][0] + leftWingLocal.y * mat.m[1][0] + leftWingLocal.z * mat.m[2][0] + mat.m[3][0],
+        leftWingLocal.x * mat.m[0][1] + leftWingLocal.y * mat.m[1][1] + leftWingLocal.z * mat.m[2][1] + mat.m[3][1],
+        leftWingLocal.x * mat.m[0][2] + leftWingLocal.y * mat.m[1][2] + leftWingLocal.z * mat.m[2][2] + mat.m[3][2]
+    };
+}
+
+Vector3 Player::GetRightWingPosition() const {
+    const Matrix4x4& mat = object_->GetmatWorld();
+    float wingSpan = 3.8f;
+    Vector3 rightWingLocal = { wingSpan, 0.0f, -0.5f };
+    return Vector3{
+        rightWingLocal.x * mat.m[0][0] + rightWingLocal.y * mat.m[1][0] + rightWingLocal.z * mat.m[2][0] + mat.m[3][0],
+        rightWingLocal.x * mat.m[0][1] + rightWingLocal.y * mat.m[1][1] + rightWingLocal.z * mat.m[2][1] + mat.m[3][1],
+        rightWingLocal.x * mat.m[0][2] + rightWingLocal.y * mat.m[1][2] + rightWingLocal.z * mat.m[2][2] + mat.m[3][2]
+    };
 }

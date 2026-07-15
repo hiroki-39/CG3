@@ -27,22 +27,19 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const LevelObjectData& no
 
     // タイプごとの設定
     std::string modelName = "cube.obj";
+    hp_ = 2; // とりあえず全ての敵のHPを2で統一
+
     if (typeName_ == "RUSHER") {
         modelName = "suzanne.obj";
-        hp_ = 2; 
     } else if (typeName_ == "SHOOTER" || typeName_ == "HOMING") {
         modelName = "suzanne.obj";
-        hp_ = 3; 
     } else if (typeName_ == "TURRET") {
         modelName = "cube.obj";
-        hp_ = 5;
     } else { // fallback
         if (nodeData.fileName == "Asteroid") {
             modelName = "monsterBall.obj";
-            hp_ = 2;
         } else {
             modelName = "cube.obj";
-            hp_ = 2;
         }
     }
 

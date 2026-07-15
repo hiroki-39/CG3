@@ -409,6 +409,9 @@ void GamePlayScene::Initialize()
     dodgeEffect_.Initialize(dxCommon, srvManager);
     dodgeEffect_.LoadFromJson("dodge.json");
 
+    trailEffect_.Initialize(dxCommon, srvManager);
+    trailEffect_.LoadFromJson("trail.json");
+
     // 全てのモデル・テクスチャ読み込みが終わった後にGPUへ転送する
     texManager->ExecuteUploadCommands();
     texManager->ClearIntermediateResources();
@@ -843,6 +846,44 @@ void GamePlayScene::Update()
     {
         if (isPlaying_)
         {
+            // トレイル補間用に更新前の翼端位置を保存
+            bool wasBanking = player_->IsBanking();
+            Vector3 prevLeftWing = player_->GetLeftWingPosition();
+            Vector3 prevRightWing = player_->GetRightWingPosition();
+
+            // --- 照準アシスト対象の検索 ---
+            Enemy* nearestEnemy = nullptr;
+            float minDistanceSq = 10000.0f; 
+            float assistRadius = 10.0f; // アシストが効く半径（XY平面での距離）
+            Vector3 reticlePos = player_->GetReticleWorldPosition();
+            
+            // ワールド座標を取得
+            const Matrix4x4& wMat = player_->GetObject3d()->GetmatWorld();
+            Vector3 playerPos = { wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] };
+
+            for (auto& enemy : enemies_)
+            {
+                if (enemy->IsDead()) continue;
+                Vector3 enemyPos = enemy->GetColliderCenter();
+                
+                float dz = enemyPos.z - playerPos.z; 
+                // 自機より奥にいて、かつ遠すぎない敵を対象とする
+                if (dz > 0.0f && dz < 300.0f) 
+                {
+                    // 照準のXY位置と敵のXY位置の距離で判定
+                    float dx = enemyPos.x - reticlePos.x;
+                    float dy = enemyPos.y - reticlePos.y;
+                    float distSqXY = dx * dx + dy * dy;
+
+                    if (distSqXY < (assistRadius * assistRadius) && distSqXY < minDistanceSq)
+                    {
+                        minDistanceSq = distSqXY;
+                        nearestEnemy = enemy.get();
+                    }
+                }
+            }
+            player_->SetAssistTarget(nearestEnemy);
+
             player_->Update(bullets_, cameraObject_.get());
 
             // 回避エフェクトの再生
@@ -865,6 +906,42 @@ void GamePlayScene::Update()
 
                 dodgeEffect_.SetPosition(effectPos);
                 dodgeEffect_.Play();
+            }
+
+            // --- 翼端トレイルの発生 ---
+            if (player_->IsBanking()) {
+                Vector3 leftWing = player_->GetLeftWingPosition();
+                Vector3 rightWing = player_->GetRightWingPosition();
+                
+                if (wasBanking) {
+                    // 前回もバンクしていた場合は間を補間して発生（途切れ防止）
+                    int emitCount = 8;
+                    for (int i = 1; i <= emitCount; ++i) {
+                        float t = (float)i / emitCount;
+                        Vector3 lPos = {
+                            prevLeftWing.x + (leftWing.x - prevLeftWing.x) * t,
+                            prevLeftWing.y + (leftWing.y - prevLeftWing.y) * t,
+                            prevLeftWing.z + (leftWing.z - prevLeftWing.z) * t
+                        };
+                        Vector3 rPos = {
+                            prevRightWing.x + (rightWing.x - prevRightWing.x) * t,
+                            prevRightWing.y + (rightWing.y - prevRightWing.y) * t,
+                            prevRightWing.z + (rightWing.z - prevRightWing.z) * t
+                        };
+                        
+                        trailEffect_.SetPosition(lPos);
+                        trailEffect_.Play();
+                        
+                        trailEffect_.SetPosition(rPos);
+                        trailEffect_.Play();
+                    }
+                } else {
+                    trailEffect_.SetPosition(leftWing);
+                    trailEffect_.Play();
+                    
+                    trailEffect_.SetPosition(rightWing);
+                    trailEffect_.Play();
+                }
             }
         }
         else
@@ -1274,6 +1351,7 @@ void GamePlayScene::Update()
         explosionEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
         hitEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
         dodgeEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
+        trailEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
     }
 
 #ifdef USE_IMGUI
@@ -1997,4 +2075,5 @@ void GamePlayScene::Draw()
     explosionEffect_.Draw();
     hitEffect_.Draw();
     dodgeEffect_.Draw();
+    trailEffect_.Draw();
 }

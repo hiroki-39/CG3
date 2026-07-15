@@ -10,7 +10,7 @@ void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& pos
     object_->SetModel("cube.obj");
     object_->GetModel()->SetColor({ 0.5f, 1.0f, 0.0f, 1.0f }); // 弾を黄緑色にする
     object_->SetTranslate(position);
-    object_->SetScale({ 0.5f, 0.5f, 5.0f }); // 見やすいようにモデルを大きくする
+    object_->SetScale({ 0.5f, 0.5f, 0.5f }); // 見やすいようにモデルを大きくする
     // 弾はワールド座標系で飛ばすため、親(カメラ)は設定しない
     // if (parent) {
     //     object_->SetParent(parent);
