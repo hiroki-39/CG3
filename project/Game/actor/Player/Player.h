@@ -6,6 +6,7 @@
 #include <list>
 
 class Enemy;
+class ParticleEmitter;
 
 class Player {
 public:
@@ -93,6 +94,14 @@ public:
     int GetHp() const { return hp_; }
     int GetMaxHp() const { return maxHp_; }
 
+    // 照準アシスト
+    void SetAssistTarget(Enemy* enemy) { assistTarget_ = enemy; }
+
+    // 翼端トレイル用のヘルパーメソッド
+    bool IsBanking() const;
+    Vector3 GetLeftWingPosition() const;
+    Vector3 GetRightWingPosition() const;
+
 private:
     /// <summary>
     /// 遘ｻ蜍募・逅・    /// </summary>
@@ -160,6 +169,9 @@ private:
     Vector3 lockOnTargetPos_ = { 0, 0, 0 };
     Enemy* lockOnTargetEnemy_ = nullptr;
     
+    // 照準アシスト関連
+    Enemy* assistTarget_ = nullptr;
+
     // ブースト
     bool isBoosting_ = false;
 

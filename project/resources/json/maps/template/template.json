@@ -73,6 +73,28 @@
             "texture_path": "Obstacle_Rock.png"
         },
         {
+            "type": "MESH",
+            "name": "bo",
+            "transform": {
+                "translation": [
+                    -18.501981735229492,
+                    254.15771484375,
+                    40.67532730102539
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    7.670328140258789,
+                    7.670328140258789,
+                    42.62676239013672
+                ]
+            },
+            "is_destructible": true
+        },
+        {
             "type": "EMPTY",
             "name": "Invisible",
             "transform": {
