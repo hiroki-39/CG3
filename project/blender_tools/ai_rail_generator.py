@@ -12,56 +12,15 @@ class AIRailGeneratorProperties(bpy.types.PropertyGroup):
         subtype='PASSWORD'
     )
     rail_length: bpy.props.IntProperty(
-        name="全長 (m)",
-        description="レールの長さを指定します",
-        default=500,
+        name="目安の全長 (m)",
+        description="レールの長さの目安（AIへの指示用）",
+        default=1000,
         min=10,
         max=5000
     )
-    situation: bpy.props.EnumProperty(
-        name="シチュエーション",
-        description="コースの演出テーマを選択します",
-        items=[
-            ('CANYON', "渓谷フライト", "狭い谷間を縫うように激しく切り返すコース"),
-            ('BATTLESHIP', "巨大戦艦急襲", "巨大な対象の周囲を旋回・急降下するコース"),
-            ('ASTEROID', "アステロイドベルト", "障害物を避ける小刻みで予測不能なコース"),
-            ('SKYDIVE', "大気圏突入", "高高度から一気に急降下し地表を駆けるコース"),
-            ('NORMAL', "標準コース", "ベーシックなコース")
-        ],
-        default='CANYON'
-    )
-    pacing: bpy.props.EnumProperty(
-        name="コースの緩急",
-        description="レール全体のテンポ（Pacing）",
-        items=[
-            ('LATE_CLIMAX', "後半で激化", "最初は静かで、進むにつれて激しくなる"),
-            ('ROLLERCOASTER', "ジェットコースター", "激しい起伏と穏やかな直線を交互に繰り返す"),
-            ('CONSTANT_HIGH', "常にクライマックス", "最初から最後まで最高難易度のアクロバット飛行"),
-            ('NORMAL', "一定ペース", "常に一定の難易度で進む")
-        ],
-        default='ROLLERCOASTER'
-    )
-    intensity: bpy.props.IntProperty(
-        name="起伏の激しさ",
-        description="カーブや上下移動の激しさ",
-        default=5,
-        min=1,
-        max=10
-    )
-    event_freq: bpy.props.EnumProperty(
-        name="イベント頻度",
-        description="敵などのイベントの発生頻度",
-        items=[
-            ('NONE', "なし", "イベントを配置しない"),
-            ('LOW', "少ない", "たまに配置する"),
-            ('NORMAL', "普通", "標準的な頻度で配置する"),
-            ('HIGH', "多い", "頻繁にイベントを配置する")
-        ],
-        default='NORMAL'
-    )
     min_z: bpy.props.FloatProperty(
         name="Z座標の下限 (m)",
-        description="レールがこれより下に潜らないようにします（地面の高さ）",
+        description="レールがこれより下に潜らないようにします（地面の高さなど）",
         default=0.0,
     )
     start_z: bpy.props.FloatProperty(
@@ -70,9 +29,9 @@ class AIRailGeneratorProperties(bpy.types.PropertyGroup):
         default=0.0,
     )
     prompt: bpy.props.StringProperty(
-        name="追加の自由記述",
-        description="特別な要望があれば記入してください（空欄でも可）",
-        default="",
+        name="プロンプト",
+        description="作成したいステージのイメージを自由に記述してください（例: 障害物を避ける激しいコース）",
+        default="アステロイド帯を縫うような激しいコース",
     )
 
 class AIRAIL_OT_Generate(bpy.types.Operator):
@@ -84,31 +43,14 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
         props = context.scene.ai_rail_props
         api_key = props.api_key
         
-        sit_names = {
-            'CANYON': '渓谷フライト（狭い谷間を縫うような激しい切り返しと起伏）',
-            'BATTLESHIP': '巨大戦艦急襲（巨大な対象の周囲を大きく旋回・急上昇・急降下する映画的カメラワーク）',
-            'ASTEROID': 'アステロイドベルト（障害物を避ける小刻みで予測不能な軌道）',
-            'SKYDIVE': '大気圏突入（超高高度から一気に急降下し、地表スレスレを高速で滑空）',
-            'NORMAL': '標準的なコース'
-        }
-        pace_names = {
-            'LATE_CLIMAX': '後半で激化（序盤は静か、終盤で急激に激しくなる）',
-            'ROLLERCOASTER': 'ジェットコースター（激しい起伏と穏やかな直線の繰り返し）',
-            'CONSTANT_HIGH': '常にクライマックス（終始アクロバティック）',
-            'NORMAL': '一定のペース'
-        }
-        freq_names = {'NONE': '全くなし', 'LOW': '少ない', 'NORMAL': '普通', 'HIGH': '非常に多い'}
-        
-        auto_prompt = f"以下のパラメータに従って、全長およそ {props.rail_length}m のカメラレールセクション配列と敵配置データを生成してください。\n"
+        auto_prompt = f"以下の条件に従って、全長およそ {props.rail_length}m のカメラレールセクション配列と敵配置データを生成してください。\n"
         auto_prompt += f"・レールの始点の高さ(Z座標): {props.start_z} m からスタートしてください。\n"
-        auto_prompt += f"・シチュエーション（演出テーマ）: {sit_names[props.situation]}\n"
-        auto_prompt += f"・コース全体の緩急（ペーシング）: {pace_names[props.pacing]}\n"
-        auto_prompt += f"・起伏の激しさ (1〜10): レベル {props.intensity}\n"
-        auto_prompt += f"・敵の配置頻度: {freq_names[props.event_freq]}\n"
         auto_prompt += f"・【重要】Z座標(高さ)の下限: レールの高さは絶対に {props.min_z} mを下回らないように設計してください。\n"
         
         if props.prompt:
-            auto_prompt += f"\n【追加のユーザー要望】\n{props.prompt}\n"
+            auto_prompt += f"\n【ユーザーの希望するコースイメージ（この内容に沿って起伏や敵の配置を考えてください）】\n{props.prompt}\n"
+        else:
+            auto_prompt += "\n【ユーザーの希望するコースイメージ】\nおまかせでカッコいいコースを作ってください。\n"
 
         if not api_key:
             self.report({'ERROR'}, "API Key is missing!")
@@ -118,7 +60,7 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
         
         system_prompt = f"""
 あなたは「スターフォックス」や「パンツァードラグーン」のような名作3Dレールシューティングゲームの、超一流のレベルデザイナーです。
-指定されたシチュエーションに基づいて、ステージを構成する「セクション（レールの形状）」の並びと、各セクションに配置する「敵の情報」をJSON形式で出力してください。
+指定されたイメージに基づいて、ステージを構成する「セクション（レールの形状）」の並びと、各セクションに配置する「敵や障害物の情報」をJSON形式で出力してください。
 
 【出力JSONフォーマット】
 必ず以下のJSONスキーマに従い、JSONテキストのみを出力してください。マークダウン(```json)や解説は一切含めないでください。
@@ -126,12 +68,12 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
 {{
   "segments": [
     {{
-      "type": "STRACTION_TYPE",
+      "type": "STRAIGHT",
       "length": 50.0,
       "speed": 12.0,
       "enemies": [
         {{
-          "type": "drone",
+          "type": "Fighter",
           "progress": 0.5,
           "offset_x": -8.0,
           "offset_z": 3.0
@@ -149,6 +91,7 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
 - "DIVE": 下降するセクション（Z軸下限 {props.min_z}m を下回らないよう注意）。
 
 【敵配置のルール ("enemies")】
+- "type": 敵の種類。指定可能なのは "Fighter"（戦闘機）、"Asteroid"（障害物）、"Enemy"（汎用敵）などです。
 - "progress": そのセクション内での出現位置を 0.0（セクション開始点）から 1.0（セクション終了点）の間で指定。
 - "offset_x": レール（自機）の進行方向から見た左右のオフセット（マイナスが左、プラスが右）。
 - "offset_z": レール（自機）の進行方向から見た上下のオフセット（マイナスが下、プラスが上）。
@@ -213,6 +156,17 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
         bezier_points_data = []
         enemy_spawn_list = []
 
+        # レール全体の長さを計算（spawn_progressの算出用）
+        total_length = 0.0
+        for seg in segments:
+            seg_type = seg.get("type", "STRAIGHT")
+            length = float(seg.get("length", 50.0))
+            if seg_type in ["CURVE_RIGHT", "CURVE_LEFT"]:
+                radius = max(10.0, length)
+                total_length += radius * math.pi / 2.0 # 円弧の長さ
+            else:
+                total_length += length
+        
         # 最初の点
         bezier_points_data.append({
             "pos": tuple(current_pos),
@@ -221,6 +175,8 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
             "speed": float(segments[0].get("speed", 10.0)),
             "event": "START"
         })
+
+        current_cumulative_len = 0.0
 
         # 各セクションをパース
         for seg_idx, seg in enumerate(segments):
@@ -231,7 +187,7 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
             
             seg_start_pos = list(current_pos)
             seg_start_angle = current_angle
-
+            
             # --- 直線、上昇、下降の処理 ---
             if seg_type in ["STRAIGHT", "CLIMB", "DIVE"]:
                 z_offset = length * 0.3 if seg_type == "CLIMB" else (-length * 0.3 if seg_type == "DIVE" else 0.0)
@@ -265,12 +221,17 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
                     ex = ex_c + ox * math.cos(right_angle)
                     ey = ey_c + ox * math.sin(right_angle)
                     ez = ez_c + oz
-                    enemy_spawn_list.append({"type": enemy.get("type", "drone"), "loc": (ex, ey, ez), "seg": seg_idx})
+                    
+                    spawn_prog = (current_cumulative_len + length * prog) / total_length if total_length > 0 else 0.0
+                    enemy_spawn_list.append({"type": enemy.get("type", "Fighter"), "loc": (ex, ey, ez), "seg": seg_idx, "spawn_progress": spawn_prog})
+                    
+                current_cumulative_len += length
 
             # --- 右旋回・左旋回の処理（90度カーブを細かく割って超滑らかにする） ---
             elif seg_type in ["CURVE_RIGHT", "CURVE_LEFT"]:
                 is_right = (seg_type == "CURVE_RIGHT")
                 radius = max(10.0, length) # 最低半径を保証
+                arc_length = radius * math.pi / 2.0
                 
                 # 回転の中心点を計算
                 center_offset_angle = current_angle - math.radians(90.0) if is_right else current_angle + math.radians(90.0)
@@ -297,7 +258,6 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
                     current_pos[1] = cy + radius * math.sin(arc_angle)
                     
                     # カーブの滑らかさを保つ接線ハンドルの計算
-                    # ベジェ曲線で円弧を近似するための最適なハンドルの長さ
                     h_len = radius * (4.0 / 3.0) * math.tan(angle_step / 4.0)
                     
                     hl = (current_pos[0] - h_len * math.cos(current_angle), current_pos[1] - h_len * math.sin(current_angle), current_pos[2])
@@ -329,7 +289,11 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
                     ex = ex_c + ox * math.cos(right_angle)
                     ey = ey_c + ox * math.sin(right_angle)
                     ez = current_pos[2] + oz
-                    enemy_spawn_list.append({"type": enemy.get("type", "drone"), "loc": (ex, ey, ez), "seg": seg_idx})
+                    
+                    spawn_prog = (current_cumulative_len + arc_length * prog) / total_length if total_length > 0 else 0.0
+                    enemy_spawn_list.append({"type": enemy.get("type", "Fighter"), "loc": (ex, ey, ez), "seg": seg_idx, "spawn_progress": spawn_prog})
+                
+                current_cumulative_len += arc_length
 
         # 3. Blenderのベジェ曲線オブジェクトに一気に反映
         spline.bezier_points.add(len(bezier_points_data) - 1)
@@ -338,20 +302,34 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
             bp.co = pt["pos"]
             bp.handle_left = pt["handle_left"]
             bp.handle_right = pt["handle_right"]
-            # ハンドルの種類をFREEにして、計算通りの綺麗な向きに固定する
             bp.handle_left_type = 'FREE'
             bp.handle_right_type = 'FREE'
             
             curve_obj[f"speed_{idx}"] = pt["speed"]
             curve_obj[f"event_{idx}"] = pt["event"]
 
-        # 4. 敵オブジェクトを配置
+        # 4. 敵オブジェクトを配置 (ゲームエンジン連動仕様に改良)
         for e_idx, enemy in enumerate(enemy_spawn_list):
-            bpy.ops.mesh.primitive_ico_sphere_add(radius=2.0, location=enemy["loc"])
-            enemy_obj = bpy.context.active_object
-            enemy_obj.name = f"Enemy_{enemy['type']}_Seg{enemy['seg']}_{e_idx}"
-            enemy_obj["enemy_type"] = enemy["type"]
-            enemy_obj["parent_rail"] = curve_obj.name
+            e_type = enemy["type"]
+            empty_obj = bpy.data.objects.new(f"Enemy_{e_type}_Seg{enemy['seg']}_{e_idx}", None)
+            empty_obj.empty_display_type = 'CUBE'
+            empty_obj.empty_display_size = 2.0
+            empty_obj.location = enemy["loc"]
+            
+            # level_editor.py で JSON 出力可能にするための設定
+            empty_obj["file_name"] = e_type
+            empty_obj["is_enemy"] = True
+            empty_obj["enemy_type"] = e_type
+            empty_obj["spawn_progress"] = enemy["spawn_progress"]
+            empty_obj["parent_rail"] = curve_obj.name
+            
+            # アドオン側の flag のためのプロパティ
+            try:
+                empty_obj.is_enemy_flag = True
+            except:
+                pass
+                
+            bpy.context.scene.collection.objects.link(empty_obj)
 
         # レールを選択状態にする
         bpy.context.view_layer.objects.active = curve_obj
@@ -372,16 +350,16 @@ class AIRAIL_PT_Panel(bpy.types.Panel):
         layout.prop(props, "api_key")
         
         box = layout.box()
-        box.label(text="ダイナミック生成パラメータ設定:")
+        box.label(text="システム制約:")
         box.prop(props, "rail_length")
-        box.prop(props, "situation")
-        box.prop(props, "pacing")
-        box.prop(props, "intensity", slider=True)
-        box.prop(props, "event_freq")
         box.prop(props, "start_z")
         box.prop(props, "min_z")
         
-        layout.prop(props, "prompt", text="追加要望(任意)")
+        layout.separator()
+        layout.label(text="AIプロンプト:")
+        layout.prop(props, "prompt", text="")
+        
+        layout.separator()
         layout.operator(AIRAIL_OT_Generate.bl_idname, text="AIでステージ・敵を自動生成", icon='OUTLINER_OB_CURVE')
 
 classes = (
