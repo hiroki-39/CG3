@@ -268,6 +268,7 @@ void Player::Move() {
         targetYaw = 0.2f;
     }
 
+    // Q/Eでさらに深く（90度）傾ける
     if (!isRolling_) {
         if (input_->PushKey(DIK_Q)) {
             targetBank = 1.5708f;
@@ -276,7 +277,8 @@ void Player::Move() {
         }
     }
 
-    float lerpSpeed = 0.15f; 
+    // 傾きの反応速度を下げて、より滑らか（スムーズ）に傾き・戻りが行われるようにする
+    float lerpSpeed = 0.12f; 
     currentPitch_ += (targetPitch - currentPitch_) * lerpSpeed;
     currentYaw_ += (targetYaw - currentYaw_) * lerpSpeed;
     currentBank_ += (targetBank - currentBank_) * lerpSpeed;
@@ -306,11 +308,16 @@ void Player::Move() {
         frontReticle_->Update();
     }
 
+    // 3D空間のパースペクティブ（遠近感）により、自機が照準を向いていないように見えてしまう問題の対策
+    // 実際の移動・照準用の角度とは別に、モデルの見た目（描画用）の角度だけを大げさに（誇張して）回す
+    float visualPitch = currentPitch_ * 2.0f; // 上下の見た目の首振り（2倍）
+    float visualYaw   = currentYaw_   * 3.5f; // 左右の見た目の首振り（3.5倍）
+
     object_->SetScale(playerScale_);
     object_->SetRotation(Vector3(
-        baseRotation_.x + currentPitch_ + modelRotOffset_.x,
-        baseRotation_.y + currentYaw_ + modelRotOffset_.y,
-        baseRotation_.z + finalBank + modelRotOffset_.z
+        baseRotation_.x + visualPitch + modelRotOffset_.x,
+        baseRotation_.y + visualYaw   + modelRotOffset_.y,
+        baseRotation_.z + finalBank   + modelRotOffset_.z
     ));
     object_->SetTranslate(Vector3(
         logicalPosition_.x + modelPosOffset_.x, 
