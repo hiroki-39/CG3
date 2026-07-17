@@ -3,6 +3,8 @@ import json
 import urllib.request
 import urllib.error
 import math
+import threading
+import random
 
 class AIRailGeneratorProperties(bpy.types.PropertyGroup):
     api_key: bpy.props.StringProperty(
@@ -26,13 +28,372 @@ class AIRailGeneratorProperties(bpy.types.PropertyGroup):
     start_z: bpy.props.FloatProperty(
         name="始点の高さ (Z座標)",
         description="レールがスタートする地点の高さを設定します",
-        default=0.0,
+        default=50.0,
     )
     prompt: bpy.props.StringProperty(
         name="プロンプト",
         description="作成したいステージのイメージを自由に記述してください（例: 障害物を避ける激しいコース）",
-        default="アステロイド帯を縫うような激しいコース",
+        default="渓谷の中をすれすれでよけるような激しいコース",
     )
+
+# 非同期通信用の状態管理
+class AIGenState:
+    is_running = False
+    stage_data = None
+    error_msg = None
+    start_z = 0.0
+
+def fetch_gemini_data(url, payload):
+    try:
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req) as response:
+            res_body = response.read().decode('utf-8')
+            res_json = json.loads(res_body)
+            generated_text = res_json['candidates'][0]['content']['parts'][0]['text']
+            stage_data = json.loads(generated_text)
+            AIGenState.stage_data = stage_data
+    except Exception as e:
+        AIGenState.error_msg = str(e)
+    finally:
+        AIGenState.is_running = False
+
+def check_ai_gen_thread():
+    if AIGenState.is_running:
+        return 0.5 # 0.5秒後に再チェック
+        
+    if AIGenState.error_msg:
+        print("AI Gen Error:", AIGenState.error_msg)
+    elif AIGenState.stage_data:
+        try:
+            create_stage(AIGenState.stage_data, AIGenState.start_z)
+            print("Stage elements generated successfully!")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print("Create Stage Error:", e)
+            
+    return None # タイマー終了
+
+
+def setup_geometry_nodes(terrain_obj, rail_obj):
+    mod = terrain_obj.modifiers.new(name="AI_Terrain_Gen", type='NODES')
+    node_group = bpy.data.node_groups.new(name="AI_Terrain_Nodes", type='GeometryNodeTree')
+    mod.node_group = node_group
+    
+    try:
+        node_group.interface.new_socket(name="Geometry", in_out='OUTPUT', socket_type='NodeSocketGeometry')
+        node_group.interface.new_socket(name="Geometry", in_out='INPUT', socket_type='NodeSocketGeometry')
+    except AttributeError:
+        node_group.outputs.new('NodeSocketGeometry', "Geometry")
+        node_group.inputs.new('NodeSocketGeometry', "Geometry")
+        
+    nodes = node_group.nodes
+    links = node_group.links
+    for node in nodes:
+        nodes.remove(node)
+        
+    group_in = nodes.new('NodeGroupInput')
+    group_in.location = (-2400, 0)
+    
+    group_out = nodes.new('NodeGroupOutput')
+    group_out.location = (1600, 0)
+    
+    # ----------------------------------------------------
+    # 1. レールの情報を取得し、自動で最適なサイズのGridを作る
+    # ----------------------------------------------------
+    obj_info = nodes.new('GeometryNodeObjectInfo')
+    obj_info.inputs["Object"].default_value = rail_obj
+    obj_info.transform_space = 'RELATIVE' # 必須！位置ズレを防ぐ
+    obj_info.location = (-2200, -200)
+    
+    # バウンディングボックスでレールの全体サイズと中心を取得
+    bbox = nodes.new('GeometryNodeBoundBox')
+    bbox.location = (-2000, -200)
+    
+    bbox_size = nodes.new('ShaderNodeVectorMath')
+    bbox_size.operation = 'SUBTRACT'
+    bbox_size.location = (-1800, -100)
+    
+    bbox_center_add = nodes.new('ShaderNodeVectorMath')
+    bbox_center_add.operation = 'ADD'
+    bbox_center_add.location = (-1800, -300)
+    
+    bbox_center = nodes.new('ShaderNodeVectorMath')
+    bbox_center.operation = 'SCALE'
+    bbox_center.inputs[3].default_value = 0.5
+    bbox_center.location = (-1600, -300)
+    
+    # レールサイズに余白（崖の外側の広さ）を追加
+    margin_add = nodes.new('ShaderNodeVectorMath')
+    margin_add.operation = 'ADD'
+    margin_add.inputs[1].default_value = (800.0, 800.0, 0.0) # 左右400mの余白
+    margin_add.location = (-1600, -100)
+    
+    sep_size = nodes.new('ShaderNodeSeparateXYZ')
+    sep_size.location = (-1400, -100)
+    
+    grid = nodes.new('GeometryNodeMeshGrid')
+    grid.inputs["Vertices X"].default_value = 600
+    grid.inputs["Vertices Y"].default_value = 600
+    grid.location = (-1200, 100)
+    
+    # できたGridをレールの中心に移動
+    grid_set_pos = nodes.new('GeometryNodeSetPosition')
+    grid_set_pos.location = (-800, 100)
+    
+    sep_center = nodes.new('ShaderNodeSeparateXYZ')
+    sep_center.location = (-1400, -400)
+    comb_center = nodes.new('ShaderNodeCombineXYZ')
+    comb_center.location = (-1200, -400)
+    
+    # リンク（Grid自動生成と配置）
+    links.new(obj_info.outputs["Geometry"], bbox.inputs["Geometry"])
+    links.new(bbox.outputs["Max"], bbox_size.inputs[0])
+    links.new(bbox.outputs["Min"], bbox_size.inputs[1])
+    links.new(bbox.outputs["Max"], bbox_center_add.inputs[0])
+    links.new(bbox.outputs["Min"], bbox_center_add.inputs[1])
+    links.new(bbox_center_add.outputs["Vector"], bbox_center.inputs[0])
+    
+    links.new(bbox_size.outputs["Vector"], margin_add.inputs[0])
+    links.new(margin_add.outputs["Vector"], sep_size.inputs["Vector"])
+    links.new(sep_size.outputs["X"], grid.inputs["Size X"])
+    links.new(sep_size.outputs["Y"], grid.inputs["Size Y"])
+    
+    links.new(grid.outputs["Mesh"], grid_set_pos.inputs["Geometry"])
+    links.new(bbox_center.outputs["Vector"], sep_center.inputs["Vector"])
+    links.new(sep_center.outputs["X"], comb_center.inputs["X"])
+    links.new(sep_center.outputs["Y"], comb_center.inputs["Y"])
+    links.new(comb_center.outputs["Vector"], grid_set_pos.inputs["Offset"]) # Zは0のまま移動
+    
+    # ----------------------------------------------------
+    # 2. レールから純粋な「XY平面の距離（2D距離）」を測る
+    # ----------------------------------------------------
+    curve_circle = nodes.new('GeometryNodeCurvePrimitiveCircle')
+    curve_circle.inputs["Radius"].default_value = 1.0
+    curve_circle.location = (-1200, 400)
+    
+    curve_to_mesh = nodes.new('GeometryNodeCurveToMesh')
+    curve_to_mesh.location = (-1000, 300)
+    
+    # 距離計算の狂い（レールが空中にあると距離が遠くなる）を防ぐため、
+    # 距離測定用レールのZ座標を強制的に0（ペシャンコ）にする
+    set_rail_flat = nodes.new('GeometryNodeSetPosition')
+    set_rail_flat.location = (-800, 300)
+    
+    pos_rail = nodes.new('GeometryNodeInputPosition')
+    pos_rail.location = (-1200, 150)
+    
+    sep_rail = nodes.new('ShaderNodeSeparateXYZ')
+    sep_rail.location = (-1000, 150)
+    
+    comb_rail = nodes.new('ShaderNodeCombineXYZ')
+    comb_rail.location = (-800, 150) # Zは繋がないので0になる
+    
+    proximity = nodes.new('GeometryNodeProximity')
+    proximity.target_element = 'FACES'
+    proximity.location = (-600, 300)
+    
+    pos_node = nodes.new('GeometryNodeInputPosition')
+    pos_node.location = (-800, 0)
+    
+    links.new(obj_info.outputs["Geometry"], curve_to_mesh.inputs["Curve"])
+    links.new(curve_circle.outputs["Curve"], curve_to_mesh.inputs["Profile Curve"])
+    links.new(curve_to_mesh.outputs["Mesh"], set_rail_flat.inputs["Geometry"])
+    
+    # ペシャンコ化のリンク
+    links.new(pos_rail.outputs["Position"], sep_rail.inputs["Vector"])
+    links.new(sep_rail.outputs["X"], comb_rail.inputs["X"])
+    links.new(sep_rail.outputs["Y"], comb_rail.inputs["Y"])
+    links.new(comb_rail.outputs["Vector"], set_rail_flat.inputs["Position"])
+    
+    links.new(set_rail_flat.outputs["Geometry"], proximity.inputs["Target"])
+    links.new(pos_node.outputs["Position"], proximity.inputs["Source Position"])
+    
+    # ----------------------------------------------------
+    # 3. 崖の立ち上がり計算（絶壁）
+    # ----------------------------------------------------
+    map_range = nodes.new('ShaderNodeMapRange')
+    map_range.inputs[1].default_value = 30.0  # 谷底の幅（レールから30m）
+    map_range.inputs[2].default_value = 70.0  # 崖の上の幅（70m地点で頂上）
+    map_range.inputs[3].default_value = 0.0
+    map_range.inputs[4].default_value = 1.0
+    map_range.location = (-400, 300)
+    
+    power = nodes.new('ShaderNodeMath')
+    power.operation = 'POWER'
+    power.inputs[1].default_value = 0.2 # 強烈な急勾配
+    power.location = (-200, 300)
+    
+    cliff_height = nodes.new('ShaderNodeMath')
+    cliff_height.operation = 'MULTIPLY'
+    cliff_height.inputs[1].default_value = 200.0 # 崖の基本高さ
+    cliff_height.location = (0, 300)
+    
+    links.new(proximity.outputs["Distance"], map_range.inputs["Value"])
+    links.new(map_range.outputs["Result"], power.inputs[0])
+    links.new(power.outputs["Value"], cliff_height.inputs[0])
+    
+    # ----------------------------------------------------
+    # 4. 岩肌と浸食のノイズ（レール部分はノイズ0にする賢いマスク処理）
+    # ----------------------------------------------------
+    surface_noise = nodes.new('ShaderNodeTexNoise')
+    surface_noise.inputs["Scale"].default_value = 0.02
+    surface_noise.inputs["Detail"].default_value = 6.0
+    surface_noise.location = (-400, -100)
+    
+    surf_sub = nodes.new('ShaderNodeMath')
+    surf_sub.operation = 'SUBTRACT'
+    surf_sub.inputs[1].default_value = 0.3 # 隆起させる
+    surf_sub.location = (-200, -100)
+    
+    surf_mul = nodes.new('ShaderNodeMath')
+    surf_mul.operation = 'MULTIPLY'
+    surf_mul.inputs[1].default_value = 150.0 # 激しい岩肌の起伏（最大150m）
+    surf_mul.location = (0, -100)
+    
+    # マスク処理：MapRangeの結果(0~1)を掛けることで、谷底(0)はノイズ無効、崖の上(1)は激しいノイズになる
+    noise_mask = nodes.new('ShaderNodeMath')
+    noise_mask.operation = 'MULTIPLY'
+    noise_mask.location = (200, -100)
+    
+    links.new(pos_node.outputs["Position"], surface_noise.inputs["Vector"])
+    links.new(surface_noise.outputs["Fac"], surf_sub.inputs[0])
+    links.new(surf_sub.outputs["Value"], surf_mul.inputs[0])
+    
+    links.new(surf_mul.outputs["Value"], noise_mask.inputs[0])
+    links.new(map_range.outputs["Result"], noise_mask.inputs[1]) # ここがミソ！
+    
+    # ----------------------------------------------------
+    # 5. 高さの合成と地形の適用
+    # ----------------------------------------------------
+    final_add = nodes.new('ShaderNodeMath')
+    final_add.operation = 'ADD'
+    final_add.location = (400, 100)
+    
+    comb_z = nodes.new('ShaderNodeCombineXYZ')
+    comb_z.location = (600, 100)
+    
+    set_pos_final = nodes.new('GeometryNodeSetPosition')
+    set_pos_final.location = (800, 100)
+    
+    shade_smooth = nodes.new('GeometryNodeSetShadeSmooth')
+    shade_smooth.location = (1000, 100)
+    
+    links.new(cliff_height.outputs["Value"], final_add.inputs[0])
+    links.new(noise_mask.outputs["Value"], final_add.inputs[1])
+    links.new(final_add.outputs["Value"], comb_z.inputs["Z"])
+    
+    links.new(grid_set_pos.outputs["Geometry"], set_pos_final.inputs["Geometry"])
+    links.new(comb_z.outputs["Vector"], set_pos_final.inputs["Offset"])
+    
+    links.new(set_pos_final.outputs["Geometry"], shade_smooth.inputs["Geometry"])
+    links.new(shade_smooth.outputs["Geometry"], group_out.inputs["Geometry"])
+
+
+def create_stage(data, start_z):
+    segments = data.get("segments", [])
+    if not segments:
+        return
+
+    # 1. レール（Curve）オブジェクトのセットアップ (カメラレール用)
+    curve_data = bpy.data.curves.new('AIRailCurve', type='CURVE')
+    curve_data.dimensions = '3D'
+    curve_obj = bpy.data.objects.new('AIRail', curve_data)
+    bpy.context.scene.collection.objects.link(curve_obj)
+    
+    spline = curve_data.splines.new('BEZIER')
+    
+    current_pos = [0.0, 0.0, start_z]
+    current_angle = math.radians(90.0)
+    
+    bezier_points_data = []
+
+    first_seg = segments[0] if segments else {}
+    bezier_points_data.append({
+        "pos": tuple(current_pos),
+        "speed": float(first_seg.get("speed", 10.0)),
+        "event": "START"
+    })
+
+    for seg_idx, seg in enumerate(segments):
+        seg_type = seg.get("type", "STRAIGHT")
+        length = float(seg.get("length", 50.0))
+        speed = float(seg.get("speed", 12.0))
+        
+        if seg_type in ["STRAIGHT", "CLIMB", "DIVE"]:
+            z_offset = length * 0.3 if seg_type == "CLIMB" else (-length * 0.3 if seg_type == "DIVE" else 0.0)
+            dx = length * math.cos(current_angle)
+            dy = length * math.sin(current_angle)
+            
+            current_pos[0] += dx
+            current_pos[1] += dy
+            current_pos[2] += z_offset
+            
+            # 地面に潜らないように min_z でガード
+            if current_pos[2] < bpy.context.scene.ai_rail_props.min_z:
+                current_pos[2] = bpy.context.scene.ai_rail_props.min_z
+                
+            bezier_points_data.append({
+                "pos": tuple(current_pos),
+                "speed": speed,
+                "event": seg_type
+            })
+
+        elif seg_type in ["CURVE_RIGHT", "CURVE_LEFT"]:
+            is_right = (seg_type == "CURVE_RIGHT")
+            radius = max(10.0, length)
+            
+            center_offset_angle = current_angle - math.radians(90.0) if is_right else current_angle + math.radians(90.0)
+            cx = current_pos[0] + radius * math.cos(center_offset_angle)
+            cy = current_pos[1] + radius * math.sin(center_offset_angle)
+            
+            steps = 6
+            angle_step = math.radians(90.0) / steps
+            
+            start_arc_angle = current_angle + math.radians(90.0) if is_right else current_angle - math.radians(90.0)
+            
+            for step in range(1, steps + 1):
+                if is_right:
+                    arc_angle = start_arc_angle - angle_step * step
+                    current_angle = arc_angle - math.radians(90.0)
+                else:
+                    arc_angle = start_arc_angle + angle_step * step
+                    current_angle = arc_angle + math.radians(90.0)
+                    
+                current_pos[0] = cx + radius * math.cos(arc_angle)
+                current_pos[1] = cy + radius * math.sin(arc_angle)
+                
+                bezier_points_data.append({
+                    "pos": tuple(current_pos),
+                    "speed": speed,
+                    "event": f"{seg_type}_{step}"
+                })
+
+    spline.bezier_points.add(len(bezier_points_data) - 1)
+
+    for idx, pt in enumerate(bezier_points_data):
+        bp = spline.bezier_points[idx]
+        bp.co = pt["pos"]
+        bp.handle_left_type = 'AUTO'
+        bp.handle_right_type = 'AUTO'
+        
+        curve_obj[f"speed_{idx}"] = pt["speed"]
+        curve_obj[f"event_{idx}"] = pt["event"]
+
+    # --- 2. 地形用オブジェクトのセットアップ ---
+    terrain_mesh = bpy.data.meshes.new("AITerrainMesh")
+    terrain_obj = bpy.data.objects.new("AITerrain", terrain_mesh)
+    bpy.context.scene.collection.objects.link(terrain_obj)
+
+    # 地形メッシュオブジェクトにGeometry Nodesを適用
+    setup_geometry_nodes(terrain_obj, curve_obj)
+
+    # 選択状態の更新
+    bpy.context.view_layer.objects.active = curve_obj
+    curve_obj.select_set(True)
+    terrain_obj.select_set(True)
+
 
 class AIRAIL_OT_Generate(bpy.types.Operator):
     bl_idname = "object.ai_rail_generate"
@@ -40,27 +401,49 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        if AIGenState.is_running:
+            self.report({'WARNING'}, "現在AIが生成中です... お待ちください。")
+            return {'CANCELLED'}
+            
         props = context.scene.ai_rail_props
         api_key = props.api_key
         
-        auto_prompt = f"以下の条件に従って、全長およそ {props.rail_length}m のカメラレールセクション配列と敵配置データを生成してください。\n"
+        if not api_key:
+            self.report({'ERROR'}, "API Key is missing!")
+            return {'CANCELLED'}
+            
+        AIGenState.is_running = True
+        AIGenState.stage_data = None
+        AIGenState.error_msg = None
+        AIGenState.start_z = props.start_z
+        
+        auto_prompt = f"以下の条件に従って、全長およそ {props.rail_length}m のカメラレールセクション配列を生成してください。\n"
         auto_prompt += f"・レールの始点の高さ(Z座標): {props.start_z} m からスタートしてください。\n"
         auto_prompt += f"・【重要】Z座標(高さ)の下限: レールの高さは絶対に {props.min_z} mを下回らないように設計してください。\n"
         
         if props.prompt:
-            auto_prompt += f"\n【ユーザーの希望するコースイメージ（この内容に沿って起伏や敵の配置を考えてください）】\n{props.prompt}\n"
+            auto_prompt += f"\n【ユーザーの希望するコースイメージ（この内容に沿って起伏やカーブを考えてください）】\n{props.prompt}\n"
         else:
             auto_prompt += "\n【ユーザーの希望するコースイメージ】\nおまかせでカッコいいコースを作ってください。\n"
 
-        if not api_key:
-            self.report({'ERROR'}, "API Key is missing!")
-            return {'CANCELLED'}
+        # 多様性アップのための裏テーマと乱数シード
+        hidden_themes = [
+            "起伏の激しい山岳地帯。急な上昇と下降を多く含めてください。",
+            "鋭い右カーブと左カーブが連続する非常にテクニカルなコース。",
+            "直線をメインにした超高速の駆け抜けコース。",
+            "前半は直線、後半は複雑なカーブが続くドラマチックな展開。",
+            "長い上昇のあとに一気に下降するジェットコースターのようなコース。"
+        ]
+        chosen_theme = random.choice(hidden_themes)
+        random_seed = random.randint(0, 100000)
+        
+        auto_prompt += f"\n【AIへの隠し指示 (Random Seed: {random_seed})】\n今回のコースは「{chosen_theme}」というテーマを強調して、毎回異なる展開のセクション構成を生成してください。\n"
 
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key.strip()}"
         
         system_prompt = f"""
 あなたは「スターフォックス」や「パンツァードラグーン」のような名作3Dレールシューティングゲームの、超一流のレベルデザイナーです。
-指定されたイメージに基づいて、ステージを構成する「セクション（レールの形状）」の並びと、各セクションに配置する「敵や障害物の情報」をJSON形式で出力してください。
+指定されたイメージに基づいて、ステージを構成する「セクション（レールの形状）」の並びと各セクションの「地形データ（ジオメトリノード用）」をJSON形式で出力してください。（現在敵の配置は行いません）
 
 【出力JSONフォーマット】
 必ず以下のJSONスキーマに従い、JSONテキストのみを出力してください。マークダウン(```json)や解説は一切含めないでください。
@@ -71,14 +454,12 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
       "type": "STRAIGHT",
       "length": 50.0,
       "speed": 12.0,
-      "enemies": [
-        {{
-          "type": "Fighter",
-          "progress": 0.5,
-          "offset_x": -8.0,
-          "offset_z": 3.0
-        }}
-      ]
+      "terrain": {{
+        "type": "OPEN",
+        "width": 20.0,
+        "roughness": 0.5,
+        "obstacle_density": 0.2
+      }}
     }}
   ]
 }}
@@ -90,250 +471,35 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
 - "CLIMB": 上昇するセクション。
 - "DIVE": 下降するセクション（Z軸下限 {props.min_z}m を下回らないよう注意）。
 
-【敵配置のルール ("enemies")】
-- "type": 敵の種類。指定可能なのは "Fighter"（戦闘機）、"Asteroid"（障害物）、"Enemy"（汎用敵）などです。
-- "progress": そのセクション内での出現位置を 0.0（セクション開始点）から 1.0（セクション終了点）の間で指定。
-- "offset_x": レール（自機）の進行方向から見た左右のオフセット（マイナスが左、プラスが右）。
-- "offset_z": レール（自機）の進行方向から見た上下のオフセット（マイナスが下、プラスが上）。
+【地形データ ("terrain")】
+ジオメトリノードでプロシージャル地形を生成するためのパラメータです。
+- "type": "OPEN" (開けた地形/地面のみ) または "TUNNEL" (トンネル/洞窟)。
+- "width": 地面の幅、またはトンネルの半径（10.0 ～ 50.0）。
+- "roughness": 地形の起伏の激しさ（0.0: 平坦 ～ 1.0: 激しい）。
+- "obstacle_density": 岩などの障害物の配置密度（0.0: なし ～ 1.0: 密集）。
 """
+        # temperatureを高く設定して多様性を向上
         payload = {
             "contents": [{
                 "parts": [{"text": system_prompt + "\n\nUser Request:\n" + auto_prompt}]
             }],
             "generationConfig": {
+                "temperature": 1.5,
                 "response_mime_type": "application/json"
             }
         }
         
-        data = json.dumps(payload).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+        self.report({'INFO'}, "AIにリクエストを送信しました！バックグラウンドで生成中です... (Blenderを操作可能です)")
         
-        import time
-        max_retries = 3
+        # スレッド起動（フリーズ回避）
+        thread = threading.Thread(target=fetch_gemini_data, args=(url, payload))
+        thread.start()
         
-        for attempt in range(max_retries):
-            try:
-                with urllib.request.urlopen(req) as response:
-                    res_body = response.read().decode('utf-8')
-                    res_json = json.loads(res_body)
-                    generated_text = res_json['candidates'][0]['content']['parts'][0]['text']
-                    stage_data = json.loads(generated_text)
-                    
-                    self.create_stage(stage_data, props.start_z)
-                    self.report({'INFO'}, "Stage elements generated successfully!")
-                    return {'FINISHED'}
-                    
-            except urllib.error.HTTPError as e:
-                if e.code == 429:
-                    self.report({'WARNING'}, "レートリミットに達しました。1分待ってください。")
-                    return {'CANCELLED'}
-                if e.code == 503 and attempt < max_retries - 1:
-                    time.sleep(2 ** (attempt + 1))
-                    continue
-                self.report({'ERROR'}, f"HTTP Error {e.code}")
-                return {'CANCELLED'}
-            except Exception as e:
-                self.report({'ERROR'}, f"An error occurred: {e}")
-                return {'CANCELLED'}
-
-    def create_stage(self, data, start_z):
-        segments = data.get("segments", [])
-        if not segments:
-            return
-
-        # 1. カーブオブジェクトのセットアップ
-        curve_data = bpy.data.curves.new('AIRailCurve', type='CURVE')
-        curve_data.dimensions = '3D'
-        curve_obj = bpy.data.objects.new('AIRail', curve_data)
-        bpy.context.scene.collection.objects.link(curve_obj)
+        # タイマー登録
+        if not bpy.app.timers.is_registered(check_ai_gen_thread):
+            bpy.app.timers.register(check_ai_gen_thread)
         
-        spline = curve_data.splines.new('BEZIER')
-        
-        # 幾何学計算用データ
-        current_pos = [0.0, 0.0, start_z]
-        current_angle = math.radians(90.0) # 初期方向：+Y方向 (90度)
-        
-        bezier_points_data = []
-        enemy_spawn_list = []
-
-        # レール全体の長さを計算（spawn_progressの算出用）
-        total_length = 0.0
-        for seg in segments:
-            seg_type = seg.get("type", "STRAIGHT")
-            length = float(seg.get("length", 50.0))
-            if seg_type in ["CURVE_RIGHT", "CURVE_LEFT"]:
-                radius = max(10.0, length)
-                total_length += radius * math.pi / 2.0 # 円弧の長さ
-            else:
-                total_length += length
-        
-        # 最初の点
-        bezier_points_data.append({
-            "pos": tuple(current_pos),
-            "handle_left": (current_pos[0], current_pos[1] - 5.0, current_pos[2]),
-            "handle_right": (current_pos[0], current_pos[1] + 5.0, current_pos[2]),
-            "speed": float(segments[0].get("speed", 10.0)),
-            "event": "START"
-        })
-
-        current_cumulative_len = 0.0
-
-        # 各セクションをパース
-        for seg_idx, seg in enumerate(segments):
-            seg_type = seg.get("type", "STRAIGHT")
-            length = float(seg.get("length", 50.0))
-            speed = float(seg.get("speed", 12.0))
-            enemies = seg.get("enemies", [])
-            
-            seg_start_pos = list(current_pos)
-            seg_start_angle = current_angle
-            
-            # --- 直線、上昇、下降の処理 ---
-            if seg_type in ["STRAIGHT", "CLIMB", "DIVE"]:
-                z_offset = length * 0.3 if seg_type == "CLIMB" else (-length * 0.3 if seg_type == "DIVE" else 0.0)
-                dx = length * math.cos(current_angle)
-                dy = length * math.sin(current_angle)
-                
-                current_pos[0] += dx
-                current_pos[1] += dy
-                current_pos[2] += z_offset
-                
-                # ハンドルの長さ（滑らかにつなぐためのベジェの重み）
-                h_len = length * 0.2
-                hl = (current_pos[0] - h_len * math.cos(current_angle), current_pos[1] - h_len * math.sin(current_angle), current_pos[2])
-                hr = (current_pos[0] + h_len * math.cos(current_angle), current_pos[1] + h_len * math.sin(current_angle), current_pos[2])
-                
-                bezier_points_data.append({
-                    "pos": tuple(current_pos), "handle_left": hl, "handle_right": hr, "speed": speed, "event": seg_type
-                })
-                
-                # 敵の配置（直線用リニア補間）
-                for enemy in enemies:
-                    prog = max(0.0, min(1.0, float(enemy.get("progress", 0.5))))
-                    ox = float(enemy.get("offset_x", 0.0))
-                    oz = float(enemy.get("offset_z", 0.0))
-                    
-                    ex_c = seg_start_pos[0] + dx * prog
-                    ey_c = seg_start_pos[1] + dy * prog
-                    ez_c = seg_start_pos[2] + z_offset * prog
-                    
-                    right_angle = current_angle - math.radians(90.0)
-                    ex = ex_c + ox * math.cos(right_angle)
-                    ey = ey_c + ox * math.sin(right_angle)
-                    ez = ez_c + oz
-                    
-                    spawn_prog = (current_cumulative_len + length * prog) / total_length if total_length > 0 else 0.0
-                    enemy_spawn_list.append({"type": enemy.get("type", "Fighter"), "loc": (ex, ey, ez), "seg": seg_idx, "spawn_progress": spawn_prog})
-                    
-                current_cumulative_len += length
-
-            # --- 右旋回・左旋回の処理（90度カーブを細かく割って超滑らかにする） ---
-            elif seg_type in ["CURVE_RIGHT", "CURVE_LEFT"]:
-                is_right = (seg_type == "CURVE_RIGHT")
-                radius = max(10.0, length) # 最低半径を保証
-                arc_length = radius * math.pi / 2.0
-                
-                # 回転の中心点を計算
-                center_offset_angle = current_angle - math.radians(90.0) if is_right else current_angle + math.radians(90.0)
-                cx = current_pos[0] + radius * math.cos(center_offset_angle)
-                cy = current_pos[1] + radius * math.sin(center_offset_angle)
-                
-                # 90度を何分割するか（6分割 = 15度ずつ打つことで超滑らかに）
-                steps = 6
-                angle_step = math.radians(90.0) / steps
-                
-                start_arc_angle = current_angle + math.radians(90.0) if is_right else current_angle - math.radians(90.0)
-                
-                for step in range(1, steps + 1):
-                    # 現在のステップの角度
-                    if is_right:
-                        arc_angle = start_arc_angle - angle_step * step
-                        current_angle = arc_angle - math.radians(90.0)
-                    else:
-                        arc_angle = start_arc_angle + angle_step * step
-                        current_angle = arc_angle + math.radians(90.0)
-                        
-                    # 新しい点の座標
-                    current_pos[0] = cx + radius * math.cos(arc_angle)
-                    current_pos[1] = cy + radius * math.sin(arc_angle)
-                    
-                    # カーブの滑らかさを保つ接線ハンドルの計算
-                    h_len = radius * (4.0 / 3.0) * math.tan(angle_step / 4.0)
-                    
-                    hl = (current_pos[0] - h_len * math.cos(current_angle), current_pos[1] - h_len * math.sin(current_angle), current_pos[2])
-                    hr = (current_pos[0] + h_len * math.cos(current_angle), current_pos[1] + h_len * math.sin(current_angle), current_pos[2])
-                    
-                    bezier_points_data.append({
-                        "pos": tuple(current_pos), "handle_left": hl, "handle_right": hr, "speed": speed, "event": f"{seg_type}_{step}"
-                    })
-                
-                # 敵の配置（円弧に沿った補間計算）
-                for enemy in enemies:
-                    prog = max(0.0, min(1.0, float(enemy.get("progress", 0.5))))
-                    ox = float(enemy.get("offset_x", 0.0))
-                    oz = float(enemy.get("offset_z", 0.0))
-                    
-                    # 進行度に応じた円弧上の角度
-                    e_step_angle = math.radians(90.0) * prog
-                    if is_right:
-                        e_arc_angle = start_arc_angle - e_step_angle
-                        e_current_angle = e_arc_angle - math.radians(90.0)
-                    else:
-                        e_arc_angle = start_arc_angle + e_step_angle
-                        e_current_angle = e_arc_angle + math.radians(90.0)
-                        
-                    ex_c = cx + radius * math.cos(e_arc_angle)
-                    ey_c = cy + radius * math.sin(e_arc_angle)
-                    
-                    right_angle = e_current_angle - math.radians(90.0)
-                    ex = ex_c + ox * math.cos(right_angle)
-                    ey = ey_c + ox * math.sin(right_angle)
-                    ez = current_pos[2] + oz
-                    
-                    spawn_prog = (current_cumulative_len + arc_length * prog) / total_length if total_length > 0 else 0.0
-                    enemy_spawn_list.append({"type": enemy.get("type", "Fighter"), "loc": (ex, ey, ez), "seg": seg_idx, "spawn_progress": spawn_prog})
-                
-                current_cumulative_len += arc_length
-
-        # 3. Blenderのベジェ曲線オブジェクトに一気に反映
-        spline.bezier_points.add(len(bezier_points_data) - 1)
-        for idx, pt in enumerate(bezier_points_data):
-            bp = spline.bezier_points[idx]
-            bp.co = pt["pos"]
-            bp.handle_left = pt["handle_left"]
-            bp.handle_right = pt["handle_right"]
-            bp.handle_left_type = 'FREE'
-            bp.handle_right_type = 'FREE'
-            
-            curve_obj[f"speed_{idx}"] = pt["speed"]
-            curve_obj[f"event_{idx}"] = pt["event"]
-
-        # 4. 敵オブジェクトを配置 (ゲームエンジン連動仕様に改良)
-        for e_idx, enemy in enumerate(enemy_spawn_list):
-            e_type = enemy["type"]
-            empty_obj = bpy.data.objects.new(f"Enemy_{e_type}_Seg{enemy['seg']}_{e_idx}", None)
-            empty_obj.empty_display_type = 'CUBE'
-            empty_obj.empty_display_size = 2.0
-            empty_obj.location = enemy["loc"]
-            
-            # level_editor.py で JSON 出力可能にするための設定
-            empty_obj["file_name"] = e_type
-            empty_obj["is_enemy"] = True
-            empty_obj["enemy_type"] = e_type
-            empty_obj["spawn_progress"] = enemy["spawn_progress"]
-            empty_obj["parent_rail"] = curve_obj.name
-            
-            # アドオン側の flag のためのプロパティ
-            try:
-                empty_obj.is_enemy_flag = True
-            except:
-                pass
-                
-            bpy.context.scene.collection.objects.link(empty_obj)
-
-        # レールを選択状態にする
-        bpy.context.view_layer.objects.active = curve_obj
-        curve_obj.select_set(True)
+        return {'FINISHED'}
 
 
 class AIRAIL_PT_Panel(bpy.types.Panel):
@@ -360,7 +526,10 @@ class AIRAIL_PT_Panel(bpy.types.Panel):
         layout.prop(props, "prompt", text="")
         
         layout.separator()
-        layout.operator(AIRAIL_OT_Generate.bl_idname, text="AIでステージ・敵を自動生成", icon='OUTLINER_OB_CURVE')
+        layout.operator(AIRAIL_OT_Generate.bl_idname, text="AIでステージ・地形を自動生成", icon='OUTLINER_OB_CURVE')
+        
+        if AIGenState.is_running:
+            layout.label(text="🔄 AIがコースを生成中...", icon='TIME')
 
 classes = (
     AIRailGeneratorProperties,
@@ -377,6 +546,9 @@ def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     del bpy.types.Scene.ai_rail_props
+    
+    if bpy.app.timers.is_registered(check_ai_gen_thread):
+        bpy.app.timers.unregister(check_ai_gen_thread)
 
 if __name__ == "__main__":
     register()

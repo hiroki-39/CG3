@@ -1,7 +1,7 @@
 # Blender 4.4.1
 # www.blender.org
 mtllib Obstacle_Rock.mtl
-o Obstacle_Rock.001
+o Obstacle_Rock
 v -1.000000 -1.000000 1.000000
 v -1.000000 1.000000 1.000000
 v -1.000000 -1.000000 -1.000000

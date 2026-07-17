@@ -340,6 +340,10 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
     def parse_scene_recursive_json(self, data_parent, object, level):
         """シーン解析用再帰関数"""
 
+        # 非表示（目玉アイコンがオフなど）のオブジェクトは出力しない
+        if not object.visible_get():
+            return
+
         #シーンのオブジェクト1個分のjsonオブジェクト作成
         json_object = dict()
         #オブジェクト種類
@@ -703,6 +707,10 @@ class MYADDON_OT_export_objs(bpy.types.Operator):
         export_count = 0
         for object in bpy.context.scene.objects:
             if object.type != 'MESH':
+                continue
+
+            # 非表示（目玉アイコンがオフなど）のメッシュは出力しない
+            if not object.visible_get():
                 continue
 
             file_name = object.name
