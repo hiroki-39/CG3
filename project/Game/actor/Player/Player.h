@@ -156,13 +156,21 @@ private:
     Vector3 logicalPosition_ = { 0.0f, -0.0f, 20.0f }; // 位置
     Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f };
 
-    // 謾ｻ謦・未騾｣
+    // 攻撃関連
     int attackTimer_ = 0;
 
-    // 繝ｭ繝ｼ繝ｪ繝ｳ繧ｰ蝗樣∩髢｢騾｣
+    // XY軸の速度（補間用）
+    Vector2 velocity_ = { 0.0f, 0.0f };
+
+    // ローリング・回避関連
     bool isRolling_ = false;
     int rollTimer_ = 0;
-    float rollDirection_ = 0.0f; // -1.0f (蟾ｦ), 1.0f (蜿ｳ)
+    float rollDirection_ = 0.0f; // -1.0f (左), 1.0f (右)
+    
+    // Q/E ダブルタップ判定用
+    int lastQPressTime_ = 0;
+    int lastEPressTime_ = 0;
+    const int doubleTapThreshold_ = 15; // 15フレーム以内の連続入力でダブルタップと判定
 
     // 繝ｭ繝・け繧ｪ繝ｳ髢｢騾｣
     bool isLockOn_ = false;

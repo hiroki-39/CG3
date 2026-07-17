@@ -386,15 +386,12 @@ void GamePlayScene::Initialize()
 
     // レールカメラコントローラの初期化
     railCameraController_ = std::make_unique<RailCameraController>();
-    if (!mainRails_.empty())
+    std::vector<Rail*> railsRaw;
+    for (auto& r : mainRails_)
     {
-        std::vector<Rail*> railsRaw;
-        for (auto& r : mainRails_)
-        {
-            railsRaw.push_back(r.get());
-        }
-        railCameraController_->Initialize(railsRaw, activeCamera_, cameraObject_.get());
+        railsRaw.push_back(r.get());
     }
+    railCameraController_->Initialize(railsRaw, activeCamera_, cameraObject_.get());
 
     thrusterEffect_.Initialize(dxCommon, srvManager);
     thrusterEffect_.LoadFromJson("thruster.json");
@@ -450,7 +447,7 @@ void GamePlayScene::ReloadLevel()
         OutputDebugStringA("LevelLoader: Successfully reloaded objects.\n");
 
         // 再初期化
-        if (railCameraController_ && !mainRails_.empty())
+        if (railCameraController_)
         {
             std::vector<Rail*> railsRaw;
             for (auto& r : mainRails_)
@@ -820,23 +817,9 @@ void GamePlayScene::Update()
                     pp->SetEffectActive("RadialBlur", false);
                 }
             }
-            if (!mainRails_.empty() && railCameraController_)
+            if (railCameraController_)
             {
                 railCameraController_->Update(gameSpeed_, player_->GetTranslate());
-            }
-            else
-            {
-                // レールが無い場合のフォールバック（自動前進）
-                const float kAutoSpeed = 0.05f;
-                Vector3 camPos = activeCamera_->GetTranslate();
-                camPos.z += kAutoSpeed;
-                activeCamera_->SetTranslate(camPos);
-
-                if (cameraObject_)
-                {
-                    cameraObject_->SetTranslate(camPos);
-                    cameraObject_->Update();
-                }
             }
         }
     }
