@@ -651,6 +651,11 @@ void GamePlayScene::Finalize()
     sprites.clear();
     modelInstances.clear();
 
+    if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
+        pp->SetEffectActive("Grayscale", false);
+        pp->SetEffectActive("Vignetting", false);
+    }
+
     skybox_.reset();
     camera.reset();
     debugCamera_.reset();
@@ -699,6 +704,8 @@ void GamePlayScene::Update()
     {
         objCommon->SetDefaultCamera(activeCamera_);
     }
+
+    float unscaledGameSpeed = baseGameSpeed_;
 
     // --- カメラ操作 ---
     // ・ホイール押し込み（ミドルボタン）を押しながら移動 -> カメラ回転（yaw/pitch）(継続)
@@ -798,9 +805,10 @@ void GamePlayScene::Update()
         {
             // === ブースト機能の処理 ===
             auto pp = EngineServices::GetInstance()->GetPostProcess();
+            float unscaledGameSpeed = baseGameSpeed_;
             if (player_ && player_->IsBoosting())
             {
-                gameSpeed_ = baseGameSpeed_ * 1.5f; // スピードアップ
+                unscaledGameSpeed = baseGameSpeed_ * 1.5f; // スピードアップ
                 thrusterEffect_.SetBaseColor({ 1.0f, 0.2f, 0.0f, 1.0f }); // 赤色
                 if (pp)
                 {
@@ -810,13 +818,41 @@ void GamePlayScene::Update()
             }
             else
             {
-                gameSpeed_ = baseGameSpeed_; // 通常スピード
+                unscaledGameSpeed = baseGameSpeed_; // 通常スピード
                 thrusterEffect_.SetBaseColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 通常（元の色）
                 if (pp)
                 {
                     pp->SetEffectActive("RadialBlur", false);
                 }
             }
+
+            // --- ジャスト回避タイマーの更新とゲームスピードの適用 ---
+            if (isJustDodgeActive_) {
+                justDodgeTimer_ -= 1.0f; // リアルタイム基準で減少
+                
+                // エフェクトの徐々にフェードイン・フェードアウト
+                if (pp) {
+                    float t = justDodgeTimer_ / justDodgeMaxTime_; // 1.0 -> 0.0
+                    // sinカーブで 0 -> 1 -> 0 と滑らかに変化させる (最大強度を0.6に抑える)
+                    pp->GetData()->vignetteIntensity = std::sinf(t * 3.141592f) * 0.6f;
+                }
+
+                if (justDodgeTimer_ <= 0.0f) {
+                    isJustDodgeActive_ = false;
+                    
+                    // スローモーション終了時にエフェクトを戻す
+                    if (pp) {
+                        pp->SetEffectActive("Grayscale", false);
+                        pp->SetEffectActive("Vignetting", false);
+                    }
+                }
+            }
+            
+            gameSpeed_ = unscaledGameSpeed;
+            if (isJustDodgeActive_) {
+                gameSpeed_ *= justDodgeSlowSpeed_; // 敵と背景はスローモーション
+            }
+
             if (railCameraController_)
             {
                 railCameraController_->Update(gameSpeed_, player_->GetTranslate());
@@ -867,7 +903,7 @@ void GamePlayScene::Update()
             }
             player_->SetAssistTarget(nearestEnemy);
 
-            player_->Update(bullets_, cameraObject_.get(), gameSpeed_);
+            player_->Update(bullets_, cameraObject_.get(), unscaledGameSpeed); // プレイヤーのみスローを無視して等倍速
 
             // 回避エフェクトの再生
             if (player_->ConsumeDodgeTrigger())
@@ -1045,11 +1081,33 @@ void GamePlayScene::Update()
 
                 if (CollisionMath::IsCollision(bulletSphere, playerOBB))
                 {
-                    (*it)->OnCollision();
-                    hitEffect_.SetPosition((*it)->GetPosition());
-                    hitEffect_.Play();
+                    if (player_->IsRolling() && player_->GetRollTimer() < 15.0f) // ローリング中（最大15フレーム）ならいつでもジャスト回避とする
+                    {
+                        // ジャスト回避成功
+                        isJustDodgeActive_ = true;
+                        justDodgeTimer_ = justDodgeMaxTime_;
+                        
+                        // エフェクトの適用
+                        auto pp = EngineServices::GetInstance()->GetPostProcess();
+                        if (pp) {
+                            pp->SetEffectActive("Grayscale", true);
+                            pp->SetEffectActive("Vignetting", true);
+                        }
 
-                    player_->OnCollision();
+                        dodgeEffect_.SetPosition((*it)->GetPosition());
+                        dodgeEffect_.Play();
+                        
+                        (*it)->OnCollision(); // 敵弾を消滅させる
+                    }
+                    else
+                    {
+                        // 通常被弾
+                        (*it)->OnCollision();
+                        hitEffect_.SetPosition((*it)->GetPosition());
+                        hitEffect_.Play();
+
+                        player_->OnCollision();
+                    }
                 }
             }
 

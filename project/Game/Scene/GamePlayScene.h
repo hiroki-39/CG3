@@ -56,6 +56,12 @@ private:
     std::unique_ptr<RailCameraController> railCameraController_;
     float baseGameSpeed_ = 1.0f; // ImGuiで設定する基本スピード
     float gameSpeed_ = 1.0f;     // 実際のゲームスピード（ブースト等で変動）
+    
+    // ジャスト回避関連
+    bool isJustDodgeActive_ = false;
+    float justDodgeTimer_ = 0.0f;
+    float justDodgeMaxTime_ = 60.0f; // 1秒間（60FPS想定）に短縮
+    float justDodgeSlowSpeed_ = 0.2f; // ジャスト回避時のタイムスケール
     std::vector<std::unique_ptr<Model>> railModels_;
     std::unique_ptr<Model> enemyRailModel_;
     std::vector<std::unique_ptr<Object3d>> railVisualizers_;
