@@ -800,7 +800,7 @@ void GamePlayScene::Update()
             auto pp = EngineServices::GetInstance()->GetPostProcess();
             if (player_ && player_->IsBoosting())
             {
-                gameSpeed_ = 1.5f; // スピードアップ
+                gameSpeed_ = baseGameSpeed_ * 1.5f; // スピードアップ
                 thrusterEffect_.SetBaseColor({ 1.0f, 0.2f, 0.0f, 1.0f }); // 赤色
                 if (pp)
                 {
@@ -810,7 +810,7 @@ void GamePlayScene::Update()
             }
             else
             {
-                gameSpeed_ = 1.0f; // 通常スピード
+                gameSpeed_ = baseGameSpeed_; // 通常スピード
                 thrusterEffect_.SetBaseColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 通常（元の色）
                 if (pp)
                 {
@@ -1403,7 +1403,7 @@ void GamePlayScene::Update()
             railCameraController_->SetProgress(p);
         }
     }
-    ImGui::SliderFloat("ゲームスピード (Game Speed)", &gameSpeed_, 0.0f, 5.0f);
+    ImGui::SliderFloat("ゲームスピード (Game Speed)", &baseGameSpeed_, 0.0f, 5.0f);
 
     // リセット処理：レール進行度を0に戻し、カメラとプレイヤーを始点に移動させる
     if (doReset)

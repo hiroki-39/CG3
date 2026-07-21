@@ -54,7 +54,8 @@ private:
     // レールシステム
     std::vector<std::unique_ptr<Rail>> mainRails_;
     std::unique_ptr<RailCameraController> railCameraController_;
-    float gameSpeed_ = 1.0f;
+    float baseGameSpeed_ = 1.0f; // ImGuiで設定する基本スピード
+    float gameSpeed_ = 1.0f;     // 実際のゲームスピード（ブースト等で変動）
     std::vector<std::unique_ptr<Model>> railModels_;
     std::unique_ptr<Model> enemyRailModel_;
     std::vector<std::unique_ptr<Object3d>> railVisualizers_;

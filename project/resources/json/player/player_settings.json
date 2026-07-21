@@ -13,7 +13,7 @@
         1.0
     ],
     "followSpeed": 0.07999999821186066,
-    "hp": 9997,
+    "hp": 9992,
     "maxHp": 10000,
     "modelName": "player.obj",
     "modelPosOffset": [
@@ -30,7 +30,7 @@
     "moveLimitY": 12.0,
     "playerLimitX": 30.0,
     "playerLimitYMax": 30.0,
-    "playerLimitYMin": 1.5,
+    "playerLimitYMin": -4.0,
     "playerScale": [
         0.5,
         0.5,

@@ -199,7 +199,7 @@ void Player::Move() {
 
     if (isRolling_) {
         rollTimer_++;
-        logicalPosition_.x += rollDirection_ * 0.3f;
+        // ローリング中の自動横移動を削除（その場にとどまるようにする）
         if (rollTimer_ >= rollMaxTime_) {
             isRolling_ = false;
         }
@@ -230,11 +230,17 @@ void Player::Move() {
     if (input_->PushKey(DIK_S) || input_->PushKey(DIK_DOWN)) {
         targetVelY = -currentSpeed;
     }
+    float currentSpeedX = currentSpeed;
+    // QまたはEで機体を傾けている間は、左右の旋回（移動）速度を上げる
+    if (input_->PushKey(DIK_Q) || input_->PushKey(DIK_E)) {
+        currentSpeedX *= 1.8f; 
+    }
+
     if (input_->PushKey(DIK_A) || input_->PushKey(DIK_LEFT)) {
-        targetVelX = -currentSpeed;
+        targetVelX = -currentSpeedX;
     }
     if (input_->PushKey(DIK_D) || input_->PushKey(DIK_RIGHT)) {
-        targetVelX = currentSpeed;
+        targetVelX = currentSpeedX;
     }
 
     // 加速度（補間割合：0.15 なら毎フレーム15%ずつ目標速度に近づく）
@@ -249,23 +255,23 @@ void Player::Move() {
     logicalPosition_.x = std::clamp(logicalPosition_.x, -playerLimitX_, playerLimitX_);
     logicalPosition_.y = std::clamp(logicalPosition_.y, playerLimitYMin_, playerLimitYMax_);
 
-    // --- 機体の傾き計算 ---
+    // --- 機体の傾き計算（照準用の論理的な角度） ---
     float targetPitch = 0.0f;
     float targetYaw = 0.0f;
     float targetBank = 0.0f;
 
     if (input_->PushKey(DIK_W) || input_->PushKey(DIK_UP)) {
-        targetPitch = -0.4f; 
+        if (logicalPosition_.y < playerLimitYMax_) targetPitch = -0.4f; 
     }
     if (input_->PushKey(DIK_S) || input_->PushKey(DIK_DOWN)) {
-        targetPitch = 0.4f;
+        if (logicalPosition_.y > playerLimitYMin_) targetPitch = 0.4f;
     }
     
     if (input_->PushKey(DIK_A) || input_->PushKey(DIK_LEFT)) {
-        targetYaw = -0.2f; 
+        if (logicalPosition_.x > -playerLimitX_) targetYaw = -0.2f; 
     }
     if (input_->PushKey(DIK_D) || input_->PushKey(DIK_RIGHT)) {
-        targetYaw = 0.2f;
+        if (logicalPosition_.x < playerLimitX_) targetYaw = 0.2f;
     }
 
     // Q/Eでさらに深く（90度）傾ける
@@ -289,11 +295,18 @@ void Player::Move() {
         finalBank += rollAngle * -rollDirection_;
     }
     
-    // --- 照準（レティクル）の固定配置 ---
+    // --- 照準（レティクル）の配置（滑らか補間） ---
     float reticleDistance = 40.0f;
-    reticlePosition_.x = logicalPosition_.x + std::sin(currentYaw_) * reticleDistance;
-    reticlePosition_.y = logicalPosition_.y - std::sin(currentPitch_) * reticleDistance;
-    reticlePosition_.z = logicalPosition_.z + reticleDistance;
+    Vector3 targetReticlePos;
+    targetReticlePos.x = logicalPosition_.x + std::sin(currentYaw_) * reticleDistance;
+    targetReticlePos.y = logicalPosition_.y - std::sin(currentPitch_) * reticleDistance;
+    targetReticlePos.z = logicalPosition_.z + reticleDistance;
+
+    // 照準がカクカク動かないように、少し遅れて滑らかに追従させる
+    float reticleLerp = 0.2f;
+    reticlePosition_.x += (targetReticlePos.x - reticlePosition_.x) * reticleLerp;
+    reticlePosition_.y += (targetReticlePos.y - reticlePosition_.y) * reticleLerp;
+    reticlePosition_.z += (targetReticlePos.z - reticlePosition_.z) * reticleLerp;
     
     reticle_->SetTranslate(reticlePosition_);
     reticle_->Update();
@@ -309,9 +322,17 @@ void Player::Move() {
     }
 
     // 3D空間のパースペクティブ（遠近感）により、自機が照準を向いていないように見えてしまう問題の対策
-    // 実際の移動・照準用の角度とは別に、モデルの見た目（描画用）の角度だけを大げさに（誇張して）回す
-    float visualPitch = currentPitch_ * 2.0f; // 上下の見た目の首振り（2倍）
-    float visualYaw   = currentYaw_   * 3.5f; // 左右の見た目の首振り（3.5倍）
+    // 論理的な角度とは別に、モデルの見た目（描画用）の角度を大げさに回す
+    
+    // Q/Eキーによるバンク角（最大90度=1.5708）の進行度合い（-1.0 ～ 1.0）
+    // バグ修正: ローリング中（finalBankが360度回る）に回転が暴れないよう、currentBank_（最大90度の傾き）のみを基準にする
+    float bankRatio = currentBank_ / 1.5708f;
+    float absBankRatio = std::abs(bankRatio);
+    
+    // バンク角に応じて、見た目上のPitchとYawを滑らかに入れ替える（ブレンドする）
+    // バンク0の時は通常の誇張、バンク90度の時は左右移動がPitchになり、上下移動がYawになる
+    float visualPitch = std::lerp(currentPitch_ * 2.0f, currentYaw_ * 4.0f * bankRatio, absBankRatio);
+    float visualYaw   = std::lerp(currentYaw_   * 3.5f, currentPitch_ * -1.5f * bankRatio, absBankRatio);
 
     object_->SetScale(playerScale_);
     object_->SetRotation(Vector3(
