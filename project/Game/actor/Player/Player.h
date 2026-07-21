@@ -18,6 +18,17 @@ public:
     void SaveSettings(const std::string& filepath);
     void DrawUI();
 
+    // ==========================================
+    // ジャスト回避用ゲッター
+    // ==========================================
+    bool IsRolling() const { return isRolling_; }
+    float GetRollTimer() const { return rollTimer_; }
+    float GetRollMaxTime() const { return rollMaxTime_; }
+    
+    // ==========================================
+    // 描画関連
+    // ==========================================
+
     /// <summary>
     /// 譖ｴ譁ｰ
     /// </summary>
@@ -170,7 +181,7 @@ private:
     // Q/E ダブルタップ判定用
     float lastQPressTime_ = 0.0f;
     float lastEPressTime_ = 0.0f;
-    const float doubleTapThreshold_ = 15.0f; // 15フレーム以内の連続入力でダブルタップと判定
+    const float doubleTapThreshold_ = 20.0f; // 20フレーム以内の連続入力でダブルタップと判定
 
     // 繝ｭ繝・け繧ｪ繝ｳ髢｢騾｣
     bool isLockOn_ = false;
