@@ -3,7 +3,7 @@
         "blendMode": 2,
         "colorAnimSpeed": 2.0,
         "emitterParam": {
-            "count": 2,
+            "count": 5,
             "drag": 0.0,
             "endColor": [
                 0.0,
@@ -21,12 +21,12 @@
             "isColorOverLifetime": true,
             "isScaleOverLifetime": true,
             "maxColor": [
-                0.5,
-                1.0,
-                1.0,
+                0.7512953281402588,
+                0.40873581171035767,
+                0.40873581171035767,
                 1.0
             ],
-            "maxLifeTime": 0.5,
+            "maxLifeTime": 0.20000000298023224,
             "maxRotation": [
                 0.0,
                 0.0,
@@ -44,11 +44,11 @@
             ],
             "minColor": [
                 0.0,
-                0.800000011920929,
+                0.051813364028930664,
                 1.0,
                 1.0
             ],
-            "minLifeTime": 0.20000000298023224,
+            "minLifeTime": 0.10000000149011612,
             "minRotation": [
                 0.0,
                 0.0,
@@ -62,7 +62,7 @@
             "minVelocity": [
                 -1.5,
                 -1.5,
-                -5.0
+                -1.5
             ],
             "useGravity": false
         },

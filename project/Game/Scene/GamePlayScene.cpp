@@ -386,15 +386,12 @@ void GamePlayScene::Initialize()
 
     // レールカメラコントローラの初期化
     railCameraController_ = std::make_unique<RailCameraController>();
-    if (!mainRails_.empty())
+    std::vector<Rail*> railsRaw;
+    for (auto& r : mainRails_)
     {
-        std::vector<Rail*> railsRaw;
-        for (auto& r : mainRails_)
-        {
-            railsRaw.push_back(r.get());
-        }
-        railCameraController_->Initialize(railsRaw, activeCamera_, cameraObject_.get());
+        railsRaw.push_back(r.get());
     }
+    railCameraController_->Initialize(railsRaw, activeCamera_, cameraObject_.get());
 
     thrusterEffect_.Initialize(dxCommon, srvManager);
     thrusterEffect_.LoadFromJson("thruster.json");
@@ -450,7 +447,7 @@ void GamePlayScene::ReloadLevel()
         OutputDebugStringA("LevelLoader: Successfully reloaded objects.\n");
 
         // 再初期化
-        if (railCameraController_ && !mainRails_.empty())
+        if (railCameraController_)
         {
             std::vector<Rail*> railsRaw;
             for (auto& r : mainRails_)
@@ -803,7 +800,7 @@ void GamePlayScene::Update()
             auto pp = EngineServices::GetInstance()->GetPostProcess();
             if (player_ && player_->IsBoosting())
             {
-                gameSpeed_ = 1.5f; // スピードアップ
+                gameSpeed_ = baseGameSpeed_ * 1.5f; // スピードアップ
                 thrusterEffect_.SetBaseColor({ 1.0f, 0.2f, 0.0f, 1.0f }); // 赤色
                 if (pp)
                 {
@@ -813,30 +810,16 @@ void GamePlayScene::Update()
             }
             else
             {
-                gameSpeed_ = 1.0f; // 通常スピード
+                gameSpeed_ = baseGameSpeed_; // 通常スピード
                 thrusterEffect_.SetBaseColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 通常（元の色）
                 if (pp)
                 {
                     pp->SetEffectActive("RadialBlur", false);
                 }
             }
-            if (!mainRails_.empty() && railCameraController_)
+            if (railCameraController_)
             {
                 railCameraController_->Update(gameSpeed_, player_->GetTranslate());
-            }
-            else
-            {
-                // レールが無い場合のフォールバック（自動前進）
-                const float kAutoSpeed = 0.05f;
-                Vector3 camPos = activeCamera_->GetTranslate();
-                camPos.z += kAutoSpeed;
-                activeCamera_->SetTranslate(camPos);
-
-                if (cameraObject_)
-                {
-                    cameraObject_->SetTranslate(camPos);
-                    cameraObject_->Update();
-                }
             }
         }
     }
@@ -884,7 +867,7 @@ void GamePlayScene::Update()
             }
             player_->SetAssistTarget(nearestEnemy);
 
-            player_->Update(bullets_, cameraObject_.get());
+            player_->Update(bullets_, cameraObject_.get(), gameSpeed_);
 
             // 回避エフェクトの再生
             if (player_->ConsumeDodgeTrigger())
@@ -956,7 +939,7 @@ void GamePlayScene::Update()
     {
         for (auto it = bullets_.begin(); it != bullets_.end(); )
         {
-            (*it)->Update();
+            (*it)->Update(gameSpeed_);
             if ((*it)->IsDead())
             {
                 it = bullets_.erase(it);
@@ -974,7 +957,7 @@ void GamePlayScene::Update()
         // 敵の更新と当たり判定
         for (auto it = enemies_.begin(); it != enemies_.end();)
         {
-            (*it)->Update(cameraPos, cameraForward, player_.get(), enemyBullets_);
+            (*it)->Update(cameraPos, cameraForward, player_.get(), enemyBullets_, gameSpeed_);
 
             // プレイヤーの弾との当たり判定
             for (auto& bullet : bullets_)
@@ -1034,7 +1017,7 @@ void GamePlayScene::Update()
         // 敵弾の更新とプレイヤーとの当たり判定
         for (auto it = enemyBullets_.begin(); it != enemyBullets_.end();)
         {
-            (*it)->Update();
+            (*it)->Update(gameSpeed_);
 
             if (!(*it)->IsDead() && player_ && !player_->IsDead())
             {
@@ -1420,7 +1403,7 @@ void GamePlayScene::Update()
             railCameraController_->SetProgress(p);
         }
     }
-    ImGui::SliderFloat("ゲームスピード (Game Speed)", &gameSpeed_, 0.0f, 5.0f);
+    ImGui::SliderFloat("ゲームスピード (Game Speed)", &baseGameSpeed_, 0.0f, 5.0f);
 
     // リセット処理：レール進行度を0に戻し、カメラとプレイヤーを始点に移動させる
     if (doReset)

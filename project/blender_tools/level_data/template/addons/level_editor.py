@@ -171,6 +171,115 @@ class MYADDON_OT_create_asteroid(bpy.types.Operator):
         print("障害物(Asteroid)ダミーを生成しました。")
         return {'FINISHED'}
 
+#オペレータ　プレイヤー＆カメラ生成
+class MYADDON_OT_create_player_and_camera(bpy.types.Operator):
+    bl_idname = "myaddon.create_player_and_camera"
+    bl_label = "Player & Camera 配置"
+    bl_description = "実際のプレイヤーモデルと、視界（フラスタム）を示すカメラを配置します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        import os
+        import math
+
+        # 1. プレイヤーの読み込み
+        player_obj = None
+        if "Player" in bpy.data.objects:
+            player_obj = bpy.data.objects["Player"]
+            player_obj.location = context.scene.cursor.location
+        else:
+            blend_filepath = bpy.data.filepath
+            json_dir = os.path.dirname(blend_filepath) if blend_filepath else ""
+            bt_idx = json_dir.find("blender_tools")
+            player_path = ""
+            if bt_idx != -1:
+                player_path = os.path.join(json_dir[:bt_idx], "resources", "3dModels", "player", "player.obj")
+            
+            if os.path.exists(player_path):
+                if hasattr(bpy.ops.wm, "obj_import"):
+                    bpy.ops.wm.obj_import(filepath=player_path)
+                else:
+                    bpy.ops.import_scene.obj(filepath=player_path)
+                imported = context.selected_objects
+                if imported:
+                    player_obj = imported[0]
+                    player_obj.name = "Player"
+                    player_obj.location = context.scene.cursor.location
+                    player_obj.scale = (0.5, 0.5, 0.5) # ゲーム内のスケールに合わせる
+                    player_obj["file_name"] = "Player"
+            else:
+                bpy.ops.mesh.primitive_cube_add(size=2.0)
+                player_obj = context.active_object
+                player_obj.name = "Player"
+                player_obj.scale = (0.5, 0.5, 0.5)
+                player_obj["file_name"] = "Player"
+
+        # 2. ゲームカメラの生成
+        camera_obj = None
+        if "GameCamera" in bpy.data.objects:
+            camera_obj = bpy.data.objects["GameCamera"]
+        else:
+            camera_data = bpy.data.cameras.new(name="GameCameraData")
+            camera_data.lens_unit = 'FOV'
+            camera_data.sensor_fit = 'VERTICAL' # ゲーム内の垂直45度FOVに合わせる
+            camera_data.angle = math.radians(45.0)
+            camera_obj = bpy.data.objects.new("GameCamera", camera_data)
+            context.scene.collection.objects.link(camera_obj)
+        
+        # プレイヤーに親子付けしつつ、カメラのワールド座標を指定する
+        camera_obj.parent = player_obj
+        context.view_layer.update() # 行列更新
+        camera_obj.matrix_parent_inverse = player_obj.matrix_world.inverted()
+        
+        camera_obj.location = (0, -20, 0.2) # ゲームのRailCameraと同じくZ=20の手前(Y=-20)、高さはレール+0.2
+        camera_obj.rotation_euler = (math.radians(90), 0, 0) # ワールド空間で+Y方向を向く
+        camera_obj["file_name"] = "GameCamera"
+
+        # 3. 視界フラスタム（ワイヤーフレーム四角形）の生成
+        frustum_name = "CameraFrustum"
+        frustum_obj = None
+        if frustum_name in bpy.data.objects:
+            frustum_obj = bpy.data.objects[frustum_name]
+        else:
+            fov_rad = math.radians(45.0) # 垂直FOV
+            aspect = 16.0 / 9.0
+            distance = 60.0 # 奥のラインまでの距離（大きすぎないように調整）
+            half_h = distance * math.tan(fov_rad / 2.0)
+            half_w = half_h * aspect
+            
+            verts = [
+                (0, 0, 0),
+                (-half_w, -half_h, -distance),
+                (half_w, -half_h, -distance),
+                (half_w, half_h, -distance),
+                (-half_w, half_h, -distance)
+            ]
+            edges = [
+                (0, 1), (0, 2), (0, 3), (0, 4), # カメラからの放射線
+                (1, 2), (2, 3), (3, 4), (4, 1)  # 奥の四角形
+            ]
+            
+            mesh = bpy.data.meshes.new(frustum_name)
+            mesh.from_pydata(verts, edges, [])
+            mesh.update()
+            
+            frustum_obj = bpy.data.objects.new(frustum_name, mesh)
+            context.scene.collection.objects.link(frustum_obj)
+        
+        frustum_obj.display_type = 'WIRE'
+        frustum_obj.parent = camera_obj
+        context.view_layer.update()
+        frustum_obj.matrix_parent_inverse = mathutils.Matrix.Identity(4) # カメラのローカル空間に完全に一致させる
+        frustum_obj.location = (0, 0, 0)
+        frustum_obj.rotation_euler = (0, 0, 0)
+        frustum_obj["file_name"] = "CameraFrustum"
+
+        context.view_layer.objects.active = player_obj
+        player_obj.select_set(True)
+
+        print("プレイヤーとカメラ（視界枠付き）を生成しました。")
+        return {'FINISHED'}
+
 #オペレータ　ゲームカメラ生成
 class MYADDON_OT_create_game_camera(bpy.types.Operator):
     bl_idname = "myaddon.create_game_camera"
@@ -548,10 +657,13 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
                 continue
 
             # ファイル名の決定
-            file_name = object.name
             if "file_name" in object and object["file_name"] != "":
                 file_name = object["file_name"]
             
+            # カメラやフラスタムは出力しない（PlayerはエクスポートしてC++側で読む）
+            if file_name in ["GameCamera", "CameraFrustum"]:
+                continue
+
             # .objを削除してベース名にする
             base_name = file_name.split('.')[0]
             if not file_name.endswith(".obj"):
@@ -716,6 +828,10 @@ class MYADDON_OT_export_objs(bpy.types.Operator):
             file_name = object.name
             if "file_name" in object and object["file_name"] != "":
                 file_name = object["file_name"]
+
+            # カメラやフラスタムは出力しない
+            if file_name in ["GameCamera", "CameraFrustum"]:
+                continue
             
             base_name = file_name.split('.')[0]
             if not file_name.endswith(".obj"):
@@ -775,6 +891,7 @@ class TOPBAR_MT_my_menu(bpy.types.Menu):
         self.layout.operator(MYADDON_OT_create_ico_sphere.bl_idname, text = MYADDON_OT_create_ico_sphere.bl_label)
         self.layout.operator(MYADDON_OT_create_fighter.bl_idname, text = MYADDON_OT_create_fighter.bl_label)
         self.layout.operator(MYADDON_OT_create_asteroid.bl_idname, text = MYADDON_OT_create_asteroid.bl_label)
+        self.layout.operator(MYADDON_OT_create_player_and_camera.bl_idname, text = MYADDON_OT_create_player_and_camera.bl_label)
         self.layout.operator(MYADDON_OT_create_game_camera.bl_idname, text = MYADDON_OT_create_game_camera.bl_label)
         self.layout.operator(MYADDON_OT_export_scene.bl_idname, text = MYADDON_OT_export_scene.bl_label)
         self.layout.operator(MYADDON_OT_export_objs.bl_idname, text = MYADDON_OT_export_objs.bl_label)
@@ -792,6 +909,7 @@ classes  = (
     MYADDON_OT_create_ico_sphere,
     MYADDON_OT_create_fighter,
     MYADDON_OT_create_asteroid,
+    MYADDON_OT_create_player_and_camera,
     MYADDON_OT_create_game_camera,
     MYADDON_OT_export_scene,
     MYADDON_OT_export_objs,

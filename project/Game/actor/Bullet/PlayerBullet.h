@@ -14,7 +14,7 @@ public:
     /// <summary>
     /// 更新
     /// </summary>
-    void Update();
+    void Update(float gameSpeed = 1.0f);
 
     void Update3DObjectOnly() { if (object_) object_->Update(); }
 
@@ -38,6 +38,6 @@ private:
     Vector3 velocity_ = { 0.0f, 0.0f, 1.5f }; // 速度ベクトル
     Vector3 previousPosition_ = { 0.0f, 0.0f, 0.0f };
     bool isDead_ = false;
-    int deathTimer_ = 180; // 寿命（フレーム）
+    float deathTimer_ = 180.0f; // 寿命（フレーム）
     Enemy* targetEnemy_ = nullptr;
 };

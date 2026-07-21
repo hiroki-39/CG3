@@ -11,7 +11,10 @@ void RailCameraController::Initialize(const std::vector<Rail*>& rails, Camera* c
 }
 
 void RailCameraController::Update(float gameSpeed, const Vector3& playerLocalPos) {
-    if (rails_.empty() || currentRailIndex_ >= rails_.size() || !rails_[currentRailIndex_]->IsValid()) return;
+    if (rails_.empty() || currentRailIndex_ >= rails_.size() || !rails_[currentRailIndex_]->IsValid()) {
+        ApplyTransform(playerLocalPos);
+        return;
+    }
     
     Rail* currentRail = rails_[currentRailIndex_];
 
@@ -49,89 +52,82 @@ void RailCameraController::Reset() {
 }
 
 void RailCameraController::ApplyTransform(const Vector3& playerLocalPos) {
-    if (rails_.empty() || currentRailIndex_ >= rails_.size() || !rails_[currentRailIndex_]->IsValid()) return;
-    Rail* currentRail = rails_[currentRailIndex_];
+    Vector3 eye = {0.0f, 0.2f, 0.0f};
+    Vector3 anchorRot = {0.0f, 0.0f, 0.0f};
+    float railTilt = 0.0f;
+    float targetPitch = 0.0f;
+    float targetYaw = 0.0f;
 
-    // カメラをレールから少し浮かせる
-    Vector3 baseEye = currentRail->GetPosition(progress_);
-    Vector3 eye = baseEye;
-    eye.y += 0.2f;
+    if (!rails_.empty() && currentRailIndex_ < rails_.size() && rails_[currentRailIndex_]->IsValid()) {
+        Rail* currentRail = rails_[currentRailIndex_];
 
-    // 注視点は少し進んだ地点
-    float targetProgress = std::min(progress_ + 0.01f, 1.0f);
-    Vector3 baseTarget = currentRail->GetPosition(targetProgress);
+        // カメラをレールから少し浮かせる
+        Vector3 baseEye = currentRail->GetPosition(progress_);
+        eye = baseEye;
+        eye.y += 0.2f;
 
-    // 差分ベクトル (forward)
-    Vector3 forward = {
-        baseTarget.x - baseEye.x,
-        baseTarget.y - baseEye.y,
-        baseTarget.z - baseEye.z
-    };
+        // 注視点は少し進んだ地点
+        float targetProgress = std::min(progress_ + 0.01f, 1.0f);
+        Vector3 baseTarget = currentRail->GetPosition(targetProgress);
 
-    // 正規化
-    float len = std::sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
-    if (len > 1e-6f) {
-        forward.x /= len; forward.y /= len; forward.z /= len;
+        // 差分ベクトル (forward)
+        Vector3 forward = {
+            baseTarget.x - baseEye.x,
+            baseTarget.y - baseEye.y,
+            baseTarget.z - baseEye.z
+        };
+
+        // 正規化
+        float len = std::sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
+        if (len > 1e-6f) {
+            forward.x /= len; forward.y /= len; forward.z /= len;
+        }
+
+        // 目標の回転角の計算（レールの接線にピッタリ合わせる）
+        targetYaw = std::atan2(forward.x, forward.z);
+        targetPitch = std::asin(-forward.y);
+        railTilt = currentRail->GetTilt(progress_);
+
+        anchorRot = Vector3(targetPitch, targetYaw, railTilt);
     }
 
-    // 目標の回転角の計算（レールの接線にピッタリ合わせる）
-    float targetYaw = std::atan2(forward.x, forward.z);
-    float targetPitch = std::asin(-forward.y);
-    float railTilt = currentRail->GetTilt(progress_);
-
-    Vector3 cameraRot(targetPitch, targetYaw, railTilt);
-
     if (parentObject_) {
-        // プレイヤーの親（アンカー）はレールに完全に沿わせる（傾きやパンは入れない）
+        // 大元の親（アンカー）はレールに完全に沿わせる
         parentObject_->SetTranslate(eye);
-        parentObject_->SetRotation(cameraRot);
+        parentObject_->SetRotation(anchorRot);
         parentObject_->Update();
     }
 
     if (camera_) {
-        // カメラ（実際の視点）にはプレイヤーの位置に応じた首振り（パン・ピッチ）を入れる
-        // プレイヤーが大きく動いても画面内に収まるようにする
-        // カメラがプレイヤーの方を向きすぎると正面（進行方向）が見えなくなるため、
-        // 首振り（パン）はごく僅かに抑え、平行移動（パララックス）で画面内に収める
-        float panStrengthX = 0.002f; // ほぼ正面を向いたままにする
-        float panStrengthY = 0.002f;
-
-        // パララックス強度（プレイヤーの移動の何割をカメラがついていくか）
-        // 高め（0.6〜0.7）にすると、プレイヤーが画面外に出にくく、かつ正面を向き続けられる
-        float parallaxStrengthX = 0.7f; 
-        float parallaxStrengthY = 0.6f;
-
-        Vector3 cameraEye = eye;
+        // レール基準のワールド行列（親オブジェクトの回転行列）を計算
+        // 回転の順番は Z -> X -> Y （エンジン仕様による）
+        Matrix4x4 rotMatrix = Matrix4x4::RotateZ(railTilt) * Matrix4x4::RotateX(targetPitch) * Matrix4x4::RotateY(targetYaw);
         
-        // レールの右方向と上方向ベクトルを計算（近似）
-        Vector3 right = {
-            std::cos(-railTilt) * std::cos(targetYaw),
-            std::sin(-railTilt),
-            -std::cos(-railTilt) * std::sin(targetYaw)
+        // カメラの基本ローカル位置（アンカーから後ろ、少し上）
+        // さらにカメラをプレイヤーに近づける（Zを-10.0fから0.0fへ、Yを2.0fから1.5fへ変更）
+        Vector3 baseCameraLocalPos = { 0.0f, 1.5f, 0.0f };
+        
+        // プレイヤーの移動量に対するカメラの並行移動追従率
+        float cameraFollowRateX = 1.0f;
+        float cameraFollowRateY = 1.0f;
+        
+        Vector3 cameraLocalPos = {
+            baseCameraLocalPos.x + playerLocalPos.x * cameraFollowRateX,
+            baseCameraLocalPos.y + playerLocalPos.y * cameraFollowRateY,
+            baseCameraLocalPos.z
         };
-        Vector3 up = {
-            -std::sin(targetPitch) * std::sin(targetYaw),
-            std::cos(targetPitch),
-            std::sin(targetPitch) * std::cos(targetYaw)
+
+        // ローカル位置をワールド位置に変換
+        Vector3 cameraWorldPos = {
+            cameraLocalPos.x * rotMatrix.m[0][0] + cameraLocalPos.y * rotMatrix.m[1][0] + cameraLocalPos.z * rotMatrix.m[2][0] + eye.x,
+            cameraLocalPos.x * rotMatrix.m[0][1] + cameraLocalPos.y * rotMatrix.m[1][1] + cameraLocalPos.z * rotMatrix.m[2][1] + eye.y,
+            cameraLocalPos.x * rotMatrix.m[0][2] + cameraLocalPos.y * rotMatrix.m[1][2] + cameraLocalPos.z * rotMatrix.m[2][2] + eye.z
         };
-        
-        // パララックス：プレイヤーの移動にカメラがしっかり並行移動でついていく
-        cameraEye.x += right.x * playerLocalPos.x * parallaxStrengthX;
-        cameraEye.y += right.y * playerLocalPos.x * parallaxStrengthX;
-        cameraEye.z += right.z * playerLocalPos.x * parallaxStrengthX;
 
-        cameraEye.x += up.x * playerLocalPos.y * parallaxStrengthY;
-        cameraEye.y += up.y * playerLocalPos.y * parallaxStrengthY;
-        cameraEye.z += up.z * playerLocalPos.y * parallaxStrengthY;
-        
-        float panYaw = playerLocalPos.x * panStrengthX;
-        float panPitch = playerLocalPos.y * panStrengthY;
+        // 首振り（パン）を無くし、レールアンカーと完全に同じ角度（平行）にする
+        Vector3 finalCameraRot = anchorRot;
 
-        Vector3 finalCameraRot = cameraRot;
-        finalCameraRot.y += panYaw;
-        finalCameraRot.x -= panPitch; // Yが上のとき、見上げるにはX回転がマイナス方向
-
-        camera_->SetTranslate(cameraEye);
+        camera_->SetTranslate(cameraWorldPos);
         camera_->SetRotation(finalCameraRot);
         camera_->Update();
     }

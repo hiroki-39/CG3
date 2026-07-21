@@ -21,18 +21,7 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
     object_->SetScale(playerScale_);
      
-    //// 繧｢繧ｯ繧ｻ繧ｵ繝ｪ縺ｮ蛻晄悄蛹・
-    //accessory_ = std::make_unique<Object3d>();
-    //accessory_->Initialize(object3dCommon);
-    //accessory_->SetModel("suzanne.obj");
-    //accessory_->GetModel()->SetColor({0.8f, 0.8f, 0.0f, 1.0f});
-    //accessory_->SetEnvironmentTextureIndex(skyboxTexIndex);
-    //accessory_->SetEnvironmentCoefficient(0.0f);
-    //accessory_->SetScale(Vector3(0.3f, 0.3f, 0.3f));
-    //accessory_->SetTranslate(Vector3(1.5f, 1.0f, 0.0f)); // 繝励Ξ繧､繝､繝ｼ縺ｮ蜿ｳ荳翫↓驟咲ｽｮ
-    //accessory_->SetParent(object_.get()); // 隕ｪ蟄宣未菫ゅｒ險ｭ螳・
-
-    // 螂･縺ｮ辣ｧ貅厄ｼ亥ｰ擾ｼ峨・蛻晄悄蛹・
+    // 奥の照準（小）の初期化
     reticle_ = std::make_unique<Object3d>();
     reticle_->Initialize(object3dCommon);
     reticle_->SetModel("crossHair.obj");
@@ -43,11 +32,11 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     reticle_->SetSelectLightings(0);
     reticle_->SetScale(Vector3(1.6f, 1.6f, 1.6f));
     
-    // 謇句燕縺ｮ辣ｧ貅厄ｼ亥､ｧ・峨・蛻晄悄蛹・
+    // 手前の照準（大）の初期化
     frontReticle_ = std::make_unique<Object3d>();
     frontReticle_->Initialize(object3dCommon);
     frontReticle_->SetModel("crossHair.obj");
-    // 謇句燕縺ｮ辣ｧ貅悶・蟆代＠騾乗・蠎ｦ繧剃ｸ九￡縺ｦ驍ｪ鬲斐↓縺ｪ繧峨↑縺・ｈ縺・↓縺吶ｋ
+    // 手前の照準は少し透明度を下げて邪魔にならないようにする
     Vector4 frontColor = reticleColor_;
     frontColor.w = 1.0f;
     frontReticle_->GetModel()->SetColor(frontColor);
@@ -57,57 +46,53 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     frontReticle_->SetSelectLightings(0);
     frontReticle_->SetScale(Vector3(1.7f, 1.7f, 1.7f)); 
     
-    // 辣ｧ貅悶・蛻晄悄菴咲ｽｮ・医き繝｡繝ｩ縺ｮ螂･・・
+    // 照準の初期位置（カメラの奥）
     reticlePosition_ = { 0.0f, 0.0f, 40.0f }; 
 
-    // 蛻晄悄迥ｶ諷九→縺励※繧ｰ繝ｬ繝ｼ繧ｹ繧ｱ繝ｼ繝ｫ繧丹FF縺ｫ縺励※縺翫￥
+    // 初期状態としてグレースケールをOFFにしておく
     if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
         pp->SetEffectActive("Grayscale", false);
     }
-    // 繧ｳ繝ｩ繧､繝繝ｼ蜿ｯ隕門喧逕ｨ繧ｪ繝悶ず繧ｧ繧ｯ繝・
+    // コライダー可視化用オブジェクト
     ModelManager::GetInstance()->LoadModel("collider_cube_player.obj");
     colliderObject_ = std::make_unique<Object3d>();
     colliderObject_->Initialize(object3dCommon);
-    colliderObject_->SetModel("collider_cube_player.obj"); // 繝励Ξ繧､繝､繝ｼ蟆ら畑縺ｮ遶区婿菴薙Δ繝・Ν
-    colliderObject_->GetModel()->SetColor({ 0.0f, 1.0f, 0.0f, 1.0f }); // 邱題牡
+    colliderObject_->SetModel("collider_cube_player.obj"); // プレイヤー専用の立方体モデル
+    colliderObject_->GetModel()->SetColor({ 0.0f, 1.0f, 0.0f, 1.0f }); // 緑色
     colliderObject_->SetEnvironmentCoefficient(0.0f);
     colliderObject_->SetEnableLighting(false);
-    colliderObject_->SetScale(colliderSize_); // 繝励Ξ繧､繝､繝ｼ縺ｮ蠖薙◆繧雁愛螳壹・繧ｵ繧､繧ｺ
+    colliderObject_->SetScale(colliderSize_); // プレイヤーの当たり判定のサイズ
 }
 
 void Player::OnCollision() {
-    if (invincibilityTimer_ > 0 || isDead_ || isRolling_) return; // 辟｡謨ｵ荳ｭ縲∵ｭｻ莠｡譎ゅ√∪縺溘・繝ｭ繝ｼ繝ｪ繝ｳ繧ｰ荳ｭ・亥屓驕ｿ・峨・辟｡蜉ｹ
+    if (invincibilityTimer_ > 0.0f || isDead_ || isRolling_) return; // 無敵中、死亡時、またはローリング中（回避）は無効
     
     hp_--;
     if (hp_ <= 0) {
         isDead_ = true;
     } else {
-        invincibilityTimer_ = 60; // 1遘帝俣辟｡謨ｵ
-        
-        // 陲ｫ蠑ｾ譎ゅき繝｡繝ｩ繧ｷ繧ｧ繧､繧ｯ繧・・繧ｹ繝医お繝輔ぉ繧ｯ繝医↑縺ｩ繧貞・繧後ｋ縺ｮ繧り憶縺・
+        invincibilityTimer_ = 60.0f; // 1秒間無敵
     }
 }
 
-void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera) {
-    Move();
-    Attack(bullets, parentCamera);
+void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera, float gameSpeed) {
+    Move(gameSpeed);
+    Attack(bullets, parentCamera, gameSpeed);
 
-    if (invincibilityTimer_ > 0) {
-        invincibilityTimer_--;
+    if (invincibilityTimer_ > 0.0f) {
+        invincibilityTimer_ -= gameSpeed;
     }
 
     object_->Update();
     
     if (accessory_) {
-        // 繧｢繧ｯ繧ｻ繧ｵ繝ｪ繧貞屓霆｢縺輔○繧九ョ繝｢
         Vector3 rot = accessory_->GetRotation();
-        rot.y += 0.05f;
+        rot.y += 0.05f * gameSpeed;
         accessory_->SetRotation(rot);
         accessory_->Update();
     }
     
     if (colliderObject_) {
-        // 隕ｪ縺ｮ險ｭ螳壹・GamePlayScene蛛ｴ縺ｧ陦後≧
         colliderObject_->SetTranslate(object_->GetTranslate());
         colliderObject_->SetRotation(object_->GetRotation());
         colliderObject_->Update();
@@ -122,10 +107,9 @@ void Player::Draw() {
         frontReticle_->Draw();
     }
     
-    // 辟｡謨ｵ譎る俣荳ｭ縺ｯ轤ｹ貊・＆縺帙ｋ (4繝輔Ξ繝ｼ繝�縺ｫ1蝗樣撼陦ｨ遉ｺ)
     bool shouldDrawPlayer = true;
-    if (invincibilityTimer_ > 0) {
-        if ((invincibilityTimer_ / 4) % 2 == 0) {
+    if (invincibilityTimer_ > 0.0f) {
+        if (std::fmod(invincibilityTimer_ / 4.0f, 2.0f) < 1.0f) {
             shouldDrawPlayer = false;
         }
     }
@@ -153,86 +137,154 @@ void Player::SetReticleColor(const Vector4& color) {
     }
     if (frontReticle_) {
         Vector4 frontColor = reticleColor_;
-        frontColor.w = 1.0f; // 謇句燕繧る城℃縺輔○縺ｪ縺・ｼ医Δ繝・Ν蜈ｱ譛牙撫鬘悟屓驕ｿ・・
+        frontColor.w = 1.0f; // 手前も透過させない（モデル共有問題回避）
         frontReticle_->GetModel()->SetColor(frontColor);
     }
 }
 
 Vector3 Player::GetReticleWorldPosition() const {
     if (!reticle_) return {0,0,0};
-    // 辣ｧ貅悶が繝悶ず繧ｧ繧ｯ繝医・繝ｯ繝ｼ繝ｫ繝牙ｺｧ讓吶ｒ繝槭ヨ繝ｪ繝・け繧ｹ縺九ｉ蜿門ｾ・
     const Matrix4x4& mat = reticle_->GetmatWorld();
     return { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
 }
 
-void Player::Move() {
+void Player::Move(float gameSpeed) {
     if (!input_) return;
 
-    // --- 繝ｭ繝ｼ繝ｪ繝ｳ繧ｰ蝗樣∩縺ｮ髢句ｧ句愛螳・---
+    // --- ダブルタップタイマー更新 ---
+    if (lastQPressTime_ < 1000.0f) lastQPressTime_ += gameSpeed;
+    if (lastEPressTime_ < 1000.0f) lastEPressTime_ += gameSpeed;
+
+    // --- ローリング（回避）判定 ---
     if (!isRolling_) {
         if (input_->TriggerKey(DIK_Q)) {
-            isRolling_ = true;
-            rollTimer_ = 0;
-            rollDirection_ = -1.0f; // 蟾ｦ
-            isDodgeTriggered_ = true;
+            if (lastQPressTime_ <= doubleTapThreshold_) {
+                isRolling_ = true;
+                rollTimer_ = 0.0f;
+                rollDirection_ = -1.0f; // 左
+                isDodgeTriggered_ = true;
+                lastQPressTime_ = 1000.0f;
+            } else {
+                lastQPressTime_ = 0.0f;
+            }
         } else if (input_->TriggerKey(DIK_E)) {
-            isRolling_ = true;
-            rollTimer_ = 0;
-            rollDirection_ = 1.0f; // 蜿ｳ
-            isDodgeTriggered_ = true;
+            if (lastEPressTime_ <= doubleTapThreshold_) {
+                isRolling_ = true;
+                rollTimer_ = 0.0f;
+                rollDirection_ = 1.0f; // 右
+                isDodgeTriggered_ = true;
+                lastEPressTime_ = 1000.0f;
+            } else {
+                lastEPressTime_ = 0.0f;
+            }
         }
     }
 
     if (isRolling_) {
-        rollTimer_++;
-        // 繝ｭ繝ｼ繝ｪ繝ｳ繧ｰ荳ｭ縺ｯ繝ｬ繝・ぅ繧ｯ繝ｫ繧貞ｼｷ蛻ｶ逧・↓遘ｻ蜍輔＆縺帙ｋ
-        float rollMoveSpeed = 0.2f; // 繝輔Ξ繝ｼ繝�貂帛ｰ代↓蜷医ｏ縺帙※蟆代＠縺�縺題ｪｿ謨ｴ
-        reticlePosition_.x += rollDirection_ * rollMoveSpeed;
-
-        // 荳螳壽凾髢薙〒繝ｭ繝ｼ繝ｪ繝ｳ繧ｰ邨ゆｺ・
+        rollTimer_ += gameSpeed;
         if (rollTimer_ >= rollMaxTime_) {
             isRolling_ = false;
-            // if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
-            //     pp->SetEffectActive("Grayscale", false);
-            // }
         }
     }
 
-    // --- 繝悶・繧ｹ繝亥愛螳・---
+    // --- ブーストとブレーキ（Z軸方向移動） ---
     isBoosting_ = input_->PushKey(DIK_LSHIFT);
-    float currentReticleSpeed = reticleSpeed_;
-    float currentFollowSpeed = followSpeed_;
+    bool isBraking = input_->PushKey(DIK_LCONTROL);
+    
+    float targetZ = 20.0f; 
     if (isBoosting_) {
-        currentReticleSpeed *= 1.5f;
-        currentFollowSpeed *= 1.5f;
+        targetZ = 35.0f; 
+    } else if (isBraking) {
+        targetZ = 5.0f;  
     }
+    logicalPosition_.z += (targetZ - logicalPosition_.z) * 0.1f * gameSpeed;
 
-    // --- 辣ｧ貅厄ｼ医Ξ繝・ぅ繧ｯ繝ｫ・峨・遘ｻ蜍・---
+    // --- 自機（XY座標）の直接移動 ---
+    float currentSpeed = speed_;
+    if (isBoosting_) currentSpeed *= 1.5f;
+
+    float targetVelX = 0.0f;
+    float targetVelY = 0.0f;
+
     if (input_->PushKey(DIK_W) || input_->PushKey(DIK_UP)) {
-        reticlePosition_.y += currentReticleSpeed;
+        targetVelY = currentSpeed;
     }
     if (input_->PushKey(DIK_S) || input_->PushKey(DIK_DOWN)) {
-        reticlePosition_.y -= currentReticleSpeed;
+        targetVelY = -currentSpeed;
     }
+    float currentSpeedX = currentSpeed;
+    if (input_->PushKey(DIK_Q) || input_->PushKey(DIK_E)) {
+        currentSpeedX *= 1.8f; 
+    }
+
     if (input_->PushKey(DIK_A) || input_->PushKey(DIK_LEFT)) {
-        reticlePosition_.x -= currentReticleSpeed;
+        targetVelX = -currentSpeedX;
     }
     if (input_->PushKey(DIK_D) || input_->PushKey(DIK_RIGHT)) {
-        reticlePosition_.x += currentReticleSpeed;
+        targetVelX = currentSpeedX;
     }
 
-    // 辣ｧ貅悶・遘ｻ蜍募宛髯・
-    reticlePosition_.x = std::clamp(reticlePosition_.x, -moveLimitX_, moveLimitX_);
-    reticlePosition_.y = std::clamp(reticlePosition_.y, playerLimitYMin_, moveLimitY_);
+    float accel = 0.15f * gameSpeed;
+    velocity_.x += (targetVelX - velocity_.x) * accel;
+    velocity_.y += (targetVelY - velocity_.y) * accel;
 
-    // 螂･辣ｧ貅悶・Z蠎ｧ讓吶・繝励Ξ繧､繝､繝ｼ繧医ｊ荳螳夊ｷ晞屬螂･縺ｫ菫昴▽
-    reticlePosition_.z = logicalPosition_.z + 40.0f;
+    logicalPosition_.x += velocity_.x * gameSpeed;
+    logicalPosition_.y += velocity_.y * gameSpeed;
+
+    logicalPosition_.x = std::clamp(logicalPosition_.x, -playerLimitX_, playerLimitX_);
+    logicalPosition_.y = std::clamp(logicalPosition_.y, playerLimitYMin_, playerLimitYMax_);
+
+    float targetPitch = 0.0f;
+    float targetYaw = 0.0f;
+    float targetBank = 0.0f;
+
+    if (input_->PushKey(DIK_W) || input_->PushKey(DIK_UP)) {
+        if (logicalPosition_.y < playerLimitYMax_) targetPitch = -0.4f; 
+    }
+    if (input_->PushKey(DIK_S) || input_->PushKey(DIK_DOWN)) {
+        if (logicalPosition_.y > playerLimitYMin_) targetPitch = 0.4f;
+    }
+    
+    if (input_->PushKey(DIK_A) || input_->PushKey(DIK_LEFT)) {
+        if (logicalPosition_.x > -playerLimitX_) targetYaw = -0.2f; 
+    }
+    if (input_->PushKey(DIK_D) || input_->PushKey(DIK_RIGHT)) {
+        if (logicalPosition_.x < playerLimitX_) targetYaw = 0.2f;
+    }
+
+    if (!isRolling_) {
+        if (input_->PushKey(DIK_Q)) {
+            targetBank = 1.5708f;
+        } else if (input_->PushKey(DIK_E)) {
+            targetBank = -1.5708f;
+        }
+    }
+
+    float lerpSpeed = 0.12f * gameSpeed; 
+    currentPitch_ += (targetPitch - currentPitch_) * lerpSpeed;
+    currentYaw_ += (targetYaw - currentYaw_) * lerpSpeed;
+    currentBank_ += (targetBank - currentBank_) * lerpSpeed;
+
+    float finalBank = currentBank_;
+    if (isRolling_) {
+        float rollAngle = (static_cast<float>(rollTimer_) / rollMaxTime_) * 3.14159265f * 2.0f;
+        finalBank += rollAngle * -rollDirection_;
+    }
+    
+    float reticleDistance = 40.0f;
+    Vector3 targetReticlePos;
+    targetReticlePos.x = logicalPosition_.x + std::sin(currentYaw_) * reticleDistance;
+    targetReticlePos.y = logicalPosition_.y - std::sin(currentPitch_) * reticleDistance;
+    targetReticlePos.z = logicalPosition_.z + reticleDistance;
+
+    float reticleLerp = 0.2f * gameSpeed;
+    reticlePosition_.x += (targetReticlePos.x - reticlePosition_.x) * reticleLerp;
+    reticlePosition_.y += (targetReticlePos.y - reticlePosition_.y) * reticleLerp;
+    reticlePosition_.z += (targetReticlePos.z - reticlePosition_.z) * reticleLerp;
     
     reticle_->SetTranslate(reticlePosition_);
     reticle_->Update();
 
-    // 謇句燕辣ｧ貅厄ｼ亥､ｧ・峨・險育ｮ励→譖ｴ譁ｰ
-    // 閾ｪ讖溷ｺｧ讓吶→螂･辣ｧ貅門ｺｧ讓吶・荳ｭ髢薙↓驟咲ｽｮ縺吶ｋ・・erp縺ｮ繧医≧縺ｪ陬憺俣・・
     if (frontReticle_) {
         Vector3 frontReticlePos = {
             logicalPosition_.x + (reticlePosition_.x - logicalPosition_.x) * 0.4f,
@@ -243,114 +295,53 @@ void Player::Move() {
         frontReticle_->Update();
     }
 
-    // 蜑榊屓縺ｮ菴咲ｽｮ繧剃ｿ晏ｭ・
-    Vector3 oldPos = logicalPosition_;
+    // 画面上での見た目のピッチとヨー（基本の誇張具合）
+    float screenPitch = currentPitch_ * 2.0f;
+    float screenYaw   = currentYaw_ * 3.5f;
 
-    // 繝励Ξ繧､繝､繝ｼ縺ｮ霑ｽ蠕難ｼ・anzer Dragoon鬚ｨ・・
-    // 繝励Ξ繧､繝､繝ｼ縺ｯ辣ｧ貅悶・XY蠎ｧ讓吶↓蜷代°縺｣縺ｦ蟆代＠驕・ｌ縺ｦ霑ｽ蠕薙☆繧・
-    logicalPosition_.x += (reticlePosition_.x - logicalPosition_.x) * currentFollowSpeed;
-    logicalPosition_.y += (reticlePosition_.y - logicalPosition_.y) * currentFollowSpeed;
+    // ローリングを含めた現在のZ軸回転（finalBank）に応じて、X軸とY軸の回転を2D回転させる
+    // これにより、機体がどの角度にロールしていても、移動キーを押した際に「画面上の見た目の上下左右」に正しく機首が向く
+    float visualPitch = screenPitch * std::cos(finalBank) + screenYaw * std::sin(finalBank);
+    float visualYaw   = -screenPitch * std::sin(finalBank) + screenYaw * std::cos(finalBank);
 
-    // 繝励Ξ繧､繝､繝ｼ縺後き繝｡繝ｩ螟悶↓蜃ｺ縺ｪ縺・ｈ縺・↓蛻ｶ髯・
-    logicalPosition_.x = std::clamp(logicalPosition_.x, -playerLimitX_, playerLimitX_);
-    logicalPosition_.y = std::clamp(logicalPosition_.y, playerLimitYMin_, playerLimitYMax_);
-
-    // 螳滄圀縺ｮ遘ｻ蜍暮㍼・磯溷ｺｦ・峨ｒ險育ｮ励ら判髱｢遶ｯ縺ｧ蜍輔￠縺ｪ縺・凾縺ｯ0縺ｫ縺ｪ繧・
-    Vector3 velocity = {
-        logicalPosition_.x - oldPos.x,
-        logicalPosition_.y - oldPos.y,
-        0.0f
-    };
-
-    // --- 讖滉ｽ薙・蛯ｾ縺崎ｨ育ｮ・---
-    // 騾溷ｺｦ繝吶・繧ｹ縺�縺ｨ逕ｻ髱｢遶ｯ縺ｧvelocity縺・縺ｫ縺ｪ縺｣縺溽椪髢薙↓蛯ｾ縺阪′諤･縺ｫ謌ｻ繧矩＆蜥梧─縺後≠繧九◆繧√・
-    // 繧ｭ繝ｼ蜈･蜉幢ｼ亥髄縺九♀縺・→縺吶ｋ諢丞ｿ暦ｼ峨・繝ｼ繧ｹ縺ｧ繧ｿ繝ｼ繧ｲ繝・ヨ隗貞ｺｦ繧呈ｱｺ螳壹☆繧・
-    float targetPitch = 0.0f;
-    float targetYaw = 0.0f;
-    float targetBank = 0.0f;
-
-    if (input_->PushKey(DIK_W) || input_->PushKey(DIK_UP)) {
-        targetPitch = -0.4f; // 讖滄ｦ悶ｒ荳翫↓蜷代￠繧・
-    }
-    if (input_->PushKey(DIK_S) || input_->PushKey(DIK_DOWN)) {
-        targetPitch = 0.4f;  // 讖滄ｦ悶ｒ荳九↓蜷代￠繧・
-    }
-    
-    if (input_->PushKey(DIK_A) || input_->PushKey(DIK_LEFT)) {
-        targetYaw = -0.2f; // 蟾ｦ繧貞髄縺・
-        targetBank = 0.8f; // 蟾ｦ縺ｫ蛯ｾ縺擾ｼ医ヰ繝ｳ繧ｯ・・
-    }
-    if (input_->PushKey(DIK_D) || input_->PushKey(DIK_RIGHT)) {
-        targetYaw = 0.2f;  // 蜿ｳ繧貞髄縺・
-        targetBank = -0.8f; // 蜿ｳ縺ｫ蛯ｾ縺擾ｼ医ヰ繝ｳ繧ｯ・・
-    }
-
-    // --- 荳企剞縺ｮ螢√↑縺ｩ縺ｫ蠖薙◆縺｣縺滄圀縺ｮ蜃ｦ逅・---
-    // 遘ｻ蜍輔く繝ｼ繧呈款縺励※縺・※繧ゅ∝｣√↓蠖薙◆縺｣縺ｦ螳滄圀縺ｮ騾溷ｺｦ縺後ぞ繝ｭ縺ｫ縺ｪ縺｣縺ｦ縺・ｋ蝣ｴ蜷医・蛯ｾ縺阪ｒ謌ｻ縺・
-    if (std::abs(velocity.x) < 0.01f) {
-        targetYaw = 0.0f;
-        targetBank = 0.0f;
-    }
-    if (std::abs(velocity.y) < 0.01f) {
-        targetPitch = 0.0f;
-    }
-
-    // 貊代ｉ縺九↓陬憺俣・・erp・峨☆繧・
-    float lerpSpeed = 0.1f; // 蛯ｾ縺阪′謌ｻ繧九・螟峨ｏ繧矩溘＆・・.1 = 豈弱ヵ繝ｬ繝ｼ繝�10%霑代▼縺擾ｼ・
-    currentPitch_ += (targetPitch - currentPitch_) * lerpSpeed;
-    currentYaw_ += (targetYaw - currentYaw_) * lerpSpeed;
-    currentBank_ += (targetBank - currentBank_) * lerpSpeed;
-
-    // 譛邨ら噪縺ｪ繝舌Φ繧ｯ隗抵ｼ医Ο繝ｼ繝ｪ繝ｳ繧ｰ隗貞ｺｦ縺ｯ邏ｯ遨阪＆縺帙★縺ｫ荳譎ら噪縺ｫ雜ｳ縺呻ｼ・
-    float finalBank = currentBank_;
-    if (isRolling_) {
-        float rollAngle = (static_cast<float>(rollTimer_) / rollMaxTime_) * 3.14159265f * 2.0f;
-        finalBank += rollAngle * -rollDirection_;
-    }
-    
-    // 螳滄圀縺ｮ繝｢繝・Ν縺ｮ Transform 縺ｫ縺ｯ繧ｪ繝輔そ繝・ヨ繧定ｶｳ縺励※驕ｩ逕ｨ
     object_->SetScale(playerScale_);
     object_->SetRotation(Vector3(
-        baseRotation_.x + currentPitch_ + modelRotOffset_.x,
-        baseRotation_.y + currentYaw_ + modelRotOffset_.y,
-        baseRotation_.z + finalBank + modelRotOffset_.z
+        baseRotation_.x + visualPitch + modelRotOffset_.x,
+        baseRotation_.y + visualYaw   + modelRotOffset_.y,
+        baseRotation_.z + finalBank   + modelRotOffset_.z
     ));
-    object_->SetTranslate(Vector3(logicalPosition_.x + modelPosOffset_.x, logicalPosition_.y + modelPosOffset_.y, logicalPosition_.z + modelPosOffset_.z));
+    object_->SetTranslate(Vector3(
+        logicalPosition_.x + modelPosOffset_.x, 
+        logicalPosition_.y + modelPosOffset_.y, 
+        logicalPosition_.z + modelPosOffset_.z
+    ));
 }
 
-void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera) {
+void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera, float gameSpeed) {
     if (!input_) return;
 
-    // 逋ｺ蟆・俣髫斐・繧ｿ繧､繝槭・譖ｴ譁ｰ
-    if (attackTimer_ > 0) {
-        attackTimer_--;
+    if (attackTimer_ > 0.0f) {
+        attackTimer_ -= gameSpeed;
     }
 
-    // 繧ｿ繧､繝槭・縺・莉･荳九↑繧臥匱蟆・庄閭ｽ
-    // 繧ｹ繝壹・繧ｹ繧ｭ繝ｼ縺ｾ縺溘・繝槭え繧ｹ蟾ｦ繧ｯ繝ｪ繝・け縺ｧ逋ｺ蟆・
-    if (attackTimer_ <= 0 && (input_->PushKey(DIK_SPACE))) {
-        attackTimer_ = attackInterval_; // 繧ｿ繧､繝槭・繝ｪ繧ｻ繝・ヨ
+    if (attackTimer_ <= 0.0f && (input_->PushKey(DIK_SPACE))) {
+        attackTimer_ = attackInterval_; 
         
-        // 繝励Ξ繧､繝､繝ｼ縺ｮ繝ｯ繝ｼ繝ｫ繝牙ｺｧ讓吶ｒ蜿門ｾ励☆繧・(object_縺ｯ繧ｫ繝｡繝ｩ縺ｮ蟄舌↑縺ｮ縺ｧGetTranslate縺ｯ繝ｭ繝ｼ繧ｫ繝ｫ蠎ｧ讓吶↓縺ｪ縺｣縺ｦ縺励∪縺・
         const Matrix4x4& mat = object_->GetmatWorld();
         Vector3 playerPos = { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
         
         Vector3 targetPos = GetReticleWorldPosition();
         
-        // --- 辣ｧ貅悶い繧ｷ繧ｹ繝茨ｼ亥ｼｱ繧・ｼ・---
-        // 繧ｿ繝ｼ繧ｲ繝・ヨ縺瑚ｿ代￥縺ｫ縺・ｋ蝣ｴ蜷医∫匱蟆・ｧ貞ｺｦ縺�縺代ｒ謨ｵ縺ｮ譁ｹ縺ｸ蟆代＠陬懈ｭ｣縺吶ｋ・医・繝ｼ繝溘Φ繧ｰ蠑ｾ縺ｫ縺ｯ縺励↑縺・ｼ・
         if (assistTarget_ && !assistTarget_->IsDead()) {
             targetPos = assistTarget_->GetColliderCenter();
         }
         
-        // 辣ｧ貅・縺ｾ縺溘・繝ｭ繝・け繧ｪ繝ｳ蠎ｧ讓・縺ｫ蜷代°縺・・繧ｯ繝医Ν繧定ｨ育ｮ・
         Vector3 direction = {
             targetPos.x - playerPos.x,
             targetPos.y - playerPos.y,
             targetPos.z - playerPos.z
         };
         
-        // 豁｣隕丞喧
         float length = std::sqrtf(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
         if (length > 0.0f) {
             direction.x /= length;
@@ -364,7 +355,6 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d*
             direction.z * bulletSpeed_
         };
 
-        // 蠑ｾ繧堤函謌・
         std::unique_ptr<PlayerBullet> newBullet = std::make_unique<PlayerBullet>();
         newBullet->Initialize(object3dCommon_, playerPos, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
         bullets.push_back(std::move(newBullet));
@@ -420,7 +410,6 @@ void Player::LoadSettings(const std::string& filepath) {
         }
         file.close();
         
-        // 隱ｭ縺ｿ霎ｼ繧薙□險ｭ螳壹ｒ蜿肴丐
         if (object_) {
             object_->SetModel(modelName_);
             object_->GetModel()->SetColor(color_);
@@ -472,7 +461,6 @@ void Player::DrawUI() {
     ImGui::Begin("Player Editor");
     
     if (ImGui::CollapsingHeader("Model Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // 繝｢繝・Ν螟画峩
         const char* models[] = { "cube.obj", "player.obj", "monsterBall.obj","suzanne.obj"};
         int currentModel = 0;
         for (int i = 0; i < 3; ++i) {
@@ -485,7 +473,6 @@ void Player::DrawUI() {
             modelName_ = models[currentModel];
             if (object_) {
                 object_->SetModel(modelName_);
-                // 繝｢繝・Ν繧貞､峨∴縺溷ｴ蜷医€∝・蠎ｦ濶ｲ縺ｨ蜿榊ｰ・ｿよ焚繧偵そ繝・ヨ縺吶ｋ
                 object_->GetModel()->SetColor(color_);
                 object_->SetEnvironmentTextureIndex(skyboxTexIndex_);
                 object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
@@ -495,7 +482,6 @@ void Player::DrawUI() {
             }
         }
         
-        // 濶ｲ螟画峩
         float col[4] = { color_.x, color_.y, color_.z, color_.w };
         if (ImGui::ColorEdit4("Color", col)) {
             color_ = { col[0], col[1], col[2], col[3] };
@@ -504,7 +490,6 @@ void Player::DrawUI() {
             }
         }
         
-        // 譏繧願ｾｼ縺ｿ蛻・ｊ譖ｿ縺・
         if (ImGui::Checkbox("Reflection", &reflection_)) {
             if (object_) {
                 object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
@@ -540,7 +525,7 @@ void Player::DrawUI() {
         ImGui::DragFloat("Player Limit X", &playerLimitX_, 0.1f, 1.0f, 50.0f);
         ImGui::DragFloat("Player Limit Y Min", &playerLimitYMin_, 0.1f, -10.0f, 50.0f);
         ImGui::DragFloat("Player Limit Y Max", &playerLimitYMax_, 0.1f, 1.0f, 50.0f);
-        ImGui::DragInt("Roll Max Time", &rollMaxTime_, 1, 1, 60);
+        ImGui::DragFloat("Roll Max Time", &rollMaxTime_, 1.0f, 1.0f, 60.0f); 
     }
     if (ImGui::Button("Save Settings")) {
         SaveSettings("resources/json/player/player_settings.json");
@@ -551,8 +536,6 @@ void Player::DrawUI() {
 }
 
 bool Player::IsBanking() const {
-    // 軽く移動しただけでは出さず、深く旋回（バンク）・急上昇急降下（ピッチ）した時のみトレイルを出す
-    // しきい値を厳しめに設定 (バンク: 0.3 -> 0.65, ピッチ: 0.2 -> 0.35)
     return std::abs(currentBank_) > 0.65f || isRolling_ || std::abs(currentPitch_) > 0.35f;
 }
 
