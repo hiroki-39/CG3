@@ -295,11 +295,14 @@ void Player::Move(float gameSpeed) {
         frontReticle_->Update();
     }
 
-    float bankRatio = currentBank_ / 1.5708f;
-    float absBankRatio = std::abs(bankRatio);
-    
-    float visualPitch = std::lerp(currentPitch_ * 2.0f, currentYaw_ * 4.0f * bankRatio, absBankRatio);
-    float visualYaw   = std::lerp(currentYaw_   * 3.5f, currentPitch_ * -1.5f * bankRatio, absBankRatio);
+    // 画面上での見た目のピッチとヨー（基本の誇張具合）
+    float screenPitch = currentPitch_ * 2.0f;
+    float screenYaw   = currentYaw_ * 3.5f;
+
+    // ローリングを含めた現在のZ軸回転（finalBank）に応じて、X軸とY軸の回転を2D回転させる
+    // これにより、機体がどの角度にロールしていても、移動キーを押した際に「画面上の見た目の上下左右」に正しく機首が向く
+    float visualPitch = screenPitch * std::cos(finalBank) + screenYaw * std::sin(finalBank);
+    float visualYaw   = -screenPitch * std::sin(finalBank) + screenYaw * std::cos(finalBank);
 
     object_->SetScale(playerScale_);
     object_->SetRotation(Vector3(
