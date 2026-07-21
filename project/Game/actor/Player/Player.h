@@ -21,7 +21,7 @@ public:
     /// <summary>
     /// 譖ｴ譁ｰ
     /// </summary>
-    void Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera = nullptr);
+    void Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera = nullptr, float gameSpeed = 1.0f);
 
     /// <summary>
     /// 謠冗判
@@ -105,11 +105,11 @@ public:
 private:
     /// <summary>
     /// 遘ｻ蜍募・逅・    /// </summary>
-    void Move();
+    void Move(float gameSpeed);
 
     /// <summary>
     /// 謾ｻ謦・・逅・    /// </summary>
-    void Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera);
+    void Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera, float gameSpeed);
 
 private:
     std::unique_ptr<Object3d> object_ = nullptr;
@@ -130,8 +130,8 @@ private:
     float reticleSpeed_ = 0.5f;
     float moveLimitX_ = 25.0f;     // 照準のX移動限界（自機限界と合わせる）
     float moveLimitY_ = 12.0f;     // 照準のY移動限界（自機限界と合わせる）
-    int attackInterval_ = 15;
-    int rollMaxTime_ = 15;
+    float attackInterval_ = 15.0f;
+    float rollMaxTime_ = 15.0f;
     float playerLimitX_ = 25.0f;   // プレイヤーの実際のX移動限界
     float playerLimitYMin_ = -5.0f;// 下への移動限界
     float playerLimitYMax_ = 12.0f;// 上への移動限界（カメラ内に収まるよう狭める）
@@ -157,20 +157,20 @@ private:
     Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f };
 
     // 攻撃関連
-    int attackTimer_ = 0;
+    float attackTimer_ = 0.0f;
 
     // XY軸の速度（補間用）
     Vector2 velocity_ = { 0.0f, 0.0f };
 
     // ローリング・回避関連
     bool isRolling_ = false;
-    int rollTimer_ = 0;
+    float rollTimer_ = 0.0f;
     float rollDirection_ = 0.0f; // -1.0f (左), 1.0f (右)
     
     // Q/E ダブルタップ判定用
-    int lastQPressTime_ = 0;
-    int lastEPressTime_ = 0;
-    const int doubleTapThreshold_ = 15; // 15フレーム以内の連続入力でダブルタップと判定
+    float lastQPressTime_ = 0.0f;
+    float lastEPressTime_ = 0.0f;
+    const float doubleTapThreshold_ = 15.0f; // 15フレーム以内の連続入力でダブルタップと判定
 
     // 繝ｭ繝・け繧ｪ繝ｳ髢｢騾｣
     bool isLockOn_ = false;
@@ -189,6 +189,6 @@ private:
     // HP・被弾関連
     int hp_ = 10000;
     int maxHp_ = 10000;
-    int invincibilityTimer_ = 0;
+    float invincibilityTimer_ = 0.0f;
     bool isDead_ = false;
 };

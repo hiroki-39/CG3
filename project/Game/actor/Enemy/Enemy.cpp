@@ -112,7 +112,7 @@ void Enemy::SetMovePath(std::unique_ptr<Rail> path) {
     pathProgress_ = 0.0f;
 }
 
-void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Player* player, std::list<std::unique_ptr<EnemyBullet>>& enemyBullets) {
+void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Player* player, std::list<std::unique_ptr<EnemyBullet>>& enemyBullets, float gameSpeed) {
     if (isDead_) return;
 
     Vector3 playerWorldPos = cameraPos;
@@ -121,10 +121,10 @@ void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Playe
         playerWorldPos = { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
     }
 
-    if (invincibilityTimer_ > 0) {
-        invincibilityTimer_--;
+    if (invincibilityTimer_ > 0.0f) {
+        invincibilityTimer_ -= gameSpeed;
         // 無敵時間中は点滅させる（赤色）
-        if (invincibilityTimer_ % 10 < 5) {
+        if (std::fmod(invincibilityTimer_, 10.0f) < 5.0f) {
             object_->GetModel()->SetColor({ 1.0f, 0.5f, 0.5f, 1.0f });
         } else {
             object_->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
@@ -145,18 +145,18 @@ void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Playe
     }
 
     // スポナーによる遅延待機
-    if (spawnDelay_ > 0) {
-        spawnDelay_--;
+    if (spawnDelay_ > 0.0f) {
+        spawnDelay_ -= gameSpeed;
         // 遅延中は画面に映らないように奥に配置するか、更新をスキップする
         return; 
     }
 
-    activeTimer_++;
+    activeTimer_ += gameSpeed;
 
     // --- 行動パターンの実行 ---
     if (behavior_ == "PATH") {
         if (movePath_ && movePath_->IsValid()) {
-            pathProgress_ += (moveSpeed_ * 0.5f) / movePath_->GetTotalLength();
+            pathProgress_ += (moveSpeed_ * 0.5f * gameSpeed) / movePath_->GetTotalLength();
             if (pathProgress_ > 1.0f) {
                 isDead_ = true; // パスの終端で消滅
             } else {
@@ -177,9 +177,9 @@ void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Playe
             -std::sin(pitch),
             std::cos(yaw) * std::cos(pitch)
         };
-        position_.x += forward.x * moveSpeed_;
-        position_.y += forward.y * moveSpeed_;
-        position_.z += forward.z * moveSpeed_;
+        position_.x += forward.x * moveSpeed_ * gameSpeed;
+        position_.y += forward.y * moveSpeed_ * gameSpeed;
+        position_.z += forward.z * moveSpeed_ * gameSpeed;
         
         // カメラの後ろ（手前）を通り過ぎたら消滅
         if (position_.z < cameraPos.z - 50.0f) {
@@ -187,38 +187,38 @@ void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Playe
         }
     } else if (behavior_ == "CROSS") {
         // 横切る
-        if (activeTimer_ == 1) {
+        if (activeTimer_ <= 1.0f && activeTimer_ + gameSpeed > 1.0f) {
             // 出現位置によって左へ行くか右へ行くか決める
             dashVelocity_.x = (position_.x > 0) ? -moveSpeed_ : moveSpeed_;
         }
-        position_.x += dashVelocity_.x;
+        position_.x += dashVelocity_.x * gameSpeed;
         // 画面外に出たら消滅
         if (std::abs(position_.x - cameraPos.x) > 300.0f) {
             isDead_ = true;
         }
     } else if (behavior_ == "APPROACH") {
         // 接近してきてから離脱する
-        if (activeTimer_ < 60) {
+        if (activeTimer_ < 60.0f) {
             // プレイヤー前方へ接近
             Vector3 target = { playerWorldPos.x, playerWorldPos.y + 10.0f, playerWorldPos.z + 100.0f };
-            position_.x += (target.x - position_.x) * 0.05f * moveSpeed_;
-            position_.y += (target.y - position_.y) * 0.05f * moveSpeed_;
-            position_.z += (target.z - position_.z) * 0.05f * moveSpeed_;
+            position_.x += (target.x - position_.x) * 0.05f * moveSpeed_ * gameSpeed;
+            position_.y += (target.y - position_.y) * 0.05f * moveSpeed_ * gameSpeed;
+            position_.z += (target.z - position_.z) * 0.05f * moveSpeed_ * gameSpeed;
             
             // プレイヤーの方を向く
             Vector3 dir = { playerWorldPos.x - position_.x, playerWorldPos.y - position_.y, playerWorldPos.z - position_.z };
             float yaw = std::atan2(dir.x, dir.z);
             object_->SetRotation({0, yaw, 0});
-        } else if (activeTimer_ < 180) {
+        } else if (activeTimer_ < 180.0f) {
             // 滞在して攻撃（フワフワ）
-            position_.y += std::sin(activeTimer_ * 0.1f) * 0.1f;
+            position_.y += std::sin(activeTimer_ * 0.1f) * 0.1f * gameSpeed;
             Vector3 dir = { playerWorldPos.x - position_.x, playerWorldPos.y - position_.y, playerWorldPos.z - position_.z };
             float yaw = std::atan2(dir.x, dir.z);
             object_->SetRotation({0, yaw, 0});
         } else {
             // 離脱（画面手前や上空へ逃げる）
-            position_.y += moveSpeed_;
-            position_.z -= moveSpeed_ * 2.0f;
+            position_.y += moveSpeed_ * gameSpeed;
+            position_.z -= moveSpeed_ * 2.0f * gameSpeed;
             if (position_.z < cameraPos.z - 50.0f || position_.y > maxY_ + 50.0f) {
                 isDead_ = true;
             }
@@ -235,7 +235,7 @@ void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Playe
     } else {
         // フォールバック（以前のRUSHERなどの挙動を残したい場合）
         // とりあえずSTAYと同様に扱うか、前方直進にする
-        position_.z -= moveSpeed_;
+        position_.z -= moveSpeed_ * gameSpeed;
     }
 
     // (isAutoAI_ のブロックは削除済)
@@ -245,10 +245,10 @@ void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Playe
     if (position_.y < minY_) position_.y = minY_;
 
     // 弾の発射処理
-    if (shootInterval_ > 0 && isActive_ && !isDead_) {
-        attackTimer_++;
+    if (shootInterval_ > 0.0f && isActive_ && !isDead_) {
+        attackTimer_ += gameSpeed;
         if (attackTimer_ >= shootInterval_) {
-            attackTimer_ = 0;
+            attackTimer_ = 0.0f;
             auto bullet = std::make_unique<EnemyBullet>();
             bool isHoming = (typeName_ == "HOMING"); // 誘導弾を撃たせたい場合は名前をHOMINGにする
             Vector3 toPlayer = { playerWorldPos.x - position_.x, playerWorldPos.y - position_.y, playerWorldPos.z - position_.z };

@@ -25,7 +25,7 @@ void PlayerBullet::Initialize(Object3dCommon* object3dCommon, const Vector3& pos
     previousPosition_ = position;
 }
 
-void PlayerBullet::Update() {
+void PlayerBullet::Update(float gameSpeed) {
     previousPosition_ = object_->GetTranslate();
     Vector3 pos = previousPosition_;
 
@@ -50,7 +50,7 @@ void PlayerBullet::Update() {
         float speed = std::sqrt(velocity_.x * velocity_.x + velocity_.y * velocity_.y + velocity_.z * velocity_.z);
 
         // 現在の速度ベクトルを少しずつターゲット方向へ向ける（ホーミングの強さ：0.15f 程度）
-        float homingStrength = 0.15f;
+        float homingStrength = 0.15f * gameSpeed;
         velocity_.x += (toTarget.x * speed - velocity_.x) * homingStrength;
         velocity_.y += (toTarget.y * speed - velocity_.y) * homingStrength;
         velocity_.z += (toTarget.z * speed - velocity_.z) * homingStrength;
@@ -65,13 +65,14 @@ void PlayerBullet::Update() {
     }
 
     // 速度ベクトルに従って移動
-    pos.x += velocity_.x;
-    pos.y += velocity_.y;
-    pos.z += velocity_.z;
+    pos.x += velocity_.x * gameSpeed;
+    pos.y += velocity_.y * gameSpeed;
+    pos.z += velocity_.z * gameSpeed;
     object_->SetTranslate(pos);
 
     // 寿命
-    if (--deathTimer_ <= 0) {
+    deathTimer_ -= gameSpeed;
+    if (deathTimer_ <= 0.0f) {
         isDead_ = true;
     }
 

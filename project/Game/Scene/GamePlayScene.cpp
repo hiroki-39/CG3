@@ -867,7 +867,7 @@ void GamePlayScene::Update()
             }
             player_->SetAssistTarget(nearestEnemy);
 
-            player_->Update(bullets_, cameraObject_.get());
+            player_->Update(bullets_, cameraObject_.get(), gameSpeed_);
 
             // 回避エフェクトの再生
             if (player_->ConsumeDodgeTrigger())
@@ -939,7 +939,7 @@ void GamePlayScene::Update()
     {
         for (auto it = bullets_.begin(); it != bullets_.end(); )
         {
-            (*it)->Update();
+            (*it)->Update(gameSpeed_);
             if ((*it)->IsDead())
             {
                 it = bullets_.erase(it);
@@ -957,7 +957,7 @@ void GamePlayScene::Update()
         // 敵の更新と当たり判定
         for (auto it = enemies_.begin(); it != enemies_.end();)
         {
-            (*it)->Update(cameraPos, cameraForward, player_.get(), enemyBullets_);
+            (*it)->Update(cameraPos, cameraForward, player_.get(), enemyBullets_, gameSpeed_);
 
             // プレイヤーの弾との当たり判定
             for (auto& bullet : bullets_)
@@ -1017,7 +1017,7 @@ void GamePlayScene::Update()
         // 敵弾の更新とプレイヤーとの当たり判定
         for (auto it = enemyBullets_.begin(); it != enemyBullets_.end();)
         {
-            (*it)->Update();
+            (*it)->Update(gameSpeed_);
 
             if (!(*it)->IsDead() && player_ && !player_->IsDead())
             {

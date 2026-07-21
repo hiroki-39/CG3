@@ -13,7 +13,7 @@ class EnemyBullet;
 class Enemy {
 public:
     void Initialize(Object3dCommon* object3dCommon, const LevelObjectData& nodeData, uint32_t skyboxTexIndex);
-    void Update(const Vector3& cameraPos, const Vector3& cameraForward, Player* player, std::list<std::unique_ptr<EnemyBullet>>& enemyBullets);
+    void Update(const Vector3& cameraPos, const Vector3& cameraForward, Player* player, std::list<std::unique_ptr<EnemyBullet>>& enemyBullets, float gameSpeed = 1.0f);
     void Update3DObjectOnly() {
         if (object_) object_->Update();
         if (colliderObject_) colliderObject_->Update();
@@ -68,17 +68,17 @@ private:
     // 拡張AI用プロパティ（新規追加分）
     std::string behavior_ = "STRAIGHT"; // 行動パターン
     float moveSpeed_ = 1.0f;            // 移動速度
-    int shootInterval_ = 180;           // 射撃間隔
+    float shootInterval_ = 180.0f;           // 射撃間隔
     float spawnDist_ = 800.0f;          // 出現距離
-    int spawnDelay_ = 0;                // スポナーで生成された時の遅延（フレーム数）
-    int activeTimer_ = 0;               // アクティブになってからの経過時間
+    float spawnDelay_ = 0.0f;                // スポナーで生成された時の遅延（フレーム数）
+    float activeTimer_ = 0.0f;               // アクティブになってからの経過時間
 
     // 拡張AI用プロパティ（既存）
     Vector3 targetPos_;
     float maxY_ = 10.0f;
     float minY_ = -10.0f;
     int formationId_ = -1;
-    int invincibilityTimer_ = 0;
-    int attackTimer_ = 0;
+    float invincibilityTimer_ = 0.0f;
+    float attackTimer_ = 0.0f;
     Vector3 dashVelocity_ = {0.0f, 0.0f, 0.0f};
 };
