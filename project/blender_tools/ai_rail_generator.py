@@ -30,10 +30,20 @@ class AIRailGeneratorProperties(bpy.types.PropertyGroup):
         description="レールがスタートする地点の高さを設定します",
         default=50.0,
     )
-    prompt: bpy.props.StringProperty(
-        name="プロンプト",
-        description="作成したいステージのイメージを自由に記述してください（例: 障害物を避ける激しいコース）",
-        default="渓谷の中をすれすれでよけるような激しいコース",
+    prompt_early: bpy.props.StringProperty(
+        name="序盤のイメージ",
+        description="ステージ序盤（スタート直後）のイメージ",
+        default="平原を駆け抜ける高速コース",
+    )
+    prompt_mid: bpy.props.StringProperty(
+        name="中盤のイメージ",
+        description="ステージ中盤のイメージ",
+        default="徐々にビル群が見え始め、市街地へ突入する",
+    )
+    prompt_late: bpy.props.StringProperty(
+        name="終盤のイメージ",
+        description="ステージ終盤（ボス前など）のイメージ",
+        default="密集した高層ビル群を縫うように飛ぶ激しいコース",
     )
 
 # 非同期通信用の状態管理
@@ -291,108 +301,235 @@ def setup_geometry_nodes(terrain_obj, rail_obj):
     links.new(shade_smooth.outputs["Geometry"], group_out.inputs["Geometry"])
 
 
-def create_stage(data, start_z):
-    segments = data.get("segments", [])
-    if not segments:
-        return
+def get_or_create_module(module_name):
+    obj_name = f"Module_{module_name}"
+    if obj_name in bpy.data.objects:
+        return bpy.data.objects[obj_name]
+    
+    # 見つからない場合はダミーを作成
+    if module_name == "BUILDING":
+        bpy.ops.mesh.primitive_cube_add(size=1)
+        obj = bpy.context.active_object
+        obj.scale = (random.uniform(10, 30), random.uniform(10, 30), random.uniform(50, 150))
+    elif module_name == "ROCK":
+        bpy.ops.mesh.primitive_ico_sphere_add(radius=10, subdivisions=2)
+        obj = bpy.context.active_object
+        obj.scale = (random.uniform(1.5, 4.0), random.uniform(1.5, 4.0), random.uniform(1.5, 5.0))
+    elif module_name == "TREE":
+        bpy.ops.mesh.primitive_cylinder_add(radius=2, depth=20)
+        obj = bpy.context.active_object
+    else:
+        # AIが未知のモジュールを出力した場合のフォールバック
+        bpy.ops.mesh.primitive_cube_add(size=20)
+        obj = bpy.context.active_object
+        obj.scale = (1, 1, random.uniform(1, 3))
+        
+    obj.name = obj_name
+    # オリジナルは非表示
+    obj.hide_render = True
+    obj.hide_viewport = True
+    
+    col_name = "AI_Modules_Source"
+    if col_name not in bpy.data.collections:
+        col = bpy.data.collections.new(col_name)
+        bpy.context.scene.collection.children.link(col)
+    else:
+        col = bpy.data.collections[col_name]
+        
+    for c in obj.users_collection:
+        c.objects.unlink(obj)
+    col.objects.link(obj)
+    
+    return obj
 
-    # 1. レール（Curve）オブジェクトのセットアップ (カメラレール用)
-    curve_data = bpy.data.curves.new('AIRailCurve', type='CURVE')
-    curve_data.dimensions = '3D'
-    curve_obj = bpy.data.objects.new('AIRail', curve_data)
-    bpy.context.scene.collection.objects.link(curve_obj)
+def scatter_at_point(px, py, pz, angle, width, modules, density, target_collection):
+    # 左右両方に配置を試みる
+    for side in [-1, 1]:
+        # 密度による間引き（密度が高いほど配置されやすい）
+        if random.random() > density:
+            continue
+            
+        # さらに、密度が高い場合は同じ側にも複数個（壁のように）厚みを持たせて配置する
+        num_clusters = 1
+        if density > 0.7:
+            num_clusters = random.randint(1, 3)
+            
+        for _ in range(num_clusters):
+            # 道幅(width)の外側に配置する（道幅の半分 + ランダムなオフセット）
+            offset_dist = (width * 0.5) + random.uniform(2.0, 40.0)
+            
+            # angleは進行方向。横方向は +90度
+            side_angle = angle + math.radians(90.0) if side == 1 else angle - math.radians(90.0)
+            
+            spawn_x = px + offset_dist * math.cos(side_angle)
+            spawn_y = py + offset_dist * math.sin(side_angle)
+            
+            # Z座標は地形の起伏に合わせるなど工夫できるが、一旦レールと同じか少し下げる
+            spawn_z = pz - random.uniform(0.0, 15.0)
+            
+            mod_name = random.choice(modules)
+            source_obj = get_or_create_module(mod_name)
+            
+            # リンク複製 (Alt+D)
+            new_obj = source_obj.copy()
+            new_obj.data = source_obj.data # データ共有（念のため）
+            new_obj.hide_render = False
+            new_obj.hide_viewport = False
+            new_obj.name = f"Gen_{mod_name}"
+            
+            new_obj.location = (spawn_x, spawn_y, spawn_z)
+            new_obj.rotation_euler = (0, 0, random.uniform(0, math.pi * 2))
+            
+            # スケールも少しばらけさせる
+            s = random.uniform(0.7, 1.4)
+            new_obj.scale = (source_obj.scale[0]*s, source_obj.scale[1]*s, source_obj.scale[2]*s)
+            
+            target_collection.objects.link(new_obj)
+
+
+def create_stage(data, start_z):
+    early_segments = data.get("early_segments", [])
+    mid_segments = data.get("mid_segments", [])
+    late_segments = data.get("late_segments", [])
     
-    spline = curve_data.splines.new('BEZIER')
-    
+    # AIが古いフォーマット(segments)で返してきた場合のフォールバック
+    if not early_segments and not mid_segments and not late_segments:
+        early_segments = data.get("segments", [])
+        if not early_segments:
+            return
+
+    # --- 1. 出力用コレクションの準備 ---
+    stage_col_name = "AI_Generated_Stage"
+    if stage_col_name in bpy.data.collections:
+        stage_col = bpy.data.collections[stage_col_name]
+    else:
+        stage_col = bpy.data.collections.new(stage_col_name)
+        bpy.context.scene.collection.children.link(stage_col)
+
     current_pos = [0.0, 0.0, start_z]
     current_angle = math.radians(90.0)
     
-    bezier_points_data = []
+    phases = [
+        ("Early", early_segments),
+        ("Mid", mid_segments),
+        ("Late", late_segments)
+    ]
+    
+    active_curves = []
 
-    first_seg = segments[0] if segments else {}
-    bezier_points_data.append({
-        "pos": tuple(current_pos),
-        "speed": float(first_seg.get("speed", 10.0)),
-        "event": "START"
-    })
-
-    for seg_idx, seg in enumerate(segments):
-        seg_type = seg.get("type", "STRAIGHT")
-        length = float(seg.get("length", 50.0))
-        speed = float(seg.get("speed", 12.0))
+    for phase_name, segments in phases:
+        if not segments:
+            continue
+            
+        curve_data = bpy.data.curves.new(f'AIRail_{phase_name}', type='CURVE')
+        curve_data.dimensions = '3D'
+        curve_obj = bpy.data.objects.new(f'AIRail_{phase_name}', curve_data)
+        stage_col.objects.link(curve_obj)
+        active_curves.append(curve_obj)
         
-        if seg_type in ["STRAIGHT", "CLIMB", "DIVE"]:
-            z_offset = length * 0.3 if seg_type == "CLIMB" else (-length * 0.3 if seg_type == "DIVE" else 0.0)
-            dx = length * math.cos(current_angle)
-            dy = length * math.sin(current_angle)
-            
-            current_pos[0] += dx
-            current_pos[1] += dy
-            current_pos[2] += z_offset
-            
-            # 地面に潜らないように min_z でガード
-            if current_pos[2] < bpy.context.scene.ai_rail_props.min_z:
-                current_pos[2] = bpy.context.scene.ai_rail_props.min_z
-                
-            bezier_points_data.append({
-                "pos": tuple(current_pos),
-                "speed": speed,
-                "event": seg_type
-            })
+        spline = curve_data.splines.new('BEZIER')
+        
+        bezier_points_data = []
 
-        elif seg_type in ["CURVE_RIGHT", "CURVE_LEFT"]:
-            is_right = (seg_type == "CURVE_RIGHT")
-            radius = max(10.0, length)
+        first_seg = segments[0]
+        bezier_points_data.append({
+            "pos": tuple(current_pos),
+            "speed": float(first_seg.get("speed", 10.0)),
+            "event": f"START_{phase_name.upper()}"
+        })
+
+        # レール生成と並行してモジュールを配置
+        for seg_idx, seg in enumerate(segments):
+            seg_type = seg.get("type", "STRAIGHT")
+            length = float(seg.get("length", 50.0))
+            speed = float(seg.get("speed", 12.0))
             
-            center_offset_angle = current_angle - math.radians(90.0) if is_right else current_angle + math.radians(90.0)
-            cx = current_pos[0] + radius * math.cos(center_offset_angle)
-            cy = current_pos[1] + radius * math.sin(center_offset_angle)
+            terrain_data = seg.get("terrain", {})
+            modules = terrain_data.get("modules", [])
+            density = float(terrain_data.get("obstacle_density", 0.0))
+            width = float(terrain_data.get("width", 30.0))
             
-            steps = 6
-            angle_step = math.radians(90.0) / steps
+            prev_pos = list(current_pos)
             
-            start_arc_angle = current_angle + math.radians(90.0) if is_right else current_angle - math.radians(90.0)
-            
-            for step in range(1, steps + 1):
-                if is_right:
-                    arc_angle = start_arc_angle - angle_step * step
-                    current_angle = arc_angle - math.radians(90.0)
-                else:
-                    arc_angle = start_arc_angle + angle_step * step
-                    current_angle = arc_angle + math.radians(90.0)
-                    
-                current_pos[0] = cx + radius * math.cos(arc_angle)
-                current_pos[1] = cy + radius * math.sin(arc_angle)
+            if seg_type in ["STRAIGHT", "CLIMB", "DIVE"]:
+                z_offset = length * 0.3 if seg_type == "CLIMB" else (-length * 0.3 if seg_type == "DIVE" else 0.0)
+                dx = length * math.cos(current_angle)
+                dy = length * math.sin(current_angle)
                 
+                current_pos[0] += dx
+                current_pos[1] += dy
+                current_pos[2] += z_offset
+                
+                if current_pos[2] < bpy.context.scene.ai_rail_props.min_z:
+                    current_pos[2] = bpy.context.scene.ai_rail_props.min_z
+                    
                 bezier_points_data.append({
                     "pos": tuple(current_pos),
                     "speed": speed,
-                    "event": f"{seg_type}_{step}"
+                    "event": seg_type
                 })
+                
+                # --- モジュール散布 (直線) ---
+                if modules and density > 0:
+                    step_size = max(5.0, 30.0 * (1.0 - density))
+                    num_steps = max(1, int(length / step_size))
+                    for i in range(num_steps):
+                        t = i / num_steps
+                        px = prev_pos[0] + dx * t
+                        py = prev_pos[1] + dy * t
+                        pz = prev_pos[2] + z_offset * t
+                        scatter_at_point(px, py, pz, current_angle, width, modules, density, stage_col)
 
-    spline.bezier_points.add(len(bezier_points_data) - 1)
+            elif seg_type in ["CURVE_RIGHT", "CURVE_LEFT"]:
+                is_right = (seg_type == "CURVE_RIGHT")
+                radius = max(10.0, length)
+                
+                center_offset_angle = current_angle - math.radians(90.0) if is_right else current_angle + math.radians(90.0)
+                cx = prev_pos[0] + radius * math.cos(center_offset_angle)
+                cy = prev_pos[1] + radius * math.sin(center_offset_angle)
+                
+                steps = 6
+                angle_step = math.radians(90.0) / steps
+                
+                start_arc_angle = current_angle + math.radians(90.0) if is_right else current_angle - math.radians(90.0)
+                
+                for step in range(1, steps + 1):
+                    if is_right:
+                        arc_angle = start_arc_angle - angle_step * step
+                        current_angle = arc_angle - math.radians(90.0)
+                    else:
+                        arc_angle = start_arc_angle + angle_step * step
+                        current_angle = arc_angle + math.radians(90.0)
+                        
+                    current_pos[0] = cx + radius * math.cos(arc_angle)
+                    current_pos[1] = cy + radius * math.sin(arc_angle)
+                    
+                    bezier_points_data.append({
+                        "pos": tuple(current_pos),
+                        "speed": speed,
+                        "event": f"{seg_type}_{step}"
+                    })
+                    
+                    # --- モジュール散布 (カーブ) ---
+                    if modules and density > 0:
+                        scatter_at_point(current_pos[0], current_pos[1], current_pos[2], current_angle, width, modules, density, stage_col)
 
-    for idx, pt in enumerate(bezier_points_data):
-        bp = spline.bezier_points[idx]
-        bp.co = pt["pos"]
-        bp.handle_left_type = 'AUTO'
-        bp.handle_right_type = 'AUTO'
-        
-        curve_obj[f"speed_{idx}"] = pt["speed"]
-        curve_obj[f"event_{idx}"] = pt["event"]
+        spline.bezier_points.add(len(bezier_points_data) - 1)
 
-    # --- 2. 地形用オブジェクトのセットアップ ---
-    terrain_mesh = bpy.data.meshes.new("AITerrainMesh")
-    terrain_obj = bpy.data.objects.new("AITerrain", terrain_mesh)
-    bpy.context.scene.collection.objects.link(terrain_obj)
-
-    # 地形メッシュオブジェクトにGeometry Nodesを適用
-    setup_geometry_nodes(terrain_obj, curve_obj)
+        for idx, pt in enumerate(bezier_points_data):
+            bp = spline.bezier_points[idx]
+            bp.co = pt["pos"]
+            bp.handle_left_type = 'AUTO'
+            bp.handle_right_type = 'AUTO'
+            
+            curve_obj[f"speed_{idx}"] = pt["speed"]
+            curve_obj[f"event_{idx}"] = pt["event"]
 
     # 選択状態の更新
-    bpy.context.view_layer.objects.active = curve_obj
-    curve_obj.select_set(True)
-    terrain_obj.select_set(True)
+    if active_curves:
+        bpy.context.view_layer.objects.active = active_curves[0]
+        for c in active_curves:
+            c.select_set(True)
 
 
 class AIRAIL_OT_Generate(bpy.types.Operator):
@@ -417,14 +554,16 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
         AIGenState.error_msg = None
         AIGenState.start_z = props.start_z
         
-        auto_prompt = f"以下の条件に従って、全長およそ {props.rail_length}m のカメラレールセクション配列を生成してください。\n"
+        auto_prompt = f"以下の条件に従って、序盤・中盤・終盤の3つのセクション配列を生成してください。\n"
+        auto_prompt += f"・各フェーズ（序盤、中盤、終盤）ごとに、それぞれおよそ {props.rail_length}m になるようにセクションを構成してください。（全体で {props.rail_length * 3}m）\n"
         auto_prompt += f"・レールの始点の高さ(Z座標): {props.start_z} m からスタートしてください。\n"
         auto_prompt += f"・【重要】Z座標(高さ)の下限: レールの高さは絶対に {props.min_z} mを下回らないように設計してください。\n"
         
-        if props.prompt:
-            auto_prompt += f"\n【ユーザーの希望するコースイメージ（この内容に沿って起伏やカーブを考えてください）】\n{props.prompt}\n"
-        else:
-            auto_prompt += "\n【ユーザーの希望するコースイメージ】\nおまかせでカッコいいコースを作ってください。\n"
+        auto_prompt += "\n【ユーザーの希望するコースの進行イメージ（3段階）】\n"
+        auto_prompt += f"序盤（ステージ開始〜）: {props.prompt_early}\n"
+        auto_prompt += f"中盤（ステージ中盤〜）: {props.prompt_mid}\n"
+        auto_prompt += f"終盤（ボス前やラスト）: {props.prompt_late}\n"
+        auto_prompt += "\nこれら3つのイメージが滑らかに移行するように、それぞれ early_segments, mid_segments, late_segments の配列に分けて出力してください。\n"
 
         # 多様性アップのための裏テーマと乱数シード
         hidden_themes = [
@@ -443,25 +582,27 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
         
         system_prompt = f"""
 あなたは「スターフォックス」や「パンツァードラグーン」のような名作3Dレールシューティングゲームの、超一流のレベルデザイナーです。
-指定されたイメージに基づいて、ステージを構成する「セクション（レールの形状）」の並びと各セクションの「地形データ（ジオメトリノード用）」をJSON形式で出力してください。（現在敵の配置は行いません）
+指定されたイメージに基づいて、ステージを構成する「セクション（レールの形状）」の並びと、各セクションの「モジュール配置データ」をJSON形式で出力してください。（現在敵の配置は行いません）
 
 【出力JSONフォーマット】
 必ず以下のJSONスキーマに従い、JSONテキストのみを出力してください。マークダウン(```json)や解説は一切含めないでください。
 
 {{
-  "segments": [
+  "early_segments": [
     {{
       "type": "STRAIGHT",
       "length": 50.0,
       "speed": 12.0,
       "terrain": {{
         "type": "OPEN",
-        "width": 20.0,
-        "roughness": 0.5,
-        "obstacle_density": 0.2
+        "modules": ["BUILDING", "ROCK"],
+        "obstacle_density": 0.5,
+        "width": 30.0
       }}
     }}
-  ]
+  ],
+  "mid_segments": [],
+  "late_segments": []
 }}
 
 【セクションの種類 ("type")】
@@ -471,12 +612,15 @@ class AIRAIL_OT_Generate(bpy.types.Operator):
 - "CLIMB": 上昇するセクション。
 - "DIVE": 下降するセクション（Z軸下限 {props.min_z}m を下回らないよう注意）。
 
-【地形データ ("terrain")】
-ジオメトリノードでプロシージャル地形を生成するためのパラメータです。
-- "type": "OPEN" (開けた地形/地面のみ) または "TUNNEL" (トンネル/洞窟)。
-- "width": 地面の幅、またはトンネルの半径（10.0 ～ 50.0）。
-- "roughness": 地形の起伏の激しさ（0.0: 平坦 ～ 1.0: 激しい）。
-- "obstacle_density": 岩などの障害物の配置密度（0.0: なし ～ 1.0: 密集）。
+【地形・モジュールデータ ("terrain")】
+- "type": "OPEN" (開けた地形)、"TUNNEL" (トンネル/洞窟)、"CITY" (市街地)、"TRENCH" (人工の溝・通路)。
+- "modules": この区間で配置する障害物や景観パーツのリスト。以下の文字列から0個以上選んでください。
+    - "BUILDING" (ビル・建物)
+    - "ROCK" (岩・隕石)
+    - "TREE" (木・植物)
+    - "RUIN" (遺跡・瓦礫)
+- "obstacle_density": モジュールの配置密度（0.0: なし ～ 1.0: 密集）。
+- "width": 空間の広さ（コース幅）。（10.0 ～ 50.0）。
 """
         # temperatureを高く設定して多様性を向上
         payload = {
@@ -522,8 +666,10 @@ class AIRAIL_PT_Panel(bpy.types.Panel):
         box.prop(props, "min_z")
         
         layout.separator()
-        layout.label(text="AIプロンプト:")
-        layout.prop(props, "prompt", text="")
+        layout.label(text="AIプロンプト（ステージ構成）:")
+        layout.prop(props, "prompt_early", text="序盤")
+        layout.prop(props, "prompt_mid", text="中盤")
+        layout.prop(props, "prompt_late", text="終盤")
         
         layout.separator()
         layout.operator(AIRAIL_OT_Generate.bl_idname, text="AIでステージ・地形を自動生成", icon='OUTLINER_OB_CURVE')
