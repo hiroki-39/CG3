@@ -51,9 +51,18 @@ def fetch_gemini_data(url, payload):
             res_body = response.read().decode('utf-8')
             res_json = json.loads(res_body)
             generated_text = res_json['candidates'][0]['content']['parts'][0]['text']
+            
+            # AIの返答にマークダウン記法(```json ... ```)などが混ざっている場合に対処
+            import re
+            match = re.search(r'\{.*\}', generated_text, re.DOTALL)
+            if match:
+                generated_text = match.group(0)
+                
             stage_data = json.loads(generated_text)
             AIGenState.stage_data = stage_data
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         AIGenState.error_msg = str(e)
     finally:
         AIGenState.is_running = False
@@ -64,6 +73,8 @@ def check_ai_gen_thread():
         
     if AIGenState.error_msg:
         print("AI Gen Error:", AIGenState.error_msg)
+        with open(r"c:\Users\k024g\Lesson\2025A\CG2\CG2\project\blender_tools\error.log", "w") as f:
+            f.write("AI Gen Error:\n" + AIGenState.error_msg)
     elif AIGenState.stage_data:
         try:
             create_stage(AIGenState.stage_data, AIGenState.start_z)
@@ -72,6 +83,9 @@ def check_ai_gen_thread():
             import traceback
             traceback.print_exc()
             print("Create Stage Error:", e)
+            with open(r"c:\Users\k024g\Lesson\2025A\CG2\CG2\project\blender_tools\error.log", "w") as f:
+                f.write("Create Stage Error:\n")
+                f.write(traceback.format_exc())
             
     return None # タイマー終了
 
@@ -94,200 +108,177 @@ def setup_geometry_nodes(terrain_obj, rail_obj):
         nodes.remove(node)
         
     group_in = nodes.new('NodeGroupInput')
-    group_in.location = (-2400, 0)
+    group_in.location = (-1600, 0)
     
     group_out = nodes.new('NodeGroupOutput')
     group_out.location = (1600, 0)
     
     # ----------------------------------------------------
-    # 1. レールの情報を取得し、自動で最適なサイズのGridを作る
+    # 1. レールの情報取得と細分化
     # ----------------------------------------------------
     obj_info = nodes.new('GeometryNodeObjectInfo')
     obj_info.inputs["Object"].default_value = rail_obj
-    obj_info.transform_space = 'RELATIVE' # 必須！位置ズレを防ぐ
-    obj_info.location = (-2200, -200)
+    obj_info.transform_space = 'RELATIVE'
+    obj_info.location = (-1200, 100)
     
-    # バウンディングボックスでレールの全体サイズと中心を取得
-    bbox = nodes.new('GeometryNodeBoundBox')
-    bbox.location = (-2000, -200)
-    
-    bbox_size = nodes.new('ShaderNodeVectorMath')
-    bbox_size.operation = 'SUBTRACT'
-    bbox_size.location = (-1800, -100)
-    
-    bbox_center_add = nodes.new('ShaderNodeVectorMath')
-    bbox_center_add.operation = 'ADD'
-    bbox_center_add.location = (-1800, -300)
-    
-    bbox_center = nodes.new('ShaderNodeVectorMath')
-    bbox_center.operation = 'SCALE'
-    bbox_center.inputs[3].default_value = 0.5
-    bbox_center.location = (-1600, -300)
-    
-    # レールサイズに余白（崖の外側の広さ）を追加
-    margin_add = nodes.new('ShaderNodeVectorMath')
-    margin_add.operation = 'ADD'
-    margin_add.inputs[1].default_value = (800.0, 800.0, 0.0) # 左右400mの余白
-    margin_add.location = (-1600, -100)
-    
-    sep_size = nodes.new('ShaderNodeSeparateXYZ')
-    sep_size.location = (-1400, -100)
-    
-    grid = nodes.new('GeometryNodeMeshGrid')
-    grid.inputs["Vertices X"].default_value = 600
-    grid.inputs["Vertices Y"].default_value = 600
-    grid.location = (-1200, 100)
-    
-    # できたGridをレールの中心に移動
-    grid_set_pos = nodes.new('GeometryNodeSetPosition')
-    grid_set_pos.location = (-800, 100)
-    
-    sep_center = nodes.new('ShaderNodeSeparateXYZ')
-    sep_center.location = (-1400, -400)
-    comb_center = nodes.new('ShaderNodeCombineXYZ')
-    comb_center.location = (-1200, -400)
-    
-    # リンク（Grid自動生成と配置）
-    links.new(obj_info.outputs["Geometry"], bbox.inputs["Geometry"])
-    links.new(bbox.outputs["Max"], bbox_size.inputs[0])
-    links.new(bbox.outputs["Min"], bbox_size.inputs[1])
-    links.new(bbox.outputs["Max"], bbox_center_add.inputs[0])
-    links.new(bbox.outputs["Min"], bbox_center_add.inputs[1])
-    links.new(bbox_center_add.outputs["Vector"], bbox_center.inputs[0])
-    
-    links.new(bbox_size.outputs["Vector"], margin_add.inputs[0])
-    links.new(margin_add.outputs["Vector"], sep_size.inputs["Vector"])
-    links.new(sep_size.outputs["X"], grid.inputs["Size X"])
-    links.new(sep_size.outputs["Y"], grid.inputs["Size Y"])
-    
-    links.new(grid.outputs["Mesh"], grid_set_pos.inputs["Geometry"])
-    links.new(bbox_center.outputs["Vector"], sep_center.inputs["Vector"])
-    links.new(sep_center.outputs["X"], comb_center.inputs["X"])
-    links.new(sep_center.outputs["Y"], comb_center.inputs["Y"])
-    links.new(comb_center.outputs["Vector"], grid_set_pos.inputs["Offset"]) # Zは0のまま移動
+    resample = nodes.new('GeometryNodeResampleCurve')
+    resample.mode = 'LENGTH'
+    resample.inputs["Length"].default_value = 5.0 # 5m間隔で細分化
+    resample.location = (-1000, 100)
     
     # ----------------------------------------------------
-    # 2. レールから純粋な「XY平面の距離（2D距離）」を測る
+    # 2. 道幅（Profile Curve）の作成
     # ----------------------------------------------------
-    curve_circle = nodes.new('GeometryNodeCurvePrimitiveCircle')
-    curve_circle.inputs["Radius"].default_value = 1.0
-    curve_circle.location = (-1200, 400)
+    profile_line = nodes.new('GeometryNodeCurvePrimitiveLine')
+    profile_line.inputs["Start"].default_value = (-1.0, 0.0, 0.0)
+    profile_line.inputs["End"].default_value = (1.0, 0.0, 0.0)
+    profile_line.location = (-1200, -100)
     
+    profile_resample = nodes.new('GeometryNodeResampleCurve')
+    profile_resample.mode = 'COUNT'
+    profile_resample.inputs["Count"].default_value = 24 # 横幅の分割数
+    profile_resample.location = (-1000, -100)
+    
+    # ----------------------------------------------------
+    # 3. 中心からの距離をキャプチャ(0.0 ～ 1.0)
+    # ----------------------------------------------------
+    spline_param = nodes.new('GeometryNodeSplineParameter')
+    spline_param.location = (-1200, -300)
+    
+    math_sub = nodes.new('ShaderNodeMath')
+    math_sub.operation = 'SUBTRACT'
+    math_sub.inputs[1].default_value = 0.5
+    math_sub.location = (-1000, -300)
+    
+    math_abs = nodes.new('ShaderNodeMath')
+    math_abs.operation = 'ABSOLUTE'
+    math_abs.location = (-800, -300)
+    
+    math_mul = nodes.new('ShaderNodeMath')
+    math_mul.operation = 'MULTIPLY'
+    math_mul.inputs[1].default_value = 2.0
+    math_mul.location = (-600, -300)
+    
+    capture = nodes.new('GeometryNodeCaptureAttribute')
+    capture.domain = 'POINT'
+    try:
+        capture.data_type = 'FLOAT'
+    except AttributeError:
+        pass
+    capture.location = (-800, -100)
+    
+    # ----------------------------------------------------
+    # 4. メッシュ化（リボン生成）
+    # ----------------------------------------------------
+    # カーブのRadius（半径）が自動で適用され、セクションごとの幅が変わる
     curve_to_mesh = nodes.new('GeometryNodeCurveToMesh')
-    curve_to_mesh.location = (-1000, 300)
-    
-    # 距離計算の狂い（レールが空中にあると距離が遠くなる）を防ぐため、
-    # 距離測定用レールのZ座標を強制的に0（ペシャンコ）にする
-    set_rail_flat = nodes.new('GeometryNodeSetPosition')
-    set_rail_flat.location = (-800, 300)
-    
-    pos_rail = nodes.new('GeometryNodeInputPosition')
-    pos_rail.location = (-1200, 150)
-    
-    sep_rail = nodes.new('ShaderNodeSeparateXYZ')
-    sep_rail.location = (-1000, 150)
-    
-    comb_rail = nodes.new('ShaderNodeCombineXYZ')
-    comb_rail.location = (-800, 150) # Zは繋がないので0になる
-    
-    proximity = nodes.new('GeometryNodeProximity')
-    proximity.target_element = 'FACES'
-    proximity.location = (-600, 300)
-    
-    pos_node = nodes.new('GeometryNodeInputPosition')
-    pos_node.location = (-800, 0)
-    
-    links.new(obj_info.outputs["Geometry"], curve_to_mesh.inputs["Curve"])
-    links.new(curve_circle.outputs["Curve"], curve_to_mesh.inputs["Profile Curve"])
-    links.new(curve_to_mesh.outputs["Mesh"], set_rail_flat.inputs["Geometry"])
-    
-    # ペシャンコ化のリンク
-    links.new(pos_rail.outputs["Position"], sep_rail.inputs["Vector"])
-    links.new(sep_rail.outputs["X"], comb_rail.inputs["X"])
-    links.new(sep_rail.outputs["Y"], comb_rail.inputs["Y"])
-    links.new(comb_rail.outputs["Vector"], set_rail_flat.inputs["Position"])
-    
-    links.new(set_rail_flat.outputs["Geometry"], proximity.inputs["Target"])
-    links.new(pos_node.outputs["Position"], proximity.inputs["Source Position"])
+    curve_to_mesh.location = (-600, 100)
     
     # ----------------------------------------------------
-    # 3. 崖の立ち上がり計算（絶壁）
+    # 5. 崖の立ち上がり計算（Z軸への変位）
     # ----------------------------------------------------
     map_range = nodes.new('ShaderNodeMapRange')
-    map_range.inputs[1].default_value = 30.0  # 谷底の幅（レールから30m）
-    map_range.inputs[2].default_value = 70.0  # 崖の上の幅（70m地点で頂上）
+    map_range.inputs[1].default_value = 0.5   # 中心から50%の幅までは谷底(平ら)
+    map_range.inputs[2].default_value = 1.0   # 100%(端)で崖の頂上
     map_range.inputs[3].default_value = 0.0
-    map_range.inputs[4].default_value = 1.0
-    map_range.location = (-400, 300)
+    map_range.inputs[4].default_value = 150.0 # 崖の基本高さ(m)
+    map_range.location = (-200, -300)
     
+    # 崖の傾斜を急にする（指数関数）
     power = nodes.new('ShaderNodeMath')
     power.operation = 'POWER'
-    power.inputs[1].default_value = 0.2 # 強烈な急勾配
-    power.location = (-200, 300)
-    
-    cliff_height = nodes.new('ShaderNodeMath')
-    cliff_height.operation = 'MULTIPLY'
-    cliff_height.inputs[1].default_value = 200.0 # 崖の基本高さ
-    cliff_height.location = (0, 300)
-    
-    links.new(proximity.outputs["Distance"], map_range.inputs["Value"])
-    links.new(map_range.outputs["Result"], power.inputs[0])
-    links.new(power.outputs["Value"], cliff_height.inputs[0])
+    power.inputs[1].default_value = 2.0
+    power.location = (0, -300)
     
     # ----------------------------------------------------
-    # 4. 岩肌と浸食のノイズ（レール部分はノイズ0にする賢いマスク処理）
+    # 6. AIからの terrain_roughness に応じた岩肌ノイズ追加
     # ----------------------------------------------------
-    surface_noise = nodes.new('ShaderNodeTexNoise')
-    surface_noise.inputs["Scale"].default_value = 0.02
-    surface_noise.inputs["Detail"].default_value = 6.0
-    surface_noise.location = (-400, -100)
+    named_attr = nodes.new('GeometryNodeInputNamedAttribute')
+    try:
+        named_attr.data_type = 'FLOAT'
+    except AttributeError:
+        pass
+    named_attr.inputs["Name"].default_value = "terrain_roughness"
+    named_attr.location = (-600, -500)
     
-    surf_sub = nodes.new('ShaderNodeMath')
-    surf_sub.operation = 'SUBTRACT'
-    surf_sub.inputs[1].default_value = 0.3 # 隆起させる
-    surf_sub.location = (-200, -100)
+    pos = nodes.new('GeometryNodeInputPosition')
+    pos.location = (-600, -700)
     
-    surf_mul = nodes.new('ShaderNodeMath')
-    surf_mul.operation = 'MULTIPLY'
-    surf_mul.inputs[1].default_value = 150.0 # 激しい岩肌の起伏（最大150m）
-    surf_mul.location = (0, -100)
+    noise = nodes.new('ShaderNodeTexNoise')
+    noise.inputs["Scale"].default_value = 0.05
+    noise.inputs["Detail"].default_value = 5.0
+    noise.location = (-400, -700)
     
-    # マスク処理：MapRangeの結果(0~1)を掛けることで、谷底(0)はノイズ無効、崖の上(1)は激しいノイズになる
-    noise_mask = nodes.new('ShaderNodeMath')
-    noise_mask.operation = 'MULTIPLY'
-    noise_mask.location = (200, -100)
+    noise_sub = nodes.new('ShaderNodeMath')
+    noise_sub.operation = 'SUBTRACT'
+    noise_sub.inputs[1].default_value = 0.3
+    noise_sub.location = (-200, -700)
     
-    links.new(pos_node.outputs["Position"], surface_noise.inputs["Vector"])
-    links.new(surface_noise.outputs["Fac"], surf_sub.inputs[0])
-    links.new(surf_sub.outputs["Value"], surf_mul.inputs[0])
+    # ノイズの強さ = roughness * MapRange(崖に近いほど岩肌が荒れる) * 50
+    roughness_mul1 = nodes.new('ShaderNodeMath')
+    roughness_mul1.operation = 'MULTIPLY'
+    roughness_mul1.inputs[1].default_value = 50.0
+    roughness_mul1.location = (0, -500)
     
-    links.new(surf_mul.outputs["Value"], noise_mask.inputs[0])
-    links.new(map_range.outputs["Result"], noise_mask.inputs[1]) # ここがミソ！
+    roughness_mul2 = nodes.new('ShaderNodeMath')
+    roughness_mul2.operation = 'MULTIPLY'
+    roughness_mul2.location = (200, -500)
+    
+    final_noise = nodes.new('ShaderNodeMath')
+    final_noise.operation = 'MULTIPLY'
+    final_noise.location = (400, -500)
     
     # ----------------------------------------------------
-    # 5. 高さの合成と地形の適用
+    # 7. 高さの合成とメッシュへの適用
     # ----------------------------------------------------
-    final_add = nodes.new('ShaderNodeMath')
-    final_add.operation = 'ADD'
-    final_add.location = (400, 100)
+    final_height = nodes.new('ShaderNodeMath')
+    final_height.operation = 'ADD'
+    final_height.location = (600, -300)
     
-    comb_z = nodes.new('ShaderNodeCombineXYZ')
-    comb_z.location = (600, 100)
+    comb_xyz = nodes.new('ShaderNodeCombineXYZ')
+    comb_xyz.location = (800, -300)
     
-    set_pos_final = nodes.new('GeometryNodeSetPosition')
-    set_pos_final.location = (800, 100)
+    set_pos = nodes.new('GeometryNodeSetPosition')
+    set_pos.location = (1000, 100)
     
     shade_smooth = nodes.new('GeometryNodeSetShadeSmooth')
-    shade_smooth.location = (1000, 100)
+    shade_smooth.location = (1200, 100)
     
-    links.new(cliff_height.outputs["Value"], final_add.inputs[0])
-    links.new(noise_mask.outputs["Value"], final_add.inputs[1])
-    links.new(final_add.outputs["Value"], comb_z.inputs["Z"])
+    # リンク接続
+    links.new(obj_info.outputs["Geometry"], resample.inputs["Curve"])
+    links.new(profile_line.outputs["Curve"], profile_resample.inputs["Curve"])
     
-    links.new(grid_set_pos.outputs["Geometry"], set_pos_final.inputs["Geometry"])
-    links.new(comb_z.outputs["Vector"], set_pos_final.inputs["Offset"])
+    links.new(spline_param.outputs["Factor"], math_sub.inputs[0])
+    links.new(math_sub.outputs[0], math_abs.inputs[0])
+    links.new(math_abs.outputs[0], math_mul.inputs[0])
     
-    links.new(set_pos_final.outputs["Geometry"], shade_smooth.inputs["Geometry"])
+    links.new(profile_resample.outputs["Curve"], capture.inputs[0])
+    links.new(math_mul.outputs[0], capture.inputs[1])
+    
+    links.new(resample.outputs["Curve"], curve_to_mesh.inputs["Curve"])
+    links.new(capture.outputs[0], curve_to_mesh.inputs["Profile Curve"])
+    
+    links.new(capture.outputs[1], map_range.inputs["Value"])
+    links.new(map_range.outputs["Result"], power.inputs[0])
+    
+    links.new(pos.outputs["Position"], noise.inputs["Vector"])
+    links.new(noise.outputs["Fac"], noise_sub.inputs[0])
+    
+    links.new(named_attr.outputs[0], roughness_mul1.inputs[0])
+    links.new(roughness_mul1.outputs[0], roughness_mul2.inputs[0])
+    links.new(capture.outputs[1], roughness_mul2.inputs[1])
+    
+    links.new(noise_sub.outputs[0], final_noise.inputs[0])
+    links.new(roughness_mul2.outputs[0], final_noise.inputs[1])
+    
+    links.new(power.outputs[0], final_height.inputs[0])
+    links.new(final_noise.outputs[0], final_height.inputs[1])
+    links.new(final_height.outputs[0], comb_xyz.inputs["Z"])
+    
+    links.new(curve_to_mesh.outputs["Mesh"], set_pos.inputs["Geometry"])
+    links.new(comb_xyz.outputs["Vector"], set_pos.inputs["Offset"])
+    
+    links.new(set_pos.outputs["Geometry"], shade_smooth.inputs["Geometry"])
     links.new(shade_smooth.outputs["Geometry"], group_out.inputs["Geometry"])
 
 
@@ -310,16 +301,28 @@ def create_stage(data, start_z):
     bezier_points_data = []
 
     first_seg = segments[0] if segments else {}
+    terrain = first_seg.get("terrain", {})
+    t_width = float(terrain.get("width", 20.0))
+    t_roughness = float(terrain.get("roughness", 0.5))
+    
     bezier_points_data.append({
         "pos": tuple(current_pos),
         "speed": float(first_seg.get("speed", 10.0)),
-        "event": "START"
+        "event": "START",
+        "t_width": t_width,
+        "t_roughness": t_roughness
     })
 
     for seg_idx, seg in enumerate(segments):
-        seg_type = seg.get("type", "STRAIGHT")
+        raw_type = seg.get("type", "STRAIGHT")
+        seg_type = str(raw_type).upper().replace("-", "_")
+        
         length = float(seg.get("length", 50.0))
         speed = float(seg.get("speed", 12.0))
+        
+        terrain = seg.get("terrain", {})
+        t_width = float(terrain.get("width", 20.0))
+        t_roughness = float(terrain.get("roughness", 0.5))
         
         if seg_type in ["STRAIGHT", "CLIMB", "DIVE"]:
             z_offset = length * 0.3 if seg_type == "CLIMB" else (-length * 0.3 if seg_type == "DIVE" else 0.0)
@@ -337,7 +340,9 @@ def create_stage(data, start_z):
             bezier_points_data.append({
                 "pos": tuple(current_pos),
                 "speed": speed,
-                "event": seg_type
+                "event": seg_type,
+                "t_width": t_width,
+                "t_roughness": t_roughness
             })
 
         elif seg_type in ["CURVE_RIGHT", "CURVE_LEFT"]:
@@ -367,10 +372,22 @@ def create_stage(data, start_z):
                 bezier_points_data.append({
                     "pos": tuple(current_pos),
                     "speed": speed,
-                    "event": f"{seg_type}_{step}"
+                    "event": f"{seg_type}_{step}",
+                    "t_width": t_width,
+                    "t_roughness": t_roughness
                 })
 
     spline.bezier_points.add(len(bezier_points_data) - 1)
+
+    # カスタム属性（terrain_roughness）をカーブに追加（Blenderのバージョンによっては非対応のため安全に処理）
+    has_roughness_attr = False
+    try:
+        if hasattr(curve_data, "attributes"):
+            if "terrain_roughness" not in curve_data.attributes:
+                curve_data.attributes.new(name="terrain_roughness", type='FLOAT', domain='POINT')
+            has_roughness_attr = True
+    except Exception as e:
+        print("Attribute Error (Ignored):", e)
 
     for idx, pt in enumerate(bezier_points_data):
         bp = spline.bezier_points[idx]
@@ -378,8 +395,18 @@ def create_stage(data, start_z):
         bp.handle_left_type = 'AUTO'
         bp.handle_right_type = 'AUTO'
         
+        # カーブの半径にAI指定の「width（幅）」を割り当てる
+        bp.radius = pt.get("t_width", 20.0)
+        
         curve_obj[f"speed_{idx}"] = pt["speed"]
         curve_obj[f"event_{idx}"] = pt["event"]
+        
+        # カスタム属性に roughness を保存
+        if has_roughness_attr:
+            try:
+                curve_data.attributes['terrain_roughness'].data[idx].value = pt.get("t_roughness", 0.5)
+            except Exception:
+                pass
 
     # --- 2. 地形用オブジェクトのセットアップ ---
     terrain_mesh = bpy.data.meshes.new("AITerrainMesh")
