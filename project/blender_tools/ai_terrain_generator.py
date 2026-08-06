@@ -11,32 +11,32 @@ import random
 # =================================================================
 TERRAIN_PRESETS = {
     "OPEN_SEA": {
-        "width": 200, "height": 10, "noise_height": 3, "noise_type": 'multi_fractal', 
-        "subd_x": 128, "noise_size": 3.0
+        "width": 2000, "height": 10, "noise_height": 10, "noise_type": 'multi_fractal', 
+        "subd_x": 128, "noise_size": 30.0, "profile_type": "SEA", "path_width": 200.0
     },
     "CITY": {
-        "width": 200, "height": 15, "noise_height": 2, "noise_type": 'strata_hterrain', 
-        "subd_x": 128, "noise_size": 2.0
+        "width": 1000, "height": 15, "noise_height": 5, "noise_type": 'strata_hterrain', 
+        "subd_x": 128, "noise_size": 10.0, "profile_type": "FLAT", "path_width": 200.0
     },
     "CANYON": {
-        "width": 200, "height": 150, "noise_height": 50, "noise_type": 'ridged_multi_fractal', 
-        "subd_x": 128, "noise_size": 4.0
+        "width": 1000, "height": 100, "noise_height": 20, "noise_type": 'multi_fractal', 
+        "subd_x": 64, "noise_size": 25.0, "profile_type": "CLIFF", "path_width": 200.0
     },
     "MOUNTAINS": {
-        "width": 200, "height": 150, "noise_height": 60, "noise_type": 'hetero_terrain', 
-        "subd_x": 128, "noise_size": 5.0
+        "width": 2000, "height": 200, "noise_height": 50, "noise_type": 'hetero_terrain', 
+        "subd_x": 128, "noise_size": 40.0, "profile_type": "CLIFF", "path_width": 200.0
     },
     "LUNAR": {
-        "width": 200, "height": 50, "noise_height": 20, "noise_type": 'planet_noise', 
-        "subd_x": 128, "noise_size": 3.0
+        "width": 2000, "height": 50, "noise_height": 20, "noise_type": 'planet_noise', 
+        "subd_x": 128, "noise_size": 20.0, "profile_type": "GENTLE", "path_width": 200.0
     },
     "HILLS": {
-        "width": 200, "height": 40, "noise_height": 15, "noise_type": 'multi_fractal', 
-        "subd_x": 128, "noise_size": 4.0
+        "width": 2000, "height": 80, "noise_height": 60, "noise_type": 'hetero_terrain', 
+        "subd_x": 128, "noise_size": 400.0, "noise_depth": 3, "profile_type": "OPEN", "path_width": 200.0
     },
     "PLAINS": {
-        "width": 200, "height": 5, "noise_height": 2, "noise_type": 'multi_fractal', 
-        "subd_x": 128, "noise_size": 3.0
+        "width": 2000, "height": 5, "noise_height": 10, "noise_type": 'multi_fractal', 
+        "subd_x": 128, "noise_size": 30.0, "profile_type": "FLAT", "path_width": 200.0
     }
 }
 
@@ -117,6 +117,8 @@ def check_ai_terrain_gen_thread():
         # 画面にポップアップ表示
         if "503" in err_str:
             show_message_box("AIサーバーが混雑しています（503エラー）。時間を置いて再度お試しください。", title="通信エラー")
+        elif "429" in err_str:
+            show_message_box("AIの利用回数制限に達しました（429エラー）。1〜2分ほど待ってから再度お試しください。", title="通信制限エラー")
         else:
             show_message_box(f"AI通信エラー: {err_str}", title="通信エラー")
             
@@ -143,36 +145,190 @@ def check_ai_terrain_gen_thread():
 # =================================================================
 # 4. 地形生成処理 (A.N.T.Landscape使用)
 # =================================================================
-def shape_terrain_profile(obj, path_width=80.0, max_width=200.0, target_edge_height=50.0):
+def shape_terrain_profile(obj, preset, length):
     """
-    地形の中央（レールが通る部分）を平らにし、
-    両端に行くにつれて指定の高さ(target_edge_height)まで強制的に隆起させる。
-    A.N.T.Landscapeのノイズ起伏も加味する。
+    カテゴリごとに地形の断面（プロファイル）を成形する
     """
+    import math
     mesh = obj.data
+    
+    # ---------------------------
+    # 地形の幅や道の幅をプリセットから取得
+    # ---------------------------
+    path_width = preset.get("path_width", 200.0)
+    max_width = preset["width"]
+    target_edge_height = preset["height"]
+    noise_height = preset["noise_height"]
+    profile_type = preset.get("profile_type", "FLAT")
+    
     half_path = path_width / 2.0
     half_max = max_width / 2.0
     
+    # 前後のアセットと繋ぐためのフェード（グラデーション）幅
+    fade_margin = 150.0
+    half_length = length / 2.0
+    
+    # 蛇行（うねり）のパラメータ
+    wave_amplitude = 60.0
+    wave_length = 300.0
+    
     for v in mesh.vertices:
-        x = abs(v.co.x)
-        original_z = v.co.z
+        y = v.co.y
+        center_x = math.sin(y / wave_length) * wave_amplitude
+        dist_x = abs(v.co.x - center_x)
+        base_noise = v.co.z
         
-        if x <= half_path:
-            # 中央のレール道は高さを0にする
-            v.co.z = 0.0
+        if dist_x <= half_path:
+            # 川（道）の中
+            path_ratio = dist_x / half_path
+            # 道も完全に平坦ではなく、ルートの道しるべになる程度(15%)の高低差を持たせる
+            if profile_type == "SEA":
+                v.co.z = (base_noise * noise_height * 2.0) * (path_ratio ** 2)
+            else:
+                blend = 0.15 + 0.85 * (path_ratio ** 2)
+                v.co.z = base_noise * noise_height * blend
         else:
-            # 平坦な道から、メッシュの端(half_max)にかけての割合 (0.0 ~ 1.0)
-            ratio = (x - half_path) / (half_max - half_path)
-            if ratio > 1.0: ratio = 1.0
+            out_dist = dist_x - half_path
+            edge_dist = half_max - half_path
             
-            # なだらかに立ち上がり、端で急峻になるカーブ (ratio^2 などで調整可能)
-            curve = ratio * ratio * (3.0 - 2.0 * ratio)
+            if profile_type == "CLIFF":
+                # キャニオンや山脈：切り立った絶壁
+                cliff_width = 30.0 + (math.sin(y / 50.0) * 15.0)
+                if out_dist <= cliff_width:
+                    ratio = out_dist / cliff_width
+                    current_height = target_edge_height * ratio
+                    v.co.z = current_height + (base_noise * noise_height)
+                else:
+                    v.co.z = target_edge_height + (base_noise * noise_height)
+                    
+            elif profile_type == "GENTLE":
+                # 丘陵など：なだらかな立ち上がり
+                ratio = out_dist / edge_dist
+                if ratio > 1.0: ratio = 1.0
+                # Smoothstepカーブ
+                curve = ratio * ratio * (3.0 - 2.0 * ratio)
+                current_height = target_edge_height * curve
+                v.co.z = current_height + (base_noise * noise_height)
+                
+            elif profile_type == "SEA":
+                # 海：平原よりも波のようなうねりを大きくする
+                ratio = out_dist / edge_dist
+                if ratio > 1.0: ratio = 1.0
+                current_height = target_edge_height * ratio
+                # 海面の波を表現するためノイズを倍増
+                v.co.z = current_height + (base_noise * noise_height * 2.0)
+                
+            elif profile_type == "OPEN":
+                # スターフォックスのコーネリア後半のような開けた平原・丘陵
+                # 全体が平坦になりすぎないよう、外側に向けてなだらかにベースを盛り上げる
+                ratio = out_dist / edge_dist
+                if ratio > 1.0: ratio = 1.0
+                
+                # Smoothstepカーブでなだらかに盛り上げる
+                curve = ratio * ratio * (3.0 - 2.0 * ratio)
+                current_height = target_edge_height * curve
+                
+                # なだらかな起伏（ノイズ）を全体に乗せる
+                v.co.z = current_height + (base_noise * noise_height)
+                
+            else: # FLAT
+                # 平原など：ほぼ平坦（わずかな起伏のみ）
+                ratio = out_dist / edge_dist
+                if ratio > 1.0: ratio = 1.0
+                current_height = target_edge_height * ratio
+                v.co.z = current_height + (base_noise * noise_height)
+        
+        # ---------------------------
+        # ★重要: 前後のアセットと完全に繋げるためのフェード処理
+        # Y軸の端（始点と終点）に近づくにつれて、地形の形状を「共通のベースシェイプ（高さ40mのなだらかな丘）」にフェードさせる
+        # これにより、急な凹み（谷底）ができず、全てのアセットが自然な高さで繋がります
+        # ---------------------------
+        dist_from_start = y - (-half_length)
+        dist_from_end = half_length - y
+        min_dist_to_edge = min(dist_from_start, dist_from_end)
+        
+        if min_dist_to_edge < fade_margin:
+            # 端に近づくほど 0 になる係数 (Smoothstepで滑らかに)
+            fade_ratio = min_dist_to_edge / fade_margin
+            fade_curve = fade_ratio * fade_ratio * (3.0 - 2.0 * fade_ratio)
             
-            # 基本の崖の高さ(U字型) ＋ 元のノイズの起伏(端にいくほど強く出る)
-            v.co.z = (target_edge_height * curve) + (original_z * curve)
+            # 共通のベースシェイプ（高さ40mのなだらかなU字谷）を計算
+            if dist_x <= half_path:
+                path_ratio = dist_x / half_path
+                blend = 0.15 + 0.85 * (path_ratio ** 2)
+                base_shape_z = base_noise * 40.0 * blend
+            else:
+                out_dist = dist_x - half_path
+                edge_dist = half_max - half_path
+                ratio = out_dist / edge_dist
+                if ratio > 1.0: ratio = 1.0
+                curve = ratio * ratio * (3.0 - 2.0 * ratio)
+                base_shape_z = 40.0 * curve + (base_noise * 10.0)
             
+            # 現在の地形(v.co.z)と共通ベースシェイプ(base_shape_z)をブレンド
+            v.co.z = (v.co.z * fade_curve) + (base_shape_z * (1.0 - fade_curve))
+
     # メッシュを更新
     mesh.update()
+
+def assign_terrain_material(obj, category):
+    import os
+    mat_name = f"Mat_{category}"
+    
+    # 既に同じ名前のマテリアルがあればそれを使い回す
+    if mat_name in bpy.data.materials:
+        mat = bpy.data.materials[mat_name]
+    else:
+        # 新規マテリアル作成
+        mat = bpy.data.materials.new(name=mat_name)
+        mat.use_nodes = True
+        bsdf = mat.node_tree.nodes.get("Principled BSDF")
+        
+        if bsdf:
+            # カテゴリに応じた仮のベースカラーを設定（画像がない場合用）
+            base_color = (0.5, 0.5, 0.5, 1.0)
+            if category in ["HILLS", "PLAINS"]: base_color = (0.2, 0.5, 0.2, 1.0)
+            elif category in ["CANYON", "MOUNTAINS"]: base_color = (0.4, 0.25, 0.15, 1.0)
+            elif category == "OPEN_SEA": base_color = (0.1, 0.3, 0.8, 1.0)
+            
+            # 1. 画像テクスチャノードの自動配置
+            tex_image = mat.node_tree.nodes.new('ShaderNodeTexImage')
+            tex_image.location = (-300, 300)
+            mat.node_tree.links.new(tex_image.outputs['Color'], bsdf.inputs['Base Color'])
+            
+            # 2. マッピングノードの自動配置（巨大な地形でもボヤけないよう20回リピート設定）
+            mapping = mat.node_tree.nodes.new('ShaderNodeMapping')
+            mapping.location = (-500, 300)
+            mapping.inputs['Scale'].default_value = (20.0, 20.0, 20.0)
+            
+            # 3. テクスチャ座標ノードの自動配置
+            tex_coord = mat.node_tree.nodes.new('ShaderNodeTexCoord')
+            tex_coord.location = (-700, 300)
+            
+            # ノードをリンク
+            mat.node_tree.links.new(tex_coord.outputs['UV'], mapping.inputs['Vector'])
+            mat.node_tree.links.new(mapping.outputs['Vector'], tex_image.inputs['Vector'])
+            
+            # 4. (おまけ) 近くに画像ファイルがあれば自動ロードを試みる
+            blend_dir = os.path.dirname(bpy.data.filepath) if bpy.data.filepath else ""
+            if blend_dir:
+                tex_dir = os.path.join(blend_dir, "textures")
+                if os.path.exists(tex_dir):
+                    for ext in [".png", ".jpg"]:
+                        img_path = os.path.join(tex_dir, f"{category.lower()}{ext}")
+                        if os.path.exists(img_path):
+                            img = bpy.data.images.load(filepath=img_path)
+                            tex_image.image = img
+                            break
+            
+            if not tex_image.image:
+                bsdf.inputs['Base Color'].default_value = base_color
+
+    # オブジェクトにマテリアルを割り当て
+    if obj.data.materials:
+        obj.data.materials[0] = mat
+    else:
+        obj.data.materials.append(mat)
 
 def create_terrains(data):
     segments = data.get("segments", [])
@@ -196,7 +352,9 @@ def create_terrains(data):
     for seg_idx, seg in enumerate(segments):
         raw_category = seg.get("category", "PLAINS")
         category = str(raw_category).upper().replace("-", "_")
-        length = float(seg.get("length", 500.0))
+        
+        # モデル全体を2倍スケールにするため、長さ(奥行き)も2倍にする
+        length = float(seg.get("length", 500.0)) * 2.0
         
         # プリセットからパラメータを取得（存在しないカテゴリはPLAINSになる）
         preset = TERRAIN_PRESETS.get(category, TERRAIN_PRESETS["PLAINS"])
@@ -207,9 +365,11 @@ def create_terrains(data):
         noise_type = preset["noise_type"]
         subd_x = preset["subd_x"]
         noise_size = preset["noise_size"]
+        noise_depth = preset.get("noise_depth", 6) # ディテールレベル(細かいボコボコ感)
         
-        # 奥行き(Y)の分割数は、長さに比例させる（5mに1ポリゴン、最大256）
-        subd_y = min(256, max(64, int(length / 5.0)))
+        # 奥行き(Y)の分割数は、長さに比例させる（約25mに1ポリゴン、最大128）
+        # ポリゴンを大きめにして、紙くしゃくしゃではなく「大きな岩塊」にする
+        subd_y = min(128, max(32, int(length / 25.0)))
         
         # ランダムシードで毎回違う地形にする
         seed = random.randint(0, 100000)
@@ -218,21 +378,45 @@ def create_terrains(data):
         objects_before = set(bpy.context.scene.objects)
 
         # A.N.T.Landscapeでメッシュを生成
-        # ゴツゴツ感を出すため、heightにはnoise_heightを適用する
-        bpy.ops.mesh.landscape_add(
-            mesh_size_x=width, 
-            mesh_size_y=length,
-            subdivision_x=subd_x, 
-            subdivision_y=subd_y,
-            noise_type=noise_type,
-            noise_size=noise_size,
-            noise_depth=8, # より細かい岩肌のディテールを出すため 6 -> 8 に増やす
-            height=noise_height, 
-            noise_offset_x=random.uniform(-100, 100),
-            noise_offset_y=random.uniform(-100, 100),
-            random_seed=seed,
-            refresh=True
-        )
+        # タイマーからの実行時 (poll failed) を回避するため、3Dビューのコンテキストを完全にオーバーライド
+        win = bpy.context.window
+        scr = win.screen if win else None
+        area = next((a for a in scr.areas if a.type == 'VIEW_3D'), None) if scr else None
+        region = next((r for r in area.regions if r.type == 'WINDOW'), None) if area else None
+
+        def run_landscape_add():
+            bpy.ops.mesh.landscape_add(
+                mesh_size_x=width, 
+                mesh_size_y=length,
+                subdivision_x=subd_x, 
+                subdivision_y=subd_y,
+                noise_type=noise_type,
+                noise_size=noise_size,
+                noise_depth=noise_depth,
+                height=1.0, 
+                noise_offset_x=random.uniform(-100, 100),
+                noise_offset_y=random.uniform(-100, 100),
+                random_seed=seed,
+                refresh=True
+            )
+
+        if win and scr and area and region:
+            with bpy.context.temp_override(window=win, screen=scr, area=area, region=region):
+                # エディットモード等になっていると失敗するため、オブジェクトモードに戻す
+                if bpy.context.active_object and bpy.context.active_object.mode != 'OBJECT':
+                    try:
+                        bpy.ops.object.mode_set(mode='OBJECT')
+                    except:
+                        pass
+                run_landscape_add()
+        else:
+            # フォールバック
+            if bpy.context.active_object and bpy.context.active_object.mode != 'OBJECT':
+                try:
+                    bpy.ops.object.mode_set(mode='OBJECT')
+                except:
+                    pass
+            run_landscape_add()
         
         # 追加されたオブジェクトを取得
         objects_after = set(bpy.context.scene.objects)
@@ -244,10 +428,12 @@ def create_terrains(data):
         obj = new_objects.pop()
         obj.name = f"AITerrain_{seg_idx:02d}_{category}"
         
-        # --- 追加処理: 地形のU字型整形 ---
-        # ユーザーの提案通り、両端の高さを強制的にプリセットの高さ(height)まで引き上げます
-        # canyonなら150m、cityなら15mなど、確実に高低差を出します。
-        shape_terrain_profile(obj, path_width=80.0, max_width=width, target_edge_height=height)
+        # --- 追加処理: 地形のU字型整形とゴツゴツ増幅 ---
+        # プリセットに応じて崖の形状を変える（キャニオンは絶壁、丘はなだらかに等）
+        shape_terrain_profile(obj, preset, length)
+        
+        # --- 追加処理: マテリアルの自動割り当て ---
+        assign_terrain_material(obj, category)
         
         # 生成されたオブジェクトを AI_Terrains コレクションに移動
         # (Landscape Add するとデフォルトで現在のコレクションに入るため、移動させる)
@@ -262,6 +448,81 @@ def create_terrains(data):
         
         # 次のセグメントのスタート位置を更新
         current_y += length
+
+    # ---------------------------
+    # 追加処理: 遠景モデル（背景の巨大山脈）の自動生成
+    # メイン地形の外側を覆うように、非常に巨大で粗い山脈を生成します
+    # ---------------------------
+    total_length = current_y
+    bg_width = 8000.0
+    bg_length = total_length + 4000.0 # 前後にも余裕を持たせる
+    
+    objects_before = set(bpy.context.scene.objects)
+    
+    def run_bg_landscape_add():
+        bpy.ops.mesh.landscape_add(
+            mesh_size_x=bg_width, 
+            mesh_size_y=bg_length,
+            subdivision_x=128, 
+            subdivision_y=128, # 背景なのでポリゴンは粗めでOK
+            noise_type='hetero_terrain',
+            noise_size=1000.0, # 非常に巨大なうねり
+            noise_depth=4,
+            height=1.0, 
+            noise_offset_x=random.uniform(-100, 100),
+            noise_offset_y=random.uniform(-100, 100),
+            random_seed=random.randint(0, 100000),
+            refresh=True
+        )
+
+    if win and scr and area and region:
+        with bpy.context.temp_override(window=win, screen=scr, area=area, region=region):
+            if bpy.context.active_object and bpy.context.active_object.mode != 'OBJECT':
+                try: bpy.ops.object.mode_set(mode='OBJECT')
+                except: pass
+            run_bg_landscape_add()
+    else:
+        if bpy.context.active_object and bpy.context.active_object.mode != 'OBJECT':
+            try: bpy.ops.object.mode_set(mode='OBJECT')
+            except: pass
+        run_bg_landscape_add()
+        
+    objects_after = set(bpy.context.scene.objects)
+    new_objects = objects_after - objects_before
+    
+    if new_objects:
+        bg_obj = new_objects.pop()
+        bg_obj.name = "AITerrain_Background_Mountains"
+        
+        for coll in bg_obj.users_collection:
+            coll.objects.unlink(bg_obj)
+        terrain_collection.objects.link(bg_obj)
+        
+        # Z原点を中心から始点へ
+        bg_obj.location.y = total_length / 2.0
+        
+        # 背景地形のプロファイル成形
+        # 中央（メイン地形がある場所）は邪魔にならないように低く沈め、外側を巨大な山脈にする
+        mesh = bg_obj.data
+        for v in mesh.vertices:
+            dist_x = abs(v.co.x)
+            base_noise = v.co.z
+            
+            if dist_x < 1500.0:
+                # メイン地形(幅2000)の下に隠れるように -100m に沈める
+                v.co.z = -100.0
+            else:
+                # 1500m ~ 3500m かけて徐々に高さ400mまで盛り上がる
+                ratio = (dist_x - 1500.0) / 2000.0
+                if ratio > 1.0: ratio = 1.0
+                curve = ratio * ratio * (3.0 - 2.0 * ratio)
+                
+                v.co.z = -100.0 + (curve * 400.0) + (base_noise * 150.0)
+        
+        mesh.update()
+        
+        # 遠景用のマテリアル（MOUNTAINSを流用）を自動割り当て
+        assign_terrain_material(bg_obj, "MOUNTAINS")
 
 
 # =================================================================
