@@ -145,11 +145,12 @@ def check_ai_terrain_gen_thread():
 # =================================================================
 # 4. 地形生成処理 (A.N.T.Landscape使用)
 # =================================================================
-def shape_terrain_profile(obj, preset, length):
+def shape_terrain_profile(obj, preset, length, current_y):
     """
     カテゴリごとに地形の断面（プロファイル）を成形する
     """
     import math
+    import mathutils
     mesh = obj.data
     
     # ---------------------------
@@ -165,7 +166,7 @@ def shape_terrain_profile(obj, preset, length):
     half_max = max_width / 2.0
     
     # 前後のアセットと繋ぐためのフェード（グラデーション）幅
-    fade_margin = 150.0
+    fade_margin = 250.0
     half_length = length / 2.0
     
     # 蛇行（うねり）のパラメータ
@@ -252,18 +253,23 @@ def shape_terrain_profile(obj, preset, length):
             fade_ratio = min_dist_to_edge / fade_margin
             fade_curve = fade_ratio * fade_ratio * (3.0 - 2.0 * fade_ratio)
             
-            # 共通のベースシェイプ（高さ40mのなだらかなU字谷）を計算
+            # 境界部分のYワールド座標（これを使うことで、前後のアセットで完全に同じノイズが生成される）
+            y_world = current_y + y + (length / 2.0)
+            coord = mathutils.Vector((v.co.x / 100.0, y_world / 100.0, 0.0))
+            shared_noise = mathutils.noise.noise(coord)
+            
+            # 共通のベースシェイプ（高さ40mのなだらかなU字谷 + 共通のノイズ）を計算
             if dist_x <= half_path:
                 path_ratio = dist_x / half_path
                 blend = 0.15 + 0.85 * (path_ratio ** 2)
-                base_shape_z = base_noise * 40.0 * blend
+                base_shape_z = shared_noise * 30.0 * blend
             else:
                 out_dist = dist_x - half_path
                 edge_dist = half_max - half_path
                 ratio = out_dist / edge_dist
                 if ratio > 1.0: ratio = 1.0
                 curve = ratio * ratio * (3.0 - 2.0 * ratio)
-                base_shape_z = 40.0 * curve + (base_noise * 10.0)
+                base_shape_z = 40.0 * curve + (shared_noise * 30.0)
             
             # 現在の地形(v.co.z)と共通ベースシェイプ(base_shape_z)をブレンド
             v.co.z = (v.co.z * fade_curve) + (base_shape_z * (1.0 - fade_curve))
@@ -430,7 +436,7 @@ def create_terrains(data):
         
         # --- 追加処理: 地形のU字型整形とゴツゴツ増幅 ---
         # プリセットに応じて崖の形状を変える（キャニオンは絶壁、丘はなだらかに等）
-        shape_terrain_profile(obj, preset, length)
+        shape_terrain_profile(obj, preset, length, current_y)
         
         # --- 追加処理: マテリアルの自動割り当て ---
         assign_terrain_material(obj, category)
