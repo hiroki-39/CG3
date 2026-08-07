@@ -351,13 +351,13 @@ void GamePlayScene::Initialize()
         //obj->SetScale(Vector3(3.0f, 3.0f, 3.0f));
         //modelInstances.push_back(std::move(obj));
 
-        auto terrain = std::make_unique<Object3d>();
-        terrain->Initialize(object3dCommon);
-        terrain->SetModel("terrain.obj");
-        terrain->SetTranslate(Vector3(0.0f, -3.0f, 0.0f));
-        terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
-        terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
-        modelInstances.push_back(std::move(terrain));
+        //auto terrain = std::make_unique<Object3d>();
+        //terrain->Initialize(object3dCommon);
+        //terrain->SetModel("terrain.obj");
+        //terrain->SetTranslate(Vector3(0.0f, -3.0f, 0.0f));
+        //terrain->SetRotation(Vector3(0.0f, 0.0f, 0.0f));
+        //terrain->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+        //modelInstances.push_back(std::move(terrain));
     }
 
     // ホットリロード用の関数に処理を切り出したので呼び出す

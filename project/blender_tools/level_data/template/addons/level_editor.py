@@ -858,9 +858,9 @@ class MYADDON_OT_export_objs(bpy.types.Operator):
 
             try:
                 if hasattr(bpy.ops.wm, "obj_export"):
-                    bpy.ops.wm.obj_export(filepath=obj_path, export_selected_objects=True, export_triangulated_mesh=True, export_normals=True)
+                    bpy.ops.wm.obj_export(filepath=obj_path, export_selected_objects=True, export_triangulated_mesh=True, export_normals=True, path_mode='COPY')
                 else:
-                    bpy.ops.export_scene.obj(filepath=obj_path, use_selection=True, use_triangles=True, use_normals=True)
+                    bpy.ops.export_scene.obj(filepath=obj_path, use_selection=True, use_triangles=True, use_normals=True, path_mode='COPY')
                 export_count += 1
             except Exception as e:
                 print(f"Failed to export {obj_path}: {e}")
