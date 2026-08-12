@@ -22,6 +22,7 @@ public:
     void Draw();
     void DrawCollider(); // デバッグ描画用
     void OnCollision(); // 弾が当たった時の処理
+    void Kill(); // 即座に倒す
 
     void SetMovePath(std::unique_ptr<Rail> path);
 

@@ -1,4 +1,5 @@
 #include "Player.h"
+#include "Game/Actor/Bullet/PlayerMissile.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Debug/Imgui/ImGuiManager.h"
 #include "externals/nlohmann/json.hpp"
@@ -62,6 +63,36 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     colliderObject_->SetEnvironmentCoefficient(0.0f);
     colliderObject_->SetEnableLighting(false);
     colliderObject_->SetScale(colliderSize_); // プレイヤーの当たり判定のサイズ
+
+    // 搭載ミサイルとロックオン照準の初期化
+    ModelManager::GetInstance()->LoadModel("missile.obj");
+    ModelManager::GetInstance()->LoadModel("RockOn.obj");
+    for (int i = 0; i < MAX_MISSILES; ++i) {
+        mountedMissiles_[i] = std::make_unique<Object3d>();
+        mountedMissiles_[i]->Initialize(object3dCommon);
+        mountedMissiles_[i]->SetModel("missile.obj");
+        mountedMissiles_[i]->SetParent(object_.get());
+        float xOffset = 0.0f;
+        float zOffset = 0.0f;
+        if (i == 0) { xOffset = -1.5f; zOffset = 0.0f; } // 左内側
+        else if (i == 1) { xOffset = 1.5f; zOffset = 0.0f; } // 右内側
+        else if (i == 2) { xOffset = -2.8f; zOffset = 0.0f; } // 左外側
+        else if (i == 3) { xOffset = 2.8f; zOffset = 0.0f; } // 右外側
+        
+        float yOffset = -0.2f;
+        mountedMissiles_[i]->SetTranslate({xOffset, yOffset, zOffset});
+        mountedMissiles_[i]->SetScale({1.0f, 1.0f, 1.0f}); // 常時スケール1.0f (ワールドスケール0.5f)
+        
+        lockOnReticles_[i] = std::make_unique<Object3d>();
+        lockOnReticles_[i]->Initialize(object3dCommon);
+        lockOnReticles_[i]->SetModel("RockOn.obj");
+        lockOnReticles_[i]->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        lockOnReticles_[i]->SetScale({0.001f, 0.001f, 0.001f}); // 初期は非表示
+        lockOnReticles_[i]->SetEnableLighting(false);
+        
+        mountedMissiles_[i]->Update();
+        lockOnReticles_[i]->Update();
+    }
 }
 
 void Player::OnCollision() {
@@ -75,9 +106,9 @@ void Player::OnCollision() {
     }
 }
 
-void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera, float gameSpeed) {
+void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed) {
     Move(gameSpeed);
-    Attack(bullets, parentCamera, gameSpeed);
+    Attack(bullets, missiles, enemies, parentCamera, gameSpeed);
 
     if (invincibilityTimer_ > 0.0f) {
         invincibilityTimer_ -= gameSpeed;
@@ -96,6 +127,11 @@ void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d*
         colliderObject_->SetTranslate(object_->GetTranslate());
         colliderObject_->SetRotation(object_->GetRotation());
         colliderObject_->Update();
+    }
+
+    for (int i = 0; i < MAX_MISSILES; ++i) {
+        if (mountedMissiles_[i]) mountedMissiles_[i]->Update();
+        if (lockOnReticles_[i]) lockOnReticles_[i]->Update();
     }
 }
 
@@ -121,6 +157,18 @@ void Player::Draw() {
         if (accessory_) {
             accessory_->Draw();
         }
+        for (int i = 0; i < MAX_MISSILES; ++i) {
+            if (mountedMissiles_[i]) {
+                // MISSILEモードかつリロード中でない場合のみ描画
+                if (currentWeapon_ == WeaponType::MISSILE && missileReloadTimer_ <= 0.0f) {
+                    mountedMissiles_[i]->Draw();
+                }
+            }
+        }
+    }
+    
+    for (int i = 0; i < MAX_MISSILES; ++i) {
+        if (lockOnReticles_[i]) lockOnReticles_[i]->Draw();
     }
 }
 
@@ -317,14 +365,126 @@ void Player::Move(float gameSpeed) {
     ));
 }
 
-void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera, float gameSpeed) {
+void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed) {
     if (!input_) return;
+
+    // 武器切り替え
+    if (input_->TriggerKey(DIK_R)) {
+        currentWeapon_ = (currentWeapon_ == WeaponType::NORMAL) ? WeaponType::MISSILE : WeaponType::NORMAL;
+    }
+
+    // ミサイルのリロード処理
+    if (missileReloadTimer_ > 0.0f) {
+        missileReloadTimer_ -= gameSpeed;
+    }
 
     if (attackTimer_ > 0.0f) {
         attackTimer_ -= gameSpeed;
     }
 
-    if (attackTimer_ <= 0.0f && (input_->PushKey(DIK_SPACE))) {
+    // ミサイルモードのロックオン処理
+    if (currentWeapon_ == WeaponType::MISSILE) {
+        lockOnAnimTimer_ += 0.1f * gameSpeed; // アニメーションタイマー進行
+        if (lockOnDelayTimer_ > 0.0f) {
+            lockOnDelayTimer_ -= gameSpeed;
+        }
+
+        if (input_->PushKey(DIK_SPACE) && missileReloadTimer_ <= 0.0f) {
+            const Matrix4x4& mat = object_->GetmatWorld();
+            Vector3 playerPos = { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
+            
+            // ロックオン可能な敵をスキャン
+            for (const auto& enemy : enemies) {
+                if (enemy->IsDead()) continue;
+                
+                // 既にロックオン済みかチェック
+                auto it = std::find_if(multiLockedEnemies_.begin(), multiLockedEnemies_.end(),
+                    [&](const LockOnTarget& target) { return target.enemy == enemy.get(); });
+                if (it != multiLockedEnemies_.end()) {
+                    continue;
+                }
+
+                // 最大数チェック
+                if (multiLockedEnemies_.size() >= MAX_MISSILES) {
+                    break;
+                }
+
+                // 距離のチェック (遠くの敵もロックオンできるように距離制限を大きくする)
+                Vector3 ePos = enemy->GetColliderCenter();
+                float distSq = (ePos.x - playerPos.x) * (ePos.x - playerPos.x) + 
+                               (ePos.y - playerPos.y) * (ePos.y - playerPos.y) + 
+                               (ePos.z - playerPos.z) * (ePos.z - playerPos.z);
+                
+                if (distSq < 1500.0f * 1500.0f && ePos.z > playerPos.z) { // 画面奥にいる敵をロックオン
+                    if (lockOnDelayTimer_ <= 0.0f) {
+                        multiLockedEnemies_.push_back({enemy.get(), 0.0f});
+                        lockOnDelayTimer_ = 60.0f; // 次のロックオンまで60フレーム(1秒)間隔をあける
+                        break; // 1フレームに1体までしかロックオンしない
+                    }
+                }
+            }
+        }
+
+        // ロックオンレティクルの表示更新
+        for (int i = 0; i < MAX_MISSILES; ++i) {
+            if (i < multiLockedEnemies_.size() && !multiLockedEnemies_[i].enemy->IsDead()) {
+                multiLockedEnemies_[i].lockedTime += gameSpeed;
+                float lockTime = multiLockedEnemies_[i].lockedTime;
+                bool isLockCompleted = lockTime >= 20.0f; // 20フレーム(約0.3秒)でロックオン完了
+
+                // スケール（敵が奥にいるほど大きくする）
+                Vector3 ePos = multiLockedEnemies_[i].enemy->GetColliderCenter();
+                const Matrix4x4& mat = object_->GetmatWorld();
+                Vector3 pPos = { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
+                float dz = ePos.z - pPos.z;
+                float baseScale = 2.0f + (std::max)(0.0f, dz) * 0.02f;
+                float scale = baseScale + (baseScale * 0.15f) * std::sinf(lockOnAnimTimer_ * 2.0f);
+                lockOnReticles_[i]->SetScale({scale, scale, scale});
+                lockOnReticles_[i]->SetTranslate(multiLockedEnemies_[i].enemy->GetColliderCenter());
+                
+                // ロックオン完了するまで1回転させる
+                if (!isLockCompleted) {
+                    float rotationAngle = (lockTime / 20.0f) * 6.2831853f; // 20フレームで2π(360度)回転
+                    lockOnReticles_[i]->SetRotation({0.0f, 0.0f, rotationAngle});
+                } else {
+                    lockOnReticles_[i]->SetRotation({0.0f, 0.0f, 0.0f}); // 完了したら止める
+                }
+            } else {
+                lockOnReticles_[i]->SetScale({0.001f, 0.001f, 0.001f});
+            }
+        }
+
+        // スペースキーを離した時にミサイル発射
+        if (!input_->PushKey(DIK_SPACE) && !multiLockedEnemies_.empty() && missileReloadTimer_ <= 0.0f) {
+            for (size_t i = 0; i < multiLockedEnemies_.size(); ++i) {
+                if (multiLockedEnemies_[i].enemy->IsDead()) continue;
+                
+                const Matrix4x4& mountedMat = mountedMissiles_[i]->GetmatWorld();
+                Vector3 spawnPos = { mountedMat.m[3][0], mountedMat.m[3][1], mountedMat.m[3][2] };
+                Vector3 spawnRot = object_->GetRotation(); // 自機の向き
+                
+                auto newMissile = std::make_unique<PlayerMissile>();
+                newMissile->Initialize(object3dCommon_, spawnPos, spawnRot, {0,0,0}, parentCamera, multiLockedEnemies_[i].enemy);
+                missiles.push_back(std::move(newMissile));
+
+                // 搭載モデルを隠す (表示制御はDrawの条件分岐で行うため、ここでは何もしない)
+                lockOnReticles_[i]->SetScale({0.001f, 0.001f, 0.001f});
+            }
+            
+            multiLockedEnemies_.clear();
+            missileReloadTimer_ = missileReloadTime_;
+            attackTimer_ = attackInterval_;
+        }
+        
+        // 死んだ敵をリストから外す
+        multiLockedEnemies_.erase(
+            std::remove_if(multiLockedEnemies_.begin(), multiLockedEnemies_.end(),
+                [](const LockOnTarget& t) { return t.enemy->IsDead(); }),
+            multiLockedEnemies_.end()
+        );
+    } 
+    // 通常弾モード
+    else if (attackTimer_ <= 0.0f && (input_->PushKey(DIK_SPACE))) {
         attackTimer_ = attackInterval_; 
         
         const Matrix4x4& mat = object_->GetmatWorld();

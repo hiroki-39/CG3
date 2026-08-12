@@ -21,7 +21,8 @@ public:
     
     void Draw();
     void DrawCollider(); // デバッグ描画用
-    void OnCollision(); // 弾などが当たった時の処理
+    void OnCollision(); // 弾などとの衝突時の処理
+    void Kill(); // 即座に破壊する
 
     void SetSpawnProgress(float progress) { spawnProgress_ = progress; }
     void SetTexturePath(const std::string& path);
