@@ -108,6 +108,12 @@ void Obstacle::OnCollision() {
     }
 }
 
+void Obstacle::Kill() {
+    if (isDestructible_) {
+        isDead_ = true;
+    }
+}
+
 void Obstacle::SetTexturePath(const std::string& path) {
     texturePath_ = path;
     if (!texturePath_.empty() && object_ && object_->GetModel()) {

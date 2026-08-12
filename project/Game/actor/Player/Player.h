@@ -2,16 +2,25 @@
 #include "KHEngine/Graphics/3d/Object/Object3d.h"
 #include "KHEngine/Input/Input.h"
 #include "Game/Actor/Bullet/PlayerBullet.h"
+#include "Game/Actor/Bullet/PlayerMissile.h"
 #include <memory>
 #include <list>
+#include <vector>
+#include <array>
 
 class Enemy;
 class ParticleEmitter;
 
 class Player {
 public:
+    enum class WeaponType {
+        NORMAL,
+        MISSILE
+    };
+
     /// <summary>
     /// 初期化
+    /// </summary>
     void Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex);
 
     void LoadSettings(const std::string& filepath);
@@ -30,9 +39,9 @@ public:
     // ==========================================
 
     /// <summary>
-    /// 譖ｴ譁ｰ
+    /// 更新
     /// </summary>
-    void Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera = nullptr, float gameSpeed = 1.0f);
+    void Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera = nullptr, float gameSpeed = 1.0f);
 
     /// <summary>
     /// 謠冗判
@@ -62,6 +71,10 @@ public:
                 const Matrix4x4& wMat = object_->GetmatWorld();
                 colliderObject_->SetTranslate({ wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] });
                 colliderObject_->Update();
+            }
+            for (int i = 0; i < 4; ++i) { // MAX_MISSILES is 4
+                if (mountedMissiles_[i]) mountedMissiles_[i]->Update();
+                if (lockOnReticles_[i]) lockOnReticles_[i]->Update();
             }
         }
         if (accessory_) accessory_->Update();
@@ -119,8 +132,9 @@ private:
     void Move(float gameSpeed);
 
     /// <summary>
-    /// 謾ｻ謦・・逅・    /// </summary>
-    void Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, Object3d* parentCamera, float gameSpeed);
+    /// 攻撃処理
+    /// </summary>
+    void Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed);
 
 private:
     std::unique_ptr<Object3d> object_ = nullptr;
@@ -193,6 +207,21 @@ private:
 
     // ブースト
     bool isBoosting_ = false;
+
+    // 武器・ミサイル関連
+    WeaponType currentWeapon_ = WeaponType::NORMAL;
+    static const int MAX_MISSILES = 4;
+    std::array<std::unique_ptr<Object3d>, MAX_MISSILES> mountedMissiles_;
+    std::array<std::unique_ptr<Object3d>, MAX_MISSILES> lockOnReticles_;
+    struct LockOnTarget {
+        Enemy* enemy;
+        float lockedTime;
+    };
+    std::vector<LockOnTarget> multiLockedEnemies_;
+    float missileReloadTimer_ = 0.0f;
+    const float missileReloadTime_ = 120.0f; // 2秒程度
+    float lockOnAnimTimer_ = 0.0f; // ロックオン演出用アニメーションタイマー
+    float lockOnDelayTimer_ = 0.0f;
 
     // 蝗樣∩繝医Μ繧ｬ繝ｼ
     bool isDodgeTriggered_ = false;

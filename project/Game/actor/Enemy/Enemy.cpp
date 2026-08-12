@@ -320,6 +320,11 @@ void Enemy::OnCollision() {
     }
 }
 
+void Enemy::Kill() {
+    hp_ = 0;
+    isDead_ = true;
+}
+
 bool Enemy::CheckCollision(const Sphere& bulletSphere) const {
     if (isDead_) return false;
 

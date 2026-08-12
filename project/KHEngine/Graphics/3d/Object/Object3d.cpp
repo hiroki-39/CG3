@@ -44,7 +44,7 @@ void Object3d::Update()
 {
 	Matrix4x4 worldMatrix = transform.GetWorldMatrix();
 	if (parent_) {
-		worldMatrix = Matrix4x4::Multiply(worldMatrix, parent_->transform.GetWorldMatrix());
+		worldMatrix = Matrix4x4::Multiply(worldMatrix, parent_->GetmatWorld());
 	}
 	
 	Camera* currentCamera = camera;
@@ -67,6 +67,8 @@ void Object3d::Update()
 	transformationMatrixData_->World = worldMatrix;
 	transformationMatrixData_->WorldInverseTranspose =
 		Matrix4x4::Transpose(Matrix4x4::Inverse(worldMatrix));
+        
+    worldMatrix_ = worldMatrix;
 
 	// 平行光源の向きの正規化
 	directionalLightData_->direction = directionalLightData_->direction.Normalize();

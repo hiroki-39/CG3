@@ -14,6 +14,7 @@
 #include "KHEngine/Graphics/3d/Particle/ParticleEffect.h"
 #include "Game/Actor/Player/Player.h"
 #include "Game/Actor/Bullet/PlayerBullet.h"
+#include "Game/Actor/Bullet/PlayerMissile.h"
 #include "Game/Actor/Bullet/EnemyBullet.h"
 #include "Game/System/Rail.h"
 #include "Game/System/RailCameraController.h"
@@ -101,6 +102,8 @@ private:
     std::unique_ptr<Player> player_;
     // 弾リスト
     std::list<std::unique_ptr<PlayerBullet>> bullets_;
+    // ミサイルリスト
+    std::list<std::unique_ptr<PlayerMissile>> missiles_;
 
     // 敵リスト
     std::list<std::unique_ptr<Enemy>> enemies_;

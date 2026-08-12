@@ -428,6 +428,7 @@ void GamePlayScene::ReloadLevel()
     enemies_.clear();
     obstacles_.clear();
     bullets_.clear();
+    missiles_.clear();
     railVisualizers_.clear();
     enemyRailVisualizers_.clear();
     mainRails_.clear();
@@ -903,7 +904,7 @@ void GamePlayScene::Update()
             }
             player_->SetAssistTarget(nearestEnemy);
 
-            player_->Update(bullets_, cameraObject_.get(), unscaledGameSpeed); // プレイヤーのみスローを無視して等倍速
+            player_->Update(bullets_, missiles_, enemies_, cameraObject_.get(), unscaledGameSpeed); // プレイヤーのみスローを無視して等倍速
 
             // 回避エフェクトの再生
             if (player_->ConsumeDodgeTrigger())
@@ -986,6 +987,25 @@ void GamePlayScene::Update()
             }
         }
 
+        for (auto it = missiles_.begin(); it != missiles_.end(); )
+        {
+            (*it)->Update(gameSpeed_);
+
+            if ((*it)->GetCurrentPhase() == PlayerMissile::Phase::FLIGHT) {
+                thrusterEffect_.SetPosition((*it)->GetPosition());
+                thrusterEffect_.Play();
+            }
+
+            if ((*it)->IsDead())
+            {
+                it = missiles_.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
         Vector3 cameraPos = activeCamera_->GetTranslate();
         Vector3 rot = activeCamera_->GetRotation();
         Vector3 cameraForward = { std::sinf(rot.y), 0.0f, std::cosf(rot.y) };
@@ -1034,6 +1054,51 @@ void GamePlayScene::Update()
                     // パーティクルの再生
                     hitEffect_.SetPosition(bulletSphere.center);
                     hitEffect_.Play();
+                }
+            }
+
+            // プレイヤーのミサイルとの当たり判定
+            for (auto& missile : missiles_)
+            {
+                if (missile->IsDead()) continue;
+
+                Sphere missileSphere = { missile->GetPosition(), 1.0f };
+                bool isHit = false;
+
+                isHit = (*it)->CheckCollision(missileSphere);
+
+                // CCD (Continuous Collision Detection): すり抜け防止
+                if (!isHit)
+                {
+                    Vector3 prev = missile->GetPreviousPosition();
+                    Vector3 curr = missile->GetPosition();
+                    Vector3 diff = { curr.x - prev.x, curr.y - prev.y, curr.z - prev.z };
+                    float moveLen = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+                    if (moveLen > 0.0001f)
+                    {
+                        Ray moveRay = { prev, { diff.x / moveLen, diff.y / moveLen, diff.z / moveLen } };
+                        float hitDist = 0.0f;
+                        if ((*it)->CheckRaycast(moveRay, &hitDist))
+                        {
+                            if (hitDist <= moveLen + 1.0f)
+                            {
+                                isHit = true;
+                            }
+                        }
+                    }
+                }
+
+                if (isHit)
+                {
+                    missile->OnCollision();
+                    (*it)->Kill();
+
+                    // パーティクルの再生
+                    hitEffect_.SetPosition(missileSphere.center);
+                    hitEffect_.Play();
+
+                    explosionEffect_.SetPosition(missileSphere.center);
+                    explosionEffect_.Play();
                 }
             }
 
@@ -1164,6 +1229,48 @@ void GamePlayScene::Update()
 
                     // パーティクルの再生
                     hitEffect_.SetPosition(bulletSphere.center);
+                    hitEffect_.Play();
+                }
+            }
+
+            // プレイヤーのミサイルとの当たり判定
+            for (auto& missile : missiles_)
+            {
+                if (missile->IsDead()) continue;
+
+                Sphere missileSphere = { missile->GetPosition(), 1.0f };
+                bool isHit = false;
+
+                isHit = (*it)->CheckCollision(missileSphere);
+
+                // CCD (Continuous Collision Detection): すり抜け防止
+                if (!isHit)
+                {
+                    Vector3 prev = missile->GetPreviousPosition();
+                    Vector3 curr = missile->GetPosition();
+                    Vector3 diff = { curr.x - prev.x, curr.y - prev.y, curr.z - prev.z };
+                    float moveLen = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+                    if (moveLen > 0.0001f)
+                    {
+                        Ray moveRay = { prev, { diff.x / moveLen, diff.y / moveLen, diff.z / moveLen } };
+                        float hitDist = 0.0f;
+                        if ((*it)->CheckRaycast(moveRay, &hitDist))
+                        {
+                            if (hitDist <= moveLen + 1.0f)
+                            { // 弾の半径分だけ余裕を持たせる
+                                isHit = true;
+                            }
+                        }
+                    }
+                }
+
+                if (isHit)
+                {
+                    missile->OnCollision();
+                    (*it)->Kill();
+
+                    // パーティクルの再生
+                    hitEffect_.SetPosition(missileSphere.center);
                     hitEffect_.Play();
                 }
             }
@@ -1301,12 +1408,29 @@ void GamePlayScene::Update()
             }
         }
 
+        // 当たり判定で死んだミサイルを削除
+        for (auto it = missiles_.begin(); it != missiles_.end(); )
+        {
+            if ((*it)->IsDead())
+            {
+                it = missiles_.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
     }
     else
     {
         for (auto& bullet : bullets_)
         {
             bullet->Update3DObjectOnly();
+        }
+        for (auto& missile : missiles_)
+        {
+            missile->Update3DObjectOnly();
         }
         for (auto& enemy : enemies_)
         {
@@ -2069,6 +2193,10 @@ void GamePlayScene::Draw()
         {
             bullet->DrawCollider();
         }
+        for (auto& missile : missiles_)
+        {
+            missile->DrawCollider();
+        }
         for (auto& bullet : enemyBullets_)
         {
             bullet->DrawCollider();
@@ -2085,6 +2213,10 @@ void GamePlayScene::Draw()
     for (auto& bullet : bullets_)
     {
         bullet->Draw();
+    }
+    for (auto& missile : missiles_)
+    {
+        missile->Draw();
     }
     for (auto& bullet : enemyBullets_)
     {
