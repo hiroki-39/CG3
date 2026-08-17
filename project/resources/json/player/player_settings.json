@@ -1,5 +1,5 @@
 {
-    "attackInterval": 15,
+    "attackInterval": 15.0,
     "bulletSpeed": 10.0,
     "colliderSize": [
         4.0,
@@ -13,7 +13,7 @@
         1.0
     ],
     "followSpeed": 0.07999999821186066,
-    "hp": 9992,
+    "hp": 10000,
     "maxHp": 10000,
     "modelName": "player.obj",
     "modelPosOffset": [
@@ -38,6 +38,6 @@
     ],
     "reflection": false,
     "reticleSpeed": 0.5,
-    "rollMaxTime": 15,
+    "rollMaxTime": 15.0,
     "speed": 0.30000001192092896
 }

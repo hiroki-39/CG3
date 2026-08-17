@@ -94,12 +94,18 @@ private:
     ParticleEffect hitEffect_;        // 弾のヒット用
     ParticleEffect dodgeEffect_;      // 回避エフェクト用
     ParticleEffect trailEffect_;      // 翼端のトレイル用回避エフェクト用
+    ParticleEffect missileSmokeEffect_; // ミサイルの煙用
 
     // ImGuiのエディタで編集するエフェクトのインデックス (0:Thruster, 1:Explosion, 2:Hit)
     int currentEditEffectIndex_ = 0;
 
     // プレイヤー
     std::unique_ptr<Player> player_;
+
+    // UI
+    std::unique_ptr<Sprite> hpBarBgSprite_;
+    std::unique_ptr<Sprite> hpBarSprite_;
+    uint32_t whiteTexIndex_ = 0;
     // 弾リスト
     std::list<std::unique_ptr<PlayerBullet>> bullets_;
     // ミサイルリスト
@@ -107,6 +113,7 @@ private:
 
     // 敵リスト
     std::list<std::unique_ptr<Enemy>> enemies_;
+    bool hasEnemySpawned_ = false; // 一度でも敵が出現したかどうかのフラグ
     // 敵弾リスト
     std::list<std::unique_ptr<EnemyBullet>> enemyBullets_;
     // 障害物リスト

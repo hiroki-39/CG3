@@ -166,7 +166,7 @@ void Object3d::CreateDirectionalLight()
 	//ライトの色
 	directionalLightData_->color = { 1.0f,1.0f,1.0f,1.0f };
 	//向き
-	directionalLightData_->direction = { 0.0f,-1.0f,0.0f };
+	directionalLightData_->direction = { -1.0f,-0.5f,0.5f };
 	//輝度
 	directionalLightData_->intensity = 1.0f;
 }
