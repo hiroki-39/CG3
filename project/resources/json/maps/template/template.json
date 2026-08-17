@@ -988,7 +988,8 @@
                     1.0
                 ]
             },
-            "is_destructible": true
+            "is_destructible": true,
+            "texture_path": "FieldGround.png"
         },
         {
             "type": "MESH",
@@ -1010,7 +1011,8 @@
                     1.0
                 ]
             },
-            "is_destructible": true
+            "is_destructible": true,
+            "texture_path": "FieldGround.png"
         },
         {
             "type": "MESH",
@@ -1032,7 +1034,8 @@
                     1.0
                 ]
             },
-            "is_destructible": true
+            "is_destructible": true,
+            "texture_path": "wall.png"
         },
         {
             "type": "MESH",
@@ -1049,13 +1052,13 @@
                     0.0
                 ],
                 "scale": [
-                    0.5,
-                    0.5,
-                    0.5
+                    1.0,
+                    1.0,
+                    1.0
                 ]
             },
             "is_destructible": true,
-            "texture_path": "grass.png"
+            "texture_path": "FieldGround.png"
         }
     ]
 }

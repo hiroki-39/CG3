@@ -1,0 +1,34 @@
+[
+    {
+        "colorAnimSpeed": 2.0,
+        "emitterParam": {
+            "count": 2,
+            "drag": 0.05,
+            "endColor": [ 0.5, 0.5, 0.5, 0.0 ],
+            "endScale": [ 0.5, 0.5, 0.5 ],
+            "frequency": 0.0,
+            "gravity": 0.0,
+            "isColorOverLifetime": true,
+            "isScaleOverLifetime": true,
+            "maxColor": [ 0.8, 0.8, 0.8, 0.7 ],
+            "maxLifeTime": 1.2,
+            "maxRotation": [ 0.0, 0.0, 3.14 ],
+            "maxScale": [ 0.8, 0.8, 0.8 ],
+            "maxVelocity": [ 0.1, 0.1, -0.1 ],
+            "minColor": [ 0.6, 0.6, 0.6, 0.5 ],
+            "minLifeTime": 0.8,
+            "minRotation": [ 0.0, 0.0, -3.14 ],
+            "minScale": [ 0.3, 0.3, 0.3 ],
+            "minVelocity": [ -0.1, -0.1, -0.3 ],
+            "useGravity": false
+        },
+        "enableColorAnim": false,
+        "endColor": [ 0.5, 0.5, 0.5, 0.0 ],
+        "name": "SmokeNode",
+        "shapeType": 0,
+        "startColor": [ 0.8, 0.8, 0.8, 0.8 ],
+        "textureName": "circle.png",
+        "uvScrollSpeed": 0.0,
+        "blendMode": 2
+    }
+]

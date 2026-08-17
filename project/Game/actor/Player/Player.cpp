@@ -98,7 +98,7 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
 void Player::OnCollision() {
     if (invincibilityTimer_ > 0.0f || isDead_ || isRolling_) return; // 無敵中、死亡時、またはローリング中（回避）は無効
     
-    hp_--;
+    hp_ -= 1000;
     if (hp_ <= 0) {
         isDead_ = true;
     } else {

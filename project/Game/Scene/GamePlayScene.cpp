@@ -20,6 +20,7 @@
 #include "externals/imgui/imgui.h"
 #include <filesystem>
 #include "KHEngine/Math/CollisionMath.h"
+#include "KHEngine/Scene/SceneManager.h"
 
 static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, std::vector<Enemy*> parentEnemies = {})
 {
@@ -317,7 +318,7 @@ void GamePlayScene::Initialize()
     texManager->LoadTexture("circle.png");
     texManager->LoadTexture("circle2.png");
     texManager->LoadTexture("gradationLine.png");
-    texManager->LoadTexture("white.png");
+    texManager->LoadTexture("sprites/white.png");
 
 
     uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("uvChecker.png");
@@ -326,15 +327,35 @@ void GamePlayScene::Initialize()
     uint32_t skyboxTexIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath("resources/skybox.dds");
 
 
-    // スプライト作成
-    {
-        auto s = std::make_unique<Sprite>();
-        s->Initialize(spriteCommon, uvCheckerTex);
-        s->SetPosition(Vector2(100.0f, 100.0f));
-        s->SetSize(Vector2(128.0f, 128.0f));
-        s->SetAnchorPoint(Vector2(0.5f, 0.5f));
-        s->SetColor(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-        AddSprite(std::move(s));
+    // (チェッカーボードスプライトは削除済)
+
+    uint32_t whiteTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("sprites/white.png");
+    if (whiteTex == 0) {
+        // If not found, try without "sprites/"
+        whiteTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("white.png");
+    }
+    whiteTexIndex_ = whiteTex;
+    
+    // HPバー背景枠のスプライト作成
+    hpBarBgSprite_ = std::make_unique<Sprite>();
+    if (hpBarBgSprite_) {
+        hpBarBgSprite_->Initialize(spriteCommon, whiteTexIndex_);
+        hpBarBgSprite_->SetAnchorPoint(Vector2(0.0f, 0.0f));
+        hpBarBgSprite_->SetPosition(Vector2(20.0f, 720.0f - 32.0f - 20.0f));
+        hpBarBgSprite_->SetSize(Vector2(400.0f, 32.0f));
+        hpBarBgSprite_->SetColor(Vector4(0.8f, 0.8f, 0.8f, 0.8f)); // 白寄りの灰色（半透明）
+        hpBarBgSprite_->Update();
+    }
+
+    // HPバーのスプライト作成（1x1の画像を引き伸ばす）
+    hpBarSprite_ = std::make_unique<Sprite>();
+    if (hpBarSprite_) {
+        hpBarSprite_->Initialize(spriteCommon, whiteTexIndex_);
+        hpBarSprite_->SetAnchorPoint(Vector2(0.0f, 0.0f)); // 左上基準
+        hpBarSprite_->SetPosition(Vector2(20.0f, 720.0f - 32.0f - 20.0f)); // 画面左下（マージン20）
+        hpBarSprite_->SetSize(Vector2(400.0f, 32.0f)); // 幅400、高さ32
+        hpBarSprite_->SetColor(Vector4(0.0f, 1.0f, 0.0f, 1.0f)); // 初期は緑
+        hpBarSprite_->Update();
     }
 
     // モデル作成
@@ -408,6 +429,9 @@ void GamePlayScene::Initialize()
 
     trailEffect_.Initialize(dxCommon, srvManager);
     trailEffect_.LoadFromJson("trail.json");
+
+    missileSmokeEffect_.Initialize(dxCommon, srvManager);
+    missileSmokeEffect_.LoadFromJson("missile_smoke.json");
 
     // 全てのモデル・テクスチャ読み込みが終わった後にGPUへ転送する
     texManager->ExecuteUploadCommands();
@@ -994,6 +1018,9 @@ void GamePlayScene::Update()
             if ((*it)->GetCurrentPhase() == PlayerMissile::Phase::FLIGHT) {
                 thrusterEffect_.SetPosition((*it)->GetPosition());
                 thrusterEffect_.Play();
+                
+                missileSmokeEffect_.SetPosition((*it)->GetPosition());
+                missileSmokeEffect_.Play();
             }
 
             if ((*it)->IsDead())
@@ -1517,6 +1544,7 @@ void GamePlayScene::Update()
         hitEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
         dodgeEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
         trailEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
+        missileSmokeEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
     }
 
 #ifdef USE_IMGUI
@@ -1617,50 +1645,48 @@ void GamePlayScene::Update()
     if (player_)
     {
         player_->DrawUI();
-    }
 
-    // --- Sprite ウィンドウ ---
-    ImGui::Begin("スプライト");
-    if (!sprites.empty())
-    {
-        // unique_ptr から生ポインタを取得
-        Sprite* s = sprites[0].get();
-
-        bool display = isDisplaySprite;
-        if (ImGui::Checkbox("スプライト表示 (Display Sprite)", &display))
-        {
-            isDisplaySprite = display;
+        if (hpBarSprite_) {
+            float hpRate = (float)player_->GetHp() / player_->GetMaxHp();
+            if (hpRate < 0.0f) hpRate = 0.0f;
+            hpBarSprite_->SetSize(Vector2(400.0f * hpRate, 32.0f));
+            
+            // HPに応じて色を変更
+            if (hpRate > 0.5f) {
+                hpBarSprite_->SetColor(Vector4(0.0f, 1.0f, 0.0f, 1.0f)); // 緑
+            } else if (hpRate > 0.2f) {
+                hpBarSprite_->SetColor(Vector4(1.0f, 1.0f, 0.0f, 1.0f)); // 黄色
+            } else {
+                hpBarSprite_->SetColor(Vector4(1.0f, 0.0f, 0.0f, 1.0f)); // 赤
+            }
+            hpBarSprite_->Update();
         }
 
-        Vector2 pos = s->GetPosition();
-        float posArr[2] = { pos.x, pos.y };
-        if (ImGui::DragFloat2("座標 (Position)", posArr, 1.0f))
-        {
-            s->SetPosition(Vector2(posArr[0], posArr[1]));
-        }
+        // --- ゲームループ遷移条件 (HP0 / 敵全滅) ---
+        if (isPlaying_) {
+            if (!enemies_.empty()) {
+                hasEnemySpawned_ = true;
+            }
 
-        Vector2 size = s->GetSize();
-        float sizeArr[2] = { size.x, size.y };
-        if (ImGui::DragFloat2("サイズ (Size)", sizeArr, 1.0f, 1.0f, 4096.0f))
-        {
-            s->SetSize(Vector2(sizeArr[0], sizeArr[1]));
-        }
+            if (player_->GetHp() <= 0) {
+                auto sceneManager = GetSceneManager();
+                if (sceneManager) {
+                    sceneManager->ChangeScene("GAMEOVER");
+                    return;
+                }
+            }
 
-        float rotation = s->GetRotation();
-        if (ImGui::DragFloat("回転 (Rotation)", &rotation, 0.5f))
-        {
-            s->SetRotation(rotation);
-        }
-
-        Vector4 col = s->GetColor();
-        float colArr[4] = { col.x, col.y, col.z, col.w };
-        if (ImGui::ColorEdit4("色 (Color)", colArr))
-        {
-            s->SetColor(Vector4(colArr[0], colArr[1], colArr[2], colArr[3]));
+            if (hasEnemySpawned_ && enemies_.empty()) {
+                auto sceneManager = GetSceneManager();
+                if (sceneManager) {
+                    sceneManager->ChangeScene("GAMECLEAR");
+                    return;
+                }
+            }
         }
     }
-    ImGui::End();
 
+    // --- Sprite ウィンドウ (削除済) ---
 
     std::vector<Object3d*> allModels;
     std::vector<std::string> modelNames;
@@ -1723,7 +1749,7 @@ void GamePlayScene::Update()
 
         Vector3 s = obj->GetScale();
         float sArr[3] = { s.x, s.y, s.z };
-        if (ImGui::DragFloat3("スケール (Scale)", sArr, 0.01f, 0.001f, 100.0f))
+        if (ImGui::DragFloat3("スケール (Scale)", sArr, 0.01f, 0.001f, 100000.0f))
         {
             obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
         }
@@ -1811,7 +1837,7 @@ void GamePlayScene::Update()
         }
 
         float farC = camera->GetFarClip();
-        if (ImGui::DragFloat("遠クリップ", &farC, 0.1f, 1.0f, 1000.0f))
+        if (ImGui::DragFloat("遠クリップ", &farC, 0.1f, 1.0f, 100000.0f))
         {
             camera->SetFarClip(farC);
         }
@@ -1849,7 +1875,7 @@ void GamePlayScene::Update()
 
             static bool dirInit = false;
             static Vector4 dirColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-            static Vector3 dirDirection = { 0.0f, -1.0f, 1.0f }; // 正面斜め上から当たるように初期値を変更
+            static Vector3 dirDirection = { -1.0f, -0.5f, 0.5f }; // 夕方のように斜めから当たる角度に初期値を変更
             static float dirIntensity = 1.0f;
             static bool dirEnabledGlobal = true;
             static float dirPrevIntensityGlobal = 1.0f;
@@ -2154,13 +2180,6 @@ void GamePlayScene::Draw()
         skybox_->Draw();
     }
 
-    if (spriteCommon) spriteCommon->SetCommonDrawSetting();
-
-    if (isDisplaySprite)
-    {
-        for (auto& sprite : sprites) if (sprite) sprite->Draw();
-    }
-
     if (object3dCommon) object3dCommon->SetCommonDrawSetting();
 
     for (auto& model : modelInstances) if (model) model->Draw();
@@ -2249,4 +2268,23 @@ void GamePlayScene::Draw()
     hitEffect_.Draw();
     dodgeEffect_.Draw();
     trailEffect_.Draw();
+    missileSmokeEffect_.Draw();
+
+    // UI (スプライト) は全ての3Dオブジェクトの後に描画する
+    if (spriteCommon) spriteCommon->SetCommonDrawSetting();
+
+    if (hpBarBgSprite_)
+    {
+        hpBarBgSprite_->Draw();
+    }
+
+    if (hpBarSprite_)
+    {
+        hpBarSprite_->Draw();
+    }
+
+    if (isDisplaySprite)
+    {
+        for (auto& sprite : sprites) if (sprite) sprite->Draw();
+    }
 }

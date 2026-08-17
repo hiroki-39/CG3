@@ -51,18 +51,19 @@ class AITerrainGeneratorProperties(bpy.types.PropertyGroup):
         default="",
         subtype='PASSWORD'
     )
-    total_length: bpy.props.IntProperty(
-        name="目安の全長 (m)",
-        description="コース全体の長さ",
-        default=3000,
-        min=100,
-        max=10000
-    )
+
     prompt: bpy.props.StringProperty(
         name="プロンプト",
         description="作成したいステージの地形環境を記述してください",
         default="市街地を抜けて、なだらかな丘陵を越え、最後は険しい渓谷に入る",
     )
+    len_open_sea: bpy.props.IntProperty(name="海 (OPEN_SEA)", default=1000, min=100, max=10000)
+    len_city: bpy.props.IntProperty(name="市街地 (CITY)", default=1000, min=100, max=10000)
+    len_canyon: bpy.props.IntProperty(name="渓谷 (CANYON)", default=1000, min=100, max=10000)
+    len_mountains: bpy.props.IntProperty(name="山脈 (MOUNTAINS)", default=2000, min=100, max=10000)
+    len_lunar: bpy.props.IntProperty(name="月面 (LUNAR)", default=1000, min=100, max=10000)
+    len_hills: bpy.props.IntProperty(name="丘陵 (HILLS)", default=1500, min=100, max=10000)
+    len_plains: bpy.props.IntProperty(name="平原 (PLAINS)", default=1000, min=100, max=10000)
 
 # 非同期通信用の状態管理
 class AITerrainGenState:
@@ -145,7 +146,7 @@ def check_ai_terrain_gen_thread():
 # =================================================================
 # 4. 地形生成処理 (A.N.T.Landscape使用)
 # =================================================================
-def shape_terrain_profile(obj, preset, length, current_y):
+def shape_terrain_profile(obj, preset, length, current_y, global_offset):
     """
     カテゴリごとに地形の断面（プロファイル）を成形する
     """
@@ -175,7 +176,12 @@ def shape_terrain_profile(obj, preset, length, current_y):
     
     for v in mesh.vertices:
         y = v.co.y
-        center_x = math.sin(y / wave_length) * wave_amplitude
+        # ワールドY座標（コース全体の開始位置からの距離）を計算
+        y_world = current_y + y + half_length
+        
+        # ワールド座標とグローバルオフセットを使って蛇行（道）の中心を計算
+        # これにより、毎回違う方向に曲がる道が生成される
+        center_x = math.sin((y_world + global_offset) / wave_length) * wave_amplitude
         dist_x = abs(v.co.x - center_x)
         base_noise = v.co.z
         
@@ -254,8 +260,7 @@ def shape_terrain_profile(obj, preset, length, current_y):
             fade_curve = fade_ratio * fade_ratio * (3.0 - 2.0 * fade_ratio)
             
             # 境界部分のYワールド座標（これを使うことで、前後のアセットで完全に同じノイズが生成される）
-            y_world = current_y + y + (length / 2.0)
-            coord = mathutils.Vector((v.co.x / 100.0, y_world / 100.0, 0.0))
+            coord = mathutils.Vector((v.co.x / 100.0, (y_world + global_offset) / 100.0, 0.0))
             shared_noise = mathutils.noise.noise(coord)
             
             # 共通のベースシェイプ（高さ40mのなだらかなU字谷 + 共通のノイズ）を計算
@@ -302,10 +307,10 @@ def assign_terrain_material(obj, category):
             tex_image.location = (-300, 300)
             mat.node_tree.links.new(tex_image.outputs['Color'], bsdf.inputs['Base Color'])
             
-            # 2. マッピングノードの自動配置（巨大な地形でもボヤけないよう20回リピート設定）
+            # 2. マッピングノードの自動配置（UV自体を20倍にしているため、ここでは等倍に戻す）
             mapping = mat.node_tree.nodes.new('ShaderNodeMapping')
             mapping.location = (-500, 300)
-            mapping.inputs['Scale'].default_value = (20.0, 20.0, 20.0)
+            mapping.inputs['Scale'].default_value = (1.0, 1.0, 1.0)
             
             # 3. テクスチャ座標ノードの自動配置
             tex_coord = mat.node_tree.nodes.new('ShaderNodeTexCoord')
@@ -352,25 +357,53 @@ def create_terrains(data):
         bpy.context.scene.collection.children.link(terrain_collection)
     else:
         terrain_collection = bpy.data.collections[collection_name]
+        # 前回の生成モデルとメッシュを全削除してクリーンアップ
+        for obj in list(terrain_collection.objects):
+            mesh = obj.data
+            bpy.data.objects.remove(obj, do_unlink=True)
+            if mesh:
+                bpy.data.meshes.remove(mesh, do_unlink=True)
 
     current_y = 0.0
+    props = bpy.context.scene.ai_terrain_props
+    
+    # 毎回全く違うコース（道のうねりや崖の形）になるように、全体で共通のランダムオフセットを生成
+    global_offset = random.uniform(0.0, 100000.0)
 
     for seg_idx, seg in enumerate(segments):
         raw_category = seg.get("category", "PLAINS")
         category = str(raw_category).upper().replace("-", "_")
         
-        # モデル全体を2倍スケールにするため、長さ(奥行き)も2倍にする
-        length = float(seg.get("length", 500.0)) * 2.0
+        # ユーザーがUIパネルで設定した各カテゴリごとのベース長さを取得する
+        # AIがJSONで指定した length は無視し、確実に設定通りの長さにします
+        prop_name = f"len_{category.lower()}"
+        if hasattr(props, prop_name):
+            base_length = getattr(props, prop_name)
+        else:
+            base_length = 1000.0
+            
+        length = float(base_length)
         
-        # プリセットからパラメータを取得（存在しないカテゴリはPLAINSになる）
+        # プリセットからベースパラメータを取得（存在しないカテゴリはPLAINSになる）
         preset = TERRAIN_PRESETS.get(category, TERRAIN_PRESETS["PLAINS"])
         
-        width = preset["width"]
-        height = preset["height"]          # U字の絶壁の高さ
-        noise_height = preset["noise_height"] # 岩肌のゴツゴツ具合(振幅)
+        # AIが出力したJSONからパラメータを取得。なければプリセットの固定値を使用する
+        width = float(seg.get("width", preset["width"]))
+        height = float(seg.get("height", preset["height"]))          # U字の絶壁の高さ
+        noise_height = float(seg.get("noise_height", preset["noise_height"])) # 岩肌のゴツゴツ具合(振幅)
+        noise_size = float(seg.get("noise_size", preset["noise_size"]))
+        path_width = float(seg.get("path_width", preset.get("path_width", 200.0)))
+        
+        # 形状成形用に関数へ渡すカスタムプリセットを作成
+        preset_custom = preset.copy()
+        preset_custom["width"] = width
+        preset_custom["height"] = height
+        preset_custom["noise_height"] = noise_height
+        preset_custom["noise_size"] = noise_size
+        preset_custom["path_width"] = path_width
+        
         noise_type = preset["noise_type"]
         subd_x = preset["subd_x"]
-        noise_size = preset["noise_size"]
         noise_depth = preset.get("noise_depth", 6) # ディテールレベル(細かいボコボコ感)
         
         # 奥行き(Y)の分割数は、長さに比例させる（約25mに1ポリゴン、最大128）
@@ -436,10 +469,23 @@ def create_terrains(data):
         
         # --- 追加処理: 地形のU字型整形とゴツゴツ増幅 ---
         # プリセットに応じて崖の形状を変える（キャニオンは絶壁、丘はなだらかに等）
-        shape_terrain_profile(obj, preset, length, current_y)
+        shape_terrain_profile(obj, preset_custom, length, current_y, global_offset)
         
-        # --- 追加処理: マテリアルの自動割り当て ---
-        assign_terrain_material(obj, category)
+        # --- 変更: マテリアルの自動生成は一時停止したまま、UVの書き込みを復活 ---
+        # Blenderのマッピングノードはゲームエンジン(OBJ/FBX)にエクスポートされないため、
+        # メッシュのUVデータ自体に「10mに1回リピートする」設定を直接書き込みます。
+        if not obj.data.uv_layers:
+            obj.data.uv_layers.new(name="UVMap")
+        uv_layer = obj.data.uv_layers.active.data
+        for poly in obj.data.polygons:
+            for loop_index in poly.loop_indices:
+                loop = obj.data.loops[loop_index]
+                vert = obj.data.vertices[loop.vertex_index]
+                # 実際のX, Y座標を元に、10m四方で画像が1枚貼られるようにUVを計算
+                uv_layer[loop_index].uv = (vert.co.x / 10.0, vert.co.y / 10.0)
+        
+        # assign_terrain_material(obj, category)
+
         
         # 生成されたオブジェクトを AI_Terrains コレクションに移動
         # (Landscape Add するとデフォルトで現在のコレクションに入るため、移動させる)
@@ -527,8 +573,17 @@ def create_terrains(data):
         
         mesh.update()
         
-        # 遠景用のマテリアル（MOUNTAINSを流用）を自動割り当て
-        assign_terrain_material(bg_obj, "MOUNTAINS")
+        # 遠景モデルも同様にUVを直接書き込む（遠景なので100m四方に1枚リピートとする）
+        if not bg_obj.data.uv_layers:
+            bg_obj.data.uv_layers.new(name="UVMap")
+        bg_uv_layer = bg_obj.data.uv_layers.active.data
+        for poly in bg_obj.data.polygons:
+            for loop_index in poly.loop_indices:
+                loop = bg_obj.data.loops[loop_index]
+                vert = bg_obj.data.vertices[loop.vertex_index]
+                bg_uv_layer[loop_index].uv = (vert.co.x / 100.0, vert.co.y / 100.0)
+        
+        # assign_terrain_material(bg_obj, "MOUNTAINS")
 
 
 # =================================================================
@@ -555,32 +610,48 @@ class AITERRAIN_OT_Generate(bpy.types.Operator):
         AITerrainGenState.terrain_data = None
         AITerrainGenState.error_msg = None
         
-        auto_prompt = f"コースの全長は {props.total_length}m です。ユーザーのプロンプトに基づいて、全長を満たすように複数の地形セグメントに分割し、JSONで出力してください。\n\n"
+        auto_prompt = f"ユーザーのプロンプトに基づいて、複数の地形セグメントのリストをJSONで出力してください。\n\n"
         auto_prompt += f"【プロンプト】\n{props.prompt}\n"
 
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key.strip()}"
         
         system_prompt = f"""
 あなたは3Dゲームの環境デザイナーです。
-指定された全長と情景プロンプトを分析し、最適な地形カテゴリを組み合わせて、セグメントの配列として出力してください。
+情景プロンプトを分析し、最適な地形カテゴリを組み合わせて、セグメントの配列として出力してください。
+
+【基準となるパラメータ目安】
+地形を生成する際のベースとなる数値です。この数値を基準にして、情景に合わせて±20%程度ランダムに数値をアレンジして出力してください。
+- OPEN_SEA: width:2000, height:10, noise_height:10, noise_size:30.0, path_width:200.0
+- CITY: width:1000, height:15, noise_height:5, noise_size:10.0, path_width:200.0
+- CANYON: width:1000, height:100, noise_height:20, noise_size:25.0, path_width:200.0
+- MOUNTAINS: width:2000, height:200, noise_height:50, noise_size:40.0, path_width:200.0
+- LUNAR: width:2000, height:50, noise_height:20, noise_size:20.0, path_width:200.0
+- HILLS: width:2000, height:80, noise_height:60, noise_size:400.0, path_width:200.0
+- PLAINS: width:2000, height:5, noise_height:10, noise_size:30.0, path_width:200.0
 
 【出力JSONフォーマット】
 必ず以下のJSONスキーマに従い、JSONテキストのみを出力してください。
-複数のセグメント（区間）を出力し、length（長さ）の合計が指定された全長と大体同じになるようにしてください。
+複数のセグメント（区間）を配列で出力します。lengthは無視されますがスキーマの都合上適当な数値を入れてください。
 
 {{
   "segments": [
     {{
       "length": 1000.0,
-      "category": "CITY"
+      "category": "CITY",
+      "width": 1000.0,
+      "height": 14.5,
+      "noise_height": 5.2,
+      "noise_size": 11.0,
+      "path_width": 180.0
     }},
     {{
       "length": 1500.0,
-      "category": "HILLS"
-    }},
-    {{
-      "length": 500.0,
-      "category": "CANYON"
+      "category": "HILLS",
+      "width": 2100.0,
+      "height": 75.0,
+      "noise_height": 65.0,
+      "noise_size": 380.0,
+      "path_width": 220.0
     }}
   ]
 }}
@@ -630,13 +701,20 @@ class AITERRAIN_PT_Panel(bpy.types.Panel):
 
         layout.prop(props, "api_key")
         
-        box = layout.box()
-        box.label(text="システム設定:")
-        box.prop(props, "total_length")
-        
         layout.separator()
         layout.label(text="AIプロンプト:")
         layout.prop(props, "prompt", text="")
+        
+        # 各カテゴリの長さを手動設定できるパネルボックス
+        len_box = layout.box()
+        len_box.label(text="地形ごとの長さ設定 (m):")
+        len_box.prop(props, "len_open_sea")
+        len_box.prop(props, "len_city")
+        len_box.prop(props, "len_canyon")
+        len_box.prop(props, "len_mountains")
+        len_box.prop(props, "len_lunar")
+        len_box.prop(props, "len_hills")
+        len_box.prop(props, "len_plains")
         
         layout.separator()
         layout.operator(AITERRAIN_OT_Generate.bl_idname, text="地形モデルを自動生成", icon='MESH_GRID')
