@@ -23,6 +23,7 @@ public:
     void DrawCollider(); 
     void OnCollision(); 
     void Kill(); 
+    void StartShrink(); // リング用の縮小アニメーション開始
 
     void SetSpawnProgress(float progress) { spawnProgress_ = progress; }
     void SetTexturePath(const std::string& path);
@@ -48,10 +49,12 @@ private:
     bool isVisible_ = true;
     bool isDestructible_ = true;
     bool isRing_ = false;
+    bool isShrinking_ = false;
+    float shrinkScale_ = 1.0f;
+    Vector3 baseScale_;
     
     float spawnProgress_ = 0.0f;
     std::string texturePath_;
     
     
 };
-

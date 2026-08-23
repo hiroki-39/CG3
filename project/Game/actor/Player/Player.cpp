@@ -523,9 +523,26 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
             direction.z * bulletSpeed_
         };
 
-        std::unique_ptr<PlayerBullet> newBullet = std::make_unique<PlayerBullet>();
-        newBullet->Initialize(object3dCommon_, playerPos, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
-        bullets.push_back(std::move(newBullet));
+        if (isDoubleShot_) {
+            // 2連装: プレイヤーの機体の姿勢（右方向ベクトル）に合わせて左右から発射
+            Vector3 rightDir = { mat.m[0][0], mat.m[0][1], mat.m[0][2] };
+            float offsetAmount = 2.0f;
+            Vector3 rightOffset = { playerPos.x + rightDir.x * offsetAmount, playerPos.y + rightDir.y * offsetAmount, playerPos.z + rightDir.z * offsetAmount };
+            Vector3 leftOffset = { playerPos.x - rightDir.x * offsetAmount, playerPos.y - rightDir.y * offsetAmount, playerPos.z - rightDir.z * offsetAmount };
+
+            std::unique_ptr<PlayerBullet> rightBullet = std::make_unique<PlayerBullet>();
+            rightBullet->Initialize(object3dCommon_, rightOffset, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
+            bullets.push_back(std::move(rightBullet));
+
+            std::unique_ptr<PlayerBullet> leftBullet = std::make_unique<PlayerBullet>();
+            leftBullet->Initialize(object3dCommon_, leftOffset, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
+            bullets.push_back(std::move(leftBullet));
+        } else {
+            // 通常の1発発射
+            std::unique_ptr<PlayerBullet> newBullet = std::make_unique<PlayerBullet>();
+            newBullet->Initialize(object3dCommon_, playerPos, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
+            bullets.push_back(std::move(newBullet));
+        }
     }
 }
 
@@ -729,7 +746,3 @@ Vector3 Player::GetRightWingPosition() const {
         rightWingLocal.x * mat.m[0][2] + rightWingLocal.y * mat.m[1][2] + rightWingLocal.z * mat.m[2][2] + mat.m[3][2]
     };
 }
-
-
-
-

@@ -287,12 +287,21 @@ void PostProcess::Draw(bool drawToSwapchain)
 	// 描画 (3頂点)
 	commandList->DrawInstanced(3, 1, 0, 0);
 
-	// 元の状態に戻す
+}
+
+void PostProcess::PostDraw(bool drawToSwapchain)
+{
+	auto commandList = dxCommon_->GetCommandList();
+	D3D12_RESOURCE_BARRIER barriers[2]{};
+	barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barriers[0].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barriers[0].Transition.pResource = dxCommon_->GetRenderTextureResource().Get();
 	barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-
-	barrierCount = 1;
+	barriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	int barrierCount = 1;
 	if (!drawToSwapchain) {
+		Microsoft::WRL::ComPtr<ID3D12Resource> targetResource = dxCommon_->GetPostProcessTextureResource();
 		barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barriers[1].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 		barriers[1].Transition.pResource = targetResource.Get();
@@ -302,12 +311,10 @@ void PostProcess::Draw(bool drawToSwapchain)
 		barrierCount = 2;
 	}
 	commandList->ResourceBarrier(barrierCount, barriers);
-
-	// ★ 重要：描画先を postProcessTexture に変更していた場合、元のスワップチェーンに戻す ★
-	// （これをしないと、この後の ImGui が postProcessTexture に描き込まれてしまい、SRVとの競合でクラッシュする）
 	if (!drawToSwapchain) {
 		D3D12_CPU_DESCRIPTOR_HANDLE backBufferRtvHandle = dxCommon_->GetCurrentBackBufferRTVHandle();
-		commandList->OMSetRenderTargets(1, &backBufferRtvHandle, false, nullptr);
+		D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dxCommon_->GetDSVHandle();
+		commandList->OMSetRenderTargets(1, &backBufferRtvHandle, false, &dsvHandle);
 	}
 }
 

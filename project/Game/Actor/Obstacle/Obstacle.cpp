@@ -19,6 +19,7 @@ void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, co
     object_->SetTranslate(position_);
     
     rotation_ = rot;
+    baseScale_ = scale;
     object_->SetScale(scale);
     object_->SetRotation(rotation_);
 
@@ -66,6 +67,15 @@ void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, co
 }
 
 void Obstacle::Update() {
+    if (isShrinking_) {
+        shrinkScale_ -= 0.1f;
+        if (shrinkScale_ <= 0.0f) {
+            shrinkScale_ = 0.0f;
+            isDead_ = true;
+        }
+        Vector3 newScale = { baseScale_.x * shrinkScale_, baseScale_.y * shrinkScale_, baseScale_.z * shrinkScale_ };
+        object_->SetScale(newScale);
+    }
     // 将来的なアニメーションや移動処理をここに追加する
     // 例: position_.y -= 0.1f; // 落下など
     
@@ -185,4 +195,8 @@ bool Obstacle::CheckRaycast(const Ray& ray, float* outDist) const {
     }
 
     return false;
+}
+
+void Obstacle::StartShrink() {
+    isShrinking_ = true;
 }

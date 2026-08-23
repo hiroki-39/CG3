@@ -140,6 +140,10 @@ void KHFramework::FrameworkDrawEnd()
 
 	
 	DrawUI();
+	if (postProcess_)
+	{
+		postProcess_->PostDraw(!EngineServices::GetInstance()->GetEditorMode());
+	}
 
 	
 	if (imguiManager_)

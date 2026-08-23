@@ -1226,7 +1226,7 @@ void GamePlayScene::Update()
 					// プレイヤーの弾を2連装にパワーアップさせる
 					player_->PowerUp();
 					// 取得されたリングを消滅させる
-					(*it)->Kill();
+					(*it)->StartShrink();
 				}
 			}
 
@@ -2304,7 +2304,11 @@ void GamePlayScene::DrawUI()
 	auto services = EngineServices::GetInstance();
 	auto spriteCommon = services->GetSpriteCommon();
 	if (spriteCommon) spriteCommon->SetCommonDrawSetting();
-	if (hpBarBgSprite_) { hpBarBgSprite_->Draw(); }
-	if (hpBarSprite_) { hpBarSprite_->Draw(); }
-	if (isDisplaySprite) { for (auto& sprite : sprites) if (sprite) sprite->Draw(); }
+	auto srvManager = services->GetSrvManager();
+	if (srvManager) srvManager->PreDraw();
+	if (hpBarBgSprite_) { hpBarBgSprite_->Update(); hpBarBgSprite_->Draw(); }
+	if (hpBarSprite_) { hpBarSprite_->Update(); hpBarSprite_->Draw(); }
+	if (isDisplaySprite) { for (auto& sprite : sprites) if (sprite) { sprite->Update(); sprite->Draw(); } }
+
+
 }

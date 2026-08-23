@@ -16,6 +16,7 @@ public:
 	/// 描画
 	/// </summary>
 	void Draw(bool drawToSwapchain = false);
+	void PostDraw(bool drawToSwapchain = false);
 
 	/// <summary>
 	/// エディタ(ImGui)での描画
