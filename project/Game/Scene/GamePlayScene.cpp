@@ -63,9 +63,9 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 		rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
 		obstacle->Initialize(common, node.translation, node.scale, rotRad, node.fileName, skyboxTexIndex, node.collider, node.isDestructible);
 		// オブジェクトのスポーン進行度を設定
-        obstacle->SetSpawnProgress(node.spawnProgress);
+		obstacle->SetSpawnProgress(node.spawnProgress);
 		// ファイル名に "Ring" が含まれている場合は、強化リングとしてフラグを立てる
-        obstacle->SetIsRing(node.fileName.find("Ring") != std::string::npos);
+		obstacle->SetIsRing(node.fileName.find("Ring") != std::string::npos);
 		if (!node.texturePath.empty())
 		{
 			obstacle->SetTexturePath(node.texturePath);
@@ -199,9 +199,9 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
 		rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
 		obstacle->Initialize(common, node.translation, node.scale, rotRad, node.fileName, skyboxTexIndex, node.collider, node.isDestructible);
 		// オブジェクトのスポーン進行度を設定
-        obstacle->SetSpawnProgress(node.spawnProgress);
+		obstacle->SetSpawnProgress(node.spawnProgress);
 		// ファイル名に "Ring" が含まれている場合は、強化リングとしてフラグを立てる
-        obstacle->SetIsRing(node.fileName.find("Ring") != std::string::npos);
+		obstacle->SetIsRing(node.fileName.find("Ring") != std::string::npos);
 		if (!node.texturePath.empty())
 		{
 			obstacle->SetTexturePath(node.texturePath);
@@ -1115,7 +1115,7 @@ void GamePlayScene::Update()
 				{
 					missile->OnCollision();
 					// 取得されたリングを消滅させる
-                    (*it)->Kill();
+					(*it)->Kill();
 
 
 					hitEffect_.SetPosition(missileSphere.center);
@@ -1222,11 +1222,11 @@ void GamePlayScene::Update()
 				if ((*it)->CheckCollision(playerSphere))
 				{
 					// プレイヤーのHPを回復させる
-                    player_->Heal(3000);
+					player_->Heal(3000);
 					// プレイヤーの弾を2連装にパワーアップさせる
-                    player_->PowerUp();
+					player_->PowerUp();
 					// 取得されたリングを消滅させる
-                    (*it)->Kill();
+					(*it)->Kill();
 				}
 			}
 
@@ -1307,7 +1307,7 @@ void GamePlayScene::Update()
 				{
 					missile->OnCollision();
 					// 取得されたリングを消滅させる
-                    (*it)->Kill();
+					(*it)->Kill();
 
 
 					hitEffect_.SetPosition(missileSphere.center);
@@ -1569,7 +1569,7 @@ void GamePlayScene::Update()
 
 	bool doReset = false;
 
-
+	// シーン切り替えとプレイ状態
 	if (isPlaying_)
 	{
 		if (ImGui::Button("Stop (Pause)", ImVec2(120, 40)))
@@ -1624,14 +1624,14 @@ void GamePlayScene::Update()
 	if (railCameraController_)
 	{
 		float p = railCameraController_->GetProgress();
-		if (ImGui::SliderFloat("繧�E�繝ｼ繝譎る俣 (Rail Progress)", &p, 0.0f, 1.0f))
+		if (ImGui::SliderFloat("ゲーム時間 (Rail Progress)", &p, 0.0f, 1.0f))
 		{
 			railCameraController_->SetProgress(p);
 		}
 	}
-	ImGui::SliderFloat("繧�E�繝ｼ繝繧�E�繝斐・繝�E(Game Speed)", &baseGameSpeed_, 0.0f, 5.0f);
+	ImGui::SliderFloat("ゲームスピード (Game Speed)", &baseGameSpeed_, 0.0f, 5.0f);
 
-
+	// リセット処理：レール進行度を0に戻し、カメラとプレイヤーを始点に移動させる
 	if (doReset)
 	{
 		isPlaying_ = false;
@@ -1640,7 +1640,7 @@ void GamePlayScene::Update()
 			railCameraController_->Reset();
 		}
 
-
+		// リセット時に補間用変数を初期化
 		if (!mainRails_.empty() && mainRails_[0]->IsValid())
 		{
 			Vector3 railForward = mainRails_[0]->GetForward(0.0f);
@@ -1654,8 +1654,8 @@ void GamePlayScene::Update()
 	}
 
 	ImGui::Separator();
-	ImGui::Checkbox("繝ｬ繝ｼ繝ｫ繧定｡�E�遉ｺ (Draw Rail)", &isDrawRail_);
-	ImGui::Checkbox("繧�E�繝ｩ繧�E�繝繝ｼ繧定｡�E�遉ｺ (Draw Collider)", &isDrawCollider_);
+	ImGui::Checkbox("レールを表示 (Draw Rail)", &isDrawRail_);
+	ImGui::Checkbox("コライダーを表示 (Draw Collider)", &isDrawCollider_);
 	ImGui::End();
 
 	if (player_)
@@ -1668,23 +1668,23 @@ void GamePlayScene::Update()
 			if (hpRate < 0.0f) hpRate = 0.0f;
 			hpBarSprite_->SetSize(Vector2(400.0f * hpRate, 32.0f));
 
-
+			// HPに応じて色を変更
 			if (hpRate > 0.5f)
 			{
-				hpBarSprite_->SetColor(Vector4(0.0f, 1.0f, 0.0f, 1.0f));
+				hpBarSprite_->SetColor(Vector4(0.0f, 1.0f, 0.0f, 1.0f)); // 緑
 			}
 			else if (hpRate > 0.2f)
 			{
-				hpBarSprite_->SetColor(Vector4(1.0f, 1.0f, 0.0f, 1.0f));
+				hpBarSprite_->SetColor(Vector4(1.0f, 1.0f, 0.0f, 1.0f)); // 黄色
 			}
 			else
 			{
-				hpBarSprite_->SetColor(Vector4(1.0f, 0.0f, 0.0f, 1.0f));
+				hpBarSprite_->SetColor(Vector4(1.0f, 0.0f, 0.0f, 1.0f)); // 赤
 			}
 			hpBarSprite_->Update();
 		}
 
-
+		// --- ゲームループ遷移条件 (HP0 / 敵全滅) ---
 		if (isPlaying_)
 		{
 			if (!enemies_.empty())
@@ -1714,7 +1714,7 @@ void GamePlayScene::Update()
 		}
 	}
 
-
+	// --- Sprite ウィンドウ (削除済) ---
 
 	std::vector<Object3d*> allModels;
 	std::vector<std::string> modelNames;
@@ -1743,8 +1743,8 @@ void GamePlayScene::Update()
 		}
 	}
 
-
-    ImGui::Begin("モデル");
+	// --- Model ウィンドウ ---
+	ImGui::Begin("モデル");
 	if (!allModels.empty())
 	{
 		static int currentModelIndex = 0;
@@ -1756,39 +1756,39 @@ void GamePlayScene::Update()
 			namePtrs.push_back(name.c_str());
 		}
 
-        ImGui::Combo("対象モデル (Target Model)", &currentModelIndex, namePtrs.data(), (int)namePtrs.size());
+		ImGui::Combo("対象モデル", &currentModelIndex, namePtrs.data(), (int)namePtrs.size());
 
 		Object3d* obj = allModels[currentModelIndex];
 
-
+		// Translate / Rotation / Scale
 		Vector3 t = obj->GetTranslate();
 		float tArr[3] = { t.x, t.y, t.z };
-		if (ImGui::DragFloat3("蠎ｧ讓�E(Translate)", tArr, 0.05f))
+		if (ImGui::DragFloat3("座標 (Translate)", tArr, 0.05f))
 		{
 			obj->SetTranslate(Vector3(tArr[0], tArr[1], tArr[2]));
 		}
 
 		Vector3 r = obj->GetRotation();
 		float rArr[3] = { r.x, r.y, r.z };
-		if (ImGui::DragFloat3("蝗櫁E���E� (Rotation)", rArr, 0.5f))
+		if (ImGui::DragFloat3("回転 (Rotation)", rArr, 0.5f))
 		{
 			obj->SetRotation(Vector3(rArr[0], rArr[1], rArr[2]));
 		}
 
 		Vector3 s = obj->GetScale();
 		float sArr[3] = { s.x, s.y, s.z };
-		if (ImGui::DragFloat3("繧�E�繧�E�繝ｼ繝ｫ (Scale)", sArr, 0.01f, 0.001f, 100000.0f))
+		if (ImGui::DragFloat3("スケール (Scale)", sArr, 0.01f, 0.001f, 100000.0f))
 		{
 			obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
 		}
 
 		ImGui::Separator();
 
-
+		// 反射強度のスライダーを追加
 		if (obj->GetModel())
 		{
 			float envCoeff = obj->GetModel()->GetEnvironmentCoefficient();
-            if (ImGui::DragFloat("環境光係数 (Environment Coeff)", &envCoeff, 0.01f, 0.0f, 1.0f))
+			if (ImGui::DragFloat("環境反射係数 (Environment Coeff)", &envCoeff, 0.01f, 0.0f, 1.0f))
 			{
 				obj->SetEnvironmentCoefficient(envCoeff);
 			}
@@ -1796,26 +1796,26 @@ void GamePlayScene::Update()
 
 		ImGui::Separator();
 
-
+		// 最初のインスタンスの Model を参照して現在値を取得
 		Model* sampleModel = allModels[0]->GetModel();
 		if (sampleModel)
 		{
 			int currentSelect = sampleModel->GetSelectLightings();
 
-
+			// ラベルは HLSL の case に対応させる（0..5）
 			const char* lightingNames[] = {
-                "0: テクスチャのみ (TextureOnly)",
-                "1: 平行光源 拡散反射 (Directional Diffuse)",
-                "2: 平行光源 ソフト (Directional Soft)",
-                "3: 平行光源 スペキュラ (Directional Specular)",
-                "4: 統合ライト (All Lights)"
-				"5: 繧�E�繝昴ャ繝医Λ繧�E�繝�E(Spot)"
+				"0: テクスチャのみ (TextureOnly)",
+				"1: 平行光源・ディフューズ (Directional Diffuse)",
+				"2: 平行光源・ソフト (Directional Soft)",
+				"3: 平行光源・スペキュラ (Dir Diffuse+Specular)",
+				"4: 平行光源 + 点光源 (Dir + Point)",
+				"5: スポットライト (Spot)"
 			};
 
-
-            if (ImGui::Combo("ライティングモード(一括変更)", &currentSelect, lightingNames, IM_ARRAYSIZE(lightingNames)))
+			// Combo で選択（HLSL の switch の case に対応）
+			if (ImGui::Combo("ライティングモード (一括変更)", &currentSelect, lightingNames, IM_ARRAYSIZE(lightingNames)))
 			{
-
+				// 全インスタンスに反映
 				for (auto& mObj : allModels)
 				{
 					Model* m = mObj->GetModel();
@@ -1828,44 +1828,44 @@ void GamePlayScene::Update()
 
 
 
-
-    ImGui::Begin("カメラ");
+	// --- Camera ウィンドウ (分離) ---
+	ImGui::Begin("カメラ");
 	if (camera)
 	{
 		Vector3& camPosRef = camera->GetTranslate();
 		float camPosArr[3] = { camPosRef.x, camPosRef.y, camPosRef.z };
-		if (ImGui::DragFloat3("蠎ｧ讓�E(Translate)", camPosArr, 0.1f))
+		if (ImGui::DragFloat3("座標 (Translate)", camPosArr, 0.1f))
 		{
 			camera->SetTranslate(Vector3(camPosArr[0], camPosArr[1], camPosArr[2]));
 		}
 
 		Vector3& camRotRef = camera->GetRotation();
 		float camRotArr[3] = { camRotRef.x, camRotRef.y, camRotRef.z };
-		if (ImGui::DragFloat3("蝗櫁E���E� (Rotation)", camRotArr, 0.1f))
+		if (ImGui::DragFloat3("回転 (Rotation)", camRotArr, 0.1f))
 		{
 			camera->SetRotation(Vector3(camRotArr[0], camRotArr[1], camRotArr[2]));
 		}
 
 		float fov = camera->GetFovY();
-		if (ImGui::DragFloat("逕ｻ隗�E(FOV Y)", &fov, 0.01f, 0.01f, 3.14f))
+		if (ImGui::DragFloat("画角 (FOV Y)", &fov, 0.01f, 0.01f, 3.14f))
 		{
 			camera->SetFovY(fov);
 		}
 
 		float aspect = camera->GetAspectRatio();
-		if (ImGui::DragFloat("Aspect", &aspect, 0.01f, 0.1f, 10.0f))
+		if (ImGui::DragFloat("アスペクト比", &aspect, 0.01f, 0.1f, 10.0f))
 		{
 			camera->SetAspectRatio(aspect);
 		}
 
 		float nearC = camera->GetNearClip();
-		if (ImGui::DragFloat("霑代け繝ｪ繝�E・", &nearC, 0.001f, 0.001f, 100.0f))
+		if (ImGui::DragFloat("近クリップ", &nearC, 0.001f, 0.001f, 100.0f))
 		{
 			camera->SetNearClip(nearC);
 		}
 
 		float farC = camera->GetFarClip();
-		if (ImGui::DragFloat("驕繧�E�繝ｪ繝�E・", &farC, 0.1f, 1.0f, 100000.0f))
+		if (ImGui::DragFloat("遠クリップ", &farC, 0.1f, 1.0f, 100000.0f))
 		{
 			camera->SetFarClip(farC);
 		}
@@ -1873,15 +1873,15 @@ void GamePlayScene::Update()
 	ImGui::End();
 
 
-
-	ImGui::Begin("GlobalLight");
+	// --- Light ウィンドウ (モデルが使っているライトのみ表示) ---
+	ImGui::Begin("グローバルライト設定");
 	if (!allModels.empty())
 	{
 		Object3d* firstObj = allModels[0];
 		Model* sampleModel = firstObj ? firstObj->GetModel() : nullptr;
 		int lightingMode = sampleModel ? sampleModel->GetSelectLightings() : 0;
 
-
+		// ヘルパー: ライティングモードがどのライトを使うか
 		auto usesDirectional = [](int mode)
 			{
 				return mode == 1 || mode == 2 || mode == 3 || mode == 4;
@@ -1895,15 +1895,15 @@ void GamePlayScene::Update()
 				return mode == 5;
 			};
 
-
+		// Directional
 		if (usesDirectional(lightingMode))
 		{
 			ImGui::Separator();
-			ImGui::Text("蟷�E�陦悟�E貁E�E(Directional Light)");
+			ImGui::Text("平行光源 (Directional Light)");
 
 			static bool dirInit = false;
 			static Vector4 dirColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-			static Vector3 dirDirection = { -1.0f, -0.5f, 0.5f };
+			static Vector3 dirDirection = { -1.0f, -0.5f, 0.5f }; // 夕方のように斜めから当たる角度に初期値を変更
 			static float dirIntensity = 1.0f;
 			static bool dirEnabledGlobal = true;
 			static float dirPrevIntensityGlobal = 1.0f;
@@ -1918,20 +1918,20 @@ void GamePlayScene::Update()
 			}
 
 			float dcArr[4] = { dirColor.x, dirColor.y, dirColor.z, dirColor.w };
-			if (ImGui::ColorEdit4("濶�E� (Color)##Dir", dcArr))
+			if (ImGui::ColorEdit4("色 (Color)##Dir", dcArr))
 			{
 				dirColor = Vector4(dcArr[0], dcArr[1], dcArr[2], dcArr[3]);
 				for (auto& m : allModels) m->SetDirectionalLightColor(dirColor);
 			}
 
 			float ddArr[3] = { dirDirection.x, dirDirection.y, dirDirection.z };
-			if (ImGui::DragFloat3("譁E��蜷・(Direction)##Dir", ddArr, 0.01f, -10.0f, 10.0f))
+			if (ImGui::DragFloat3("方向 (Direction)##Dir", ddArr, 0.01f, -10.0f, 10.0f))
 			{
 				dirDirection = Vector3(ddArr[0], ddArr[1], ddArr[2]);
 				for (auto& m : allModels) m->SetDirectionalLightDirection(dirDirection);
 			}
 
-			if (ImGui::DragFloat("蠑ｷ蠎ｦ (Intensity)##Dir", &dirIntensity, 0.01f, 0.0f, 100.0f))
+			if (ImGui::DragFloat("強度 (Intensity)##Dir", &dirIntensity, 0.01f, 0.0f, 100.0f))
 			{
 				if (dirEnabledGlobal)
 				{
@@ -1944,7 +1944,7 @@ void GamePlayScene::Update()
 				}
 			}
 
-			if (ImGui::Checkbox("蟷�E�陦悟�E貁E�E�E�譛牙柑蛹・(global)##Dir", &dirEnabledGlobal))
+			if (ImGui::Checkbox("平行光源を有効化 (global)##Dir", &dirEnabledGlobal))
 			{
 				if (!dirEnabledGlobal)
 				{
@@ -1957,18 +1957,18 @@ void GamePlayScene::Update()
 			}
 		}
 
-
+		// Point
 		if (usesPoint(lightingMode))
 		{
 			ImGui::Separator();
-			ImGui::Text("轤�E�蜈画�E�・(Point Light)");
+			ImGui::Text("点光源 (Point Light)");
 
 			static bool pointInit = false;
 			static Vector4 pointColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-			static Vector3 pointPosition = { 0.0f, 1.0f, -8.0f };
+			static Vector3 pointPosition = { 0.0f, 1.0f, -8.0f }; // スザンヌの正面に初期配置
 			static float pointIntensity = 1.0f;
 			static float prevPointIntensity = 1.0f;
-			static float pointRadius = 15.0f;
+			static float pointRadius = 15.0f; // 初期値1.0では光が届かないため15.0に拡大
 			static float pointRange = 1.0f;
 			static bool pointLightEnabled = true;
 
@@ -1981,7 +1981,7 @@ void GamePlayScene::Update()
 				pointInit = true;
 			}
 
-			if (ImGui::Checkbox("轤�E�蜈画�E�舌ｒ譛牙柑蛹・#Point", &pointLightEnabled))
+			if (ImGui::Checkbox("点光源を有効化##Point", &pointLightEnabled))
 			{
 				if (!pointLightEnabled)
 				{
@@ -2004,20 +2004,20 @@ void GamePlayScene::Update()
 #endif
 
 			float pcArr[4] = { pointColor.x, pointColor.y, pointColor.z, pointColor.w };
-			if (ImGui::ColorEdit4("濶�E� (Color)##Point", pcArr))
+			if (ImGui::ColorEdit4("色 (Color)##Point", pcArr))
 			{
 				pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
 				for (auto& m : allModels) m->SetPointLightColor(pointColor);
 			}
 
 			float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
-			if (ImGui::DragFloat3("菴咲�E��E� (Position)##Point", ppArr, 0.05f, -100.0f, 100.0f))
+			if (ImGui::DragFloat3("位置 (Position)##Point", ppArr, 0.05f, -100.0f, 100.0f))
 			{
 				pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
 				for (auto& m : allModels) m->SetPointLightPosition(pointPosition);
 			}
 
-			if (ImGui::DragFloat("蠑ｷ蠎ｦ (Intensity)##Point", &pointIntensity, 0.01f, 0.0f, 100.0f))
+			if (ImGui::DragFloat("強度 (Intensity)##Point", &pointIntensity, 0.01f, 0.0f, 100.0f))
 			{
 				if (pointLightEnabled)
 				{
@@ -2030,11 +2030,11 @@ void GamePlayScene::Update()
 				}
 			}
 
-			if (ImGui::DragFloat("蜊雁�E�・(Radius)##Point", &pointRadius, 0.01f, 0.1f, 100.0f))
+			if (ImGui::DragFloat("半径 (Radius)##Point", &pointRadius, 0.01f, 0.1f, 100.0f))
 			{
 				for (auto& m : allModels) m->SetPointLightRadius(pointRadius);
 			}
-			if (ImGui::DragFloat("貂幁E���E�遽・峁E(Decay Range)##Point", &pointRange, 0.01f, 0.1f, 50.0f))
+			if (ImGui::DragFloat("減衰範囲 (Decay Range)##Point", &pointRange, 0.01f, 0.1f, 50.0f))
 			{
 				for (auto& m : allModels) m->SetPointLightDecry(pointRange);
 			}
@@ -2050,11 +2050,11 @@ void GamePlayScene::Update()
 #endif
 		}
 
-
+		// Spot
 		if (usesSpot(lightingMode))
 		{
 			ImGui::Separator();
-			ImGui::Text("繧�E�繝昴ャ繝医Λ繧�E�繝�E(Spot Light)");
+			ImGui::Text("スポットライト (Spot Light)");
 
 			static bool spotInit = false;
 			static Vector4 spotColor = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -2080,7 +2080,7 @@ void GamePlayScene::Update()
 				spotInit = true;
 			}
 
-			if (ImGui::Checkbox("繧�E�繝昴ャ繝医Λ繧�E�繝医�E�譛牙柑蛹・#Spot", &spotLightEnabled))
+			if (ImGui::Checkbox("スポットライトを有効化##Spot", &spotLightEnabled))
 			{
 				if (!spotLightEnabled)
 				{
@@ -2102,38 +2102,38 @@ void GamePlayScene::Update()
 			}
 #endif
 
-
+			// Color
 			{
 				float scArr[4] = { spotColor.x, spotColor.y, spotColor.z, spotColor.w };
-				if (ImGui::ColorEdit4("濶�E� (Color)##Spot", scArr))
+				if (ImGui::ColorEdit4("色 (Color)##Spot", scArr))
 				{
 					spotColor = Vector4(scArr[0], scArr[1], scArr[2], scArr[3]);
 					for (auto& m : allModels) m->SetSpotLightColor(spotColor);
 				}
 			}
 
-
+			// Position
 			{
 				float spArr[3] = { spotPosition.x, spotPosition.y, spotPosition.z };
-				if (ImGui::DragFloat3("菴咲�E��E� (Position)##Spot", spArr, 0.05f, -100.0f, 100.0f))
+				if (ImGui::DragFloat3("位置 (Position)##Spot", spArr, 0.05f, -100.0f, 100.0f))
 				{
 					spotPosition = Vector3(spArr[0], spArr[1], spArr[2]);
 					for (auto& m : allModels) m->SetSpotLightPosition(spotPosition);
 				}
 			}
 
-
+			// Direction
 			{
 				float sdArr[3] = { spotDirection.x, spotDirection.y, spotDirection.z };
-				if (ImGui::DragFloat3("譁E��蜷・(Direction)##Spot", sdArr, 0.01f, -10.0f, 10.0f))
+				if (ImGui::DragFloat3("方向 (Direction)##Spot", sdArr, 0.01f, -10.0f, 10.0f))
 				{
 					spotDirection = Vector3(sdArr[0], sdArr[1], sdArr[2]);
 					for (auto& m : allModels) m->SetSpotLightDirection(spotDirection);
 				}
 			}
 
-
-			if (ImGui::DragFloat("蠑ｷ蠎ｦ (Intensity)##Spot", &spotIntensity, 0.01f, 0.0f, 100.0f))
+			// Intensity
+			if (ImGui::DragFloat("強度 (Intensity)##Spot", &spotIntensity, 0.01f, 0.0f, 100.0f))
 			{
 				if (spotLightEnabled)
 				{
@@ -2146,18 +2146,18 @@ void GamePlayScene::Update()
 				}
 			}
 
-
-			if (ImGui::DragFloat("霍晞屬 (Distance)##Spot", &spotDistance, 0.1f, 0.0f, 10000.0f))
+			// Distance / Decay
+			if (ImGui::DragFloat("距離 (Distance)##Spot", &spotDistance, 0.1f, 0.0f, 10000.0f))
 			{
 				for (auto& m : allModels) m->SetSpotLightDistance(spotDistance);
 			}
-			if (ImGui::DragFloat("貂幁E���E�邁E�E(Decay)##Spot", &spotDecay, 0.01f, 0.0f, 10.0f))
+			if (ImGui::DragFloat("減衰率 (Decay)##Spot", &spotDecay, 0.01f, 0.0f, 10.0f))
 			{
 				for (auto& m : allModels) m->SetSpotLightDecay(spotDecay);
 			}
 
-
-			if (ImGui::SliderFloat("隗貞ｺ�E� (Angle deg)##Spot", &spotAngleDeg, 1.0f, 90.0f))
+			// Angle (deg)
+			if (ImGui::SliderFloat("角度 (Angle deg)##Spot", &spotAngleDeg, 1.0f, 90.0f))
 			{
 				for (auto& m : allModels) m->SetSpotLightAngleDeg(spotAngleDeg);
 			}
@@ -2173,16 +2173,16 @@ void GamePlayScene::Update()
 #endif
 		}
 
-
+		// モデルがライトを使わない場合は何も表示されない（意図的）
 		if (!usesDirectional(lightingMode) && !usesPoint(lightingMode) && !usesSpot(lightingMode))
 		{
-			ImGui::TextWrapped("No editable lights for this model.");
+			ImGui::TextWrapped("このモデルのライティングモードでは、編集可能なライトがありません。");
 		}
 	}
 	ImGui::End();
 
 
-
+	// --- Particle ウィンドウ ---
 	ImGui::Begin("Effect Selector");
 	const char* items[] = { "Thruster", "Explosion", "Hit" };
 	ImGui::Combo("Edit Target", &currentEditEffectIndex_, items, IM_ARRAYSIZE(items));
@@ -2193,7 +2193,7 @@ void GamePlayScene::Update()
 	else if (currentEditEffectIndex_ == 2) hitEffect_.DrawImGui();
 
 
-#endif 
+#endif // USE_IMGUI
 
 }
 
@@ -2308,6 +2308,3 @@ void GamePlayScene::DrawUI()
 	if (hpBarSprite_) { hpBarSprite_->Draw(); }
 	if (isDisplaySprite) { for (auto& sprite : sprites) if (sprite) sprite->Draw(); }
 }
-
-
-
