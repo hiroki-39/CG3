@@ -52,7 +52,7 @@ void GameClearScene::Update()
     if (!services) return;
 
     auto input = services->GetInput();
-    // スペースかエンターでタイトルへ
+    
     if (input && (input->TriggerKey(DIK_SPACE) || input->TriggerKey(DIK_RETURN)))
     {
         auto sceneManager = GetSceneManager();
@@ -65,7 +65,7 @@ void GameClearScene::Update()
 
 void GameClearScene::Draw()
 {
-    DrawSprites();
+    
 }
 
 void GameClearScene::Finalize()

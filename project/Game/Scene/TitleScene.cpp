@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "TitleScene.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
@@ -10,7 +10,7 @@
 
 void TitleScene::Initialize()
 {
-    // Framework 共通オブジェクト取得（BaseScene のヘルパーを使用）
+    
     auto services = Services();
     if (!services) return;
 
@@ -19,27 +19,27 @@ void TitleScene::Initialize()
     auto texManager = TextureManager::GetInstance();
     if (!texManager) return;
 
-    // テクスチャ読み込みバッチ開始（DirectXCommon があれば）
+    
     if (dxCommon) dxCommon->BeginTextureUploadBatch();
 
-    // モンスターボールを読み込む
+    
     texManager->LoadTexture("monsterBall.png");
     texManager->ExecuteUploadCommands();
 
-    // 生インデックス取得（失敗チェック）
+    
     uint32_t monsterTex = texManager->GetTextureIndexByFilePath("monsterBall.png");
-    // 取得に失敗した場合の保険（実際の失敗値に合わせて調整）
+    
     if (monsterTex == std::numeric_limits<uint32_t>::max())
     {
-        // 中間リソースは解放して早期リターン
+        
         texManager->ClearIntermediateResources();
         return;
     }
 
-    // 中間リソース解放
+    
     texManager->ClearIntermediateResources();
 
-    // スプライト作成（spriteCommon が有効ならば追加）
+    
     if (spriteCommon)
     {
         auto s = std::make_unique<Sprite>();
@@ -54,10 +54,10 @@ void TitleScene::Initialize()
 
 void TitleScene::Update()
 {
-    // BaseScene のヘルパーで共通更新
+    
     UpdateSprites();
 
-    // GamePlaySceneへ遷移（トリガー検出）
+    
     auto services = Services();
     if (!services) return;
 
@@ -74,12 +74,10 @@ void TitleScene::Update()
 
 void TitleScene::Draw()
 {
-    // BaseScene のヘルパーで共通描画（内部で spriteCommon の設定を行う）
-    DrawSprites();
 }
 
 void TitleScene::Finalize()
 {
-    // 必要なら派生で追加処理を行った上でベース処理を呼ぶ
+    
     BaseScene::Finalize();
 }

@@ -31,20 +31,21 @@ public:
     void Initialize() override;
     void Update() override;
     void Draw() override;
+    void DrawUI() override;
     void Finalize() override;
 
-    /// <summary>
-    /// レベルデータを再読み込みする
-    /// </summary>
+    
+    
+    
     void ReloadLevel();
 
-    /// <summary>
-    /// 敵だけを再読み込み（リスポーン）する
-    /// </summary>
+    
+    
+    
     void ReloadEnemiesOnly();
 
 private:
-    // ゲーム固有メンバ
+    
     std::vector<std::unique_ptr<Object3d>> modelInstances;
 
     std::unique_ptr<Camera> camera;
@@ -52,17 +53,17 @@ private:
     Camera* activeCamera_ = nullptr;
     std::unique_ptr<Object3d> cameraObject_;
     
-    // レールシステム
+    
     std::vector<std::unique_ptr<Rail>> mainRails_;
     std::unique_ptr<RailCameraController> railCameraController_;
-    float baseGameSpeed_ = 1.0f; // ImGuiで設定する基本スピード
-    float gameSpeed_ = 1.0f;     // 実際のゲームスピード（ブースト等で変動）
+    float baseGameSpeed_ = 1.0f; 
+    float gameSpeed_ = 1.0f;     
     
-    // ジャスト回避関連
+    
     bool isJustDodgeActive_ = false;
     float justDodgeTimer_ = 0.0f;
-    float justDodgeMaxTime_ = 60.0f; // 1秒間（60FPS想定）に短縮
-    float justDodgeSlowSpeed_ = 0.2f; // ジャスト回避時のタイムスケール
+    float justDodgeMaxTime_ = 60.0f; 
+    float justDodgeSlowSpeed_ = 0.2f; 
     std::vector<std::unique_ptr<Model>> railModels_;
     std::unique_ptr<Model> enemyRailModel_;
     std::vector<std::unique_ptr<Object3d>> railVisualizers_;
@@ -79,50 +80,51 @@ private:
     bool isPlaying_ = true;
 #endif
 
-    // カメラの補間用
+    
     Vector3 currentCameraRot_ = {0.0f, 0.0f, 0.0f};
     float lastCameraYaw_ = 0.0f;
     float currentCameraBank_ = 0.0f;
 
-    // 乱数
+    
     std::random_device seedGenerator;
     std::mt19937 randomEngine{ seedGenerator() };
 
-    // エフェクト群
-    ParticleEffect thrusterEffect_;   // スラスター用
-    ParticleEffect explosionEffect_;  // 敵の爆発用
-    ParticleEffect hitEffect_;        // 弾のヒット用
-    ParticleEffect dodgeEffect_;      // 回避エフェクト用
-    ParticleEffect trailEffect_;      // 翼端のトレイル用回避エフェクト用
-    ParticleEffect missileSmokeEffect_; // ミサイルの煙用
+    
+    ParticleEffect thrusterEffect_;   
+    ParticleEffect explosionEffect_;  
+    ParticleEffect hitEffect_;        
+    ParticleEffect dodgeEffect_;      
+    ParticleEffect trailEffect_;      
+    ParticleEffect missileSmokeEffect_; 
 
-    // ImGuiのエディタで編集するエフェクトのインデックス (0:Thruster, 1:Explosion, 2:Hit)
+    
     int currentEditEffectIndex_ = 0;
 
-    // プレイヤー
+    
     std::unique_ptr<Player> player_;
 
-    // UI
+    
     std::unique_ptr<Sprite> hpBarBgSprite_;
     std::unique_ptr<Sprite> hpBarSprite_;
     uint32_t whiteTexIndex_ = 0;
-    // 弾リスト
+    
     std::list<std::unique_ptr<PlayerBullet>> bullets_;
-    // ミサイルリスト
+    
     std::list<std::unique_ptr<PlayerMissile>> missiles_;
 
-    // 敵リスト
+    
     std::list<std::unique_ptr<Enemy>> enemies_;
-    bool hasEnemySpawned_ = false; // 一度でも敵が出現したかどうかのフラグ
-    // 敵弾リスト
+    bool hasEnemySpawned_ = false; 
+    
     std::list<std::unique_ptr<EnemyBullet>> enemyBullets_;
-    // 障害物リスト
+    
     std::list<std::unique_ptr<Obstacle>> obstacles_;
 
-    // コライダーのワイヤーフレーム描画
+    
 #ifdef USE_IMGUI
     bool isDrawCollider_ = true;
 #else
     bool isDrawCollider_ = false;
 #endif
+    float cameraShakeTimer_ = 0.0f;
 };

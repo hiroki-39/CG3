@@ -11,10 +11,11 @@ class BaseScene
 public:
     virtual ~BaseScene() = default;
 
-    // ライフサイクル（必要に応じてオーバーライド）
+    
     virtual void Initialize() {}
     virtual void Update() {}
     virtual void Draw() {}
+    virtual void DrawUI() { DrawSprites(); }
     virtual void Finalize()
     {
         ClearSprites();
@@ -26,11 +27,11 @@ private:
     SceneManager* sceneManager_ = nullptr;
 
 protected:
-    // シーン共通データ
+    
     std::vector<std::unique_ptr<Sprite>> sprites;
     bool isDisplaySprite = true;
 
-    // AddSprite: unique_ptr 受け取り版（所有権を明確化)
+    
     void AddSprite(std::unique_ptr<Sprite> s)
     {
         if (s) sprites.emplace_back(std::move(s));
@@ -55,16 +56,16 @@ protected:
 
     void ClearSprites()
     {
-        // unique_ptr により自動解放
+        
         sprites.clear();
     }
 
-    // EngineServices 取得ヘルパー
+    
     EngineServices* Services() const
     {
         return EngineServices::GetInstance();
     }
 
-    // 派生クラスが SceneManager にアクセスできるようにするアクセサを追加
+    
     SceneManager* GetSceneManager() const { return sceneManager_; }
 };
