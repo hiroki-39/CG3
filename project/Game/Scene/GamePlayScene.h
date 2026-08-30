@@ -20,6 +20,7 @@
 #include "Game/System/RailCameraController.h"
 #include "Game/Actor/Enemy/Enemy.h"
 #include "Game/Actor/Obstacle/Obstacle.h"
+#include "Game/Actor/Item/EnhanceRing.h"
 #include <vector>
 #include <list>
 #include <random>
@@ -119,6 +120,7 @@ private:
     std::list<std::unique_ptr<EnemyBullet>> enemyBullets_;
     
     std::list<std::unique_ptr<Obstacle>> obstacles_;
+    std::list<std::unique_ptr<EnhanceRing>> enhanceRings_;
 
     
 #ifdef USE_IMGUI

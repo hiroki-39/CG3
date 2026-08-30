@@ -113,6 +113,7 @@ void Player::OnCollision() {
 
 // プレイヤーの毎フレームの更新処理
 void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed) {
+    prevLogicalPosition_ = logicalPosition_;
     Move(gameSpeed);
     Attack(bullets, missiles, enemies, parentCamera, gameSpeed);
 

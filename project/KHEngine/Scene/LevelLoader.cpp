@@ -95,7 +95,8 @@ void LevelLoader::ParseObject(const void* jsonNodePtr, LevelObjectData& objectDa
         if (transform.contains("rotation")) {
             auto r = transform["rotation"];
             // 回転もYとZを入れ替える (ロール・ピッチ・ヨーの対応)
-            objectData.rotation = Vector3(r[0], r[2], r[1]);
+            // 度はラジアンに変換する
+            objectData.rotation = Vector3(r[0] * 3.14159265f / 180.0f, r[2] * 3.14159265f / 180.0f, r[1] * 3.14159265f / 180.0f);
         }
         if (transform.contains("scale")) {
             auto s = transform["scale"];

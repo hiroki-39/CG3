@@ -84,6 +84,7 @@ public:
 
     
     const Vector3& GetTranslate() const { return logicalPosition_; }
+    const Vector3& GetPreviousTranslate() const { return prevLogicalPosition_; }
     const Vector3& GetColliderSize() const { return colliderSize_; }
     void SetTranslate(const Vector3& translate) { logicalPosition_ = translate; }
     void SetRotation(const Vector3& rotation) { baseRotation_ = rotation; }
@@ -179,11 +180,12 @@ private:
     float currentYaw_ = 0.0f;
     float currentBank_ = 0.0f;
 
-    
+    // プレイヤーの論理的な位置とベース回転
     Vector3 logicalPosition_ = { 0.0f, -0.0f, 20.0f }; 
+    Vector3 prevLogicalPosition_ = { 0.0f, -0.0f, 20.0f }; 
     Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f };
 
-    
+    // 攻撃タイマー
     float attackTimer_ = 0.0f;
 
     

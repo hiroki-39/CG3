@@ -1,4 +1,4 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "GamePlayScene.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Core/Utility/Log/Logger.h"
@@ -22,7 +22,7 @@
 #include "KHEngine/Math/CollisionMath.h"
 #include "KHEngine/Scene/SceneManager.h"
 
-static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, std::vector<Enemy*> parentEnemies = {})
+static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, std::list<std::unique_ptr<EnhanceRing>>& enhanceRings, std::vector<Enemy*> parentEnemies = {})
 {
 	const Object3d* currentObj = parentObj;
 
@@ -49,10 +49,27 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 
 	std::vector<Enemy*> currentEnemies = parentEnemies;
 
-	bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName.find("Invisible") != std::string::npos) || (node.fileName.find("ColliderOnly") != std::string::npos) || (node.fileName.find("Ring") != std::string::npos);
+	bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName.find("Invisible") != std::string::npos) || (node.fileName.find("ColliderOnly") != std::string::npos);
+	bool isRing = (node.fileName.find("Ring") != std::string::npos) || (node.name.find("Ring") != std::string::npos) || (node.name.find("強化リング") != std::string::npos);
 	bool isEnemy = (node.fileName.find("Fighter") != std::string::npos || node.fileName.find("Asteroid") != std::string::npos || node.fileName.find("Enemy") != std::string::npos);
 
-	if (isObstacle)
+	if (isRing)
+	{
+		auto ring = std::make_unique<EnhanceRing>();
+		Vector3 rotRad;
+		rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
+		rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
+		rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
+        
+        RingType type = RingType::POWER_UP;
+        if (node.fileName.find("Heal") != std::string::npos || node.name.find("Heal") != std::string::npos || node.name.find("回復") != std::string::npos) {
+            type = RingType::HEAL;
+        }
+
+		ring->Initialize(common, node.translation, node.scale, rotRad, node.fileName, type, skyboxTexIndex);
+		enhanceRings.push_back(std::move(ring));
+	}
+	else if (isObstacle)
 	{
 
 		auto obstacle = std::make_unique<Obstacle>();
@@ -64,8 +81,6 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 		obstacle->Initialize(common, node.translation, node.scale, rotRad, node.fileName, skyboxTexIndex, node.collider, node.isDestructible);
 		// オブジェクトのスポーン進行度を設定
 		obstacle->SetSpawnProgress(node.spawnProgress);
-		// ファイル名に "Ring" が含まれている場合は、強化リングとしてフラグを立てる
-		obstacle->SetIsRing(node.fileName.find("Ring") != std::string::npos);
 		if (!node.texturePath.empty())
 		{
 			obstacle->SetTexturePath(node.texturePath);
@@ -169,11 +184,11 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 
 	for (const auto& child : node.children)
 	{
-		CreateObjectFromNode(child, currentObj, instances, outRails, common, skyboxTexIndex, enemies, obstacles, currentEnemies);
+		CreateObjectFromNode(child, currentObj, instances, outRails, common, skyboxTexIndex, enemies, obstacles, enhanceRings, currentEnemies);
 	}
 }
 
-static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, std::vector<Enemy*> parentEnemies = {})
+static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, std::list<std::unique_ptr<EnhanceRing>>& enhanceRings, std::vector<Enemy*> parentEnemies = {})
 {
 	if (node.type == "CURVE" && !parentEnemies.empty())
 	{
@@ -187,10 +202,27 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
 
 	std::vector<Enemy*> currentEnemies = parentEnemies;
 
-	bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName.find("Invisible") != std::string::npos) || (node.fileName.find("ColliderOnly") != std::string::npos) || (node.fileName.find("Ring") != std::string::npos);
+	bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName.find("Invisible") != std::string::npos) || (node.fileName.find("ColliderOnly") != std::string::npos);
+	bool isRing = (node.fileName.find("Ring") != std::string::npos) || (node.name.find("Ring") != std::string::npos) || (node.name.find("強化リング") != std::string::npos);
 	bool isEnemy = (node.fileName.find("Fighter") != std::string::npos || node.fileName.find("Asteroid") != std::string::npos || node.fileName.find("Enemy") != std::string::npos);
 
-	if (isObstacle)
+	if (isRing)
+	{
+		auto ring = std::make_unique<EnhanceRing>();
+		Vector3 rotRad;
+		rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
+		rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
+		rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
+        
+        RingType type = RingType::POWER_UP;
+        if (node.fileName.find("Heal") != std::string::npos || node.name.find("Heal") != std::string::npos || node.name.find("回復") != std::string::npos) {
+            type = RingType::HEAL;
+        }
+
+		ring->Initialize(common, node.translation, node.scale, rotRad, node.fileName, type, skyboxTexIndex);
+		enhanceRings.push_back(std::move(ring));
+	}
+	else if (isObstacle)
 	{
 		auto obstacle = std::make_unique<Obstacle>();
 		Vector3 rotRad;
@@ -200,8 +232,6 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
 		obstacle->Initialize(common, node.translation, node.scale, rotRad, node.fileName, skyboxTexIndex, node.collider, node.isDestructible);
 		// オブジェクトのスポーン進行度を設定
 		obstacle->SetSpawnProgress(node.spawnProgress);
-		// ファイル名に "Ring" が含まれている場合は、強化リングとしてフラグを立てる
-		obstacle->SetIsRing(node.fileName.find("Ring") != std::string::npos);
 		if (!node.texturePath.empty())
 		{
 			obstacle->SetTexturePath(node.texturePath);
@@ -263,7 +293,7 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
 
 	for (const auto& child : node.children)
 	{
-		LoadEnemiesOnlyFromNode(child, common, skyboxTexIndex, enemies, obstacles, currentEnemies);
+		LoadEnemiesOnlyFromNode(child, common, skyboxTexIndex, enemies, obstacles, enhanceRings, currentEnemies);
 	}
 }
 
@@ -451,7 +481,7 @@ void GamePlayScene::ReloadLevel()
 	{
 		for (const auto& objData : levelData->objects)
 		{
-			CreateObjectFromNode(objData, nullptr, modelInstances, mainRails_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_, obstacles_);
+			CreateObjectFromNode(objData, nullptr, modelInstances, mainRails_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_, obstacles_, enhanceRings_);
 		}
 		OutputDebugStringA("LevelLoader: Successfully reloaded objects.\n");
 
@@ -609,7 +639,7 @@ void GamePlayScene::ReloadEnemiesOnly()
 	{
 		for (const auto& objData : levelData->objects)
 		{
-			LoadEnemiesOnlyFromNode(objData, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_, obstacles_);
+			LoadEnemiesOnlyFromNode(objData, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_, obstacles_, enhanceRings_);
 		}
 		OutputDebugStringA("LevelLoader: Successfully respawned enemies.\n");
 
@@ -1212,23 +1242,36 @@ void GamePlayScene::Update()
 		}
 
 
-		for (auto it = obstacles_.begin(); it != obstacles_.end();)
+		for (auto it = enhanceRings_.begin(); it != enhanceRings_.end();)
 		{
 			(*it)->Update();
 
-			if ((*it)->GetIsRing() && !(*it)->IsDead() && player_ && !player_->IsDead())
+			if (!(*it)->IsDead() && player_ && !player_->IsDead())
 			{
-				Sphere playerSphere = { player_->GetTranslate(), player_->GetColliderSize().x };
-				if ((*it)->CheckCollision(playerSphere))
+				if ((*it)->CheckPassThrough(player_.get()))
 				{
-					// プレイヤーのHPを回復させる
-					player_->Heal(3000);
-					// プレイヤーの弾を2連装にパワーアップさせる
-					player_->PowerUp();
-					// 取得されたリングを消滅させる
+					if ((*it)->GetType() == RingType::POWER_UP) {
+						player_->PowerUp();
+					} else if ((*it)->GetType() == RingType::HEAL) {
+						player_->Heal(3000);
+					}
 					(*it)->StartShrink();
 				}
 			}
+
+			if ((*it)->IsDead())
+			{
+				it = enhanceRings_.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
+
+		for (auto it = obstacles_.begin(); it != obstacles_.end();)
+		{
+			(*it)->Update();
 
 
 			for (auto& bullet : bullets_)
@@ -1509,6 +1552,7 @@ void GamePlayScene::Update()
 	{
 		for (auto& enemy : enemies_) if (enemy) enemy->Update3DObjectOnly();
 		for (auto& obstacle : obstacles_) if (obstacle) obstacle->Update3DObjectOnly();
+		for (auto& ring : enhanceRings_) if (ring) ring->Update();
 	}
 
 
@@ -2222,6 +2266,10 @@ void GamePlayScene::Draw()
 	for (auto& obstacle : obstacles_)
 	{
 		obstacle->Draw();
+	}
+	for (auto& ring : enhanceRings_)
+	{
+		ring->Draw();
 	}
 
 

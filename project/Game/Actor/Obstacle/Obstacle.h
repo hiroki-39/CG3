@@ -27,8 +27,6 @@ public:
 
     void SetSpawnProgress(float progress) { spawnProgress_ = progress; }
     void SetTexturePath(const std::string& path);
-    void SetIsRing(bool isRing) { isRing_ = isRing; }
-    bool GetIsRing() const { return isRing_; }
 
     
     const Vector3& GetPosition() const { return position_; }
@@ -48,7 +46,6 @@ private:
     bool isDead_ = false;
     bool isVisible_ = true;
     bool isDestructible_ = true;
-    bool isRing_ = false;
     bool isShrinking_ = false;
     float shrinkScale_ = 1.0f;
     Vector3 baseScale_;

@@ -389,20 +389,7 @@
             },
             "file_name": "Ring",
             "is_destructible": true,
-            "texture_path": "wall.png",
-            "collider": {
-                "type": "OBB",
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.7000000476837158,
-                    1.7000000476837158,
-                    0.5
-                ]
-            }
+            "texture_path": "white.png"
         },
         {
             "type": "MESH",

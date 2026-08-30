@@ -2,3 +2,14 @@ Failed to load texture: UI/white.png hr: 80070003
 Failed to load texture: wall.png hr: 80070002
 Failed to load texture: wall.png hr: 80070002
 Failed to load texture: wall.png hr: 80070002
+Failed to load texture: wall.png hr: 80070002
+Failed to load texture: wall.png hr: 80070002
+Failed to load texture: wall.png hr: 80070002
+Failed to load texture: wall.png hr: 80070002
+Failed to load texture: wall.png hr: 80070002
+Failed to load texture: wall.png hr: 80070002
+Failed to load texture: wall.png hr: 80070002
+Failed to load texture: wall.png hr: 80070002
+Failed to load texture: wall.png hr: 80070002
+Failed to load texture: wall.png hr: 80070002
+Failed to load texture: wall.png hr: 80070002
