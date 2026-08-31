@@ -97,6 +97,8 @@ private:
     ParticleEffect dodgeEffect_;      
     ParticleEffect trailEffect_;      
     ParticleEffect missileSmokeEffect_; 
+    ParticleEffect ringEffect_;
+    ParticleEffect healRingEffect_; // リング取得時のキラキラエフェクト
 
     
     int currentEditEffectIndex_ = 0;

@@ -389,7 +389,56 @@
             },
             "file_name": "Ring",
             "is_destructible": true,
-            "texture_path": "white.png"
+            "texture_path": "white.png",
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.5,
+                    1.5,
+                    1.5
+                ]
+            }
+        },
+        {
+            "type": "MESH",
+            "name": "Heal",
+            "transform": {
+                "translation": [
+                    66.45455169677734,
+                    348.00250244140625,
+                    21.898469924926758
+                ],
+                "rotation": [
+                    90.00000762939453,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    3.0,
+                    3.0,
+                    1.0
+                ]
+            },
+            "file_name": "heal",
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.5,
+                    1.5,
+                    1.5
+                ]
+            }
         },
         {
             "type": "MESH",

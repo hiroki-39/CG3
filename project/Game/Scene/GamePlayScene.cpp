@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "GamePlayScene.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Core/Utility/Log/Logger.h"
@@ -50,23 +50,19 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 	std::vector<Enemy*> currentEnemies = parentEnemies;
 
 	bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName.find("Invisible") != std::string::npos) || (node.fileName.find("ColliderOnly") != std::string::npos);
-	bool isRing = (node.fileName.find("Ring") != std::string::npos) || (node.name.find("Ring") != std::string::npos) || (node.name.find("強化リング") != std::string::npos);
+	bool isRing = (node.fileName.find("Ring") != std::string::npos) || (node.name.find("Ring") != std::string::npos) || (node.name.find("強化リング") != std::string::npos) || (node.fileName.find("Heal") != std::string::npos) || (node.name.find("Heal") != std::string::npos) || (node.name.find("回復") != std::string::npos);
 	bool isEnemy = (node.fileName.find("Fighter") != std::string::npos || node.fileName.find("Asteroid") != std::string::npos || node.fileName.find("Enemy") != std::string::npos);
 
 	if (isRing)
 	{
 		auto ring = std::make_unique<EnhanceRing>();
-		Vector3 rotRad;
-		rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
-		rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
-		rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
         
         RingType type = RingType::POWER_UP;
         if (node.fileName.find("Heal") != std::string::npos || node.name.find("Heal") != std::string::npos || node.name.find("回復") != std::string::npos) {
             type = RingType::HEAL;
         }
 
-		ring->Initialize(common, node.translation, node.scale, rotRad, node.fileName, type, skyboxTexIndex);
+		ring->Initialize(common, node.translation, node.scale, node.rotation, node.fileName, type, skyboxTexIndex, node.collider);
 		enhanceRings.push_back(std::move(ring));
 	}
 	else if (isObstacle)
@@ -203,23 +199,19 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
 	std::vector<Enemy*> currentEnemies = parentEnemies;
 
 	bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName.find("Invisible") != std::string::npos) || (node.fileName.find("ColliderOnly") != std::string::npos);
-	bool isRing = (node.fileName.find("Ring") != std::string::npos) || (node.name.find("Ring") != std::string::npos) || (node.name.find("強化リング") != std::string::npos);
+	bool isRing = (node.fileName.find("Ring") != std::string::npos) || (node.name.find("Ring") != std::string::npos) || (node.name.find("強化リング") != std::string::npos) || (node.fileName.find("Heal") != std::string::npos) || (node.name.find("Heal") != std::string::npos) || (node.name.find("回復") != std::string::npos);
 	bool isEnemy = (node.fileName.find("Fighter") != std::string::npos || node.fileName.find("Asteroid") != std::string::npos || node.fileName.find("Enemy") != std::string::npos);
 
 	if (isRing)
 	{
 		auto ring = std::make_unique<EnhanceRing>();
-		Vector3 rotRad;
-		rotRad.x = node.rotation.x * (std::numbers::pi_v<float> / 180.0f);
-		rotRad.y = node.rotation.y * (std::numbers::pi_v<float> / 180.0f);
-		rotRad.z = node.rotation.z * (std::numbers::pi_v<float> / 180.0f);
         
         RingType type = RingType::POWER_UP;
         if (node.fileName.find("Heal") != std::string::npos || node.name.find("Heal") != std::string::npos || node.name.find("回復") != std::string::npos) {
             type = RingType::HEAL;
         }
 
-		ring->Initialize(common, node.translation, node.scale, rotRad, node.fileName, type, skyboxTexIndex);
+		ring->Initialize(common, node.translation, node.scale, node.rotation, node.fileName, type, skyboxTexIndex, node.collider);
 		enhanceRings.push_back(std::move(ring));
 	}
 	else if (isObstacle)
@@ -355,6 +347,8 @@ void GamePlayScene::Initialize()
 	texManager->LoadTexture("circle2.png");
 	texManager->LoadTexture("gradationLine.png");
 	texManager->LoadTexture("sprites/white.png");
+	texManager->LoadTexture("sprites/prticle_kira.png");
+	texManager->LoadTexture("sprites/hart.png");
 
 
 	uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("uvChecker.png");
@@ -446,6 +440,12 @@ void GamePlayScene::Initialize()
 
 	missileSmokeEffect_.Initialize(dxCommon, srvManager);
 	missileSmokeEffect_.LoadFromJson("missile_smoke.json");
+
+	ringEffect_.Initialize(dxCommon, srvManager);
+	ringEffect_.LoadFromJson("ring.json");
+
+	healRingEffect_.Initialize(dxCommon, srvManager);
+	healRingEffect_.LoadFromJson("heal_ring.json");
 
 
 	texManager->ExecuteUploadCommands();
@@ -1248,14 +1248,23 @@ void GamePlayScene::Update()
 
 			if (!(*it)->IsDead() && player_ && !player_->IsDead())
 			{
-				if ((*it)->CheckPassThrough(player_.get()))
+				if ((*it)->CheckCollision(player_.get()))
 				{
 					if ((*it)->GetType() == RingType::POWER_UP) {
 						player_->PowerUp();
 					} else if ((*it)->GetType() == RingType::HEAL) {
 						player_->Heal(3000);
 					}
-					(*it)->StartShrink();
+					
+					if ((*it)->GetType() == RingType::POWER_UP) {
+						ringEffect_.SetPosition((*it)->GetPosition());
+						ringEffect_.Play();
+					} else {
+						healRingEffect_.SetPosition((*it)->GetPosition());
+						healRingEffect_.Play();
+					}
+
+					(*it)->StartShrink(player_.get());
 				}
 			}
 
@@ -1605,10 +1614,11 @@ void GamePlayScene::Update()
 		dodgeEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
 		trailEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
 		missileSmokeEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
+		ringEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
+		healRingEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
 	}
 
 #ifdef USE_IMGUI
-
 	ImGui::Begin("Game Control");
 
 	bool doReset = false;
@@ -2284,6 +2294,10 @@ void GamePlayScene::Draw()
 		{
 			obstacle->DrawCollider();
 		}
+		for (auto& ring : enhanceRings_)
+		{
+			ring->DrawCollider();
+		}
 		for (auto& bullet : bullets_)
 		{
 			bullet->DrawCollider();
@@ -2345,6 +2359,8 @@ void GamePlayScene::Draw()
 	dodgeEffect_.Draw();
 	trailEffect_.Draw();
 	missileSmokeEffect_.Draw();
+	ringEffect_.Draw();
+	healRingEffect_.Draw();
 }
 
 void GamePlayScene::DrawUI()

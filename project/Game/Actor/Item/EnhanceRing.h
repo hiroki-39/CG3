@@ -2,6 +2,8 @@
 #include "KHEngine/Graphics/3d/Object/Object3d.h"
 #include <memory>
 #include <string>
+#include "KHEngine/Scene/LevelLoader.h"
+#include "KHEngine/Math/CollisionMath.h"
 
 class Player;
 
@@ -12,29 +14,33 @@ enum class RingType {
 
 class EnhanceRing {
 public:
-    void Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const Vector3& rotation, const std::string& fileName, RingType type, uint32_t skyboxTexIndex);
+    void Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const Vector3& rotation, const std::string& fileName, RingType type, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo);
     
     void Update();
     void Draw();
+    void DrawCollider();
 
-    void StartShrink();
+    void StartShrink(Player* player);
     bool IsDead() const { return isDead_; }
 
-    // プレイヤーがくぐったかどうかを判定する
-    bool CheckPassThrough(Player* player);
+    // プレイヤーがくぐったかどうかを判定する (コライダーベースの判定)
+    bool CheckCollision(Player* player);
 
     RingType GetType() const { return type_; }
     const Vector3& GetPosition() const { return position_; }
 
 private:
     std::unique_ptr<Object3d> object_;
+    std::unique_ptr<Object3d> colliderObject_;
     Vector3 position_;
     Vector3 rotation_;
     Vector3 baseScale_;
     RingType type_;
+    LevelCollider collider_;
 
     bool isDead_ = false;
     bool isShrinking_ = false;
     float shrinkScale_ = 1.0f;
-    float radius_ = 1.0f; // くぐり判定用の半径
+    float radius_ = 1.0f; 
+    Player* targetPlayer_ = nullptr;
 };
