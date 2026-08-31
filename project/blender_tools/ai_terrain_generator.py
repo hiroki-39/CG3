@@ -341,6 +341,78 @@ def assign_terrain_material(obj, category):
     else:
         obj.data.materials.append(mat)
 
+def create_rail_for_terrain(total_length, global_offset):
+    import math
+    import json
+    import os
+    
+    curve_data = bpy.data.curves.new('AITerrainRailCurve', type='CURVE')
+    curve_data.dimensions = '3D'
+    curve_obj = bpy.data.objects.new('AITerrainRail', curve_data)
+    
+    collection_name = "AI_Terrains"
+    if collection_name in bpy.data.collections:
+        bpy.data.collections[collection_name].objects.link(curve_obj)
+    else:
+        bpy.context.scene.collection.objects.link(curve_obj)
+        
+    spline = curve_data.splines.new('BEZIER')
+    
+    # shape_terrain_profile と同じうねりパラメータを使用
+    wave_amplitude = 60.0
+    wave_length = 300.0
+    interval = 50.0
+    
+    points_count = int(total_length / interval) + 1
+    spline.bezier_points.add(points_count - 1)
+    
+    curve_points_json = []
+    
+    for i in range(points_count):
+        y = i * interval
+        if y > total_length:
+            y = total_length
+            
+        # 地形と同じ計算式で道の中央Xを求める
+        center_x = math.sin((y + global_offset) / wave_length) * wave_amplitude
+        z = 20.0 # 地面から少し浮かせた位置
+        
+        bp = spline.bezier_points[i]
+        bp.co = (center_x, y, z)
+        bp.handle_left_type = 'AUTO'
+        bp.handle_right_type = 'AUTO'
+        
+        # JSON用のデータ (LevelLoader.cpp の想定フォーマット)
+        curve_points_json.append({
+            "position": {"x": center_x, "y": z, "z": y}, # C++側で x, z(up), y(forward) に変換して読まれるためそのまま出力
+            "handle_left": {"x": center_x, "y": z, "z": y - 5.0},
+            "handle_right": {"x": center_x, "y": z, "z": y + 5.0},
+            "tilt": 0.0,
+            "speed": 12.0,
+            "event": "STRAIGHT"
+        })
+        
+    # JSONのエクスポート
+    export_dir = r"c:\Users\k024g\Lesson\2025A\CG2\CG2\project\resources\json\maps"
+    if not os.path.exists(export_dir):
+        os.makedirs(export_dir, exist_ok=True)
+        
+    json_path = os.path.join(export_dir, "ai_level_data.json")
+    export_data = {
+        "objects": [
+            {
+                "curve_points": curve_points_json
+            }
+        ]
+    }
+    
+    try:
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(export_data, f, indent=4)
+        print(f"レールデータをJSONにエクスポートしました: {json_path}")
+    except Exception as e:
+        print(f"JSONエクスポートエラー: {e}")
+
 def create_terrains(data):
     segments = data.get("segments", [])
     if not segments:
@@ -498,8 +570,12 @@ def create_terrains(data):
         # さらにこれまでの current_y を足すことで、地形が前後に連結される
         obj.location.y = current_y + (length / 2.0)
         
-        # 次のセグメントのスタート位置を更新
+
+        
         current_y += length
+
+    # 全ての地形セグメントを作り終えた後、総延長に対してレールを1本敷き、JSON出力する
+    create_rail_for_terrain(current_y, global_offset)
 
     # ---------------------------
     # 追加処理: 遠景モデル（背景の巨大山脈）の自動生成
@@ -717,7 +793,7 @@ class AITERRAIN_PT_Panel(bpy.types.Panel):
         len_box.prop(props, "len_plains")
         
         layout.separator()
-        layout.operator(AITERRAIN_OT_Generate.bl_idname, text="地形モデルを自動生成", icon='MESH_GRID')
+        layout.operator(AITERRAIN_OT_Generate.bl_idname, text="地形とレールを自動生成＆エクスポート", icon='MESH_GRID')
         
         if AITerrainGenState.is_running:
             layout.label(text="🔄 AIが地形を構成中...", icon='TIME')

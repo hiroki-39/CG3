@@ -9,11 +9,13 @@
 #include "KHEngine/Graphics/3d/Particle/ParticleManager.h"
 
 void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex) {
+    // プレイヤーと関連オブジェクトの初期化
     object3dCommon_ = object3dCommon;
     input_ = EngineServices::GetInstance()->GetInput();
 
     skyboxTexIndex_ = skyboxTexIndex;
 
+    // プレイヤー本体のモデル設定
     object_ = std::make_unique<Object3d>();
     object_->Initialize(object3dCommon);
     object_->SetModel(modelName_);
@@ -22,7 +24,8 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
     object_->SetScale(playerScale_);
      
-    // 奥の照準（小）の初期化
+    
+    // 奥側のレティクル（照準）設定
     reticle_ = std::make_unique<Object3d>();
     reticle_->Initialize(object3dCommon);
     reticle_->SetModel("crossHair.obj");
@@ -33,11 +36,11 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     reticle_->SetSelectLightings(0);
     reticle_->SetScale(Vector3(1.6f, 1.6f, 1.6f));
     
-    // 手前の照準（大）の初期化
+    
     frontReticle_ = std::make_unique<Object3d>();
     frontReticle_->Initialize(object3dCommon);
     frontReticle_->SetModel("crossHair.obj");
-    // 手前の照準は少し透明度を下げて邪魔にならないようにする
+    
     Vector4 frontColor = reticleColor_;
     frontColor.w = 1.0f;
     frontReticle_->GetModel()->SetColor(frontColor);
@@ -47,24 +50,24 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     frontReticle_->SetSelectLightings(0);
     frontReticle_->SetScale(Vector3(1.7f, 1.7f, 1.7f)); 
     
-    // 照準の初期位置（カメラの奥）
+    
     reticlePosition_ = { 0.0f, 0.0f, 40.0f }; 
 
-    // 初期状態としてグレースケールをOFFにしておく
+    
     if (auto pp = EngineServices::GetInstance()->GetPostProcess()) {
         pp->SetEffectActive("Grayscale", false);
     }
-    // コライダー可視化用オブジェクト
+    
     ModelManager::GetInstance()->LoadModel("collider_cube_player.obj");
     colliderObject_ = std::make_unique<Object3d>();
     colliderObject_->Initialize(object3dCommon);
-    colliderObject_->SetModel("collider_cube_player.obj"); // プレイヤー専用の立方体モデル
-    colliderObject_->GetModel()->SetColor({ 0.0f, 1.0f, 0.0f, 1.0f }); // 緑色
+    colliderObject_->SetModel("collider_cube_player.obj"); 
+    colliderObject_->GetModel()->SetColor({ 0.0f, 1.0f, 0.0f, 1.0f }); 
     colliderObject_->SetEnvironmentCoefficient(0.0f);
     colliderObject_->SetEnableLighting(false);
-    colliderObject_->SetScale(colliderSize_); // プレイヤーの当たり判定のサイズ
+    colliderObject_->SetScale(colliderSize_); 
 
-    // 搭載ミサイルとロックオン照準の初期化
+    
     ModelManager::GetInstance()->LoadModel("missile.obj");
     ModelManager::GetInstance()->LoadModel("RockOn.obj");
     for (int i = 0; i < MAX_MISSILES; ++i) {
@@ -74,20 +77,20 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
         mountedMissiles_[i]->SetParent(object_.get());
         float xOffset = 0.0f;
         float zOffset = 0.0f;
-        if (i == 0) { xOffset = -1.5f; zOffset = 0.0f; } // 左内側
-        else if (i == 1) { xOffset = 1.5f; zOffset = 0.0f; } // 右内側
-        else if (i == 2) { xOffset = -2.8f; zOffset = 0.0f; } // 左外側
-        else if (i == 3) { xOffset = 2.8f; zOffset = 0.0f; } // 右外側
+        if (i == 0) { xOffset = -1.5f; zOffset = 0.0f; } 
+        else if (i == 1) { xOffset = 1.5f; zOffset = 0.0f; } 
+        else if (i == 2) { xOffset = -2.8f; zOffset = 0.0f; } 
+        else if (i == 3) { xOffset = 2.8f; zOffset = 0.0f; } 
         
         float yOffset = -0.2f;
         mountedMissiles_[i]->SetTranslate({xOffset, yOffset, zOffset});
-        mountedMissiles_[i]->SetScale({1.0f, 1.0f, 1.0f}); // 常時スケール1.0f (ワールドスケール0.5f)
+        mountedMissiles_[i]->SetScale({1.0f, 1.0f, 1.0f}); 
         
         lockOnReticles_[i] = std::make_unique<Object3d>();
         lockOnReticles_[i]->Initialize(object3dCommon);
         lockOnReticles_[i]->SetModel("RockOn.obj");
         lockOnReticles_[i]->GetModel()->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-        lockOnReticles_[i]->SetScale({0.001f, 0.001f, 0.001f}); // 初期は非表示
+        lockOnReticles_[i]->SetScale({0.001f, 0.001f, 0.001f}); 
         lockOnReticles_[i]->SetEnableLighting(false);
         
         mountedMissiles_[i]->Update();
@@ -95,18 +98,22 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     }
 }
 
+// プレイヤー被弾時の処理
 void Player::OnCollision() {
-    if (invincibilityTimer_ > 0.0f || isDead_ || isRolling_) return; // 無敵中、死亡時、またはローリング中（回避）は無効
+    if (invincibilityTimer_ > 0.0f || isDead_ || isRolling_) return; 
     
     hp_ -= 1000;
+    isDoubleShot_ = false;
     if (hp_ <= 0) {
         isDead_ = true;
     } else {
-        invincibilityTimer_ = 60.0f; // 1秒間無敵
+        invincibilityTimer_ = 60.0f; 
     }
 }
 
+// プレイヤーの毎フレームの更新処理
 void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed) {
+    prevLogicalPosition_ = logicalPosition_;
     Move(gameSpeed);
     Attack(bullets, missiles, enemies, parentCamera, gameSpeed);
 
@@ -159,7 +166,7 @@ void Player::Draw() {
         }
         for (int i = 0; i < MAX_MISSILES; ++i) {
             if (mountedMissiles_[i]) {
-                // MISSILEモードかつリロード中でない場合のみ描画
+                
                 if (currentWeapon_ == WeaponType::MISSILE && missileReloadTimer_ <= 0.0f) {
                     mountedMissiles_[i]->Draw();
                 }
@@ -185,7 +192,7 @@ void Player::SetReticleColor(const Vector4& color) {
     }
     if (frontReticle_) {
         Vector4 frontColor = reticleColor_;
-        frontColor.w = 1.0f; // 手前も透過させない（モデル共有問題回避）
+        frontColor.w = 1.0f; 
         frontReticle_->GetModel()->SetColor(frontColor);
     }
 }
@@ -196,20 +203,21 @@ Vector3 Player::GetReticleWorldPosition() const {
     return { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
 }
 
+// プレイヤーの移動とカメラ追従処理
 void Player::Move(float gameSpeed) {
     if (!input_) return;
 
-    // --- ダブルタップタイマー更新 ---
+    
     if (lastQPressTime_ < 1000.0f) lastQPressTime_ += gameSpeed;
     if (lastEPressTime_ < 1000.0f) lastEPressTime_ += gameSpeed;
 
-    // --- ローリング（回避）判定 ---
+    
     if (!isRolling_) {
         if (input_->TriggerKey(DIK_Q)) {
             if (lastQPressTime_ <= doubleTapThreshold_) {
                 isRolling_ = true;
                 rollTimer_ = 0.0f;
-                rollDirection_ = -1.0f; // 左
+                rollDirection_ = -1.0f; 
                 isDodgeTriggered_ = true;
                 lastQPressTime_ = 1000.0f;
             } else {
@@ -219,7 +227,7 @@ void Player::Move(float gameSpeed) {
             if (lastEPressTime_ <= doubleTapThreshold_) {
                 isRolling_ = true;
                 rollTimer_ = 0.0f;
-                rollDirection_ = 1.0f; // 右
+                rollDirection_ = 1.0f; 
                 isDodgeTriggered_ = true;
                 lastEPressTime_ = 1000.0f;
             } else {
@@ -235,7 +243,7 @@ void Player::Move(float gameSpeed) {
         }
     }
 
-    // --- ブーストとブレーキ（Z軸方向移動） ---
+    
     isBoosting_ = input_->PushKey(DIK_LSHIFT);
     bool isBraking = input_->PushKey(DIK_LCONTROL);
     
@@ -247,7 +255,7 @@ void Player::Move(float gameSpeed) {
     }
     logicalPosition_.z += (targetZ - logicalPosition_.z) * 0.1f * gameSpeed;
 
-    // --- 自機（XY座標）の直接移動 ---
+    
     float currentSpeed = speed_;
     if (isBoosting_) currentSpeed *= 1.5f;
 
@@ -343,12 +351,12 @@ void Player::Move(float gameSpeed) {
         frontReticle_->Update();
     }
 
-    // 画面上での見た目のピッチとヨー（基本の誇張具合）
+    
     float screenPitch = currentPitch_ * 2.0f;
     float screenYaw   = currentYaw_ * 3.5f;
 
-    // ローリングを含めた現在のZ軸回転（finalBank）に応じて、X軸とY軸の回転を2D回転させる
-    // これにより、機体がどの角度にロールしていても、移動キーを押した際に「画面上の見た目の上下左右」に正しく機首が向く
+    
+    
     float visualPitch = screenPitch * std::cos(finalBank) + screenYaw * std::sin(finalBank);
     float visualYaw   = -screenPitch * std::sin(finalBank) + screenYaw * std::cos(finalBank);
 
@@ -365,15 +373,16 @@ void Player::Move(float gameSpeed) {
     ));
 }
 
+// プレイヤーの攻撃（弾・ミサイル発射）処理
 void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed) {
     if (!input_) return;
 
-    // 武器切り替え
+    
     if (input_->TriggerKey(DIK_R)) {
         currentWeapon_ = (currentWeapon_ == WeaponType::NORMAL) ? WeaponType::MISSILE : WeaponType::NORMAL;
     }
 
-    // ミサイルのリロード処理
+    
     if (missileReloadTimer_ > 0.0f) {
         missileReloadTimer_ -= gameSpeed;
     }
@@ -382,9 +391,9 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
         attackTimer_ -= gameSpeed;
     }
 
-    // ミサイルモードのロックオン処理
+    
     if (currentWeapon_ == WeaponType::MISSILE) {
-        lockOnAnimTimer_ += 0.1f * gameSpeed; // アニメーションタイマー進行
+        lockOnAnimTimer_ += 0.1f * gameSpeed; 
         if (lockOnDelayTimer_ > 0.0f) {
             lockOnDelayTimer_ -= gameSpeed;
         }
@@ -393,46 +402,46 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
             const Matrix4x4& mat = object_->GetmatWorld();
             Vector3 playerPos = { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
             
-            // ロックオン可能な敵をスキャン
+            
             for (const auto& enemy : enemies) {
                 if (enemy->IsDead()) continue;
                 
-                // 既にロックオン済みかチェック
+                
                 auto it = std::find_if(multiLockedEnemies_.begin(), multiLockedEnemies_.end(),
                     [&](const LockOnTarget& target) { return target.enemy == enemy.get(); });
                 if (it != multiLockedEnemies_.end()) {
                     continue;
                 }
 
-                // 最大数チェック
+                
                 if (multiLockedEnemies_.size() >= MAX_MISSILES) {
                     break;
                 }
 
-                // 距離のチェック (遠くの敵もロックオンできるように距離制限を大きくする)
+                
                 Vector3 ePos = enemy->GetColliderCenter();
                 float distSq = (ePos.x - playerPos.x) * (ePos.x - playerPos.x) + 
                                (ePos.y - playerPos.y) * (ePos.y - playerPos.y) + 
                                (ePos.z - playerPos.z) * (ePos.z - playerPos.z);
                 
-                if (distSq < 1500.0f * 1500.0f && ePos.z > playerPos.z) { // 画面奥にいる敵をロックオン
+                if (distSq < 1500.0f * 1500.0f && ePos.z > playerPos.z) { 
                     if (lockOnDelayTimer_ <= 0.0f) {
                         multiLockedEnemies_.push_back({enemy.get(), 0.0f});
-                        lockOnDelayTimer_ = 60.0f; // 次のロックオンまで60フレーム(1秒)間隔をあける
-                        break; // 1フレームに1体までしかロックオンしない
+                        lockOnDelayTimer_ = 60.0f; 
+                        break; 
                     }
                 }
             }
         }
 
-        // ロックオンレティクルの表示更新
+        
         for (int i = 0; i < MAX_MISSILES; ++i) {
             if (i < multiLockedEnemies_.size() && !multiLockedEnemies_[i].enemy->IsDead()) {
                 multiLockedEnemies_[i].lockedTime += gameSpeed;
                 float lockTime = multiLockedEnemies_[i].lockedTime;
-                bool isLockCompleted = lockTime >= 20.0f; // 20フレーム(約0.3秒)でロックオン完了
+                bool isLockCompleted = lockTime >= 20.0f; 
 
-                // スケール（敵が奥にいるほど大きくする）
+                
                 Vector3 ePos = multiLockedEnemies_[i].enemy->GetColliderCenter();
                 const Matrix4x4& mat = object_->GetmatWorld();
                 Vector3 pPos = { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
@@ -442,32 +451,32 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
                 lockOnReticles_[i]->SetScale({scale, scale, scale});
                 lockOnReticles_[i]->SetTranslate(multiLockedEnemies_[i].enemy->GetColliderCenter());
                 
-                // ロックオン完了するまで1回転させる
+                
                 if (!isLockCompleted) {
-                    float rotationAngle = (lockTime / 20.0f) * 6.2831853f; // 20フレームで2π(360度)回転
+                    float rotationAngle = (lockTime / 20.0f) * 6.2831853f; 
                     lockOnReticles_[i]->SetRotation({0.0f, 0.0f, rotationAngle});
                 } else {
-                    lockOnReticles_[i]->SetRotation({0.0f, 0.0f, 0.0f}); // 完了したら止める
+                    lockOnReticles_[i]->SetRotation({0.0f, 0.0f, 0.0f}); 
                 }
             } else {
                 lockOnReticles_[i]->SetScale({0.001f, 0.001f, 0.001f});
             }
         }
 
-        // スペースキーを離した時にミサイル発射
+        
         if (!input_->PushKey(DIK_SPACE) && !multiLockedEnemies_.empty() && missileReloadTimer_ <= 0.0f) {
             for (size_t i = 0; i < multiLockedEnemies_.size(); ++i) {
                 if (multiLockedEnemies_[i].enemy->IsDead()) continue;
                 
                 const Matrix4x4& mountedMat = mountedMissiles_[i]->GetmatWorld();
                 Vector3 spawnPos = { mountedMat.m[3][0], mountedMat.m[3][1], mountedMat.m[3][2] };
-                Vector3 spawnRot = object_->GetRotation(); // 自機の向き
+                Vector3 spawnRot = object_->GetRotation(); 
                 
                 auto newMissile = std::make_unique<PlayerMissile>();
                 newMissile->Initialize(object3dCommon_, spawnPos, spawnRot, {0,0,0}, parentCamera, multiLockedEnemies_[i].enemy);
                 missiles.push_back(std::move(newMissile));
 
-                // 搭載モデルを隠す (表示制御はDrawの条件分岐で行うため、ここでは何もしない)
+                
                 lockOnReticles_[i]->SetScale({0.001f, 0.001f, 0.001f});
             }
             
@@ -476,14 +485,14 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
             attackTimer_ = attackInterval_;
         }
         
-        // 死んだ敵をリストから外す
+        
         multiLockedEnemies_.erase(
             std::remove_if(multiLockedEnemies_.begin(), multiLockedEnemies_.end(),
                 [](const LockOnTarget& t) { return t.enemy->IsDead(); }),
             multiLockedEnemies_.end()
         );
     } 
-    // 通常弾モード
+    
     else if (attackTimer_ <= 0.0f && (input_->PushKey(DIK_SPACE))) {
         attackTimer_ = attackInterval_; 
         
@@ -515,9 +524,26 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
             direction.z * bulletSpeed_
         };
 
-        std::unique_ptr<PlayerBullet> newBullet = std::make_unique<PlayerBullet>();
-        newBullet->Initialize(object3dCommon_, playerPos, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
-        bullets.push_back(std::move(newBullet));
+        if (isDoubleShot_) {
+            // 2連装: プレイヤーの機体の姿勢（右方向ベクトル）に合わせて左右から発射
+            Vector3 rightDir = { mat.m[0][0], mat.m[0][1], mat.m[0][2] };
+            float offsetAmount = 2.0f;
+            Vector3 rightOffset = { playerPos.x + rightDir.x * offsetAmount, playerPos.y + rightDir.y * offsetAmount, playerPos.z + rightDir.z * offsetAmount };
+            Vector3 leftOffset = { playerPos.x - rightDir.x * offsetAmount, playerPos.y - rightDir.y * offsetAmount, playerPos.z - rightDir.z * offsetAmount };
+
+            std::unique_ptr<PlayerBullet> rightBullet = std::make_unique<PlayerBullet>();
+            rightBullet->Initialize(object3dCommon_, rightOffset, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
+            bullets.push_back(std::move(rightBullet));
+
+            std::unique_ptr<PlayerBullet> leftBullet = std::make_unique<PlayerBullet>();
+            leftBullet->Initialize(object3dCommon_, leftOffset, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
+            bullets.push_back(std::move(leftBullet));
+        } else {
+            // 通常の1発発射
+            std::unique_ptr<PlayerBullet> newBullet = std::make_unique<PlayerBullet>();
+            newBullet->Initialize(object3dCommon_, playerPos, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
+            bullets.push_back(std::move(newBullet));
+        }
     }
 }
 
@@ -616,6 +642,7 @@ void Player::SaveSettings(const std::string& filepath) {
     }
 }
 
+// プレイヤー関連のUI描画処理
 void Player::DrawUI() {
 #ifdef USE_IMGUI
     ImGui::Begin("Player Editor");

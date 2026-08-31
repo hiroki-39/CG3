@@ -1,0 +1,87 @@
+[
+    {
+        "blendMode": 2,
+        "colorAnimSpeed": 2.0,
+        "emitterParam": {
+            "count": 10,
+            "drag": 0.10000000149011612,
+            "endColor": [
+                1.0,
+                0.5,
+                0.0,
+                0.0
+            ],
+            "endScale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "frequency": 0.0,
+            "gravity": 0.0,
+            "isColorOverLifetime": false,
+            "isScaleOverLifetime": false,
+            "maxColor": [
+                0.800000011920929,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "maxLifeTime": 1.2000000476837158,
+            "maxRotation": [
+                0.0,
+                0.0,
+                6.28000020980835
+            ],
+            "maxScale": [
+                1.5,
+                1.5,
+                1.5
+            ],
+            "maxVelocity": [
+                15.0,
+                15.0,
+                15.0
+            ],
+            "minColor": [
+                0.0,
+                0.5,
+                1.0,
+                1.0
+            ],
+            "minLifeTime": 0.800000011920929,
+            "minRotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "minScale": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "minVelocity": [
+                -15.0,
+                -15.0,
+                -15.0
+            ],
+            "useGravity": false
+        },
+        "enableColorAnim": false,
+        "endColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "name": "HitSparks",
+        "shapeType": 0,
+        "startColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "textureName": "sprites/prticle_kira.png",
+        "uvScrollSpeed": 0.0
+    }
+]

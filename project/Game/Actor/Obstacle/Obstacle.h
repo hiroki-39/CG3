@@ -9,7 +9,7 @@ class Obstacle {
 public:
     void Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const Vector3& rotation, const std::string& fileName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo, bool isDestructible = true);
     
-    // 今後の拡張（落ちてくる岩、崩れる柱などのアニメーション）用にUpdateを用意しておく
+    
     void Update();
     
 
@@ -20,34 +20,38 @@ public:
     }
     
     void Draw();
-    void DrawCollider(); // デバッグ描画用
-    void OnCollision(); // 弾などとの衝突時の処理
-    void Kill(); // 即座に破壊する
+    void DrawCollider(); 
+    void OnCollision(); 
+    void Kill(); 
+    void StartShrink(); // リング用の縮小アニメーション開始
 
     void SetSpawnProgress(float progress) { spawnProgress_ = progress; }
     void SetTexturePath(const std::string& path);
 
-    // Getter
+    
     const Vector3& GetPosition() const { return position_; }
     const LevelCollider& GetCollider() const { return collider_; }
     bool IsDead() const { return isDead_; }
 
-    // 衝突判定用メソッド
+    
     bool CheckCollision(const Sphere& bulletSphere) const;
     bool CheckRaycast(const Ray& ray, float* outDist) const;
 
 private:
     std::unique_ptr<Object3d> object_;
-    std::unique_ptr<Object3d> colliderObject_; // デバッグ描画用オブジェクト
+    std::unique_ptr<Object3d> colliderObject_; 
     Vector3 position_;
     Vector3 rotation_;
-    LevelCollider collider_; // コライダー情報
+    LevelCollider collider_; 
     bool isDead_ = false;
     bool isVisible_ = true;
     bool isDestructible_ = true;
+    bool isShrinking_ = false;
+    float shrinkScale_ = 1.0f;
+    Vector3 baseScale_;
     
     float spawnProgress_ = 0.0f;
     std::string texturePath_;
     
-    // アニメーション用変数などが必要になればここに追加する
+    
 };

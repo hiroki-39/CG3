@@ -5,6 +5,14 @@
 void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, const Vector3& scale, const Vector3& rot, const std::string& fileName, uint32_t skyboxTexIndex, const LevelCollider& colliderInfo, bool isDestructible) {
     position_ = pos;
     collider_ = colliderInfo;
+    // Blenderからの設定値にモデルのスケールを乗算して実際のワールドサイズにする
+    collider_.center.x *= scale.x;
+    collider_.center.y *= scale.y;
+    collider_.center.z *= scale.z;
+    collider_.size.x *= scale.x;
+    collider_.size.y *= scale.y;
+    collider_.size.z *= scale.z;
+    collider_.radius *= (scale.x > scale.y ? (scale.x > scale.z ? scale.x : scale.z) : (scale.y > scale.z ? scale.y : scale.z)); // 最大スケールを適用
     isDestructible_ = isDestructible; // パラメータからフラグをセット
 
     // Blender側でコライダー設定が省略された場合のデフォルト処理
@@ -19,6 +27,7 @@ void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, co
     object_->SetTranslate(position_);
     
     rotation_ = rot;
+    baseScale_ = scale;
     object_->SetScale(scale);
     object_->SetRotation(rotation_);
 
@@ -45,15 +54,16 @@ void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, co
     }
 
     // デバッグ用コライダー表示の初期化
-    if (collider_.type == "SPHERE" || collider_.type == "BOX") {
+    if (collider_.type == "SPHERE" || (collider_.type == "BOX" || collider_.type == "OBB" || collider_.type == "AABB")) {
         colliderObject_ = std::make_unique<Object3d>();
         colliderObject_->Initialize(object3dCommon);
         
         if (collider_.type == "SPHERE") {
             colliderObject_->SetModel("collider_sphere.obj");
             colliderObject_->SetScale({ collider_.radius, collider_.radius, collider_.radius });
-        } else if (collider_.type == "BOX") {
-            colliderObject_->SetModel("collider_box.obj"); // 境界線のみの箱モデルを想定
+        } else if ((collider_.type == "BOX" || collider_.type == "OBB" || collider_.type == "AABB")) {
+        Vector3 colSize = collider_.size;
+            colliderObject_->SetModel("cube.obj"); // 境界線のみの箱モデルを想定
             colliderObject_->SetScale({ collider_.size.x, collider_.size.y, collider_.size.z });
         }
         
@@ -66,6 +76,15 @@ void Obstacle::Initialize(Object3dCommon* object3dCommon, const Vector3& pos, co
 }
 
 void Obstacle::Update() {
+    if (isShrinking_) {
+        shrinkScale_ -= 0.1f;
+        if (shrinkScale_ <= 0.0f) {
+            shrinkScale_ = 0.0f;
+            isDead_ = true;
+        }
+        Vector3 newScale = { baseScale_.x * shrinkScale_, baseScale_.y * shrinkScale_, baseScale_.z * shrinkScale_ };
+        object_->SetScale(newScale);
+    }
     // 将来的なアニメーションや移動処理をここに追加する
     // 例: position_.y -= 0.1f; // 落下など
     
@@ -138,18 +157,19 @@ bool Obstacle::CheckCollision(const Sphere& bulletSphere) const {
         Sphere mySphere = { centerPos, collider_.radius };
         return CollisionMath::IsCollision(bulletSphere, mySphere);
     } 
-    else if (collider_.type == "BOX") {
+    else if ((collider_.type == "BOX" || collider_.type == "OBB" || collider_.type == "AABB")) {
+        Vector3 colSize = collider_.size;
         // 回転がある場合はOBB、ない場合はAABBとして扱う
         if (rotation_.x == 0.0f && rotation_.y == 0.0f && rotation_.z == 0.0f) {
             AABB aabb = {
-                { centerPos.x - collider_.size.x, centerPos.y - collider_.size.y, centerPos.z - collider_.size.z },
-                { centerPos.x + collider_.size.x, centerPos.y + collider_.size.y, centerPos.z + collider_.size.z }
+                { centerPos.x - colSize.x, centerPos.y - colSize.y, centerPos.z - colSize.z },
+                { centerPos.x + colSize.x, centerPos.y + colSize.y, centerPos.z + colSize.z }
             };
             return CollisionMath::IsCollision(bulletSphere, aabb);
         } else {
             // OBBを生成
             Matrix4x4 rotMat = Matrix4x4::RotateX(rotation_.x) * Matrix4x4::RotateY(rotation_.y) * Matrix4x4::RotateZ(rotation_.z);
-            OBB obb = CollisionMath::CreateOBB(centerPos, collider_.size, rotMat);
+            OBB obb = CollisionMath::CreateOBB(centerPos, colSize, rotMat);
             return CollisionMath::IsCollision(bulletSphere, obb);
         }
     }
@@ -170,19 +190,24 @@ bool Obstacle::CheckRaycast(const Ray& ray, float* outDist) const {
         Sphere mySphere = { centerPos, collider_.radius };
         return CollisionMath::Raycast(ray, mySphere, outDist);
     } 
-    else if (collider_.type == "BOX") {
+    else if ((collider_.type == "BOX" || collider_.type == "OBB" || collider_.type == "AABB")) {
+        Vector3 colSize = collider_.size;
         if (rotation_.x == 0.0f && rotation_.y == 0.0f && rotation_.z == 0.0f) {
             AABB aabb = {
-                { centerPos.x - collider_.size.x, centerPos.y - collider_.size.y, centerPos.z - collider_.size.z },
-                { centerPos.x + collider_.size.x, centerPos.y + collider_.size.y, centerPos.z + collider_.size.z }
+                { centerPos.x - colSize.x, centerPos.y - colSize.y, centerPos.z - colSize.z },
+                { centerPos.x + colSize.x, centerPos.y + colSize.y, centerPos.z + colSize.z }
             };
             return CollisionMath::Raycast(ray, aabb, outDist);
         } else {
             Matrix4x4 rotMat = Matrix4x4::RotateX(rotation_.x) * Matrix4x4::RotateY(rotation_.y) * Matrix4x4::RotateZ(rotation_.z);
-            OBB obb = CollisionMath::CreateOBB(centerPos, collider_.size, rotMat);
+            OBB obb = CollisionMath::CreateOBB(centerPos, colSize, rotMat);
             return CollisionMath::Raycast(ray, obb, outDist);
         }
     }
 
     return false;
+}
+
+void Obstacle::StartShrink() {
+    isShrinking_ = true;
 }

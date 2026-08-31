@@ -52,7 +52,7 @@ void GameOverScene::Update()
     if (!services) return;
 
     auto input = services->GetInput();
-    // スペースかエンターでタイトルへ
+    
     if (input && (input->TriggerKey(DIK_SPACE) || input->TriggerKey(DIK_RETURN)))
     {
         auto sceneManager = GetSceneManager();
@@ -65,7 +65,7 @@ void GameOverScene::Update()
 
 void GameOverScene::Draw()
 {
-    DrawSprites();
+    
 }
 
 void GameOverScene::Finalize()
