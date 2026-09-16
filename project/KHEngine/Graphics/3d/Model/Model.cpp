@@ -380,3 +380,75 @@ Model::Node Model::ReadNode(aiNode* node)
 	return result;
 }
 
+std::vector<Triangle> Model::GetWorldTriangles(const Matrix4x4& worldMat) const {
+	std::vector<Triangle> triangles;
+	const auto& vertices = modelData.vertices;
+	const auto& indices = modelData.indices;
+
+	auto TransformPos = [&](const Vector4& p) -> Vector3 {
+		float x = p.x * worldMat.m[0][0] + p.y * worldMat.m[1][0] + p.z * worldMat.m[2][0] + worldMat.m[3][0];
+		float y = p.x * worldMat.m[0][1] + p.y * worldMat.m[1][1] + p.z * worldMat.m[2][1] + worldMat.m[3][1];
+		float z = p.x * worldMat.m[0][2] + p.y * worldMat.m[1][2] + p.z * worldMat.m[2][2] + worldMat.m[3][2];
+		float w = p.x * worldMat.m[0][3] + p.y * worldMat.m[1][3] + p.z * worldMat.m[2][3] + worldMat.m[3][3];
+		if (std::abs(w) > 0.00001f) {
+			return { x / w, y / w, z / w };
+		}
+		return { x, y, z };
+	};
+
+	if (!indices.empty()) {
+		triangles.reserve(indices.size() / 3);
+		for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+			uint32_t i0 = indices[i];
+			uint32_t i1 = indices[i + 1];
+			uint32_t i2 = indices[i + 2];
+			if (i0 < vertices.size() && i1 < vertices.size() && i2 < vertices.size()) {
+				Triangle tri;
+				tri.p0 = TransformPos(vertices[i0].position);
+				tri.p1 = TransformPos(vertices[i1].position);
+				tri.p2 = TransformPos(vertices[i2].position);
+
+				Vector3 e1 = { tri.p1.x - tri.p0.x, tri.p1.y - tri.p0.y, tri.p1.z - tri.p0.z };
+				Vector3 e2 = { tri.p2.x - tri.p0.x, tri.p2.y - tri.p0.y, tri.p2.z - tri.p0.z };
+				Vector3 normal = {
+					e1.y * e2.z - e1.z * e2.y,
+					e1.z * e2.x - e1.x * e2.z,
+					e1.x * e2.y - e1.y * e2.x
+				};
+				float len = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+				if (len > 0.00001f) {
+					tri.normal = { normal.x / len, normal.y / len, normal.z / len };
+				} else {
+					tri.normal = { 0.0f, 1.0f, 0.0f };
+				}
+				triangles.push_back(tri);
+			}
+		}
+	} else {
+		triangles.reserve(vertices.size() / 3);
+		for (size_t i = 0; i + 2 < vertices.size(); i += 3) {
+			Triangle tri;
+			tri.p0 = TransformPos(vertices[i].position);
+			tri.p1 = TransformPos(vertices[i + 1].position);
+			tri.p2 = TransformPos(vertices[i + 2].position);
+
+			Vector3 e1 = { tri.p1.x - tri.p0.x, tri.p1.y - tri.p0.y, tri.p1.z - tri.p0.z };
+			Vector3 e2 = { tri.p2.x - tri.p0.x, tri.p2.y - tri.p0.y, tri.p2.z - tri.p0.z };
+			Vector3 normal = {
+				e1.y * e2.z - e1.z * e2.y,
+				e1.z * e2.x - e1.x * e2.z,
+				e1.x * e2.y - e1.y * e2.x
+			};
+			float len = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+			if (len > 0.00001f) {
+				tri.normal = { normal.x / len, normal.y / len, normal.z / len };
+			} else {
+				tri.normal = { 0.0f, 1.0f, 0.0f };
+			}
+			triangles.push_back(tri);
+		}
+	}
+
+	return triangles;
+}
+

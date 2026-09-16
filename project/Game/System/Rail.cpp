@@ -1,4 +1,4 @@
-﻿#include "Rail.h"
+#include "Rail.h"
 #include <algorithm>
 #include <cmath>
 
@@ -13,6 +13,27 @@ void Rail::Initialize(const std::vector<LevelCurvePoint>& points) {
     if (points_.size() > 1) {
         for (size_t i = 0; i < points_.size() - 1; ++i) {
             totalLength_ += (points_[i + 1].position - points_[i].position).Length();
+        }
+
+        // 制御点のイベントからトンネル/狭窄区間を自動登録
+        narrowZones_.clear();
+        int segmentCount = static_cast<int>(points_.size()) - 1;
+        int narrowStart = -1;
+        for (int i = 0; i < (int)points_.size(); ++i) {
+            const std::string& ev = points_[i].event;
+            bool isNarrow = (ev.find("tunnel") != std::string::npos || ev.find("narrow") != std::string::npos);
+            if (isNarrow && narrowStart == -1) {
+                narrowStart = i;
+            } else if (!isNarrow && narrowStart != -1) {
+                float sT = (float)narrowStart / segmentCount;
+                float eT = (float)i / segmentCount;
+                AddNarrowZone(sT, eT, 10.0f, -3.0f, 8.0f);
+                narrowStart = -1;
+            }
+        }
+        if (narrowStart != -1) {
+            float sT = (float)narrowStart / segmentCount;
+            AddNarrowZone(sT, 1.0f, 10.0f, -3.0f, 8.0f);
         }
     }
 }
@@ -144,4 +165,47 @@ std::string Rail::GetEvent(float t) const {
 
     // イベントは補間できないため、現在の区間（始点）のイベントを返す
     return points_[i].event;
+}
+
+void Rail::AddNarrowZone(float startT, float endT, float limitX, float limitYMin, float limitYMax) {
+    NarrowZone zone;
+    zone.startT = startT;
+    zone.endT = endT;
+    zone.limitX = limitX;
+    zone.limitYMin = limitYMin;
+    zone.limitYMax = limitYMax;
+    narrowZones_.push_back(zone);
+}
+
+void Rail::GetMoveLimits(float t, float& outLimitX, float& outLimitYMin, float& outLimitYMax) const {
+    outLimitX = 25.0f;
+    outLimitYMin = -5.0f;
+    outLimitYMax = 12.0f;
+
+    // 前後0.03（進行度の3%）を手前からの導入・脱出フェード区間とする
+    const float fadeDist = 0.03f;
+
+    for (const auto& zone : narrowZones_) {
+        float effectiveStart = zone.startT - fadeDist;
+        float effectiveEnd = zone.endT + fadeDist;
+
+        if (t >= effectiveStart && t <= effectiveEnd) {
+            float weight = 1.0f;
+            if (t < zone.startT) {
+                // 入口手前フェードイン
+                weight = (t - effectiveStart) / fadeDist;
+            } else if (t > zone.endT) {
+                // 出口後フェードアウト
+                weight = (effectiveEnd - t) / fadeDist;
+            }
+
+            // スムーズステップ (3w^2 - 2w^3)
+            weight = weight * weight * (3.0f - 2.0f * weight);
+
+            outLimitX = (1.0f - weight) * 25.0f + weight * zone.limitX;
+            outLimitYMin = (1.0f - weight) * (-5.0f) + weight * zone.limitYMin;
+            outLimitYMax = (1.0f - weight) * 12.0f + weight * zone.limitYMax;
+            return;
+        }
+    }
 }

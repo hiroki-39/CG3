@@ -144,8 +144,197 @@ void Obstacle::SetTexturePath(const std::string& path) {
     }
 }
 
+void Obstacle::EnsureTriangles() const {
+    if (isTrianglesInitialized_) return;
+    isTrianglesInitialized_ = true;
+
+    if (object_ && object_->GetModel()) {
+        triangles_ = object_->GetModel()->GetWorldTriangles(object_->GetmatWorld());
+        if (!triangles_.empty()) {
+            hasMeshCollider_ = true;
+            broadAABB_.min = { 1e9f, 1e9f, 1e9f };
+            broadAABB_.max = { -1e9f, -1e9f, -1e9f };
+            for (const auto& tri : triangles_) {
+                for (const auto& p : { tri.p0, tri.p1, tri.p2 }) {
+                    broadAABB_.min.x = (std::min)(broadAABB_.min.x, p.x);
+                    broadAABB_.min.y = (std::min)(broadAABB_.min.y, p.y);
+                    broadAABB_.min.z = (std::min)(broadAABB_.min.z, p.z);
+                    broadAABB_.max.x = (std::max)(broadAABB_.max.x, p.x);
+                    broadAABB_.max.y = (std::max)(broadAABB_.max.y, p.y);
+                    broadAABB_.max.z = (std::max)(broadAABB_.max.z, p.z);
+                }
+            }
+        }
+    }
+}
+
+bool Obstacle::CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* outResult) const {
+    if (isDead_) return false;
+    EnsureTriangles();
+
+    if (hasMeshCollider_) {
+        // AABBによるカリング
+        if (!CollisionMath::IsCollision(sphere, broadAABB_)) {
+            return false;
+        }
+
+        bool hitAny = false;
+        CollisionResult bestResult;
+        bestResult.penetrationDepth = -1.0f;
+
+        for (const auto& tri : triangles_) {
+            CollisionResult res;
+            if (CollisionMath::IsCollision(sphere, tri, &res)) {
+                hitAny = true;
+                if (res.penetrationDepth > bestResult.penetrationDepth) {
+                    bestResult = res;
+                }
+            }
+        }
+
+        if (hitAny) {
+            if (outResult) *outResult = bestResult;
+            return true;
+        }
+        return false;
+    }
+
+    Vector3 centerPos = {
+        position_.x + collider_.center.x,
+        position_.y + collider_.center.y,
+        position_.z + collider_.center.z
+    };
+
+    if (collider_.type == "SPHERE") {
+        Sphere mySphere = { centerPos, collider_.radius };
+        if (CollisionMath::IsCollision(sphere, mySphere)) {
+            if (outResult) {
+                outResult->isHit = true;
+                Vector3 diff = { sphere.center.x - centerPos.x, sphere.center.y - centerPos.y, sphere.center.z - centerPos.z };
+                float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+                if (dist > 0.0001f) {
+                    outResult->normal = { diff.x / dist, diff.y / dist, diff.z / dist };
+                } else {
+                    outResult->normal = { 0.0f, 1.0f, 0.0f };
+                }
+                outResult->hitPoint = { centerPos.x + outResult->normal.x * collider_.radius,
+                                        centerPos.y + outResult->normal.y * collider_.radius,
+                                        centerPos.z + outResult->normal.z * collider_.radius };
+                outResult->penetrationDepth = (sphere.radius + collider_.radius) - dist;
+            }
+            return true;
+        }
+    } else if ((collider_.type == "BOX" || collider_.type == "OBB" || collider_.type == "AABB")) {
+        Vector3 colSize = collider_.size;
+        Matrix4x4 rotMat = Matrix4x4::RotateX(rotation_.x) * Matrix4x4::RotateY(rotation_.y) * Matrix4x4::RotateZ(rotation_.z);
+        OBB obb = CollisionMath::CreateOBB(centerPos, colSize, rotMat);
+        if (CollisionMath::IsCollision(sphere, obb)) {
+            if (outResult) {
+                outResult->isHit = true;
+                Vector3 diff = { sphere.center.x - centerPos.x, sphere.center.y - centerPos.y, sphere.center.z - centerPos.z };
+                float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+                if (dist > 0.0001f) {
+                    outResult->normal = { diff.x / dist, diff.y / dist, diff.z / dist };
+                } else {
+                    outResult->normal = { 0.0f, 1.0f, 0.0f };
+                }
+                outResult->hitPoint = centerPos;
+                outResult->penetrationDepth = sphere.radius;
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool Obstacle::CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult) const {
+    if (isDead_) return false;
+    EnsureTriangles();
+
+    if (hasMeshCollider_) {
+        if (!CollisionMath::IsCollision(obb, broadAABB_)) {
+            return false;
+        }
+
+        bool hitAny = false;
+        CollisionResult bestResult;
+        bestResult.penetrationDepth = -1.0f;
+
+        for (const auto& tri : triangles_) {
+            CollisionResult res;
+            if (CollisionMath::IsCollision(obb, tri, &res)) {
+                hitAny = true;
+                if (res.penetrationDepth > bestResult.penetrationDepth) {
+                    bestResult = res;
+                }
+            }
+        }
+
+        if (hitAny) {
+            if (outResult) *outResult = bestResult;
+            return true;
+        }
+        return false;
+    }
+
+    Vector3 centerPos = {
+        position_.x + collider_.center.x,
+        position_.y + collider_.center.y,
+        position_.z + collider_.center.z
+    };
+
+    if (collider_.type == "SPHERE") {
+        Sphere mySphere = { centerPos, collider_.radius };
+        if (CollisionMath::IsCollision(mySphere, obb)) {
+            if (outResult) {
+                outResult->isHit = true;
+                Vector3 diff = { obb.center.x - centerPos.x, obb.center.y - centerPos.y, obb.center.z - centerPos.z };
+                float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+                if (dist > 0.0001f) {
+                    outResult->normal = { diff.x / dist, diff.y / dist, diff.z / dist };
+                } else {
+                    outResult->normal = { 0.0f, 1.0f, 0.0f };
+                }
+                outResult->hitPoint = { centerPos.x + outResult->normal.x * collider_.radius,
+                                        centerPos.y + outResult->normal.y * collider_.radius,
+                                        centerPos.z + outResult->normal.z * collider_.radius };
+                outResult->penetrationDepth = collider_.radius;
+            }
+            return true;
+        }
+    } else if ((collider_.type == "BOX" || collider_.type == "OBB" || collider_.type == "AABB")) {
+        AABB aabb = {
+            { centerPos.x - collider_.size.x * 0.5f, centerPos.y - collider_.size.y * 0.5f, centerPos.z - collider_.size.z * 0.5f },
+            { centerPos.x + collider_.size.x * 0.5f, centerPos.y + collider_.size.y * 0.5f, centerPos.z + collider_.size.z * 0.5f }
+        };
+        if (CollisionMath::IsCollision(obb, aabb)) {
+            if (outResult) {
+                outResult->isHit = true;
+                Vector3 diff = { obb.center.x - centerPos.x, obb.center.y - centerPos.y, obb.center.z - centerPos.z };
+                float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+                if (dist > 0.0001f) {
+                    outResult->normal = { diff.x / dist, diff.y / dist, diff.z / dist };
+                } else {
+                    outResult->normal = { 0.0f, 1.0f, 0.0f };
+                }
+                outResult->hitPoint = centerPos;
+                outResult->penetrationDepth = 0.5f;
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool Obstacle::CheckCollision(const Sphere& bulletSphere) const {
     if (isDead_) return false;
+    EnsureTriangles();
+
+    if (hasMeshCollider_) {
+        return CheckCollisionWithSphere(bulletSphere, nullptr);
+    }
 
     Vector3 centerPos = {
         position_.x + collider_.center.x,
@@ -210,4 +399,4 @@ bool Obstacle::CheckRaycast(const Ray& ray, float* outDist) const {
 
 void Obstacle::StartShrink() {
     isShrinking_ = true;
-}
+}

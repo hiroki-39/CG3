@@ -68,8 +68,8 @@ public:
             object_->Update();
             
             if (colliderObject_) {
-                const Matrix4x4& wMat = object_->GetmatWorld();
-                colliderObject_->SetTranslate({ wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] });
+                colliderObject_->SetTranslate(object_->GetTranslate());
+                colliderObject_->SetRotation(object_->GetRotation());
                 colliderObject_->Update();
             }
             for (int i = 0; i < 4; ++i) { 
@@ -115,11 +115,30 @@ public:
     }
 
     void OnCollision();
+    bool OnTerrainCollision(const Vector3& worldNormal, float penetrationDepth, Object3d* parentCamera = nullptr);
+    OBB GetWorldOBB() const;
+    float GetTerrainCollisionRadius() const { return terrainCollisionRadius_; }
+    void SetTerrainCollisionRadius(float radius) { terrainCollisionRadius_ = radius; }
     void Heal(int amount) { hp_ += amount; if (hp_ > maxHp_) hp_ = maxHp_; }
     void PowerUp() { isDoubleShot_ = true; }
     bool IsDead() const { return isDead_; }
     int GetHp() const { return hp_; }
     int GetMaxHp() const { return maxHp_; }
+
+    // 動的移動制限（ソフトリミット）
+    void SetTargetMoveLimits(float limitX, float limitYMin, float limitYMax) {
+        targetLimitX_ = limitX;
+        targetLimitYMin_ = limitYMin;
+        targetLimitYMax_ = limitYMax;
+    }
+    void ResetMoveLimits() {
+        targetLimitX_ = 25.0f;
+        targetLimitYMin_ = -5.0f;
+        targetLimitYMax_ = 12.0f;
+    }
+    float GetLimitX() const { return playerLimitX_; }
+    float GetLimitYMin() const { return playerLimitYMin_; }
+    float GetLimitYMax() const { return playerLimitYMax_; }
 
     
     void SetAssistTarget(Enemy* enemy) { assistTarget_ = enemy; }
@@ -163,8 +182,14 @@ private:
     float playerLimitX_ = 25.0f;   
     float playerLimitYMin_ = -5.0f;
     float playerLimitYMax_ = 12.0f;
+    float targetLimitX_ = 25.0f;   
+    float targetLimitYMin_ = -5.0f;
+    float targetLimitYMax_ = 12.0f;
     float followSpeed_ = 0.08f;
     float bulletSpeed_ = 3.0f;
+    float terrainKnockbackPower_ = 0.35f; // 壁・地面に当たった時の反発速度
+    float terrainPushMargin_ = 0.05f;     // めり込み押し戻しマージン
+    float terrainCollisionRadius_ = 0.8f; // 地形・障害物との衝突判定球の半径
 
     
     std::string modelName_ = "cube.obj";

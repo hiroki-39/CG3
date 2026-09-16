@@ -111,6 +111,92 @@ void Player::OnCollision() {
     }
 }
 
+// 地形・壁との衝突およびノックバック（はじかれ）処理
+bool Player::OnTerrainCollision(const Vector3& worldNormal, float penetrationDepth, Object3d* parentCamera) {
+    if (isDead_) return false;
+
+    // ワールド法線をカメラのローカル空間（X:左右, Y:上下, Z:前後）に変換
+    Vector3 localNormal = worldNormal;
+    if (parentCamera) {
+        const Matrix4x4& cMat = parentCamera->GetmatWorld();
+        localNormal.x = worldNormal.x * cMat.m[0][0] + worldNormal.y * cMat.m[0][1] + worldNormal.z * cMat.m[0][2];
+        localNormal.y = worldNormal.x * cMat.m[1][0] + worldNormal.y * cMat.m[1][1] + worldNormal.z * cMat.m[1][2];
+        localNormal.z = worldNormal.x * cMat.m[2][0] + worldNormal.y * cMat.m[2][1] + worldNormal.z * cMat.m[2][2];
+        float len = std::sqrt(localNormal.x * localNormal.x + localNormal.y * localNormal.y + localNormal.z * localNormal.z);
+        if (len > 0.0001f) {
+            localNormal.x /= len;
+            localNormal.y /= len;
+            localNormal.z /= len;
+        }
+    }
+
+    // めり込み押し戻し（めり込み量を優しくクランプし、急激な瞬間移動を防ぐ）
+    float clampedPenetration = (std::min)(penetrationDepth, 0.8f);
+    float pushAmount = clampedPenetration + terrainPushMargin_;
+    logicalPosition_.x += localNormal.x * pushAmount;
+    logicalPosition_.y += localNormal.y * pushAmount;
+
+    // 法線方向への反発（ノックバック）
+    float normalX = localNormal.x;
+    float normalY = localNormal.y;
+    float normalLen = std::sqrt(normalX * normalX + normalY * normalY);
+    if (normalLen > 0.0001f) {
+        normalX /= normalLen;
+        normalY /= normalLen;
+        
+        float velDot = velocity_.x * normalX + velocity_.y * normalY;
+        if (velDot < 0.0f) {
+            // 壁へ向かう速度成分を打ち消す（ブレーキ）
+            velocity_.x -= velDot * normalX;
+            velocity_.y -= velDot * normalY;
+        }
+    }
+
+    // ダメージ＆無敵時間、および被弾の瞬間のみ反発速度を付与（連続フレーム加算によるぶっ飛びを防止）
+    bool causedDamage = false;
+    if (invincibilityTimer_ <= 0.0f) {
+        hp_ -= 1000;
+        isDoubleShot_ = false;
+        if (hp_ <= 0) {
+            isDead_ = true;
+        } else {
+            invincibilityTimer_ = 45.0f; // 45フレーム無敵
+        }
+
+        // 被弾の瞬間だけ法線方向へノックバック速度を付与
+        if (normalLen > 0.0001f) {
+            velocity_.x += normalX * terrainKnockbackPower_;
+            velocity_.y += normalY * terrainKnockbackPower_;
+        }
+
+        causedDamage = true;
+    }
+
+    return causedDamage;
+}
+
+OBB Player::GetWorldOBB() const {
+    Object3d* targetObj = colliderObject_ ? colliderObject_.get() : object_.get();
+    if (!targetObj) {
+        return CollisionMath::CreateOBB(logicalPosition_, colliderSize_, Matrix4x4::Identity());
+    }
+
+    const Matrix4x4& wMat = targetObj->GetmatWorld();
+    Vector3 pWorldPos = { wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] };
+
+    Matrix4x4 rotMat = wMat;
+    for (int i = 0; i < 3; ++i) {
+        float len = std::sqrt(rotMat.m[i][0] * rotMat.m[i][0] + rotMat.m[i][1] * rotMat.m[i][1] + rotMat.m[i][2] * rotMat.m[i][2]);
+        if (len > 0.0001f) {
+            rotMat.m[i][0] /= len;
+            rotMat.m[i][1] /= len;
+            rotMat.m[i][2] /= len;
+        }
+    }
+
+    return CollisionMath::CreateOBB(pWorldPos, colliderSize_, rotMat);
+}
+
 // プレイヤーの毎フレームの更新処理
 void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed) {
     prevLogicalPosition_ = logicalPosition_;
@@ -286,6 +372,12 @@ void Player::Move(float gameSpeed) {
 
     logicalPosition_.x += velocity_.x * gameSpeed;
     logicalPosition_.y += velocity_.y * gameSpeed;
+
+    // 移動制限の目標値へ滑らかに補間
+    float limitLerpSpeed = 0.05f * gameSpeed;
+    playerLimitX_ += (targetLimitX_ - playerLimitX_) * limitLerpSpeed;
+    playerLimitYMin_ += (targetLimitYMin_ - playerLimitYMin_) * limitLerpSpeed;
+    playerLimitYMax_ += (targetLimitYMax_ - playerLimitYMax_) * limitLerpSpeed;
 
     logicalPosition_.x = std::clamp(logicalPosition_.x, -playerLimitX_, playerLimitX_);
     logicalPosition_.y = std::clamp(logicalPosition_.y, playerLimitYMin_, playerLimitYMax_);
@@ -594,6 +686,9 @@ void Player::LoadSettings(const std::string& filepath) {
             auto arr = j["modelRotOffset"];
             if (arr.is_array() && arr.size() == 3) modelRotOffset_ = { arr[0], arr[1], arr[2] };
         }
+        if (j.contains("terrainKnockbackPower")) terrainKnockbackPower_ = j["terrainKnockbackPower"];
+        if (j.contains("terrainPushMargin")) terrainPushMargin_ = j["terrainPushMargin"];
+        if (j.contains("terrainCollisionRadius")) terrainCollisionRadius_ = j["terrainCollisionRadius"];
         file.close();
         
         if (object_) {
@@ -629,6 +724,9 @@ void Player::SaveSettings(const std::string& filepath) {
     j["colliderSize"] = { colliderSize_.x, colliderSize_.y, colliderSize_.z };
     j["hp"] = hp_;
     j["maxHp"] = maxHp_;
+    j["terrainKnockbackPower"] = terrainKnockbackPower_;
+    j["terrainPushMargin"] = terrainPushMargin_;
+    j["terrainCollisionRadius"] = terrainCollisionRadius_;
 
     std::filesystem::path p(filepath);
     if (p.has_parent_path()) {
@@ -713,6 +811,9 @@ void Player::DrawUI() {
         ImGui::DragFloat("Player Limit Y Min", &playerLimitYMin_, 0.1f, -10.0f, 50.0f);
         ImGui::DragFloat("Player Limit Y Max", &playerLimitYMax_, 0.1f, 1.0f, 50.0f);
         ImGui::DragFloat("Roll Max Time", &rollMaxTime_, 1.0f, 1.0f, 60.0f); 
+        ImGui::DragFloat("Terrain Knockback Power", &terrainKnockbackPower_, 0.02f, 0.0f, 2.0f);
+        ImGui::DragFloat("Terrain Push Margin", &terrainPushMargin_, 0.01f, 0.0f, 0.5f);
+        ImGui::DragFloat("Terrain Collision Radius", &terrainCollisionRadius_, 0.02f, 0.1f, 5.0f);
     }
     if (ImGui::Button("Save Settings")) {
         SaveSettings("resources/json/player/player_settings.json");

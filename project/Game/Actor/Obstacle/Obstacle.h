@@ -34,8 +34,14 @@ public:
     bool IsDead() const { return isDead_; }
 
     
+    // プレイヤー（球またはOBB）との衝突判定（法線・めり込み深さを取得）
+    bool CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* outResult) const;
+    bool CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult) const;
+
     bool CheckCollision(const Sphere& bulletSphere) const;
     bool CheckRaycast(const Ray& ray, float* outDist) const;
+
+    bool HasMeshCollider() const { return hasMeshCollider_; }
 
 private:
     std::unique_ptr<Object3d> object_;
@@ -53,5 +59,11 @@ private:
     float spawnProgress_ = 0.0f;
     std::string texturePath_;
     
-    
+    // メッシュコリジョン用データ
+    mutable std::vector<Triangle> triangles_;
+    mutable AABB broadAABB_;
+    mutable bool hasMeshCollider_ = false;
+    mutable bool isTrianglesInitialized_ = false;
+
+    void EnsureTriangles() const;
 };

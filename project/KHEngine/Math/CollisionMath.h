@@ -27,11 +27,34 @@ struct Ray {
     Vector3 direction; // 正規化された方向ベクトル
 };
 
+// 三角形
+struct Triangle {
+    Vector3 p0;
+    Vector3 p1;
+    Vector3 p2;
+    Vector3 normal;
+};
+
+// 衝突結果詳細
+struct CollisionResult {
+    bool isHit = false;
+    Vector3 hitPoint = { 0.0f, 0.0f, 0.0f };
+    Vector3 normal = { 0.0f, 1.0f, 0.0f }; // 接触面から押し出す法線ベクトル
+    float penetrationDepth = 0.0f;        // めり込み深さ
+};
+
 namespace CollisionMath {
     // 交差判定関数
     bool IsCollision(const Sphere& s1, const Sphere& s2);
     bool IsCollision(const Sphere& sphere, const AABB& aabb);
     bool IsCollision(const Sphere& sphere, const OBB& obb);
+    bool IsCollision(const Sphere& sphere, const Triangle& tri, CollisionResult* outResult = nullptr);
+    bool IsCollision(const OBB& obb, const AABB& aabb);
+    bool IsCollision(const OBB& obb, const Triangle& tri, CollisionResult* outResult = nullptr);
+    AABB GetBoundingAABB(const OBB& obb);
+    
+    // 最近接点計算ヘルパー
+    Vector3 ClosestPointOnTriangle(const Vector3& p, const Vector3& a, const Vector3& b, const Vector3& c);
     
     // Raycast関数
     bool Raycast(const Ray& ray, const Sphere& sphere, float* outDistance = nullptr);

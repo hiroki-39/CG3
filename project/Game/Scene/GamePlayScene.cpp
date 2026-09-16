@@ -948,6 +948,15 @@ void GamePlayScene::Update()
 			}
 			player_->SetAssistTarget(nearestEnemy);
 
+			// レール進行度に応じた動的移動制限の適用
+			if (!mainRails_.empty() && mainRails_[0]->IsValid() && railCameraController_)
+			{
+				float p = railCameraController_->GetProgress();
+				float limitX, limitYMin, limitYMax;
+				mainRails_[0]->GetMoveLimits(p, limitX, limitYMin, limitYMax);
+				player_->SetTargetMoveLimits(limitX, limitYMin, limitYMax);
+			}
+
 			player_->Update(bullets_, missiles_, enemies_, cameraObject_.get(), unscaledGameSpeed);
 
 
@@ -1179,24 +1188,7 @@ void GamePlayScene::Update()
 				Sphere bulletSphere = { (*it)->GetPosition(), 1.0f };
 
 
-				const Matrix4x4& wMat = player_->GetColliderObject()->GetmatWorld();
-				Vector3 pWorldPos = { wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] };
-				Vector3 playerBoxSize = player_->GetColliderSize();
-
-
-				Matrix4x4 rotMat = wMat;
-				for (int i = 0; i < 3; ++i)
-				{
-					float len = std::sqrt(rotMat.m[i][0] * rotMat.m[i][0] + rotMat.m[i][1] * rotMat.m[i][1] + rotMat.m[i][2] * rotMat.m[i][2]);
-					if (len > 0.0001f)
-					{
-						rotMat.m[i][0] /= len;
-						rotMat.m[i][1] /= len;
-						rotMat.m[i][2] /= len;
-					}
-				}
-
-				OBB playerOBB = CollisionMath::CreateOBB(pWorldPos, playerBoxSize, rotMat);
+				OBB playerOBB = player_->GetWorldOBB();
 
 				if (CollisionMath::IsCollision(bulletSphere, playerOBB))
 				{
@@ -1367,6 +1359,24 @@ void GamePlayScene::Update()
 				}
 			}
 
+			// プレイヤーとのメッシュ／障害物衝突判定（接触・めり込み・はじかれ）
+			if (player_ && !player_->IsDead())
+			{
+				OBB playerOBB = player_->GetWorldOBB();
+
+				CollisionResult colRes;
+				if ((*it)->CheckCollisionWithOBB(playerOBB, &colRes))
+				{
+					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get());
+					hitEffect_.SetPosition(colRes.hitPoint);
+					hitEffect_.Play();
+					if (causedDamage)
+					{
+						cameraShakeTimer_ = 20.0f;
+					}
+				}
+			}
+
 			if ((*it)->IsDead())
 			{
 
@@ -1380,6 +1390,45 @@ void GamePlayScene::Update()
 			}
 		}
 
+		// --- 地形・背景メッシュ（modelInstances）とのメッシュ衝突判定 ---
+		if (player_ && !player_->IsDead())
+		{
+			OBB playerOBB = player_->GetWorldOBB();
+
+			for (auto& modelObj : modelInstances)
+			{
+				if (!modelObj) continue;
+				CollisionResult colRes;
+				if (modelObj->CheckCollisionWithOBB(playerOBB, &colRes))
+				{
+					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get());
+					hitEffect_.SetPosition(colRes.hitPoint);
+					hitEffect_.Play();
+					if (causedDamage)
+					{
+						cameraShakeTimer_ = 20.0f;
+					}
+				}
+			}
+		}
+
+		// プレイヤー弾と地形メッシュ（modelInstances）の衝突判定
+		for (auto& bullet : bullets_)
+		{
+			if (bullet->IsDead()) continue;
+			Sphere bulletSphere = { bullet->GetPosition(), 1.0f };
+			for (auto& modelObj : modelInstances)
+			{
+				if (!modelObj) continue;
+				if (modelObj->CheckCollisionWithSphere(bulletSphere, nullptr))
+				{
+					bullet->OnCollision();
+					hitEffect_.SetPosition(bulletSphere.center);
+					hitEffect_.Play();
+					break;
+				}
+			}
+		}
 
 		bool isLockOn = false;
 		if (player_ && player_->GetObject3d() && player_->GetReticle() && activeCamera_)
