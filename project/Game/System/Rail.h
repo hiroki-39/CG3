@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Scene/LevelLoader.h"
 #include "KHEngine/Math/Vector3.h"
 #include <vector>
@@ -49,8 +49,23 @@ public:
     /// </summary>
     bool IsValid() const { return !points_.empty(); }
 
+    // 狭窄区間（トンネル・建物隙間）の設定
+    struct NarrowZone {
+        float startT;
+        float endT;
+        float limitX = 10.0f;
+        float limitYMin = -3.0f;
+        float limitYMax = 8.0f;
+    };
+
+    void AddNarrowZone(float startT, float endT, float limitX = 10.0f, float limitYMin = -3.0f, float limitYMax = 8.0f);
+    void GetMoveLimits(float t, float& outLimitX, float& outLimitYMin, float& outLimitYMax) const;
+    const std::vector<NarrowZone>& GetNarrowZones() const { return narrowZones_; }
+    void ClearNarrowZones() { narrowZones_.clear(); }
+
 private:
     std::vector<LevelCurvePoint> points_;
+    std::vector<NarrowZone> narrowZones_;
     float totalLength_ = 0.0f;
 
     // 区間と区間内進行度を計算する補助関数

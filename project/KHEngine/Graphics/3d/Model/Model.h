@@ -1,6 +1,7 @@
 #pragma once
 #include "KHEngine/Graphics/3d/Model/ModelCommon.h"
 #include "KHEngine/Math/MathCommon.h"
+#include "KHEngine/Math/CollisionMath.h"
 #include <assimp/scene.h>
 
 class DirectXCommon;
@@ -100,6 +101,10 @@ public: //メンバ関数
 
 	inline void SetSelectLightings(int32_t v) { if (materialData_) materialData_->selectLightings = v; }
 	inline void SetEnvironmentCoefficient(float v) { if (materialData_) materialData_->environmentCoefficient = v; }
+
+	// コリジョン用データ取得
+	const ModelData& GetModelData() const { return modelData; }
+	std::vector<Triangle> GetWorldTriangles(const Matrix4x4& worldMat) const;
 
 private: //メンバ関数
 

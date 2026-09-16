@@ -403,3 +403,89 @@ float Object3d::GetSpotLightAngleDeg() const
 {
 	return 0.0f;
 }
+
+void Object3d::EnsureTriangles() const {
+	if (isTrianglesInitialized_) return;
+	isTrianglesInitialized_ = true;
+
+	if (model) {
+		Matrix4x4 wMat = transform.GetWorldMatrix();
+		if (parent_) {
+			wMat = Matrix4x4::Multiply(wMat, parent_->GetmatWorld());
+		}
+		triangles_ = model->GetWorldTriangles(wMat);
+		if (!triangles_.empty()) {
+			hasMeshCollider_ = true;
+			broadAABB_.min = { 1e9f, 1e9f, 1e9f };
+			broadAABB_.max = { -1e9f, -1e9f, -1e9f };
+			for (const auto& tri : triangles_) {
+				for (const auto& p : { tri.p0, tri.p1, tri.p2 }) {
+					broadAABB_.min.x = (std::min)(broadAABB_.min.x, p.x);
+					broadAABB_.min.y = (std::min)(broadAABB_.min.y, p.y);
+					broadAABB_.min.z = (std::min)(broadAABB_.min.z, p.z);
+					broadAABB_.max.x = (std::max)(broadAABB_.max.x, p.x);
+					broadAABB_.max.y = (std::max)(broadAABB_.max.y, p.y);
+					broadAABB_.max.z = (std::max)(broadAABB_.max.z, p.z);
+				}
+			}
+		}
+	}
+}
+
+bool Object3d::CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* outResult) const {
+	EnsureTriangles();
+	if (!hasMeshCollider_) return false;
+
+	if (!CollisionMath::IsCollision(sphere, broadAABB_)) {
+		return false;
+	}
+
+	bool hitAny = false;
+	CollisionResult bestResult;
+	bestResult.penetrationDepth = -1.0f;
+
+	for (const auto& tri : triangles_) {
+		CollisionResult res;
+		if (CollisionMath::IsCollision(sphere, tri, &res)) {
+			hitAny = true;
+			if (res.penetrationDepth > bestResult.penetrationDepth) {
+				bestResult = res;
+			}
+		}
+	}
+
+	if (hitAny) {
+		if (outResult) *outResult = bestResult;
+		return true;
+	}
+	return false;
+}
+
+bool Object3d::CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult) const {
+	EnsureTriangles();
+	if (!hasMeshCollider_) return false;
+
+	if (!CollisionMath::IsCollision(obb, broadAABB_)) {
+		return false;
+	}
+
+	bool hitAny = false;
+	CollisionResult bestResult;
+	bestResult.penetrationDepth = -1.0f;
+
+	for (const auto& tri : triangles_) {
+		CollisionResult res;
+		if (CollisionMath::IsCollision(obb, tri, &res)) {
+			hitAny = true;
+			if (res.penetrationDepth > bestResult.penetrationDepth) {
+				bestResult = res;
+			}
+		}
+	}
+
+	if (hitAny) {
+		if (outResult) *outResult = bestResult;
+		return true;
+	}
+	return false;
+}

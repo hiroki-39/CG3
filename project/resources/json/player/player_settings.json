@@ -2,9 +2,9 @@
     "attackInterval": 15.0,
     "bulletSpeed": 10.0,
     "colliderSize": [
-        4.0,
-        4.0,
-        4.0
+        3.5,
+        1.0,
+        3.5
     ],
     "color": [
         0.15544039011001587,

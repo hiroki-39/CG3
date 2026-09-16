@@ -1,6 +1,7 @@
 #pragma once
 #include "KHEngine/Graphics/3d/Object/Object3dCommon.h"
 #include "KHEngine/Math/MathCommon.h"
+#include "KHEngine/Math/CollisionMath.h"
 #include "KHEngine/Graphics/3d/Model/Model.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
 #include "KHEngine/Graphics/3d/Camera/Camera.h"
@@ -131,6 +132,11 @@ public://メンバ関数
 	void SetSelectLightings(int32_t v) { if (model) model->SetSelectLightings(v); }
 	int32_t GetSelectLightings() const { return model ? model->GetSelectLightings() : 0; }
 
+	// メッシュコリジョン判定
+	bool CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* outResult = nullptr) const;
+	bool CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult = nullptr) const;
+	bool HasMeshCollider() const { return hasMeshCollider_; }
+
 private://メンバ関数
 
 	/// <summary>
@@ -200,4 +206,11 @@ private://メンバ変数
 	Matrix4x4 worldMatrix_;
 
 	Transform cameraTransform;
+
+	// メッシュコリジョン用キャッシュデータ
+	mutable std::vector<Triangle> triangles_;
+	mutable AABB broadAABB_;
+	mutable bool hasMeshCollider_ = false;
+	mutable bool isTrianglesInitialized_ = false;
+	void EnsureTriangles() const;
 };
