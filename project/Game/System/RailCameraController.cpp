@@ -1,4 +1,5 @@
 #include "RailCameraController.h"
+#include "externals/imgui/imgui.h"
 
 void RailCameraController::Initialize(const std::vector<Rail*>& rails, Camera* camera, Object3d* parentObject) {
     rails_ = rails;
@@ -6,6 +7,8 @@ void RailCameraController::Initialize(const std::vector<Rail*>& rails, Camera* c
     parentObject_ = parentObject;
     progress_ = 0.0f;
     currentRailIndex_ = 0;
+    speedMultiplier_ = 1.0f;
+    currentCameraLocalPos_ = cameraOffset_;
 
     ApplyTransform({0.0f, 0.0f, 0.0f});
 }
@@ -18,8 +21,11 @@ void RailCameraController::Update(float gameSpeed, const Vector3& playerLocalPos
     
     Rail* currentRail = rails_[currentRailIndex_];
 
-    // 現在地点での設定スピード（m/s）を取得
-    float currentSpeed = currentRail->GetSpeed(progress_);
+    // ゲーム側で指定された基準速度 × 速度倍率（ブースト等）
+    float currentSpeed = baseSpeed_ * speedMultiplier_;
+    if (!currentRail->IsUsingCustomSpeed()) {
+        currentSpeed = currentRail->GetSpeed(progress_) * speedMultiplier_;
+    }
     
     // 1フレーム（60FPS想定）あたりの移動距離
     float distancePerFrame = (currentSpeed * gameSpeed) / 60.0f;
@@ -33,7 +39,6 @@ void RailCameraController::Update(float gameSpeed, const Vector3& playerLocalPos
         // 終点に達した場合の処理
         if (progress_ >= 1.0f) {
             if (currentRailIndex_ < rails_.size() - 1) {
-                // 次のレールへ乗り換え（超過分は今のところ単純に0に戻す）
                 currentRailIndex_++;
                 progress_ = 0.0f;
             } else {
@@ -48,6 +53,8 @@ void RailCameraController::Update(float gameSpeed, const Vector3& playerLocalPos
 void RailCameraController::Reset() {
     progress_ = 0.0f;
     currentRailIndex_ = 0;
+    speedMultiplier_ = 1.0f;
+    currentCameraLocalPos_ = cameraOffset_;
     ApplyTransform({0.0f, 0.0f, 0.0f});
 }
 
@@ -103,32 +110,53 @@ void RailCameraController::ApplyTransform(const Vector3& playerLocalPos) {
         // 回転の順番は Z -> X -> Y （エンジン仕様による）
         Matrix4x4 rotMatrix = Matrix4x4::RotateZ(railTilt) * Matrix4x4::RotateX(targetPitch) * Matrix4x4::RotateY(targetYaw);
         
-        // カメラの基本ローカル位置（アンカーから後ろ、少し上）
-        // さらにカメラをプレイヤーに近づける（Zを-10.0fから0.0fへ、Yを2.0fから1.5fへ変更）
-        Vector3 baseCameraLocalPos = { 0.0f, 1.5f, 0.0f };
-        
-        // プレイヤーの移動量に対するカメラの並行移動追従率
-        float cameraFollowRateX = 1.0f;
-        float cameraFollowRateY = 1.0f;
-        
-        Vector3 cameraLocalPos = {
-            baseCameraLocalPos.x + playerLocalPos.x * cameraFollowRateX,
-            baseCameraLocalPos.y + playerLocalPos.y * cameraFollowRateY,
-            baseCameraLocalPos.z
+        // スターフォックス仕様: 自機の移動に合わせてカメラも大きくスライド追従（70%）
+        Vector3 targetCameraLocalPos = {
+            cameraOffset_.x + playerLocalPos.x * cameraFollowRateX_,
+            cameraOffset_.y + playerLocalPos.y * cameraFollowRateY_,
+            cameraOffset_.z
         };
+
+        // スムーズな遅延補間（自機が動くとカメラが滑らかにスライド追従）
+        float followLerp = 0.15f;
+        currentCameraLocalPos_.x += (targetCameraLocalPos.x - currentCameraLocalPos_.x) * followLerp;
+        currentCameraLocalPos_.y += (targetCameraLocalPos.y - currentCameraLocalPos_.y) * followLerp;
+        currentCameraLocalPos_.z = targetCameraLocalPos.z;
 
         // ローカル位置をワールド位置に変換
         Vector3 cameraWorldPos = {
-            cameraLocalPos.x * rotMatrix.m[0][0] + cameraLocalPos.y * rotMatrix.m[1][0] + cameraLocalPos.z * rotMatrix.m[2][0] + eye.x,
-            cameraLocalPos.x * rotMatrix.m[0][1] + cameraLocalPos.y * rotMatrix.m[1][1] + cameraLocalPos.z * rotMatrix.m[2][1] + eye.y,
-            cameraLocalPos.x * rotMatrix.m[0][2] + cameraLocalPos.y * rotMatrix.m[1][2] + cameraLocalPos.z * rotMatrix.m[2][2] + eye.z
+            currentCameraLocalPos_.x * rotMatrix.m[0][0] + currentCameraLocalPos_.y * rotMatrix.m[1][0] + currentCameraLocalPos_.z * rotMatrix.m[2][0] + eye.x,
+            currentCameraLocalPos_.x * rotMatrix.m[0][1] + currentCameraLocalPos_.y * rotMatrix.m[1][1] + currentCameraLocalPos_.z * rotMatrix.m[2][1] + eye.y,
+            currentCameraLocalPos_.x * rotMatrix.m[0][2] + currentCameraLocalPos_.y * rotMatrix.m[1][2] + currentCameraLocalPos_.z * rotMatrix.m[2][2] + eye.z
         };
 
-        // 首振り（パン）を無くし、レールアンカーと完全に同じ角度（平行）にする
-        Vector3 finalCameraRot = anchorRot;
+        // 自機とカメラの相対ズレに応じた微小なカメラ首振り（自機を常に中心付近に捉え、見切れを完全防止）
+        float relX = playerLocalPos.x - currentCameraLocalPos_.x;
+        float relY = playerLocalPos.y - currentCameraLocalPos_.y;
+        float cameraLookYaw = relX * 0.015f;
+        float cameraLookPitch = -relY * 0.012f;
+        Vector3 finalCameraRot = {
+            anchorRot.x + cameraLookPitch,
+            anchorRot.y + cameraLookYaw,
+            anchorRot.z
+        };
 
         camera_->SetTranslate(cameraWorldPos);
         camera_->SetRotation(finalCameraRot);
         camera_->Update();
     }
+}
+
+void RailCameraController::DrawImGui() {
+#ifdef USE_IMGUI
+    if (ImGui::Begin("Rail & Camera Controller")) {
+        ImGui::SliderFloat("Rail Base Speed (m/s)", &baseSpeed_, 5.0f, 150.0f);
+        ImGui::SliderFloat("Speed Multiplier", &speedMultiplier_, 0.2f, 3.0f);
+        ImGui::SliderFloat("Progress", &progress_, 0.0f, 1.0f);
+        ImGui::DragFloat3("Camera Offset", &cameraOffset_.x, 0.1f);
+        ImGui::SliderFloat("Camera Follow Rate X", &cameraFollowRateX_, 0.0f, 1.0f);
+        ImGui::SliderFloat("Camera Follow Rate Y", &cameraFollowRateY_, 0.0f, 1.0f);
+    }
+    ImGui::End();
+#endif
 }

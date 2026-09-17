@@ -146,9 +146,43 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 		std::string modelName = node.fileName;
 		if (modelName.empty())
 		{
-			modelName = node.name + ".obj";
-		}
+			// まず完全一致（例: pillar.obj）を試す
+			std::string directName = node.name;
+			if (directName.find(".obj") == std::string::npos) directName += ".obj";
 
+			if (!ResourceLocator::Resolve(directName, ResourceLocator::AssetType::Model3D).empty())
+			{
+				modelName = directName;
+			}
+			else
+			{
+				// Blenderの複製連番サフィックス（.001, .002等）を除去したベース名（例: pillar.001 -> pillar.obj）を試す
+				std::string baseName = node.name;
+				size_t dotPos = baseName.rfind('.');
+				if (dotPos != std::string::npos && dotPos + 1 < baseName.size())
+				{
+					bool isNumber = true;
+					for (size_t i = dotPos + 1; i < baseName.size(); ++i)
+					{
+						if (!std::isdigit(static_cast<unsigned char>(baseName[i])))
+						{
+							isNumber = false;
+							break;
+						}
+					}
+					if (isNumber)
+					{
+						baseName = baseName.substr(0, dotPos);
+					}
+				}
+				if (baseName.find(".obj") == std::string::npos) baseName += ".obj";
+				modelName = baseName;
+			}
+		}
+		else if (modelName.find(".obj") == std::string::npos)
+		{
+			modelName += ".obj";
+		}
 
 		ModelManager::GetInstance()->LoadModel(modelName);
 		if (ModelManager::GetInstance()->FindModel(modelName) != nullptr)
@@ -316,7 +350,7 @@ void GamePlayScene::Initialize()
 	}
 
 
-	ParticleManager::GetInstance()->RegisterQuad("quad", "resources/circle.png");
+	ParticleManager::GetInstance()->RegisterQuad("quad", "circle2.png");
 	ParticleManager::GetInstance()->RegisterRing("ring", "gradationLine.png", 32, 0.5f, 1.0f);
 	ParticleManager::GetInstance()->RegisterCylinder("Cylinder", "resources/sprites/gradationLine.png");
 
@@ -446,6 +480,9 @@ void GamePlayScene::Initialize()
 
 	healRingEffect_.Initialize(dxCommon, srvManager);
 	healRingEffect_.LoadFromJson("heal_ring.json");
+
+	windEffect_.Initialize(dxCommon, srvManager);
+	windEffect_.LoadFromJson("wind.json");
 
 
 	texManager->ExecuteUploadCommands();
@@ -853,7 +890,11 @@ void GamePlayScene::Update()
 				if (pp)
 				{
 					pp->SetEffectActive("RadialBlur", true);
-					pp->GetData()->radialBlurIntensity = 0.1f;
+					pp->GetData()->radialBlurIntensity = 0.08f;
+				}
+				if (railCameraController_)
+				{
+					railCameraController_->SetSpeedMultiplier(1.5f);
 				}
 			}
 			else
@@ -864,6 +905,19 @@ void GamePlayScene::Update()
 				{
 					pp->SetEffectActive("RadialBlur", false);
 				}
+				if (railCameraController_)
+				{
+					railCameraController_->SetSpeedMultiplier(1.0f);
+				}
+			}
+
+			// ブースト時の動的FOV拡大演出（通常66度 → ブースト時76度へ滑らかに補間）
+			if (activeCamera_)
+			{
+				float targetFov = (player_ && player_->IsBoosting()) ? 1.32f : 1.15f;
+				float currentFov = activeCamera_->GetFovY();
+				currentFov += (targetFov - currentFov) * 0.15f;
+				activeCamera_->SetFovY(currentFov);
 			}
 
 
@@ -1665,6 +1719,30 @@ void GamePlayScene::Update()
 		missileSmokeEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
 		ringEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
 		healRingEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
+
+		// 気流線（風の筋）エフェクトの発生（自機前方から奥へと通り過ぎる白い空気抵抗パーティクル）
+		if (isPlaying_)
+		{
+			bool isBoost = player_ && player_->IsBoosting();
+			int spawnCount = isBoost ? 4 : 2;
+
+			// 機体の飛行進路周辺に分散させて発生（照準を遮らないよう自然な範囲に分散）
+			std::uniform_real_distribution<float> distOffsetX(-8.0f, 8.0f);
+			std::uniform_real_distribution<float> distOffsetY(-3.0f, 4.5f);
+			std::uniform_real_distribution<float> distOffsetZ(20.0f, 45.0f);
+
+			for (int i = 0; i < spawnCount; ++i)
+			{
+				Vector3 windSpawnPos = {
+					worldPos.x + distOffsetX(randomEngine),
+					worldPos.y + distOffsetY(randomEngine),
+					worldPos.z + distOffsetZ(randomEngine)
+				};
+				windEffect_.SetPosition(windSpawnPos);
+				windEffect_.Play();
+			}
+		}
+		windEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
 	}
 
 #ifdef USE_IMGUI
@@ -1760,6 +1838,11 @@ void GamePlayScene::Update()
 	ImGui::Checkbox("レールを表示 (Draw Rail)", &isDrawRail_);
 	ImGui::Checkbox("コライダーを表示 (Draw Collider)", &isDrawCollider_);
 	ImGui::End();
+
+	if (railCameraController_)
+	{
+		railCameraController_->DrawImGui();
+	}
 
 	if (player_)
 	{
@@ -2287,13 +2370,15 @@ void GamePlayScene::Update()
 
 	// --- Particle ウィンドウ ---
 	ImGui::Begin("Effect Selector");
-	const char* items[] = { "Thruster", "Explosion", "Hit" };
+	const char* items[] = { "Thruster", "Explosion", "Hit", "Wind", "Trail" };
 	ImGui::Combo("Edit Target", &currentEditEffectIndex_, items, IM_ARRAYSIZE(items));
 	ImGui::End();
 
 	if (currentEditEffectIndex_ == 0) thrusterEffect_.DrawImGui();
 	else if (currentEditEffectIndex_ == 1) explosionEffect_.DrawImGui();
 	else if (currentEditEffectIndex_ == 2) hitEffect_.DrawImGui();
+	else if (currentEditEffectIndex_ == 3) windEffect_.DrawImGui();
+	else if (currentEditEffectIndex_ == 4) trailEffect_.DrawImGui();
 
 
 #endif // USE_IMGUI
@@ -2410,6 +2495,7 @@ void GamePlayScene::Draw()
 	missileSmokeEffect_.Draw();
 	ringEffect_.Draw();
 	healRingEffect_.Draw();
+	windEffect_.Draw();
 }
 
 void GamePlayScene::DrawUI()
