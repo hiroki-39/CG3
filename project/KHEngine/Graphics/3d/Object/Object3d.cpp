@@ -489,3 +489,30 @@ bool Object3d::CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult)
 	}
 	return false;
 }
+
+bool Object3d::GetBoundingSphere(Vector3& outCenter, float& outRadius) const
+{
+	if (!model)
+	{
+		outCenter = { worldMatrix_.m[3][0], worldMatrix_.m[3][1], worldMatrix_.m[3][2] };
+		outRadius = 1.0f;
+		return false;
+	}
+
+	Vector3 localCenter = model->GetBoundingCenter();
+	float localRadius = model->GetBoundingRadius();
+
+	// ワールド座標へ変換 (行ベクトル v * M)
+	outCenter.x = localCenter.x * worldMatrix_.m[0][0] + localCenter.y * worldMatrix_.m[1][0] + localCenter.z * worldMatrix_.m[2][0] + worldMatrix_.m[3][0];
+	outCenter.y = localCenter.x * worldMatrix_.m[0][1] + localCenter.y * worldMatrix_.m[1][1] + localCenter.z * worldMatrix_.m[2][1] + worldMatrix_.m[3][1];
+	outCenter.z = localCenter.x * worldMatrix_.m[0][2] + localCenter.y * worldMatrix_.m[1][2] + localCenter.z * worldMatrix_.m[2][2] + worldMatrix_.m[3][2];
+
+	// 各軸のスケール長さを求めて最大値を掛ける
+	float sx = std::sqrt(worldMatrix_.m[0][0] * worldMatrix_.m[0][0] + worldMatrix_.m[0][1] * worldMatrix_.m[0][1] + worldMatrix_.m[0][2] * worldMatrix_.m[0][2]);
+	float sy = std::sqrt(worldMatrix_.m[1][0] * worldMatrix_.m[1][0] + worldMatrix_.m[1][1] * worldMatrix_.m[1][1] + worldMatrix_.m[1][2] * worldMatrix_.m[1][2]);
+	float sz = std::sqrt(worldMatrix_.m[2][0] * worldMatrix_.m[2][0] + worldMatrix_.m[2][1] * worldMatrix_.m[2][1] + worldMatrix_.m[2][2] * worldMatrix_.m[2][2]);
+	float maxScale = (std::max)({ sx, sy, sz });
+
+	outRadius = localRadius * maxScale;
+	return true;
+}

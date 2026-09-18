@@ -21,6 +21,7 @@
 #include <filesystem>
 #include "KHEngine/Math/CollisionMath.h"
 #include "KHEngine/Scene/SceneManager.h"
+#include <chrono>
 
 static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, std::list<std::unique_ptr<EnhanceRing>>& enhanceRings, std::vector<Enemy*> parentEnemies = {})
 {
@@ -146,37 +147,38 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 		std::string modelName = node.fileName;
 		if (modelName.empty())
 		{
-			// まず完全一致（例: pillar.obj）を試す
-			std::string directName = node.name;
-			if (directName.find(".obj") == std::string::npos) directName += ".obj";
-
-			if (!ResourceLocator::Resolve(directName, ResourceLocator::AssetType::Model3D).empty())
+			// Blenderの複製連番サフィックス（.001, .002等）がある場合はベース名を抽出
+			std::string baseName = node.name;
+			size_t dotPos = baseName.rfind('.');
+			if (dotPos != std::string::npos && dotPos + 1 < baseName.size())
 			{
-				modelName = directName;
+				bool isNumber = true;
+				for (size_t i = dotPos + 1; i < baseName.size(); ++i)
+				{
+					if (!std::isdigit(static_cast<unsigned char>(baseName[i])))
+					{
+						isNumber = false;
+						break;
+					}
+				}
+				if (isNumber)
+				{
+					baseName = baseName.substr(0, dotPos);
+				}
+			}
+			std::string baseObjName = baseName;
+			if (baseObjName.find(".obj") == std::string::npos) baseObjName += ".obj";
+
+			// ベース名のモデル（例: AITerrain_Background_Mountains.obj, pillar.obj等）が存在すればそれを優先して共通化
+			if (!ResourceLocator::Resolve(baseObjName, ResourceLocator::AssetType::Model3D).empty())
+			{
+				modelName = baseObjName;
 			}
 			else
 			{
-				// Blenderの複製連番サフィックス（.001, .002等）を除去したベース名（例: pillar.001 -> pillar.obj）を試す
-				std::string baseName = node.name;
-				size_t dotPos = baseName.rfind('.');
-				if (dotPos != std::string::npos && dotPos + 1 < baseName.size())
-				{
-					bool isNumber = true;
-					for (size_t i = dotPos + 1; i < baseName.size(); ++i)
-					{
-						if (!std::isdigit(static_cast<unsigned char>(baseName[i])))
-						{
-							isNumber = false;
-							break;
-						}
-					}
-					if (isNumber)
-					{
-						baseName = baseName.substr(0, dotPos);
-					}
-				}
-				if (baseName.find(".obj") == std::string::npos) baseName += ".obj";
-				modelName = baseName;
+				std::string directName = node.name;
+				if (directName.find(".obj") == std::string::npos) directName += ".obj";
+				modelName = directName;
 			}
 		}
 		else if (modelName.find(".obj") == std::string::npos)
@@ -325,6 +327,7 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
 
 void GamePlayScene::Initialize()
 {
+	auto initStartTime = std::chrono::high_resolution_clock::now();
 
 	auto services = EngineServices::GetInstance();
 	auto object3dCommon = services->GetObject3dCommon();
@@ -360,23 +363,21 @@ void GamePlayScene::Initialize()
 	dxCommon->BeginTextureUploadBatch();
 
 
+	auto t0 = std::chrono::high_resolution_clock::now();
 	skybox_ = std::make_unique<Skybox>();
 	skybox_->Initialize(dxCommon, "resources/skybox.dds");
+	auto t1 = std::chrono::high_resolution_clock::now();
+	float skyboxMs = std::chrono::duration<float, std::milli>(t1 - t0).count();
 
 
 	ModelManager::GetInstance()->LoadModel("plane.obj");
-	ModelManager::GetInstance()->LoadModel("Cube.obj");
 	ModelManager::GetInstance()->LoadModel("cube.obj");
-	ModelManager::GetInstance()->LoadModel("monsterBall.obj");
-	ModelManager::GetInstance()->LoadModel("terrain.obj");
 	ModelManager::GetInstance()->LoadModel("player.obj");
-	ModelManager::GetInstance()->LoadModel("suzanne.obj");
 
 
 	texManager->LoadTexture("uvChecker.png");
 	texManager->LoadTexture("monsterBall.png");
 	texManager->LoadTexture("checkerBoard.png");
-	texManager->LoadTexture("resources/skybox.dds");
 	texManager->LoadTexture("circle.png");
 	texManager->LoadTexture("circle2.png");
 	texManager->LoadTexture("gradationLine.png");
@@ -425,7 +426,10 @@ void GamePlayScene::Initialize()
 		hpBarSprite_->Update();
 	}
 
+	auto tLevel0 = std::chrono::high_resolution_clock::now();
 	ReloadLevel();
+	auto tLevel1 = std::chrono::high_resolution_clock::now();
+	float levelMs = std::chrono::duration<float, std::milli>(tLevel1 - tLevel0).count();
 
 	// カメラ
 	cameraObject_ = std::make_unique<Object3d>();
@@ -484,9 +488,26 @@ void GamePlayScene::Initialize()
 	windEffect_.Initialize(dxCommon, srvManager);
 	windEffect_.LoadFromJson("wind.json");
 
-
+	auto tUp0 = std::chrono::high_resolution_clock::now();
 	texManager->ExecuteUploadCommands();
 	texManager->ClearIntermediateResources();
+	auto tUp1 = std::chrono::high_resolution_clock::now();
+	float uploadMs = std::chrono::duration<float, std::milli>(tUp1 - tUp0).count();
+
+	auto initEndTime = std::chrono::high_resolution_clock::now();
+	lastLoadTimeMs_ = std::chrono::duration<float, std::milli>(initEndTime - initStartTime).count();
+
+	char logBuf[512];
+	snprintf(logBuf, sizeof(logBuf),
+		"\n========================================\n"
+		"[Load Profiler Breakdown]\n"
+		"  - Skybox Load:         %8.2f ms\n"
+		"  - ReloadLevel (Map):   %8.2f ms\n"
+		"  - GPU Texture Upload:  %8.2f ms\n"
+		"  - TOTAL Initialize:    %8.2f ms (%.3f s)\n"
+		"========================================\n\n",
+		skyboxMs, levelMs, uploadMs, lastLoadTimeMs_, lastLoadTimeMs_ / 1000.0f);
+	OutputDebugStringA(logBuf);
 }
 
 void GamePlayScene::ReloadLevel()
@@ -2380,6 +2401,11 @@ void GamePlayScene::Update()
 	else if (currentEditEffectIndex_ == 3) windEffect_.DrawImGui();
 	else if (currentEditEffectIndex_ == 4) trailEffect_.DrawImGui();
 
+	// --- Performance Profiler ウィンドウ ---
+	ImGui::Begin("Profiler");
+	ImGui::Text("Scene Load Time: %.2f ms (%.3f s)", lastLoadTimeMs_, lastLoadTimeMs_ / 1000.0f);
+	ImGui::Text("Application FPS: %.1f", ImGui::GetIO().Framerate);
+	ImGui::End();
 
 #endif // USE_IMGUI
 
@@ -2396,23 +2422,76 @@ void GamePlayScene::Draw()
 		skybox_->Draw();
 	}
 
+	// 視錐台（Frustum）カリング用の情報取得
+	Frustum frustum{};
+	bool enableCulling = false;
+	/*
+	if (activeCamera_)
+	{
+		Matrix4x4 vp = activeCamera_->GetViewMatrix() * activeCamera_->GetProjectionMatrix();
+		frustum = Frustum::CreateFromViewProjection(vp);
+		enableCulling = true;
+	}
+	*/
+
 	if (object3dCommon) object3dCommon->SetCommonDrawSetting();
 
-	for (auto& model : modelInstances) if (model) model->Draw();
+	for (auto& model : modelInstances)
+	{
+		if (!model) continue;
 
+		if (enableCulling)
+		{
+			Vector3 center;
+			float radius = 0.0f;
+			if (model->GetBoundingSphere(center, radius))
+			{
+				// 半径が極端に巨大なオブジェクト（広域背景など）以外は視錐台カリング
+				if (radius < 300.0f && !frustum.ContainsSphere(center, radius))
+				{
+					continue; // 画面外のため描画スキップ
+				}
+			}
+		}
 
+		model->Draw();
+	}
 
 	if (object3dCommon) object3dCommon->SetCommonDrawSetting();
 	for (auto& enemy : enemies_)
 	{
+		if (enableCulling)
+		{
+			Vector3 ePos = enemy->GetPosition();
+			if (!frustum.ContainsSphere(ePos, 20.0f))
+			{
+				continue; // 画面外スキップ
+			}
+		}
 		enemy->Draw();
 	}
 	for (auto& obstacle : obstacles_)
 	{
+		if (enableCulling)
+		{
+			Vector3 oPos = obstacle->GetPosition();
+			if (!frustum.ContainsSphere(oPos, 25.0f))
+			{
+				continue; // 画面外スキップ
+			}
+		}
 		obstacle->Draw();
 	}
 	for (auto& ring : enhanceRings_)
 	{
+		if (enableCulling)
+		{
+			Vector3 rPos = ring->GetPosition();
+			if (!frustum.ContainsSphere(rPos, 20.0f))
+			{
+				continue; // 画面外スキップ
+			}
+		}
 		ring->Draw();
 	}
 

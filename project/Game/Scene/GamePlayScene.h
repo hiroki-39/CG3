@@ -132,4 +132,5 @@ private:
     bool isDrawCollider_ = false;
 #endif
     float cameraShakeTimer_ = 0.0f;
+    float lastLoadTimeMs_ = 0.0f;
 };

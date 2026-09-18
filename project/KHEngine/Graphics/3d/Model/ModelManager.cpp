@@ -2,6 +2,8 @@
 #include "KHEngine/Core/Resource/ResourceLocator.h"
 #include <filesystem>
 #include <cassert>
+#include <chrono>
+#include <Windows.h>
 
 // シングルトンインスタンスの取得（Meyers singleton で new を排除）
 ModelManager* ModelManager::GetInstance()
@@ -36,6 +38,8 @@ void ModelManager::LoadModel(const std::string& filePath)
 		return;
 	}
 
+	auto start = std::chrono::high_resolution_clock::now();
+
 	// 論理名から実パスを解決
 	std::string resolved = ResourceLocator::Resolve(filePath, ResourceLocator::AssetType::Model3D);
 	if (resolved.empty())
@@ -55,6 +59,12 @@ void ModelManager::LoadModel(const std::string& filePath)
 
 	// モデルをマップに格納（キーは呼び出し元が使っている論理名を維持）
 	models.insert(std::make_pair(filePath, std::move(model)));
+
+	auto end = std::chrono::high_resolution_clock::now();
+	float ms = std::chrono::duration<float, std::milli>(end - start).count();
+	char buf[256];
+	snprintf(buf, sizeof(buf), "[Model Profiler] Loaded '%s' in %.2f ms\n", filePath.c_str(), ms);
+	OutputDebugStringA(buf);
 }
 
 Model* ModelManager::FindModel(const std::string& filePath)
