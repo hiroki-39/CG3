@@ -26,10 +26,10 @@
         0.0,
         0.0
     ],
-    "moveLimitX": 25.0,
-    "moveLimitY": 12.0,
-    "playerLimitX": 30.0,
-    "playerLimitYMax": 30.0,
+    "moveLimitX": 22.0,
+    "moveLimitY": 10.0,
+    "playerLimitX": 22.0,
+    "playerLimitYMax": 10.0,
     "playerLimitYMin": -4.0,
     "playerScale": [
         0.5,
@@ -37,7 +37,7 @@
         0.5
     ],
     "reflection": false,
-    "reticleSpeed": 0.5,
+    "reticleSpeed": 0.75,
     "rollMaxTime": 15.0,
-    "speed": 0.30000001192092896
+    "speed": 0.45
 }

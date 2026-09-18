@@ -1473,6 +1473,160 @@
             },
             "is_destructible": true,
             "texture_path": "grass.png"
+        },
+        {
+            "type": "MESH",
+            "name": "pillar",
+            "transform": {
+                "translation": [
+                    77.6605224609375,
+                    1392.6849365234375,
+                    10.32664966583252
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.0,
+                    5.0,
+                    50.0
+                ]
+            },
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "pillar.001",
+            "transform": {
+                "translation": [
+                    137.97779846191406,
+                    1392.6849365234375,
+                    45.36454772949219
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.0,
+                    5.0,
+                    50.0
+                ]
+            },
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "pillar.002",
+            "transform": {
+                "translation": [
+                    106.69329071044922,
+                    1433.30419921875,
+                    45.36454772949219
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.0,
+                    21.38536834716797,
+                    50.0
+                ]
+            },
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "pillar.003",
+            "transform": {
+                "translation": [
+                    134.09588623046875,
+                    1604.048583984375,
+                    45.36454772949219
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.0,
+                    5.0,
+                    50.0
+                ]
+            },
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "pillar.004",
+            "transform": {
+                "translation": [
+                    77.18428039550781,
+                    1604.048583984375,
+                    45.36454772949219
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.0,
+                    5.0,
+                    50.0
+                ]
+            },
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "pillar.006",
+            "transform": {
+                "translation": [
+                    85.75421905517578,
+                    1567.847412109375,
+                    45.36454772949219
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.0,
+                    5.0,
+                    50.0
+                ]
+            },
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "pillar.005",
+            "transform": {
+                "translation": [
+                    102.03972625732422,
+                    1504.5469970703125,
+                    45.36454772949219
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.0,
+                    21.38536834716797,
+                    50.0
+                ]
+            },
+            "is_destructible": true
         }
     ]
 }

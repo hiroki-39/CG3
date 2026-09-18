@@ -56,9 +56,17 @@ public: //構造体
 		std::vector<uint32_t> indices;
 		MaterialData material;
 		Node rootNode;
+		Vector3 boundingCenter = { 0.0f, 0.0f, 0.0f };
+		float boundingRadius = 0.0f;
 	};
 
 public: //メンバ関数
+
+	/// <summary>
+	/// バウンディング中心と半径を取得
+	/// </summary>
+	const Vector3& GetBoundingCenter() const { return modelData.boundingCenter; }
+	float GetBoundingRadius() const { return modelData.boundingRadius; }
 
 	/// <summary>
 	/// 初期化

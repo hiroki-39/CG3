@@ -99,6 +99,7 @@ private:
     ParticleEffect missileSmokeEffect_; 
     ParticleEffect ringEffect_;
     ParticleEffect healRingEffect_; // リング取得時のキラキラエフェクト
+    ParticleEffect windEffect_;     // 気流線（風の筋）エフェクト
 
     
     int currentEditEffectIndex_ = 0;
@@ -131,4 +132,5 @@ private:
     bool isDrawCollider_ = false;
 #endif
     float cameraShakeTimer_ = 0.0f;
+    float lastLoadTimeMs_ = 0.0f;
 };

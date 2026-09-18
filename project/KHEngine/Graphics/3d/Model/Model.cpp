@@ -7,6 +7,9 @@
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
+#include <algorithm>
+#include <cfloat>
+#include <cmath>
 
 void Model::Initialize(ModelCommon* modelCommon, const std::string& directoryPath, const std::string& filename)
 {
@@ -157,7 +160,10 @@ Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std
 	Assimp::Importer importer;
 	std::string filePath = directoryPath + "/" + filename;
 	const aiScene* scene = importer.ReadFile(filePath.c_str(), aiProcess_FlipUVs | aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_JoinIdenticalVertices);
-	assert(scene->HasMeshes());
+	if (!scene || !scene->HasMeshes())
+	{
+		return modelData;
+	}
 
 	/*--- 3.マテリアル情報の読み込み ---*/
 
@@ -195,51 +201,83 @@ Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std
 
 	modelData.rootNode = model.ReadNode(scene->mRootNode);
 
-	/*--- 2.ノード情報の読み込み ---*/
+	/*--- 2.ノード・頂点情報の読み込み ---*/
+	size_t totalVertices = 0;
+	size_t totalIndices = 0;
 	for (uint32_t meshIndex = 0; meshIndex < scene->mNumMeshes; ++meshIndex)
 	{
 		aiMesh* mesh = scene->mMeshes[meshIndex];
-		//法線がないmeshは対応しない
-		assert(mesh->HasNormals());
-		for (uint32_t faceINdex = 0; faceINdex < mesh->mNumFaces; ++faceINdex)
+		totalVertices += mesh->mNumVertices;
+		totalIndices += mesh->mNumFaces * 3;
+	}
+	modelData.vertices.reserve(totalVertices);
+	modelData.indices.reserve(totalIndices);
+
+	Vector3 minPos = { (std::numeric_limits<float>::max)(), (std::numeric_limits<float>::max)(), (std::numeric_limits<float>::max)() };
+	Vector3 maxPos = { -(std::numeric_limits<float>::max)(), -(std::numeric_limits<float>::max)(), -(std::numeric_limits<float>::max)() };
+
+	for (uint32_t meshIndex = 0; meshIndex < scene->mNumMeshes; ++meshIndex)
+	{
+		aiMesh* mesh = scene->mMeshes[meshIndex];
+		uint32_t baseVertexIndex = static_cast<uint32_t>(modelData.vertices.size());
+
+		for (uint32_t v = 0; v < mesh->mNumVertices; ++v)
 		{
-			aiFace& face = mesh->mFaces[faceINdex];
-			// 三角形のみ対応
-			assert(face.mNumIndices == 3);
+			const aiVector3D& pos = mesh->mVertices[v];
+			aiVector3D normal = mesh->HasNormals() ? mesh->mNormals[v] : aiVector3D(0.0f, 1.0f, 0.0f);
 
-			// 1フェース分の新規インデックスを一時保存
-			uint32_t newIndices[3];
+			VertexData vertex;
+			vertex.position = { pos.x, pos.y, -pos.z, 1.0f }; // RH to LH: Zを反転
+			vertex.normal = { normal.x, normal.y, -normal.z }; // RH to LH: 法線のZも反転
 
-			for (uint32_t element = 0; element < face.mNumIndices; ++element)
-			{
-				uint32_t vertexIndex = face.mIndices[element];
-
-				aiVector3D& position = mesh->mVertices[vertexIndex];
-				aiVector3D& normal = mesh->mNormals[vertexIndex];
-				
-				VertexData vertex;
-				vertex.position = { position.x, position.y, -position.z, 1.0f }; // RH to LH: Zを反転
-				vertex.normal = { normal.x, normal.y, -normal.z }; // RH to LH: 法線のZも反転
-
-				// テクスチャ座標があるかチェック
-				if (mesh->HasTextureCoords(0)) {
-					aiVector3D& texcoord = mesh->mTextureCoords[0][vertexIndex];
-					vertex.texcoord = { texcoord.x, texcoord.y };
-				}
-				else {
-					vertex.texcoord = { 0.0f, 0.0f };
-				}
-
-				uint32_t newIndex = static_cast<uint32_t>(modelData.vertices.size());
-				modelData.vertices.push_back(vertex);
-				newIndices[element] = newIndex;
+			if (mesh->HasTextureCoords(0)) {
+				const aiVector3D& texcoord = mesh->mTextureCoords[0][v];
+				vertex.texcoord = { texcoord.x, texcoord.y };
+			}
+			else {
+				vertex.texcoord = { 0.0f, 0.0f };
 			}
 
-			// Zを反転してLH座標系にしたため、面が裏返らないように頂点のインデックス順を逆（0, 2, 1）にします。
-			modelData.indices.push_back(newIndices[0]);
-			modelData.indices.push_back(newIndices[2]);
-			modelData.indices.push_back(newIndices[1]);
+			modelData.vertices.push_back(vertex);
+
+			minPos.x = (std::min)(minPos.x, vertex.position.x);
+			minPos.y = (std::min)(minPos.y, vertex.position.y);
+			minPos.z = (std::min)(minPos.z, vertex.position.z);
+			maxPos.x = (std::max)(maxPos.x, vertex.position.x);
+			maxPos.y = (std::max)(maxPos.y, vertex.position.y);
+			maxPos.z = (std::max)(maxPos.z, vertex.position.z);
 		}
+
+		for (uint32_t faceIndex = 0; faceIndex < mesh->mNumFaces; ++faceIndex)
+		{
+			const aiFace& face = mesh->mFaces[faceIndex];
+			if (face.mNumIndices != 3) continue;
+
+			// LH座標系のため、面が裏返らないように頂点インデックス順を反転（0, 2, 1）
+			modelData.indices.push_back(baseVertexIndex + face.mIndices[0]);
+			modelData.indices.push_back(baseVertexIndex + face.mIndices[2]);
+			modelData.indices.push_back(baseVertexIndex + face.mIndices[1]);
+		}
+	}
+
+	// バウンディング中心と半径を算出
+	if (!modelData.vertices.empty())
+	{
+		modelData.boundingCenter = {
+			(minPos.x + maxPos.x) * 0.5f,
+			(minPos.y + maxPos.y) * 0.5f,
+			(minPos.z + maxPos.z) * 0.5f
+		};
+		float maxDistSq = 0.0f;
+		for (const auto& v : modelData.vertices)
+		{
+			float dx = v.position.x - modelData.boundingCenter.x;
+			float dy = v.position.y - modelData.boundingCenter.y;
+			float dz = v.position.z - modelData.boundingCenter.z;
+			float distSq = dx * dx + dy * dy + dz * dz;
+			if (distSq > maxDistSq) maxDistSq = distSq;
+		}
+		modelData.boundingRadius = std::sqrt(maxDistSq);
 	}
 
 

@@ -137,6 +137,9 @@ public://メンバ関数
 	bool CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult = nullptr) const;
 	bool HasMeshCollider() const { return hasMeshCollider_; }
 
+	// バウンディング球の取得（カリング用）
+	bool GetBoundingSphere(Vector3& outCenter, float& outRadius) const;
+
 private://メンバ関数
 
 	/// <summary>

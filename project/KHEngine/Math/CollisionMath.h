@@ -65,3 +65,20 @@ namespace CollisionMath {
     // rotateMatrixは3x3の回転部分を含むMatrix4x4（平行移動を含まない純粋な回転行列を想定）
     OBB CreateOBB(const Vector3& center, const Vector3& size, const Matrix4x4& rotateMatrix);
 }
+
+// 平面 (Ax + By + Cz + D = 0)
+struct Plane {
+    Vector3 normal = { 0.0f, 1.0f, 0.0f }; // 正規化された法線 (A, B, C)
+    float distance = 0.0f;                 // 原点からの距離 (D)
+};
+
+// 視錐台 (Frustum)
+struct Frustum {
+    Plane planes[6]; // 0:Left, 1:Right, 2:Bottom, 3:Top, 4:Near, 5:Far
+
+    // ビュー・射影行列から視錐台の6平面を抽出 (Row-major / DirectX)
+    static Frustum CreateFromViewProjection(const Matrix4x4& vp);
+
+    // 球が視錐台内にあるか（交差・内包）を判定
+    bool ContainsSphere(const Vector3& center, float radius) const;
+};

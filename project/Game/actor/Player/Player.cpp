@@ -333,124 +333,138 @@ void Player::Move(float gameSpeed) {
     isBoosting_ = input_->PushKey(DIK_LSHIFT);
     bool isBraking = input_->PushKey(DIK_LCONTROL);
     
-    float targetZ = 20.0f; 
+    float targetZ = 0.0f; 
     if (isBoosting_) {
-        targetZ = 35.0f; 
+        targetZ = 3.0f;  // ブーストで少し前へ
     } else if (isBraking) {
-        targetZ = 5.0f;  
+        targetZ = -2.0f; // ブレーキで少し後ろへ
     }
     logicalPosition_.z += (targetZ - logicalPosition_.z) * 0.1f * gameSpeed;
 
     
     float currentSpeed = speed_;
-    if (isBoosting_) currentSpeed *= 1.5f;
+    if (isBoosting_) currentSpeed *= 1.4f;
 
-    float targetVelX = 0.0f;
-    float targetVelY = 0.0f;
+    // スティック / キー入力の検出
+    float inputX = 0.0f;
+    float inputY = 0.0f;
+    if (input_->PushKey(DIK_A) || input_->PushKey(DIK_LEFT))  inputX -= 1.0f;
+    if (input_->PushKey(DIK_D) || input_->PushKey(DIK_RIGHT)) inputX += 1.0f;
+    if (input_->PushKey(DIK_W) || input_->PushKey(DIK_UP))    inputY += 1.0f;
+    if (input_->PushKey(DIK_S) || input_->PushKey(DIK_DOWN))  inputY -= 1.0f;
 
-    if (input_->PushKey(DIK_W) || input_->PushKey(DIK_UP)) {
-        targetVelY = currentSpeed;
-    }
-    if (input_->PushKey(DIK_S) || input_->PushKey(DIK_DOWN)) {
-        targetVelY = -currentSpeed;
-    }
+    // 回避・ロールキー押下時の横ブースト
     float currentSpeedX = currentSpeed;
     if (input_->PushKey(DIK_Q) || input_->PushKey(DIK_E)) {
-        currentSpeedX *= 1.8f; 
+        currentSpeedX *= 1.4f;
     }
 
-    if (input_->PushKey(DIK_A) || input_->PushKey(DIK_LEFT)) {
-        targetVelX = -currentSpeedX;
-    }
-    if (input_->PushKey(DIK_D) || input_->PushKey(DIK_RIGHT)) {
-        targetVelX = currentSpeedX;
-    }
 
-    float accel = 0.15f * gameSpeed;
-    velocity_.x += (targetVelX - velocity_.x) * accel;
-    velocity_.y += (targetVelY - velocity_.y) * accel;
-
-    logicalPosition_.x += velocity_.x * gameSpeed;
-    logicalPosition_.y += velocity_.y * gameSpeed;
-
-    // 移動制限の目標値へ滑らかに補間
+    // 移動制限（バウンディング枠）の目標値へ滑らかに補間
     float limitLerpSpeed = 0.05f * gameSpeed;
     playerLimitX_ += (targetLimitX_ - playerLimitX_) * limitLerpSpeed;
     playerLimitYMin_ += (targetLimitYMin_ - playerLimitYMin_) * limitLerpSpeed;
     playerLimitYMax_ += (targetLimitYMax_ - playerLimitYMax_) * limitLerpSpeed;
 
+    // -------------------------------------------------------------
+    // 1. 照準（レティクル）の先行移動（スターフォックス仕様）：
+    // スティック操作時、まずレティクルが俊敏に先行して目標方向へ動く
+    // -------------------------------------------------------------
+    float reticleSpeedX = currentSpeedX * 1.55f;
+    float reticleSpeedY = currentSpeed * 1.55f;
+
+    float targetVelX = inputX * reticleSpeedX;
+    float targetVelY = inputY * reticleSpeedY;
+
+    // レティクルの機敏な加減速
+    float reticleAccel = 0.28f * gameSpeed;
+    velocity_.x += (targetVelX - velocity_.x) * reticleAccel;
+    velocity_.y += (targetVelY - velocity_.y) * reticleAccel;
+
+    // レティクル位置の更新
+    reticlePosition_.x += velocity_.x * gameSpeed;
+    reticlePosition_.y += velocity_.y * gameSpeed;
+    reticlePosition_.x = std::clamp(reticlePosition_.x, -playerLimitX_ * 1.05f, playerLimitX_ * 1.05f);
+    reticlePosition_.y = std::clamp(reticlePosition_.y, playerLimitYMin_ * 1.05f, playerLimitYMax_ * 1.05f);
+    float reticleDistance = 35.0f;
+    reticlePosition_.z = logicalPosition_.z + reticleDistance;
+
+    // -------------------------------------------------------------
+    // 2. 自機の遅延追従（スプリング / Lerp補間）：
+    // 機体は先行するレティクルを追いかけるように滑らかに追従する
+    // -------------------------------------------------------------
+    float shipFollowLerp = 0.13f * gameSpeed;
+    logicalPosition_.x += (reticlePosition_.x - logicalPosition_.x) * shipFollowLerp;
+    logicalPosition_.y += (reticlePosition_.y - logicalPosition_.y) * shipFollowLerp;
+
     logicalPosition_.x = std::clamp(logicalPosition_.x, -playerLimitX_, playerLimitX_);
     logicalPosition_.y = std::clamp(logicalPosition_.y, playerLimitYMin_, playerLimitYMax_);
 
-    float targetPitch = 0.0f;
-    float targetYaw = 0.0f;
+    // -------------------------------------------------------------
+    // 機体姿勢制御（ロールとヨーの分離、スターフォックス仕様）：
+    // 1. 横移動時のバンク（Roll/Z軸回転）: スティック入力に応じて最大50度(約0.87rad)傾ける
+    // 2. 首振り（Yaw/Y軸回転）: 自機からレティクルへの方向を向く
+    // 3. ピッチ（Pitch/X軸回転）: 上下移動時に機首を向ける
+    // -------------------------------------------------------------
+    const float maxBankAngle = 0.87f; // 約50度
+    const float maxYawAngle = 0.22f;  // 約12.6度
+    const float maxPitchAngle = 0.35f; // 約20度
+
     float targetBank = 0.0f;
-
-    if (input_->PushKey(DIK_W) || input_->PushKey(DIK_UP)) {
-        if (logicalPosition_.y < playerLimitYMax_) targetPitch = -0.4f; 
-    }
-    if (input_->PushKey(DIK_S) || input_->PushKey(DIK_DOWN)) {
-        if (logicalPosition_.y > playerLimitYMin_) targetPitch = 0.4f;
-    }
-    
-    if (input_->PushKey(DIK_A) || input_->PushKey(DIK_LEFT)) {
-        if (logicalPosition_.x > -playerLimitX_) targetYaw = -0.2f; 
-    }
-    if (input_->PushKey(DIK_D) || input_->PushKey(DIK_RIGHT)) {
-        if (logicalPosition_.x < playerLimitX_) targetYaw = 0.2f;
+    if (inputX < -0.01f) {
+        targetBank = maxBankAngle;  // 左移動で左傾斜
+    } else if (inputX > 0.01f) {
+        targetBank = -maxBankAngle; // 右移動で右傾斜
     }
 
-    if (!isRolling_) {
-        if (input_->PushKey(DIK_Q)) {
-            targetBank = 1.5708f;
-        } else if (input_->PushKey(DIK_E)) {
-            targetBank = -1.5708f;
-        }
+    // レティクル方向を向く機首旋回（レティクルと自機のオフセットに応じたYaw/Pitch）
+    float targetYaw = std::clamp((reticlePosition_.x - logicalPosition_.x) * 0.08f, -maxYawAngle, maxYawAngle);
+    float targetPitch = 0.0f;
+    if (inputY > 0.01f) {
+        if (logicalPosition_.y < playerLimitYMax_) targetPitch = -maxPitchAngle; // 機首上げ
+    } else if (inputY < -0.01f) {
+        if (logicalPosition_.y > playerLimitYMin_) targetPitch = maxPitchAngle;  // 機首下げ
     }
 
-    float lerpSpeed = 0.12f * gameSpeed; 
-    currentPitch_ += (targetPitch - currentPitch_) * lerpSpeed;
-    currentYaw_ += (targetYaw - currentYaw_) * lerpSpeed;
-    currentBank_ += (targetBank - currentBank_) * lerpSpeed;
+    // 滑らかな姿勢追従（揺れのない滑らかな復帰）
+    float bankSpeed = 0.16f * gameSpeed;
+    currentBank_ += (targetBank - currentBank_) * bankSpeed;
 
+    float yawSpeed = 0.14f * gameSpeed;
+    currentYaw_ += (targetYaw - currentYaw_) * yawSpeed;
+
+    float pitchSpeed = 0.15f * gameSpeed;
+    currentPitch_ += (targetPitch - currentPitch_) * pitchSpeed;
+
+    // バレルロール（回避）アクション
     float finalBank = currentBank_;
     if (isRolling_) {
         float rollAngle = (static_cast<float>(rollTimer_) / rollMaxTime_) * 3.14159265f * 2.0f;
         finalBank += rollAngle * -rollDirection_;
     }
-    
-    float reticleDistance = 40.0f;
-    Vector3 targetReticlePos;
-    targetReticlePos.x = logicalPosition_.x + std::sin(currentYaw_) * reticleDistance;
-    targetReticlePos.y = logicalPosition_.y - std::sin(currentPitch_) * reticleDistance;
-    targetReticlePos.z = logicalPosition_.z + reticleDistance;
 
-    float reticleLerp = 0.2f * gameSpeed;
-    reticlePosition_.x += (targetReticlePos.x - reticlePosition_.x) * reticleLerp;
-    reticlePosition_.y += (targetReticlePos.y - reticlePosition_.y) * reticleLerp;
-    reticlePosition_.z += (targetReticlePos.z - reticlePosition_.z) * reticleLerp;
-    
+    // -------------------------------------------------------------
+    // レティクル自体のロール回転を弱める（ほぼ水平を保つ）
+    // -------------------------------------------------------------
+    float reticleRoll = finalBank * 0.08f; // 最大傾斜50度に対し、レティクルは4度程度に抑制
     reticle_->SetTranslate(reticlePosition_);
+    reticle_->SetRotation(Vector3(0.0f, 0.0f, reticleRoll));
     reticle_->Update();
 
     if (frontReticle_) {
         Vector3 frontReticlePos = {
-            logicalPosition_.x + (reticlePosition_.x - logicalPosition_.x) * 0.4f,
-            logicalPosition_.y + (reticlePosition_.y - logicalPosition_.y) * 0.4f,
-            logicalPosition_.z + (reticlePosition_.z - logicalPosition_.z) * 0.4f
+            logicalPosition_.x + (reticlePosition_.x - logicalPosition_.x) * 0.45f,
+            logicalPosition_.y + (reticlePosition_.y - logicalPosition_.y) * 0.45f,
+            logicalPosition_.z + (reticlePosition_.z - logicalPosition_.z) * 0.45f
         };
         frontReticle_->SetTranslate(frontReticlePos);
+        frontReticle_->SetRotation(Vector3(0.0f, 0.0f, reticleRoll * 0.5f));
         frontReticle_->Update();
     }
 
-    
-    float screenPitch = currentPitch_ * 2.0f;
-    float screenYaw   = currentYaw_ * 3.5f;
-
-    
-    
-    float visualPitch = screenPitch * std::cos(finalBank) + screenYaw * std::sin(finalBank);
-    float visualYaw   = -screenPitch * std::sin(finalBank) + screenYaw * std::cos(finalBank);
+    // スクリーン基準の回転を機体のローカル座標へマッピング
+    float visualPitch = currentPitch_ * std::cos(finalBank) + currentYaw_ * std::sin(finalBank);
+    float visualYaw   = -currentPitch_ * std::sin(finalBank) + currentYaw_ * std::cos(finalBank);
 
     object_->SetScale(playerScale_);
     object_->SetRotation(Vector3(

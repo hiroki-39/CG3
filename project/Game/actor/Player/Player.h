@@ -132,9 +132,9 @@ public:
         targetLimitYMax_ = limitYMax;
     }
     void ResetMoveLimits() {
-        targetLimitX_ = 25.0f;
-        targetLimitYMin_ = -5.0f;
-        targetLimitYMax_ = 12.0f;
+        targetLimitX_ = 22.0f;
+        targetLimitYMin_ = -4.0f;
+        targetLimitYMax_ = 10.0f;
     }
     float GetLimitX() const { return playerLimitX_; }
     float GetLimitYMin() const { return playerLimitYMin_; }
@@ -169,23 +169,23 @@ private:
     
     uint32_t skyboxTexIndex_ = 0; 
 
-    Vector3 reticlePosition_ = { 0.0f, 0.0f, 40.0f }; 
+    Vector3 reticlePosition_ = { 0.0f, 0.0f, 30.0f }; 
     Vector4 reticleColor_ = { 1.0f, 1.0f, 1.0f, 1.0f }; 
 
     
-    float speed_ = 0.3f;
-    float reticleSpeed_ = 0.5f;
-    float moveLimitX_ = 25.0f;     
-    float moveLimitY_ = 12.0f;     
+    float speed_ = 0.45f;
+    float reticleSpeed_ = 0.75f;
+    float moveLimitX_ = 22.0f;     
+    float moveLimitY_ = 10.0f;     
     float attackInterval_ = 15.0f;
     float rollMaxTime_ = 15.0f;
-    float playerLimitX_ = 25.0f;   
-    float playerLimitYMin_ = -5.0f;
-    float playerLimitYMax_ = 12.0f;
-    float targetLimitX_ = 25.0f;   
-    float targetLimitYMin_ = -5.0f;
-    float targetLimitYMax_ = 12.0f;
-    float followSpeed_ = 0.08f;
+    float playerLimitX_ = 22.0f;   
+    float playerLimitYMin_ = -4.0f;
+    float playerLimitYMax_ = 10.0f;
+    float targetLimitX_ = 22.0f;   
+    float targetLimitYMin_ = -4.0f;
+    float targetLimitYMax_ = 10.0f;
+    float followSpeed_ = 0.12f;
     float bulletSpeed_ = 3.0f;
     float terrainKnockbackPower_ = 0.35f; // 壁・地面に当たった時の反発速度
     float terrainPushMargin_ = 0.05f;     // めり込み押し戻しマージン
@@ -206,8 +206,8 @@ private:
     float currentBank_ = 0.0f;
 
     // プレイヤーの論理的な位置とベース回転
-    Vector3 logicalPosition_ = { 0.0f, -0.0f, 20.0f }; 
-    Vector3 prevLogicalPosition_ = { 0.0f, -0.0f, 20.0f }; 
+    Vector3 logicalPosition_ = { 0.0f, 0.0f, 0.0f }; 
+    Vector3 prevLogicalPosition_ = { 0.0f, 0.0f, 0.0f }; 
     Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f };
 
     // 攻撃タイマー

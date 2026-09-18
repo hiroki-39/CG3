@@ -391,3 +391,89 @@ namespace CollisionMath {
         return true;
     }
 }
+
+Frustum Frustum::CreateFromViewProjection(const Matrix4x4& vp)
+{
+    Frustum f;
+
+    // Row-major: 行ベクトル v' = v * VP
+    // Left:   col3 + col0 -> row(i, 3) + row(i, 0)
+    // Right:  col3 - col0 -> row(i, 3) - row(i, 0)
+    // Bottom: col3 + col1 -> row(i, 3) + row(i, 1)
+    // Top:    col3 - col1 -> row(i, 3) - row(i, 1)
+    // Near:   col2        -> row(i, 2)
+    // Far:    col3 - col2 -> row(i, 3) - row(i, 2)
+
+    // 0: Left
+    f.planes[0].normal.x = vp.m[0][3] + vp.m[0][0];
+    f.planes[0].normal.y = vp.m[1][3] + vp.m[1][0];
+    f.planes[0].normal.z = vp.m[2][3] + vp.m[2][0];
+    f.planes[0].distance = vp.m[3][3] + vp.m[3][0];
+
+    // 1: Right
+    f.planes[1].normal.x = vp.m[0][3] - vp.m[0][0];
+    f.planes[1].normal.y = vp.m[1][3] - vp.m[1][0];
+    f.planes[1].normal.z = vp.m[2][3] - vp.m[2][0];
+    f.planes[1].distance = vp.m[3][3] - vp.m[3][0];
+
+    // 2: Bottom
+    f.planes[2].normal.x = vp.m[0][3] + vp.m[0][1];
+    f.planes[2].normal.y = vp.m[1][3] + vp.m[1][1];
+    f.planes[2].normal.z = vp.m[2][3] + vp.m[2][1];
+    f.planes[2].distance = vp.m[3][3] + vp.m[3][1];
+
+    // 3: Top
+    f.planes[3].normal.x = vp.m[0][3] - vp.m[0][1];
+    f.planes[3].normal.y = vp.m[1][3] - vp.m[1][1];
+    f.planes[3].normal.z = vp.m[2][3] - vp.m[2][1];
+    f.planes[3].distance = vp.m[3][3] - vp.m[3][1];
+
+    // 4: Near
+    f.planes[4].normal.x = vp.m[0][2];
+    f.planes[4].normal.y = vp.m[1][2];
+    f.planes[4].normal.z = vp.m[2][2];
+    f.planes[4].distance = vp.m[3][2];
+
+    // 5: Far
+    f.planes[5].normal.x = vp.m[0][3] - vp.m[0][2];
+    f.planes[5].normal.y = vp.m[1][3] - vp.m[1][2];
+    f.planes[5].normal.z = vp.m[2][3] - vp.m[2][2];
+    f.planes[5].distance = vp.m[3][3] - vp.m[3][2];
+
+    // 各平面を正規化
+    for (int i = 0; i < 6; ++i)
+    {
+        float length = std::sqrt(
+            f.planes[i].normal.x * f.planes[i].normal.x +
+            f.planes[i].normal.y * f.planes[i].normal.y +
+            f.planes[i].normal.z * f.planes[i].normal.z
+        );
+        if (length > 0.000001f)
+        {
+            float invLen = 1.0f / length;
+            f.planes[i].normal.x *= invLen;
+            f.planes[i].normal.y *= invLen;
+            f.planes[i].normal.z *= invLen;
+            f.planes[i].distance *= invLen;
+        }
+    }
+
+    return f;
+}
+
+bool Frustum::ContainsSphere(const Vector3& center, float radius) const
+{
+    for (int i = 0; i < 6; ++i)
+    {
+        float dist = planes[i].normal.x * center.x +
+                     planes[i].normal.y * center.y +
+                     planes[i].normal.z * center.z +
+                     planes[i].distance;
+        // 平面の裏側（視錐台の外側）に完全に外れている場合
+        if (dist < -radius)
+        {
+            return false;
+        }
+    }
+    return true;
+}

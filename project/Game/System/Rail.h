@@ -35,6 +35,14 @@ public:
     float GetSpeed(float t) const;
 
     /// <summary>
+    /// ゲーム側で一括設定する基準速度を設定する
+    /// </summary>
+    void SetCustomSpeed(float speed) { customSpeed_ = speed; }
+    float GetCustomSpeed() const { return customSpeed_; }
+    void SetUseCustomSpeed(bool use) { useCustomSpeed_ = use; }
+    bool IsUsingCustomSpeed() const { return useCustomSpeed_; }
+
+    /// <summary>
     /// 進行度(t) におけるイベント名を取得する
     /// </summary>
     std::string GetEvent(float t) const;
@@ -63,11 +71,24 @@ public:
     const std::vector<NarrowZone>& GetNarrowZones() const { return narrowZones_; }
     void ClearNarrowZones() { narrowZones_.clear(); }
 
+    // 弧長サンプリングによる距離ベースパラメータ化
+    struct ArcLengthSample {
+        float rawT = 0.0f;
+        float distance = 0.0f;
+    };
+
+    float GetTFromDistance(float distance) const;
+
 private:
     std::vector<LevelCurvePoint> points_;
     std::vector<NarrowZone> narrowZones_;
+    std::vector<ArcLengthSample> arcLengthSamples_;
     float totalLength_ = 0.0f;
+    float customSpeed_ = 50.0f;
+    bool useCustomSpeed_ = true;
 
     // 区間と区間内進行度を計算する補助関数
-    void GetSegment(float t, int& outIndex, float& outLocalT) const;
+    void GetSegment(float rawT, int& outIndex, float& outLocalT) const;
+    Vector3 EvaluateRawPosition(float rawT) const;
+    Vector3 EvaluateRawForward(float rawT) const;
 };

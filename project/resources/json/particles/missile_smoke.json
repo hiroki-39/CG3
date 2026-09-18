@@ -27,7 +27,7 @@
         "name": "SmokeNode",
         "shapeType": 0,
         "startColor": [ 0.8, 0.8, 0.8, 0.8 ],
-        "textureName": "circle.png",
+        "textureName": "circle2.png",
         "uvScrollSpeed": 0.0,
         "blendMode": 2
     }
