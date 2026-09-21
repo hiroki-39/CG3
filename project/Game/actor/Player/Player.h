@@ -132,7 +132,7 @@ public:
         targetLimitYMax_ = limitYMax;
     }
     void ResetMoveLimits() {
-        targetLimitX_ = 22.0f;
+        targetLimitX_ = 35.0f;
         targetLimitYMin_ = -4.0f;
         targetLimitYMax_ = 10.0f;
     }
@@ -175,14 +175,14 @@ private:
     
     float speed_ = 0.45f;
     float reticleSpeed_ = 0.75f;
-    float moveLimitX_ = 22.0f;     
+    float moveLimitX_ = 35.0f;     
     float moveLimitY_ = 10.0f;     
     float attackInterval_ = 15.0f;
     float rollMaxTime_ = 15.0f;
-    float playerLimitX_ = 22.0f;   
+    float playerLimitX_ = 35.0f;   
     float playerLimitYMin_ = -4.0f;
     float playerLimitYMax_ = 10.0f;
-    float targetLimitX_ = 22.0f;   
+    float targetLimitX_ = 35.0f;   
     float targetLimitYMin_ = -4.0f;
     float targetLimitYMax_ = 10.0f;
     float followSpeed_ = 0.12f;

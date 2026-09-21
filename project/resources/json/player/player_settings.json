@@ -26,9 +26,9 @@
         0.0,
         0.0
     ],
-    "moveLimitX": 22.0,
+    "moveLimitX": 35.0,
     "moveLimitY": 10.0,
-    "playerLimitX": 22.0,
+    "playerLimitX": 35.0,
     "playerLimitYMax": 10.0,
     "playerLimitYMin": -4.0,
     "playerScale": [

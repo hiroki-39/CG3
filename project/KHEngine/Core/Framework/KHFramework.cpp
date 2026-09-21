@@ -235,6 +235,9 @@ void KHFramework::InitializeEngineSubsystems()
 	object3dCommon_->Initialize(dxCommon_.get());
 
 	
+	// トランジション用ルール画像のロード
+	TextureManager::GetInstance()->LoadTexture("resources/textures/rules/rule_horizontal.png");
+
 	postProcess_ = std::make_unique<PostProcess>();
 	postProcess_->Initialize(dxCommon_.get());
 	EngineServices::GetInstance()->SetPostProcess(postProcess_.get());

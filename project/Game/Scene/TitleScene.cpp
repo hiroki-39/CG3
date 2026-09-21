@@ -98,9 +98,9 @@ void TitleScene::Update()
     if (input && input->TriggerKey(DIK_SPACE))
     {
         auto sceneManager = GetSceneManager();
-        if (sceneManager)
+        if (sceneManager && !sceneManager->IsTransitioning())
         {
-            sceneManager->ChangeScene("GAMEPLAY");
+            sceneManager->ChangeScene("GAMEPLAY", 0.6f);
         }
     }
 }

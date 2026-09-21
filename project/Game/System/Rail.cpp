@@ -230,7 +230,7 @@ void Rail::AddNarrowZone(float startT, float endT, float limitX, float limitYMin
 }
 
 void Rail::GetMoveLimits(float t, float& outLimitX, float& outLimitYMin, float& outLimitYMax) const {
-    outLimitX = 25.0f;
+    outLimitX = 35.0f;
     outLimitYMin = -5.0f;
     outLimitYMax = 12.0f;
 
@@ -254,7 +254,7 @@ void Rail::GetMoveLimits(float t, float& outLimitX, float& outLimitYMin, float& 
             // スムーズステップ (3w^2 - 2w^3)
             weight = weight * weight * (3.0f - 2.0f * weight);
 
-            outLimitX = (1.0f - weight) * 25.0f + weight * zone.limitX;
+            outLimitX = (1.0f - weight) * 35.0f + weight * zone.limitX;
             outLimitYMin = (1.0f - weight) * (-5.0f) + weight * zone.limitYMin;
             outLimitYMax = (1.0f - weight) * 12.0f + weight * zone.limitYMax;
             return;
