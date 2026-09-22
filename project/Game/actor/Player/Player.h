@@ -26,6 +26,10 @@ public:
     void LoadSettings(const std::string& filepath);
     void SaveSettings(const std::string& filepath);
     void DrawUI();
+    void DrawImGuiContent();
+
+    bool IsGodMode() const { return isGodMode_; }
+    void SetGodMode(bool god) { isGodMode_ = god; }
 
     
     
@@ -199,6 +203,7 @@ private:
     Vector3 modelRotOffset_ = { 0.0f, 0.0f, 0.0f };
     Vector3 playerScale_ = { 0.5f, 0.5f, 0.5f };
     Vector3 colliderSize_ = { 4.0f, 4.0f, 4.0f };
+    bool isGodMode_ = false;
 
     
     float currentPitch_ = 0.0f;

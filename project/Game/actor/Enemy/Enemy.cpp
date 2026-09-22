@@ -110,6 +110,13 @@ void Enemy::Initialize(Object3dCommon* object3dCommon, const LevelObjectData& no
 void Enemy::SetMovePath(std::unique_ptr<Rail> path) {
     movePath_ = std::move(path);
     pathProgress_ = 0.0f;
+    if (movePath_ && movePath_->IsValid()) {
+        position_ = movePath_->GetPosition(0.0f);
+        spawnPos_ = position_;
+        if (object_) {
+            object_->SetTranslate(position_);
+        }
+    }
 }
 
 void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Player* player, std::list<std::unique_ptr<EnemyBullet>>& enemyBullets, float gameSpeed) {
@@ -136,7 +143,7 @@ void Enemy::Update(const Vector3& cameraPos, const Vector3& cameraForward, Playe
     if (!isActive_) {
         // アクティブ化判定: プレイヤー（またはカメラ）との距離が一定以内になったら動き出す
         float distance = std::sqrt((position_.x - playerWorldPos.x)*(position_.x - playerWorldPos.x) + (position_.z - playerWorldPos.z)*(position_.z - playerWorldPos.z));
-        float distThreshold = (spawnProgress_ > 0.0f) ? spawnProgress_ * 300.0f : spawnDist_; 
+        float distThreshold = (spawnDist_ > 0.0f) ? spawnDist_ : 800.0f; 
         if (distance < distThreshold) {
             isActive_ = true;
         } else {

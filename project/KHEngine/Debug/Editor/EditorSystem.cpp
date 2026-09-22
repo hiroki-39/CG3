@@ -37,35 +37,26 @@ void EditorSystem::Draw(uint32_t gameSceneSrvIndex) {
     if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
         ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
 
-        // 一度だけデフォルトのレイアウト（Unity風）を構築する（すでに保存されたレイアウトがある場合はスキップ）
-        if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
-            // 既存のレイアウトをクリア
+        // レイアウトのリセット要求、または初回生成時にレイアウト（左メニュー・中央画面・右インスペクター）を構築
+        if (resetLayout_ || ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
+            resetLayout_ = false;
             ImGui::DockBuilderRemoveNode(dockspace_id);
             ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
             ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
 
-            // 画面を分割していく
             ImGuiID dock_main_id = dockspace_id;
-            // 左側に「ヒエラルキー」的な領域 (20%)
+            // 左側に「メニュー」領域 (20%)
             ImGuiID dock_id_left = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.20f, nullptr, &dock_main_id);
-            // 右側に「インスペクター」的な領域 (25%)
-            ImGuiID dock_id_right = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.25f, nullptr, &dock_main_id);
-            // 下部に「コンソール・アセット」的な領域 (25%)
-            ImGuiID dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.25f, nullptr, &dock_main_id);
-            // 残った dock_main_id が中央 (Viewport)
+            // 右側に「インスペクター」領域 (28%)
+            ImGuiID dock_id_right = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.28f, nullptr, &dock_main_id);
+            // 下部に「タイムライン」領域 (26%)
+            ImGuiID dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.26f, nullptr, &dock_main_id);
+            // 残った中央上が「ゲーム画面」
 
             // 各ウィンドウを対応するドックに割り当てる
-            ImGui::DockBuilderDockWindow("スプライト", dock_id_left);
-
-            ImGui::DockBuilderDockWindow("モデル", dock_id_right);
-            ImGui::DockBuilderDockWindow("カメラ", dock_id_right);
-            ImGui::DockBuilderDockWindow("ライト", dock_id_right);
-            ImGui::DockBuilderDockWindow("パーティクルエディタ", dock_id_right);
-
-            // 下部にパフォーマンス（デバッグ）領域
-            ImGui::DockBuilderDockWindow("パフォーマンス", dock_id_bottom);
-
-            // 中央にはビューポート（ゲーム画面）
+            ImGui::DockBuilderDockWindow("メニュー", dock_id_left);
+            ImGui::DockBuilderDockWindow("インスペクター", dock_id_right);
+            ImGui::DockBuilderDockWindow("タイムライン", dock_id_bottom);
             ImGui::DockBuilderDockWindow("ゲーム画面", dock_main_id);
 
             // 構築完了
@@ -79,22 +70,12 @@ void EditorSystem::Draw(uint32_t gameSceneSrvIndex) {
 
     ImGui::End(); // DockSpace Demo
 
-    // 各ウィンドウの描画 (DockSpaceのBegin/Endの外で行う必要があります)
+    // 各ウィンドウの描画
     DrawViewport(gameSceneSrvIndex);
     
     if (showParticleEditor_) {
         DrawParticleEditor();
     }
-
-    // パフォーマンス（FPSなど）ウィンドウ
-    DrawPerformance();
-
-    // --- シーン切り替え時のウィンドウ消滅防止 ---
-    // シーン側で中身を描画しなくても「枠」だけは残るように、空のウィンドウを宣言しておきます
-    ImGui::Begin("スプライト"); ImGui::End();
-    ImGui::Begin("モデル"); ImGui::End();
-    ImGui::Begin("カメラ"); ImGui::End();
-    ImGui::Begin("ライト"); ImGui::End();
 #endif
 }
 
@@ -102,7 +83,10 @@ void EditorSystem::DrawMenuBar() {
 #ifdef USE_IMGUI
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("ウィンドウ")) {
-            ImGui::MenuItem("パーティクルエディタ", nullptr, &showParticleEditor_);
+            if (ImGui::MenuItem("デフォルトレイアウトに復元")) {
+                resetLayout_ = true;
+            }
+            ImGui::MenuItem("スタンドアロン・パーティクルエディタ", nullptr, &showParticleEditor_);
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();

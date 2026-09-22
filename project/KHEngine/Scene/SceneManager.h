@@ -47,6 +47,22 @@ public:
 
 	void SetSceneFactory(AbstractSceneFactory* factory) { sceneFactory_ = factory; }
 
+	const std::string& GetCurrentSceneName() const { return currentSceneName_; }
+
+	// トランジション調整用
+	float GetFadeDuration() const { return fadeDuration_; }
+	void SetFadeDuration(float duration) { fadeDuration_ = duration; }
+	float GetEdgeSoftness() const { return edgeSoftness_; }
+	void SetEdgeSoftness(float s) { edgeSoftness_ = s; }
+	Vector4 GetFadeColor() const { return fadeColor_; }
+	void SetFadeColor(const Vector4& c) { fadeColor_ = c; }
+	Vector4 GetEdgeColor() const { return edgeColor_; }
+	void SetEdgeColor(const Vector4& c) { edgeColor_ = c; }
+
+	// ImGui用共通UI
+	void DrawSceneSelectorUI();
+	void DrawTransitionSettingsUI();
+
 private:
 	void InitTransition();
 
@@ -55,12 +71,15 @@ private:
 	std::unique_ptr<BaseScene> scene_ = nullptr;
 	AbstractSceneFactory* sceneFactory_ = nullptr;
 
+	std::string currentSceneName_ = "TITLE";
+
 	// トランジション（ルール画像遷移）管理
 	TransitionState transitionState_ = TransitionState::None;
 	std::string nextSceneName_;
 	float fadeDuration_ = 0.6f;
 	float fadeTimer_ = 0.0f;
 	float transitionProgress_ = 0.0f;
+	float edgeSoftness_ = 0.06f;
 	int holdFrames_ = 0;
 	Vector4 fadeColor_ = { 0.0f, 0.0f, 0.0f, 1.0f };
 	Vector4 edgeColor_ = { 0.2f, 0.75f, 1.0f, 0.7f }; // 境界発光アクセント

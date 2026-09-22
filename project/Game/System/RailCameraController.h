@@ -70,6 +70,7 @@ public:
     /// ImGuiデバッグUI
     /// </summary>
     void DrawImGui();
+    void DrawImGuiContent();
 
 private:
     void ApplyTransform(const Vector3& playerLocalPos);

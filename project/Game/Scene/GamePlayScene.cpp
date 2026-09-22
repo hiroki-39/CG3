@@ -1766,109 +1766,9 @@ void GamePlayScene::Update()
 		windEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
 	}
 
-#ifdef USE_IMGUI
-	ImGui::Begin("Game Control");
-
-	bool doReset = false;
-
-	// シーン切り替えとプレイ状態
-	if (isPlaying_)
-	{
-		if (ImGui::Button("Stop (Pause)", ImVec2(120, 40)))
-		{
-			isPlaying_ = false;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Reset", ImVec2(120, 40)))
-		{
-			doReset = true;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Full Screen (Hide UI)", ImVec2(160, 40)))
-		{
-			EngineServices::GetInstance()->SetEditorMode(false);
-		}
-		ImGui::Text("Status: PLAYING");
-	}
-	else
-	{
-		if (ImGui::Button("Play (Start)", ImVec2(120, 40)))
-		{
-			isPlaying_ = true;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Play Full Screen", ImVec2(160, 40)))
-		{
-			isPlaying_ = true;
-			EngineServices::GetInstance()->SetEditorMode(false);
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Reset", ImVec2(120, 40)))
-		{
-			doReset = true;
-		}
-		ImGui::Text("Status: STOPPED (Free Camera Mode)");
-		ImGui::Text("Camera Control: WASD/QE to move, Right-Click Drag to rotate");
-	}
-
-	ImGui::Separator();
-	if (ImGui::Button("Reload Level (F5)", ImVec2(160, 40)))
-	{
-		ReloadLevel();
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Respawn Enemies", ImVec2(160, 40)))
-	{
-		ReloadEnemiesOnly();
-	}
-
-	ImGui::Separator();
-	if (railCameraController_)
-	{
-		float p = railCameraController_->GetProgress();
-		if (ImGui::SliderFloat("ゲーム時間 (Rail Progress)", &p, 0.0f, 1.0f))
-		{
-			railCameraController_->SetProgress(p);
-		}
-	}
-	ImGui::SliderFloat("ゲームスピード (Game Speed)", &baseGameSpeed_, 0.0f, 5.0f);
-
-	// リセット処理：レール進行度を0に戻し、カメラとプレイヤーを始点に移動させる
-	if (doReset)
-	{
-		isPlaying_ = false;
-		if (railCameraController_)
-		{
-			railCameraController_->Reset();
-		}
-
-		// リセット時に補間用変数を初期化
-		if (!mainRails_.empty() && mainRails_[0]->IsValid())
-		{
-			Vector3 railForward = mainRails_[0]->GetForward(0.0f);
-			float yaw = std::atan2(railForward.x, railForward.z);
-			float pitch = std::asin(-railForward.y);
-			float railTilt = mainRails_[0]->GetTilt(0.0f);
-			currentCameraRot_ = { pitch, yaw, 0.0f };
-			lastCameraYaw_ = yaw;
-			currentCameraBank_ = railTilt;
-		}
-	}
-
-	ImGui::Separator();
-	ImGui::Checkbox("レールを表示 (Draw Rail)", &isDrawRail_);
-	ImGui::Checkbox("コライダーを表示 (Draw Collider)", &isDrawCollider_);
-	ImGui::End();
-
-	if (railCameraController_)
-	{
-		railCameraController_->DrawImGui();
-	}
-
+	// --- ゲームループ・UI更新 (HPバー・シーン終了判定) ---
 	if (player_)
 	{
-		player_->DrawUI();
-
 		if (hpBarSprite_)
 		{
 			float hpRate = (float)player_->GetHp() / player_->GetMaxHp();
@@ -1891,7 +1791,6 @@ void GamePlayScene::Update()
 			hpBarSprite_->Update();
 		}
 
-		// --- ゲームループ遷移条件 (HP0 / 敵全滅) ---
 		if (isPlaying_)
 		{
 			if (!enemies_.empty())
@@ -1921,490 +1820,896 @@ void GamePlayScene::Update()
 		}
 	}
 
-	// --- Sprite ウィンドウ (削除済) ---
+#ifdef USE_IMGUI
+	// =========================================================================
+	// 統合エディタUI: [左] メニュー  [右] インスペクター  [下] タイムライン
+	// =========================================================================
+	static int currentNavIndex = 0;
+	const char* navItems[] = {
+		"ゲーム・進行",
+		"プレイヤー",
+		"演出・シェーダー",
+		"シーン・照明"
+	};
 
-	std::vector<Object3d*> allModels;
-	std::vector<std::string> modelNames;
-
-	int index = 0;
-	for (auto& obj : modelInstances)
+	// -------------------------------------------------------------
+	// 1. [左ドック用] メニュー (Category Selector & Performance)
+	// -------------------------------------------------------------
+	if (ImGui::Begin("メニュー"))
 	{
-		if (obj)
-		{
-			allModels.push_back(obj.get());
-			modelNames.push_back("Model " + std::to_string(index));
-		}
-		index++;
-	}
-	if (player_)
-	{
-		if (player_->GetObject3d())
-		{
-			allModels.push_back(player_->GetObject3d());
-			modelNames.push_back("Player");
-		}
-		if (player_->GetReticle())
-		{
-			allModels.push_back(player_->GetReticle());
-			modelNames.push_back("Player Reticle");
-		}
-	}
-
-	// --- Model ウィンドウ ---
-	ImGui::Begin("モデル");
-	if (!allModels.empty())
-	{
-		static int currentModelIndex = 0;
-		if (currentModelIndex >= allModels.size()) currentModelIndex = 0;
-
-		std::vector<const char*> namePtrs;
-		for (const auto& name : modelNames)
-		{
-			namePtrs.push_back(name.c_str());
-		}
-
-		ImGui::Combo("対象モデル", &currentModelIndex, namePtrs.data(), (int)namePtrs.size());
-
-		Object3d* obj = allModels[currentModelIndex];
-
-		// Translate / Rotation / Scale
-		Vector3 t = obj->GetTranslate();
-		float tArr[3] = { t.x, t.y, t.z };
-		if (ImGui::DragFloat3("座標 (Translate)", tArr, 0.05f))
-		{
-			obj->SetTranslate(Vector3(tArr[0], tArr[1], tArr[2]));
-		}
-
-		Vector3 r = obj->GetRotation();
-		float rArr[3] = { r.x, r.y, r.z };
-		if (ImGui::DragFloat3("回転 (Rotation)", rArr, 0.5f))
-		{
-			obj->SetRotation(Vector3(rArr[0], rArr[1], rArr[2]));
-		}
-
-		Vector3 s = obj->GetScale();
-		float sArr[3] = { s.x, s.y, s.z };
-		if (ImGui::DragFloat3("スケール (Scale)", sArr, 0.01f, 0.001f, 100000.0f))
-		{
-			obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
-		}
-
+		ImGui::TextColored(ImVec4(0.3f, 0.75f, 1.0f, 1.0f), "CATEGORY");
 		ImGui::Separator();
 
-		// 反射強度のスライダーを追加
-		if (obj->GetModel())
+		for (int i = 0; i < IM_ARRAYSIZE(navItems); ++i)
 		{
-			float envCoeff = obj->GetModel()->GetEnvironmentCoefficient();
-			if (ImGui::DragFloat("環境反射係数 (Environment Coeff)", &envCoeff, 0.01f, 0.0f, 1.0f))
+			bool isSelected = (currentNavIndex == i);
+			if (ImGui::Selectable(navItems[i], isSelected, 0, ImVec2(0, 30)))
 			{
-				obj->SetEnvironmentCoefficient(envCoeff);
+				currentNavIndex = i;
 			}
 		}
 
+		ImGui::Spacing();
 		ImGui::Separator();
-
-		// 最初のインスタンスの Model を参照して現在値を取得
-		Model* sampleModel = allModels[0]->GetModel();
-		if (sampleModel)
+		ImGui::TextDisabled("F1: UI表示切替");
+		if (ImGui::Button("全画面プレイ (F1)", ImVec2(-1, 28)))
 		{
-			int currentSelect = sampleModel->GetSelectLightings();
-
-			// ラベルは HLSL の case に対応させる（0..5）
-			const char* lightingNames[] = {
-				"0: テクスチャのみ (TextureOnly)",
-				"1: 平行光源・ディフューズ (Directional Diffuse)",
-				"2: 平行光源・ソフト (Directional Soft)",
-				"3: 平行光源・スペキュラ (Dir Diffuse+Specular)",
-				"4: 平行光源 + 点光源 (Dir + Point)",
-				"5: スポットライト (Spot)"
-			};
-
-			// Combo で選択（HLSL の switch の case に対応）
-			if (ImGui::Combo("ライティングモード (一括変更)", &currentSelect, lightingNames, IM_ARRAYSIZE(lightingNames)))
-			{
-				// 全インスタンスに反映
-				for (auto& mObj : allModels)
-				{
-					Model* m = mObj->GetModel();
-					if (m) m->SetSelectLightings(currentSelect);
-				}
-			}
+			EngineServices::GetInstance()->SetEditorMode(false);
 		}
+
+		// 最下部にパフォーマンス情報を常時表示
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::TextColored(ImVec4(0.3f, 0.85f, 0.5f, 1.0f), "PERFORMANCE");
+
+		float fps = ImGui::GetIO().Framerate;
+		float frameTime = 1000.0f / (fps > 0.0f ? fps : 1.0f);
+
+		ImGui::Text("FPS: %.1f (%.2f ms)", fps, frameTime);
+		if (lastLoadTimeMs_ > 0.0f)
+		{
+			ImGui::TextDisabled("Load: %.1f ms", lastLoadTimeMs_);
+		}
+
+		static float fpsHistory[60] = {};
+		static int historyOffset = 0;
+		fpsHistory[historyOffset] = fps;
+		historyOffset = (historyOffset + 1) % IM_ARRAYSIZE(fpsHistory);
+
+		ImGui::PlotLines("##FPSMiniGraph", fpsHistory, IM_ARRAYSIZE(fpsHistory), historyOffset, nullptr, 0.0f, 120.0f, ImVec2(-1, 42));
 	}
 	ImGui::End();
 
-
-
-	// --- Camera ウィンドウ (分離) ---
-	ImGui::Begin("カメラ");
-	if (camera)
+	// -------------------------------------------------------------
+	// 2. [右ドック用] インスペクター (Inspector Content)
+	// -------------------------------------------------------------
+	if (ImGui::Begin("インスペクター"))
 	{
-		Vector3& camPosRef = camera->GetTranslate();
-		float camPosArr[3] = { camPosRef.x, camPosRef.y, camPosRef.z };
-		if (ImGui::DragFloat3("座標 (Translate)", camPosArr, 0.1f))
+		// 1. ゲーム・進行
+		if (currentNavIndex == 0)
 		{
-			camera->SetTranslate(Vector3(camPosArr[0], camPosArr[1], camPosArr[2]));
-		}
+			ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "■ ゲーム・進行・レール制御");
+			ImGui::Separator();
 
-		Vector3& camRotRef = camera->GetRotation();
-		float camRotArr[3] = { camRotRef.x, camRotRef.y, camRotRef.z };
-		if (ImGui::DragFloat3("回転 (Rotation)", camRotArr, 0.1f))
-		{
-			camera->SetRotation(Vector3(camRotArr[0], camRotArr[1], camRotArr[2]));
-		}
+			if (ImGui::CollapsingHeader("シーン切り替え (Scene Selector)", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				if (auto sm = GetSceneManager())
+				{
+					sm->DrawSceneSelectorUI();
+				}
+			}
 
-		float fov = camera->GetFovY();
-		if (ImGui::DragFloat("画角 (FOV Y)", &fov, 0.01f, 0.01f, 3.14f))
-		{
-			camera->SetFovY(fov);
-		}
+			ImGui::Spacing();
+			if (ImGui::CollapsingHeader("ゲームプレイ制御 (Playback Control)", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				bool doReset = false;
 
-		float aspect = camera->GetAspectRatio();
-		if (ImGui::DragFloat("アスペクト比", &aspect, 0.01f, 0.1f, 10.0f))
-		{
-			camera->SetAspectRatio(aspect);
-		}
+				if (isPlaying_)
+				{
+					if (ImGui::Button("一時停止 (Pause)", ImVec2(130, 36)))
+					{
+						isPlaying_ = false;
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("リセット (Reset)", ImVec2(110, 36)))
+					{
+						doReset = true;
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("全画面 (F1で復帰)", ImVec2(140, 36)))
+					{
+						EngineServices::GetInstance()->SetEditorMode(false);
+					}
+					ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "状態: プレイ中 (PLAYING)");
+				}
+				else
+				{
+					if (ImGui::Button("開始 (Play)", ImVec2(130, 36)))
+					{
+						isPlaying_ = true;
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("全画面プレイ", ImVec2(140, 36)))
+					{
+						isPlaying_ = true;
+						EngineServices::GetInstance()->SetEditorMode(false);
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("リセット", ImVec2(100, 36)))
+					{
+						doReset = true;
+					}
+					ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f), "状態: 停止中 (STOPPED - フリーカメラ可能)");
+					ImGui::TextDisabled("※フリーカメラ: WASD/QE移動, 右クリックドラッグ回転");
+				}
 
-		float nearC = camera->GetNearClip();
-		if (ImGui::DragFloat("近クリップ", &nearC, 0.001f, 0.001f, 100.0f))
-		{
-			camera->SetNearClip(nearC);
-		}
+				ImGui::Separator();
+				if (ImGui::Button("レベル再読込 (F5)", ImVec2(160, 32)))
+				{
+					ReloadLevel();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("敵を全リスポーン", ImVec2(160, 32)))
+				{
+					ReloadEnemiesOnly();
+				}
 
-		float farC = camera->GetFarClip();
-		if (ImGui::DragFloat("遠クリップ", &farC, 0.1f, 1.0f, 100000.0f))
+				ImGui::Separator();
+				if (railCameraController_)
+				{
+					float p = railCameraController_->GetProgress();
+					if (ImGui::SliderFloat("レール進行度 (Progress)", &p, 0.0f, 1.0f, "%.3f"))
+					{
+						railCameraController_->SetProgress(p);
+					}
+				}
+				ImGui::SliderFloat("ゲーム速度 (Game Speed)", &baseGameSpeed_, 0.0f, 5.0f, "%.2fx");
+
+				// リセット処理
+				if (doReset)
+				{
+					isPlaying_ = false;
+					if (railCameraController_)
+					{
+						railCameraController_->Reset();
+					}
+					if (!mainRails_.empty() && mainRails_[0]->IsValid())
+					{
+						Vector3 railForward = mainRails_[0]->GetForward(0.0f);
+						float yaw = std::atan2(railForward.x, railForward.z);
+						float pitch = std::asin(-railForward.y);
+						float railTilt = mainRails_[0]->GetTilt(0.0f);
+						currentCameraRot_ = { pitch, yaw, 0.0f };
+						lastCameraYaw_ = yaw;
+						currentCameraBank_ = railTilt;
+					}
+				}
+
+				ImGui::Separator();
+				ImGui::Checkbox("レール軌跡を表示 (Draw Rail)", &isDrawRail_);
+				ImGui::SameLine();
+				ImGui::Checkbox("コライダーを表示 (Draw Collider)", &isDrawCollider_);
+			}
+
+			if (railCameraController_)
+			{
+				ImGui::Spacing();
+				if (ImGui::CollapsingHeader("レールカメラ設定 (Rail Camera)", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					railCameraController_->DrawImGuiContent();
+				}
+			}
+		}
+		// 2. プレイヤー
+		else if (currentNavIndex == 1)
 		{
-			camera->SetFarClip(farC);
+			ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "■ プレイヤー設定・チート");
+			ImGui::Separator();
+
+			if (player_)
+			{
+				player_->DrawImGuiContent();
+			}
+			else
+			{
+				ImGui::TextDisabled("プレイヤーが存在しません。");
+			}
+		}
+		// 3. 演出・シェーダー
+		else if (currentNavIndex == 2)
+		{
+			ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "■ 演出・トランジション・シェーダー");
+			ImGui::Separator();
+
+			if (ImGui::CollapsingHeader("画面遷移 (Transition Settings)", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				if (auto sm = GetSceneManager())
+				{
+					sm->DrawTransitionSettingsUI();
+				}
+			}
+
+			ImGui::Spacing();
+			if (ImGui::CollapsingHeader("ポストプロセス (Post Process)", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				if (auto pp = EngineServices::GetInstance()->GetPostProcess())
+				{
+					pp->DrawImGuiContent();
+				}
+			}
+
+			ImGui::Spacing();
+			if (ImGui::CollapsingHeader("パーティクルエフェクト (Particles)", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				const char* items[] = { "Thruster (バーニア)", "Explosion (爆破)", "Hit (命中)", "Wind (風・スピード線)", "Trail (軌跡)" };
+				ImGui::Combo("対象エフェクト", &currentEditEffectIndex_, items, IM_ARRAYSIZE(items));
+
+				ImGui::Separator();
+				if (currentEditEffectIndex_ == 0) thrusterEffect_.DrawImGui();
+				else if (currentEditEffectIndex_ == 1) explosionEffect_.DrawImGui();
+				else if (currentEditEffectIndex_ == 2) hitEffect_.DrawImGui();
+				else if (currentEditEffectIndex_ == 3) windEffect_.DrawImGui();
+				else if (currentEditEffectIndex_ == 4) trailEffect_.DrawImGui();
+			}
+		}
+		// 4. シーン・照明
+		else if (currentNavIndex == 3)
+		{
+			ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "■ カメラ・照明・配置モデル");
+			ImGui::Separator();
+
+			// カメラ設定
+			if (ImGui::CollapsingHeader("カメラ詳細 (Active Camera)", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				if (camera)
+				{
+					Vector3& camPosRef = camera->GetTranslate();
+					float camPosArr[3] = { camPosRef.x, camPosRef.y, camPosRef.z };
+					if (ImGui::DragFloat3("座標 (Translate)", camPosArr, 0.1f))
+					{
+						camera->SetTranslate(Vector3(camPosArr[0], camPosArr[1], camPosArr[2]));
+					}
+
+					Vector3& camRotRef = camera->GetRotation();
+					float camRotArr[3] = { camRotRef.x, camRotRef.y, camRotRef.z };
+					if (ImGui::DragFloat3("回転 (Rotation)", camRotArr, 0.1f))
+					{
+						camera->SetRotation(Vector3(camRotArr[0], camRotArr[1], camRotArr[2]));
+					}
+
+					float fov = camera->GetFovY();
+					if (ImGui::DragFloat("画角 (FOV Y)", &fov, 0.01f, 0.01f, 3.14f))
+					{
+						camera->SetFovY(fov);
+					}
+
+					float aspect = camera->GetAspectRatio();
+					if (ImGui::DragFloat("アスペクト比", &aspect, 0.01f, 0.1f, 10.0f))
+					{
+						camera->SetAspectRatio(aspect);
+					}
+
+					float nearC = camera->GetNearClip();
+					if (ImGui::DragFloat("近クリップ", &nearC, 0.001f, 0.001f, 100.0f))
+					{
+						camera->SetNearClip(nearC);
+					}
+
+					float farC = camera->GetFarClip();
+					if (ImGui::DragFloat("遠クリップ", &farC, 0.1f, 1.0f, 100000.0f))
+					{
+						camera->SetFarClip(farC);
+					}
+				}
+			}
+
+			// モデルとライトの準備
+			std::vector<Object3d*> allModels;
+			std::vector<std::string> modelNames;
+			int index = 0;
+			for (auto& obj : modelInstances)
+			{
+				if (obj)
+				{
+					allModels.push_back(obj.get());
+					modelNames.push_back("Model " + std::to_string(index));
+				}
+				index++;
+			}
+			if (player_)
+			{
+				if (player_->GetObject3d())
+				{
+					allModels.push_back(player_->GetObject3d());
+					modelNames.push_back("Player");
+				}
+				if (player_->GetReticle())
+				{
+					allModels.push_back(player_->GetReticle());
+					modelNames.push_back("Player Reticle");
+				}
+			}
+
+			// ライト設定
+			ImGui::Spacing();
+			if (ImGui::CollapsingHeader("グローバルライト設定 (Global Lights)", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				if (!allModels.empty())
+				{
+					Object3d* firstObj = allModels[0];
+					Model* sampleModel = firstObj ? firstObj->GetModel() : nullptr;
+					int lightingMode = sampleModel ? sampleModel->GetSelectLightings() : 0;
+
+					auto usesDirectional = [](int mode) { return mode >= 1 && mode <= 4; };
+					auto usesPoint = [](int mode) { return mode == 4; };
+					auto usesSpot = [](int mode) { return mode == 5; };
+
+					// 平行光源
+					if (usesDirectional(lightingMode))
+					{
+						ImGui::Text("平行光源 (Directional Light)");
+						static bool dirInit = false;
+						static Vector4 dirColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+						static Vector3 dirDirection = { -1.0f, -0.5f, 0.5f };
+						static float dirIntensity = 1.0f;
+						static bool dirEnabledGlobal = true;
+						static float dirPrevIntensityGlobal = 1.0f;
+
+						if (!dirInit)
+						{
+							dirColor = firstObj->GetDirectionalLightColor();
+							dirDirection = firstObj->GetDirectionalLightDirection();
+							dirIntensity = firstObj->GetDirectionalLightIntensity();
+							dirPrevIntensityGlobal = dirIntensity;
+							dirInit = true;
+						}
+
+						float dcArr[4] = { dirColor.x, dirColor.y, dirColor.z, dirColor.w };
+						if (ImGui::ColorEdit4("色##Dir", dcArr))
+						{
+							dirColor = Vector4(dcArr[0], dcArr[1], dcArr[2], dcArr[3]);
+							for (auto& m : allModels) m->SetDirectionalLightColor(dirColor);
+						}
+
+						float ddArr[3] = { dirDirection.x, dirDirection.y, dirDirection.z };
+						if (ImGui::DragFloat3("方向##Dir", ddArr, 0.01f, -10.0f, 10.0f))
+						{
+							dirDirection = Vector3(ddArr[0], ddArr[1], ddArr[2]);
+							for (auto& m : allModels) m->SetDirectionalLightDirection(dirDirection);
+						}
+
+						if (ImGui::DragFloat("強度##Dir", &dirIntensity, 0.01f, 0.0f, 100.0f))
+						{
+							if (dirEnabledGlobal)
+							{
+								for (auto& m : allModels) m->SetDirectionalLightIntensity(dirIntensity);
+								dirPrevIntensityGlobal = dirIntensity;
+							}
+							else
+							{
+								dirPrevIntensityGlobal = dirIntensity;
+							}
+						}
+
+						if (ImGui::Checkbox("平行光源を有効化##Dir", &dirEnabledGlobal))
+						{
+							if (!dirEnabledGlobal)
+							{
+								for (auto& m : allModels) m->SetDirectionalLightIntensity(0.0f);
+							}
+							else
+							{
+								for (auto& m : allModels) m->SetDirectionalLightIntensity(dirPrevIntensityGlobal);
+							}
+						}
+					}
+
+					// 点光源
+					if (usesPoint(lightingMode))
+					{
+						ImGui::Separator();
+						ImGui::Text("点光源 (Point Light)");
+						static bool pointInit = false;
+						static Vector4 pointColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+						static Vector3 pointPosition = { 0.0f, 1.0f, -8.0f };
+						static float pointIntensity = 1.0f;
+						static float prevPointIntensity = 1.0f;
+						static float pointRadius = 15.0f;
+						static float pointRange = 1.0f;
+						static bool pointLightEnabled = true;
+
+						if (!pointInit && firstObj)
+						{
+							pointColor = firstObj->GetPointLightColor();
+							pointPosition = firstObj->GetPointLightPosition();
+							pointIntensity = firstObj->GetPointLightIntensity();
+							prevPointIntensity = pointIntensity;
+							pointInit = true;
+						}
+
+						if (ImGui::Checkbox("点光源を有効化##Point", &pointLightEnabled))
+						{
+							if (!pointLightEnabled)
+								for (auto& m : allModels) m->SetPointLightIntensity(0.0f);
+							else
+								for (auto& m : allModels) m->SetPointLightIntensity(prevPointIntensity);
+						}
+
+						ImGui::BeginDisabled(!pointLightEnabled);
+						float pcArr[4] = { pointColor.x, pointColor.y, pointColor.z, pointColor.w };
+						if (ImGui::ColorEdit4("色##Point", pcArr))
+						{
+							pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
+							for (auto& m : allModels) m->SetPointLightColor(pointColor);
+						}
+						float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
+						if (ImGui::DragFloat3("位置##Point", ppArr, 0.05f, -100.0f, 100.0f))
+						{
+							pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
+							for (auto& m : allModels) m->SetPointLightPosition(pointPosition);
+						}
+						if (ImGui::DragFloat("強度##Point", &pointIntensity, 0.01f, 0.0f, 100.0f))
+						{
+							if (pointLightEnabled)
+							{
+								for (auto& m : allModels) m->SetPointLightIntensity(pointIntensity);
+								prevPointIntensity = pointIntensity;
+							}
+							else
+							{
+								prevPointIntensity = pointIntensity;
+							}
+						}
+						if (ImGui::DragFloat("半径##Point", &pointRadius, 0.01f, 0.1f, 100.0f))
+						{
+							for (auto& m : allModels) m->SetPointLightRadius(pointRadius);
+						}
+						if (ImGui::DragFloat("減衰範囲##Point", &pointRange, 0.01f, 0.1f, 50.0f))
+						{
+							for (auto& m : allModels) m->SetPointLightDecry(pointRange);
+						}
+						ImGui::EndDisabled();
+					}
+
+					// スポットライト
+					if (usesSpot(lightingMode))
+					{
+						ImGui::Separator();
+						ImGui::Text("スポットライト (Spot Light)");
+						static bool spotInit = false;
+						static Vector4 spotColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+						static Vector3 spotPosition = { 0.0f, 5.0f, 0.0f };
+						static Vector3 spotDirection = { 0.0f, -1.0f, 0.0f };
+						static float spotIntensity = 1.0f;
+						static float prevSpotIntensity = 1.0f;
+						static float spotDistance = 10.0f;
+						static float spotDecay = 1.0f;
+						static float spotAngleDeg = 45.0f;
+						static bool spotLightEnabled = true;
+
+						if (!spotInit && firstObj)
+						{
+							spotColor = firstObj->GetSpotLightColor();
+							spotPosition = firstObj->GetSpotLightPosition();
+							spotDirection = firstObj->GetSpotLightDirection();
+							spotIntensity = firstObj->GetSpotLightIntensity();
+							prevSpotIntensity = spotIntensity;
+							spotDistance = firstObj->GetSpotLightDistance();
+							spotDecay = firstObj->GetSpotLightDecay();
+							spotAngleDeg = firstObj->GetSpotLightAngleDeg();
+							spotInit = true;
+						}
+
+						if (ImGui::Checkbox("スポットライトを有効化##Spot", &spotLightEnabled))
+						{
+							if (!spotLightEnabled)
+								for (auto& m : allModels) m->SetSpotLightIntensity(0.0f);
+							else
+								for (auto& m : allModels) m->SetSpotLightIntensity(prevSpotIntensity);
+						}
+
+						ImGui::BeginDisabled(!spotLightEnabled);
+						float scArr[4] = { spotColor.x, spotColor.y, spotColor.z, spotColor.w };
+						if (ImGui::ColorEdit4("色##Spot", scArr))
+						{
+							spotColor = Vector4(scArr[0], scArr[1], scArr[2], spotColor.w);
+							for (auto& m : allModels) m->SetSpotLightColor(spotColor);
+						}
+						float spArr[3] = { spotPosition.x, spotPosition.y, spotPosition.z };
+						if (ImGui::DragFloat3("位置##Spot", spArr, 0.05f, -100.0f, 100.0f))
+						{
+							spotPosition = Vector3(spArr[0], spArr[1], spArr[2]);
+							for (auto& m : allModels) m->SetSpotLightPosition(spotPosition);
+						}
+						float sdArr[3] = { spotDirection.x, spotDirection.y, spotDirection.z };
+						if (ImGui::DragFloat3("方向##Spot", sdArr, 0.01f, -10.0f, 10.0f))
+						{
+							spotDirection = Vector3(sdArr[0], sdArr[1], sdArr[2]);
+							for (auto& m : allModels) m->SetSpotLightDirection(spotDirection);
+						}
+						if (ImGui::DragFloat("強度##Spot", &spotIntensity, 0.01f, 0.0f, 100.0f))
+						{
+							if (spotLightEnabled)
+							{
+								for (auto& m : allModels) m->SetSpotLightIntensity(spotIntensity);
+								prevSpotIntensity = spotIntensity;
+							}
+							else
+							{
+								prevSpotIntensity = spotIntensity;
+							}
+						}
+						if (ImGui::DragFloat("距離##Spot", &spotDistance, 0.1f, 0.0f, 10000.0f))
+						{
+							for (auto& m : allModels) m->SetSpotLightDistance(spotDistance);
+						}
+						if (ImGui::DragFloat("減衰率##Spot", &spotDecay, 0.01f, 0.0f, 10.0f))
+						{
+							for (auto& m : allModels) m->SetSpotLightDecay(spotDecay);
+						}
+						if (ImGui::SliderFloat("照射角度##Spot", &spotAngleDeg, 1.0f, 90.0f))
+						{
+							for (auto& m : allModels) m->SetSpotLightAngleDeg(spotAngleDeg);
+						}
+						ImGui::EndDisabled();
+					}
+
+					if (!usesDirectional(lightingMode) && !usesPoint(lightingMode) && !usesSpot(lightingMode))
+					{
+						ImGui::TextWrapped("現在のライティングモードでは、編集可能なライトがありません。");
+					}
+				}
+			}
+
+			// モデル一覧・トランスフォーム調整
+			ImGui::Spacing();
+			if (ImGui::CollapsingHeader("3Dモデル一覧・調整 (Model Inspector)"))
+			{
+				if (!allModels.empty())
+				{
+					static int currentModelIndex = 0;
+					if (currentModelIndex >= (int)allModels.size()) currentModelIndex = 0;
+
+					std::vector<const char*> namePtrs;
+					for (const auto& name : modelNames)
+					{
+						namePtrs.push_back(name.c_str());
+					}
+
+					ImGui::Combo("対象モデル", &currentModelIndex, namePtrs.data(), (int)namePtrs.size());
+
+					Object3d* obj = allModels[currentModelIndex];
+					if (obj)
+					{
+						Vector3 t = obj->GetTranslate();
+						float tArr[3] = { t.x, t.y, t.z };
+						if (ImGui::DragFloat3("座標 (Translate)", tArr, 0.05f))
+						{
+							obj->SetTranslate(Vector3(tArr[0], tArr[1], tArr[2]));
+						}
+
+						Vector3 r = obj->GetRotation();
+						float rArr[3] = { r.x, r.y, r.z };
+						if (ImGui::DragFloat3("回転 (Rotation)", rArr, 0.5f))
+						{
+							obj->SetRotation(Vector3(rArr[0], rArr[1], rArr[2]));
+						}
+
+						Vector3 s = obj->GetScale();
+						float sArr[3] = { s.x, s.y, s.z };
+						if (ImGui::DragFloat3("スケール (Scale)", sArr, 0.01f, 0.001f, 100000.0f))
+						{
+							obj->SetScale(Vector3(sArr[0], sArr[1], sArr[2]));
+						}
+
+						if (obj->GetModel())
+						{
+							float envCoeff = obj->GetModel()->GetEnvironmentCoefficient();
+							if (ImGui::DragFloat("環境反射係数", &envCoeff, 0.01f, 0.0f, 1.0f))
+							{
+								obj->SetEnvironmentCoefficient(envCoeff);
+							}
+						}
+					}
+
+					ImGui::Separator();
+					Model* sampleModel = allModels[0]->GetModel();
+					if (sampleModel)
+					{
+						int currentSelect = sampleModel->GetSelectLightings();
+						const char* lightingNames[] = {
+							"0: テクスチャのみ (TextureOnly)",
+							"1: 平行光源・ディフューズ (Directional Diffuse)",
+							"2: 平行光源・ソフト (Directional Soft)",
+							"3: 平行光源・スペキュラ (Dir Diffuse+Specular)",
+							"4: 平行光源 + 点光源 (Dir + Point)",
+							"5: スポットライト (Spot)"
+						};
+						if (ImGui::Combo("ライティングモード (一括変更)", &currentSelect, lightingNames, IM_ARRAYSIZE(lightingNames)))
+						{
+							for (auto& mObj : allModels)
+							{
+								Model* m = mObj->GetModel();
+								if (m) m->SetSelectLightings(currentSelect);
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	ImGui::End();
 
-
-	// --- Light ウィンドウ (モデルが使っているライトのみ表示) ---
-	ImGui::Begin("グローバルライト設定");
-	if (!allModels.empty())
+	// -------------------------------------------------------------
+	// 3. [下ドック用] タイムライン (Timeline Editor)
+	// -------------------------------------------------------------
+	if (ImGui::Begin("タイムライン"))
 	{
-		Object3d* firstObj = allModels[0];
-		Model* sampleModel = firstObj ? firstObj->GetModel() : nullptr;
-		int lightingMode = sampleModel ? sampleModel->GetSelectLightings() : 0;
+		float currentProgress = railCameraController_ ? railCameraController_->GetProgress() : 0.0f;
+		float totalRailLength = (!mainRails_.empty() && mainRails_[0]->IsValid()) ? mainRails_[0]->GetTotalLength() : 1000.0f;
+		// 想定総時間（秒）: 基準速度での概算時間
+		float estimatedTotalTime = (totalRailLength > 0.0f) ? (totalRailLength / 40.0f) : 60.0f;
+		float currentEstimatedTime = currentProgress * estimatedTotalTime;
 
-		// ヘルパー: ライティングモードがどのライトを使うか
-		auto usesDirectional = [](int mode)
-			{
-				return mode == 1 || mode == 2 || mode == 3 || mode == 4;
-			};
-		auto usesPoint = [](int mode)
-			{
-				return mode == 4;
-			};
-		auto usesSpot = [](int mode)
-			{
-				return mode == 5;
-			};
-
-		// Directional
-		if (usesDirectional(lightingMode))
+		// 制御バー: 再生コントロール
+		ImGui::BeginGroup();
 		{
-			ImGui::Separator();
-			ImGui::Text("平行光源 (Directional Light)");
-
-			static bool dirInit = false;
-			static Vector4 dirColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-			static Vector3 dirDirection = { -1.0f, -0.5f, 0.5f }; // 夕方のように斜めから当たる角度に初期値を変更
-			static float dirIntensity = 1.0f;
-			static bool dirEnabledGlobal = true;
-			static float dirPrevIntensityGlobal = 1.0f;
-
-			if (!dirInit)
+			// 先頭へ
+			if (ImGui::Button("|< 0%##TL", ImVec2(55, 26)))
 			{
-				dirColor = firstObj->GetDirectionalLightColor();
-				dirDirection = firstObj->GetDirectionalLightDirection();
-				dirIntensity = firstObj->GetDirectionalLightIntensity();
-				dirPrevIntensityGlobal = dirIntensity;
-				dirInit = true;
+				if (railCameraController_) railCameraController_->SetProgress(0.0f);
+			}
+			ImGui::SameLine();
+			// -5%
+			if (ImGui::Button("<< -5%##TL", ImVec2(65, 26)))
+			{
+				float newP = (std::max)(0.0f, currentProgress - 0.05f);
+				if (railCameraController_) railCameraController_->SetProgress(newP);
+			}
+			ImGui::SameLine();
+			// 再生 / 一時停止
+			if (isPlaying_)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.85f, 0.25f, 0.25f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.95f, 0.35f, 0.35f, 1.0f));
+				if (ImGui::Button("一時停止 (Pause)##TL", ImVec2(125, 26)))
+				{
+					isPlaying_ = false;
+				}
+				ImGui::PopStyleColor(2);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.65f, 0.35f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f, 0.78f, 0.42f, 1.0f));
+				if (ImGui::Button("再生 (Play)##TL", ImVec2(125, 26)))
+				{
+					isPlaying_ = true;
+				}
+				ImGui::PopStyleColor(2);
+			}
+			ImGui::SameLine();
+			// +5%
+			if (ImGui::Button("+5% >>##TL", ImVec2(65, 26)))
+			{
+				float newP = (std::min)(1.0f, currentProgress + 0.05f);
+				if (railCameraController_) railCameraController_->SetProgress(newP);
+			}
+			ImGui::SameLine();
+			// 末尾へ
+			if (ImGui::Button("100% >|##TL", ImVec2(65, 26)))
+			{
+				if (railCameraController_) railCameraController_->SetProgress(1.0f);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("リセット##TL", ImVec2(65, 26)))
+			{
+				isPlaying_ = false;
+				if (railCameraController_) railCameraController_->Reset();
+				ReloadEnemiesOnly();
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("敵リスポーン##TL", ImVec2(95, 26)))
+			{
+				ReloadEnemiesOnly();
 			}
 
-			float dcArr[4] = { dirColor.x, dirColor.y, dirColor.z, dirColor.w };
-			if (ImGui::ColorEdit4("色 (Color)##Dir", dcArr))
-			{
-				dirColor = Vector4(dcArr[0], dcArr[1], dcArr[2], dcArr[3]);
-				for (auto& m : allModels) m->SetDirectionalLightColor(dirColor);
-			}
+			ImGui::SameLine();
+			ImGui::TextDisabled("|");
+			ImGui::SameLine();
+			ImGui::SetNextItemWidth(110.0f);
+			ImGui::SliderFloat("速度##TL", &baseGameSpeed_, 0.1f, 3.0f, "%.2fx");
+			ImGui::SameLine();
+			if (ImGui::SmallButton("1.0x##TL")) baseGameSpeed_ = 1.0f;
+			ImGui::SameLine();
+			if (ImGui::SmallButton("2.0x##TL")) baseGameSpeed_ = 2.0f;
+		}
+		ImGui::EndGroup();
 
-			float ddArr[3] = { dirDirection.x, dirDirection.y, dirDirection.z };
-			if (ImGui::DragFloat3("方向 (Direction)##Dir", ddArr, 0.01f, -10.0f, 10.0f))
-			{
-				dirDirection = Vector3(ddArr[0], ddArr[1], ddArr[2]);
-				for (auto& m : allModels) m->SetDirectionalLightDirection(dirDirection);
-			}
+		ImGui::SameLine();
+		ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "  進行度: %5.1f%% (%.1fs / %.1fs)", currentProgress * 100.0f, currentEstimatedTime, estimatedTotalTime);
 
-			if (ImGui::DragFloat("強度 (Intensity)##Dir", &dirIntensity, 0.01f, 0.0f, 100.0f))
-			{
-				if (dirEnabledGlobal)
-				{
-					for (auto& m : allModels) m->SetDirectionalLightIntensity(dirIntensity);
-					dirPrevIntensityGlobal = dirIntensity;
-				}
-				else
-				{
-					dirPrevIntensityGlobal = dirIntensity;
-				}
-			}
+		ImGui::Spacing();
 
-			if (ImGui::Checkbox("平行光源を有効化 (global)##Dir", &dirEnabledGlobal))
+		// タイムライン描画 (DrawList によるカスタムシーケンサーバー)
+		ImVec2 canvasSize = ImVec2(ImGui::GetContentRegionAvail().x, 34.0f);
+		if (canvasSize.x < 100.0f) canvasSize.x = 100.0f;
+		ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+		// 背景トラック
+		drawList->AddRectFilled(canvasPos, ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y), IM_COL32(32, 34, 40, 255), 4.0f);
+		drawList->AddRect(canvasPos, ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y), IM_COL32(60, 65, 75, 255), 4.0f);
+
+		// 狭小ゾーン (Narrow Zones) の帯を描画
+		if (!mainRails_.empty() && mainRails_[0]->IsValid())
+		{
+			const auto& zones = mainRails_[0]->GetNarrowZones();
+			for (const auto& zone : zones)
 			{
-				if (!dirEnabledGlobal)
-				{
-					for (auto& m : allModels) m->SetDirectionalLightIntensity(0.0f);
-				}
-				else
-				{
-					for (auto& m : allModels) m->SetDirectionalLightIntensity(dirPrevIntensityGlobal);
-				}
+				float x0 = canvasPos.x + zone.startT * canvasSize.x;
+				float x1 = canvasPos.x + zone.endT * canvasSize.x;
+				drawList->AddRectFilled(ImVec2(x0, canvasPos.y + 2.0f), ImVec2(x1, canvasPos.y + canvasSize.y - 2.0f), IM_COL32(230, 140, 40, 100), 2.0f);
+				drawList->AddRect(ImVec2(x0, canvasPos.y + 2.0f), ImVec2(x1, canvasPos.y + canvasSize.y - 2.0f), IM_COL32(250, 170, 60, 200), 2.0f);
 			}
 		}
 
-		// Point
-		if (usesPoint(lightingMode))
+		// エネミーマーカーの収集と描画
+		struct EnemyMarkerItem {
+			float progress;
+			std::string type;
+			bool isDead;
+			bool isActive;
+		};
+		std::vector<EnemyMarkerItem> enemyMarkers;
+
+		const Rail* mainRail = (!mainRails_.empty() && mainRails_[0]->IsValid()) ? mainRails_[0].get() : nullptr;
+
+		for (const auto& enemy : enemies_)
 		{
-			ImGui::Separator();
-			ImGui::Text("点光源 (Point Light)");
-
-			static bool pointInit = false;
-			static Vector4 pointColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-			static Vector3 pointPosition = { 0.0f, 1.0f, -8.0f }; // スザンヌの正面に初期配置
-			static float pointIntensity = 1.0f;
-			static float prevPointIntensity = 1.0f;
-			static float pointRadius = 15.0f; // 初期値1.0では光が届かないため15.0に拡大
-			static float pointRange = 1.0f;
-			static bool pointLightEnabled = true;
-
-			if (!pointInit && firstObj)
+			if (!enemy) continue;
+			float sp = enemy->GetRailProgress();
+			// 未設定(0.0f以下)の場合は、敵の配置座標またはパス始点から最寄りレール進行度を自動逆算
+			if ((sp <= 0.0f || sp > 1.0f) && mainRail)
 			{
-				pointColor = firstObj->GetPointLightColor();
-				pointPosition = firstObj->GetPointLightPosition();
-				pointIntensity = firstObj->GetPointLightIntensity();
-				prevPointIntensity = pointIntensity;
-				pointInit = true;
-			}
-
-			if (ImGui::Checkbox("点光源を有効化##Point", &pointLightEnabled))
-			{
-				if (!pointLightEnabled)
+				Vector3 basePos = enemy->GetSpawnPos();
+				if (enemy->GetMovePath() && enemy->GetMovePath()->IsValid())
 				{
-					for (auto& m : allModels) m->SetPointLightIntensity(0.0f);
+					basePos = enemy->GetMovePath()->GetPosition(0.0f);
 				}
-				else
-				{
-					for (auto& m : allModels) m->SetPointLightIntensity(prevPointIntensity);
-				}
+				sp = mainRail->GetClosestProgress(basePos);
+				// タイムライン用キャッシュに反映（敵のスポーン設定は変更しない）
+				const_cast<Enemy*>(enemy.get())->SetRailProgress(sp);
 			}
 
-#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-			ImGui::BeginDisabled(!pointLightEnabled);
-#else
-			if (!pointLightEnabled)
+			if (sp >= 0.0f && sp <= 1.0f)
 			{
-				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-			}
-#endif
+				enemyMarkers.push_back({ sp, enemy->GetTypeName(), enemy->IsDead(), enemy->IsActive() });
 
-			float pcArr[4] = { pointColor.x, pointColor.y, pointColor.z, pointColor.w };
-			if (ImGui::ColorEdit4("色 (Color)##Point", pcArr))
-			{
-				pointColor = Vector4(pcArr[0], pcArr[1], pcArr[2], pcArr[3]);
-				for (auto& m : allModels) m->SetPointLightColor(pointColor);
-			}
+				float ex = canvasPos.x + sp * canvasSize.x;
+				// 状態に応じた色分け（待機中: 紫, 出現中: 黄金, 撃破済: 暗いグレー）
+				ImU32 col = IM_COL32(185, 95, 255, 230);
+				if (enemy->IsDead()) col = IM_COL32(110, 110, 120, 140);
+				else if (enemy->IsActive()) col = IM_COL32(255, 215, 0, 255);
 
-			float ppArr[3] = { pointPosition.x, pointPosition.y, pointPosition.z };
-			if (ImGui::DragFloat3("位置 (Position)##Point", ppArr, 0.05f, -100.0f, 100.0f))
-			{
-				pointPosition = Vector3(ppArr[0], ppArr[1], ppArr[2]);
-				for (auto& m : allModels) m->SetPointLightPosition(pointPosition);
+				drawList->AddLine(ImVec2(ex, canvasPos.y + 2.0f), ImVec2(ex, canvasPos.y + canvasSize.y - 2.0f), col, 1.5f);
+				drawList->AddTriangleFilled(ImVec2(ex - 3.5f, canvasPos.y + 2.0f), ImVec2(ex + 3.5f, canvasPos.y + 2.0f), ImVec2(ex, canvasPos.y + 8.0f), col);
 			}
-
-			if (ImGui::DragFloat("強度 (Intensity)##Point", &pointIntensity, 0.01f, 0.0f, 100.0f))
-			{
-				if (pointLightEnabled)
-				{
-					for (auto& m : allModels) m->SetPointLightIntensity(pointIntensity);
-					prevPointIntensity = pointIntensity;
-				}
-				else
-				{
-					prevPointIntensity = pointIntensity;
-				}
-			}
-
-			if (ImGui::DragFloat("半径 (Radius)##Point", &pointRadius, 0.01f, 0.1f, 100.0f))
-			{
-				for (auto& m : allModels) m->SetPointLightRadius(pointRadius);
-			}
-			if (ImGui::DragFloat("減衰範囲 (Decay Range)##Point", &pointRange, 0.01f, 0.1f, 50.0f))
-			{
-				for (auto& m : allModels) m->SetPointLightDecry(pointRange);
-			}
-
-#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-			ImGui::EndDisabled();
-#else
-			if (!pointLightEnabled)
-			{
-				ImGui::PopItemFlag();
-				ImGui::PopStyleVar();
-			}
-#endif
 		}
 
-		// Spot
-		if (usesSpot(lightingMode))
+		// 目盛り (10% 刻み)
+		for (int i = 1; i < 10; ++i)
 		{
-			ImGui::Separator();
-			ImGui::Text("スポットライト (Spot Light)");
-
-			static bool spotInit = false;
-			static Vector4 spotColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-			static Vector3 spotPosition = { 0.0f, 5.0f, 0.0f };
-			static Vector3 spotDirection = { 0.0f, -1.0f, 0.0f };
-			static float spotIntensity = 1.0f;
-			static float prevSpotIntensity = 1.0f;
-			static float spotDistance = 10.0f;
-			static float spotDecay = 1.0f;
-			static float spotAngleDeg = 45.0f;
-			static bool spotLightEnabled = true;
-
-			if (!spotInit && firstObj)
-			{
-				spotColor = firstObj->GetSpotLightColor();
-				spotPosition = firstObj->GetSpotLightPosition();
-				spotDirection = firstObj->GetSpotLightDirection();
-				spotIntensity = firstObj->GetSpotLightIntensity();
-				prevSpotIntensity = spotIntensity;
-				spotDistance = firstObj->GetSpotLightDistance();
-				spotDecay = firstObj->GetSpotLightDecay();
-				spotAngleDeg = firstObj->GetSpotLightAngleDeg();
-				spotInit = true;
-			}
-
-			if (ImGui::Checkbox("スポットライトを有効化##Spot", &spotLightEnabled))
-			{
-				if (!spotLightEnabled)
-				{
-					for (auto& m : allModels) m->SetSpotLightIntensity(0.0f);
-				}
-				else
-				{
-					for (auto& m : allModels) m->SetSpotLightIntensity(prevSpotIntensity);
-				}
-			}
-
-#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-			ImGui::BeginDisabled(!spotLightEnabled);
-#else
-			if (!spotLightEnabled)
-			{
-				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-			}
-#endif
-
-			// Color
-			{
-				float scArr[4] = { spotColor.x, spotColor.y, spotColor.z, spotColor.w };
-				if (ImGui::ColorEdit4("色 (Color)##Spot", scArr))
-				{
-					spotColor = Vector4(scArr[0], scArr[1], scArr[2], scArr[3]);
-					for (auto& m : allModels) m->SetSpotLightColor(spotColor);
-				}
-			}
-
-			// Position
-			{
-				float spArr[3] = { spotPosition.x, spotPosition.y, spotPosition.z };
-				if (ImGui::DragFloat3("位置 (Position)##Spot", spArr, 0.05f, -100.0f, 100.0f))
-				{
-					spotPosition = Vector3(spArr[0], spArr[1], spArr[2]);
-					for (auto& m : allModels) m->SetSpotLightPosition(spotPosition);
-				}
-			}
-
-			// Direction
-			{
-				float sdArr[3] = { spotDirection.x, spotDirection.y, spotDirection.z };
-				if (ImGui::DragFloat3("方向 (Direction)##Spot", sdArr, 0.01f, -10.0f, 10.0f))
-				{
-					spotDirection = Vector3(sdArr[0], sdArr[1], sdArr[2]);
-					for (auto& m : allModels) m->SetSpotLightDirection(spotDirection);
-				}
-			}
-
-			// Intensity
-			if (ImGui::DragFloat("強度 (Intensity)##Spot", &spotIntensity, 0.01f, 0.0f, 100.0f))
-			{
-				if (spotLightEnabled)
-				{
-					for (auto& m : allModels) m->SetSpotLightIntensity(spotIntensity);
-					prevSpotIntensity = spotIntensity;
-				}
-				else
-				{
-					prevSpotIntensity = spotIntensity;
-				}
-			}
-
-			// Distance / Decay
-			if (ImGui::DragFloat("距離 (Distance)##Spot", &spotDistance, 0.1f, 0.0f, 10000.0f))
-			{
-				for (auto& m : allModels) m->SetSpotLightDistance(spotDistance);
-			}
-			if (ImGui::DragFloat("減衰率 (Decay)##Spot", &spotDecay, 0.01f, 0.0f, 10.0f))
-			{
-				for (auto& m : allModels) m->SetSpotLightDecay(spotDecay);
-			}
-
-			// Angle (deg)
-			if (ImGui::SliderFloat("角度 (Angle deg)##Spot", &spotAngleDeg, 1.0f, 90.0f))
-			{
-				for (auto& m : allModels) m->SetSpotLightAngleDeg(spotAngleDeg);
-			}
-
-#if defined(IMGUI_VERSION) && (IMGUI_VERSION_NUM >= 18000)
-			ImGui::EndDisabled();
-#else
-			if (!spotLightEnabled)
-			{
-				ImGui::PopItemFlag();
-				ImGui::PopStyleVar();
-			}
-#endif
+			float tx = canvasPos.x + (i * 0.1f) * canvasSize.x;
+			drawList->AddLine(ImVec2(tx, canvasPos.y + canvasSize.y - 6.0f), ImVec2(tx, canvasPos.y + canvasSize.y - 1.0f), IM_COL32(100, 105, 120, 180), 1.0f);
 		}
 
-		// モデルがライトを使わない場合は何も表示されない（意図的）
-		if (!usesDirectional(lightingMode) && !usesPoint(lightingMode) && !usesSpot(lightingMode))
+		// 現在の再生ヘッド（Playhead）
+		float playheadX = canvasPos.x + currentProgress * canvasSize.x;
+		drawList->AddLine(ImVec2(playheadX, canvasPos.y), ImVec2(playheadX, canvasPos.y + canvasSize.y), IM_COL32(255, 60, 60, 255), 2.5f);
+		drawList->AddTriangleFilled(ImVec2(playheadX - 5.0f, canvasPos.y), ImVec2(playheadX + 5.0f, canvasPos.y), ImVec2(playheadX, canvasPos.y + 8.0f), IM_COL32(255, 80, 80, 255));
+
+		// 見えないボタンを被せてマウスクリック＆ドラッグによるスクラブ操作を実現
+		ImGui::InvisibleButton("##TimelineTrack", canvasSize);
+		if (ImGui::IsItemActive() || ImGui::IsItemClicked())
 		{
-			ImGui::TextWrapped("このモデルのライティングモードでは、編集可能なライトがありません。");
+			ImVec2 mousePos = ImGui::GetMousePos();
+			float newT = (mousePos.x - canvasPos.x) / canvasSize.x;
+			newT = (std::max)(0.0f, (std::min)(1.0f, newT));
+			if (railCameraController_)
+			{
+				railCameraController_->SetProgress(newT);
+			}
+		}
+
+		// ホバー時にツールチップ表示
+		if (ImGui::IsItemHovered())
+		{
+			ImVec2 mousePos = ImGui::GetMousePos();
+			float hoverT = (mousePos.x - canvasPos.x) / canvasSize.x;
+			hoverT = (std::max)(0.0f, (std::min)(1.0f, hoverT));
+
+			std::string extraInfo = "";
+			float minDiff = 0.035f; // 3.5%の範囲内の敵を検出
+			int nearbyCount = 0;
+			std::string nearestType = "";
+			for (const auto& m : enemyMarkers)
+			{
+				if (std::abs(m.progress - hoverT) < minDiff)
+				{
+					nearbyCount++;
+					if (nearestType.empty()) nearestType = m.type;
+				}
+			}
+			if (nearbyCount > 0)
+			{
+				extraInfo = "\n[エネミー配置: " + nearestType + (nearbyCount > 1 ? (" ほか計" + std::to_string(nearbyCount) + "体") : "") + "]";
+			}
+
+			ImGui::SetTooltip("位置: %.1f%% (%.1fs)%s\nクリックでジャンプ", hoverT * 100.0f, hoverT * estimatedTotalTime, extraInfo.c_str());
+		}
+
+		// イベントマーカー凡例・クイックジャンプ
+		ImGui::Spacing();
+		ImGui::TextColored(ImVec4(0.9f, 0.6f, 0.2f, 1.0f), "■ 狭小ゾーン (Orange)");
+		ImGui::SameLine();
+		ImGui::TextColored(ImVec4(0.75f, 0.45f, 1.0f, 1.0f), "  ■ エネミー配置 (Purple:待機 / Yellow:出現中 / Gray:撃破)");
+		ImGui::SameLine();
+		ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "  | 再生位置 (Red)");
+		ImGui::SameLine();
+		ImGui::TextDisabled(" [敵総数: %zu体]", enemyMarkers.size());
+
+		if (!mainRails_.empty() && mainRails_[0]->IsValid())
+		{
+			const auto& zones = mainRails_[0]->GetNarrowZones();
+			ImGui::TextDisabled("ジャンプ: ");
+
+			if (!zones.empty())
+			{
+				for (size_t zIdx = 0; zIdx < zones.size(); ++zIdx)
+				{
+					ImGui::SameLine();
+					char btnLabel[32];
+					snprintf(btnLabel, sizeof(btnLabel), "ゾーン%zu (%.0f%%)##Jump", zIdx + 1, zones[zIdx].startT * 100.0f);
+					if (ImGui::SmallButton(btnLabel))
+					{
+						if (railCameraController_) railCameraController_->SetProgress(zones[zIdx].startT);
+					}
+				}
+			}
+
+			// 敵の出現ポイントへのジャンプ（代表的なポイントを重複排除して最大5箇所）
+			if (!enemyMarkers.empty())
+			{
+				std::vector<float> enemyJumpPoints;
+				for (const auto& em : enemyMarkers)
+				{
+					bool isTooClose = false;
+					for (float jp : enemyJumpPoints)
+					{
+						if (std::abs(jp - em.progress) < 0.05f) { isTooClose = true; break; }
+					}
+					if (!isTooClose)
+					{
+						enemyJumpPoints.push_back(em.progress);
+						if (enemyJumpPoints.size() >= 5) break;
+					}
+				}
+				std::sort(enemyJumpPoints.begin(), enemyJumpPoints.end());
+
+				for (size_t eIdx = 0; eIdx < enemyJumpPoints.size(); ++eIdx)
+				{
+					ImGui::SameLine();
+					char btnLabel[32];
+					snprintf(btnLabel, sizeof(btnLabel), "敵群%zu (%.0f%%)##EJump", eIdx + 1, enemyJumpPoints[eIdx] * 100.0f);
+					if (ImGui::SmallButton(btnLabel))
+					{
+						if (railCameraController_) railCameraController_->SetProgress(enemyJumpPoints[eIdx]);
+					}
+				}
+			}
 		}
 	}
-	ImGui::End();
-
-
-	// --- Particle ウィンドウ ---
-	ImGui::Begin("Effect Selector");
-	const char* items[] = { "Thruster", "Explosion", "Hit", "Wind", "Trail" };
-	ImGui::Combo("Edit Target", &currentEditEffectIndex_, items, IM_ARRAYSIZE(items));
-	ImGui::End();
-
-	if (currentEditEffectIndex_ == 0) thrusterEffect_.DrawImGui();
-	else if (currentEditEffectIndex_ == 1) explosionEffect_.DrawImGui();
-	else if (currentEditEffectIndex_ == 2) hitEffect_.DrawImGui();
-	else if (currentEditEffectIndex_ == 3) windEffect_.DrawImGui();
-	else if (currentEditEffectIndex_ == 4) trailEffect_.DrawImGui();
-
-	// --- Performance Profiler ウィンドウ ---
-	ImGui::Begin("Profiler");
-	ImGui::Text("Scene Load Time: %.2f ms (%.3f s)", lastLoadTimeMs_, lastLoadTimeMs_ / 1000.0f);
-	ImGui::Text("Application FPS: %.1f", ImGui::GetIO().Framerate);
 	ImGui::End();
 
 #endif // USE_IMGUI

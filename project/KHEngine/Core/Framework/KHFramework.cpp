@@ -95,6 +95,16 @@ void KHFramework::FrameworkUpdate(float /*deltaTime*/)
 	if (input_)
 	{
 		input_->Update();
+
+		// F1キーでエディタモード（ImGui表示）をトグル
+		if (input_->TriggerKey(DIK_F1))
+		{
+			auto services = EngineServices::GetInstance();
+			if (services)
+			{
+				services->SetEditorMode(!services->GetEditorMode());
+			}
+		}
 	}
 
 	
@@ -106,12 +116,6 @@ void KHFramework::FrameworkUpdate(float /*deltaTime*/)
 		
 		
 		EditorSystem::GetInstance()->Draw(postProcess_->GetResultSrvIndex());
-
-		
-		if (postProcess_)
-		{
-			postProcess_->DrawImGui();
-		}
 	}
 }
 

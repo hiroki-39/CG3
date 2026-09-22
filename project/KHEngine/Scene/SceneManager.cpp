@@ -5,6 +5,9 @@
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Core/OS/WinApp.h"
+#ifdef USE_IMGUI
+#include "externals/imgui/imgui.h"
+#endif
 
 namespace
 {
@@ -119,6 +122,7 @@ void SceneManager::Update()
 		scene_ = sceneFactory_->CreateScene(nextSceneName_);
 		if (scene_)
 		{
+			currentSceneName_ = nextSceneName_;
 			scene_->SetSceneManager(this);
 			scene_->Initialize();
 		}
@@ -185,6 +189,24 @@ void SceneManager::DrawUI()
 		scene_->DrawUI();
 	}
 
+#ifdef USE_IMGUI
+	// GAMEPLAY以外のシーンでもエディタモード時にシーン移動できるようにする
+	if (currentSceneName_ != "GAMEPLAY")
+	{
+		ImGui::SetNextWindowSize(ImVec2(380, 260), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin("Scene Debug (F1: Toggle)", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			DrawSceneSelectorUI();
+			ImGui::Spacing();
+			if (ImGui::CollapsingHeader("トランジション設定"))
+			{
+				DrawTransitionSettingsUI();
+			}
+		}
+		ImGui::End();
+	}
+#endif
+
 	// ルール画像トランジション（最前面）描画
 	if (transitionState_ != TransitionState::None && transitionRenderer_ && ruleTextureIndex_ != UINT32_MAX)
 	{
@@ -198,7 +220,7 @@ void SceneManager::DrawUI()
 			isOpening = false;
 		}
 
-		transitionRenderer_->Draw(ruleTextureIndex_, prog, isOpening, fadeColor_, 0.06f, edgeColor_);
+		transitionRenderer_->Draw(ruleTextureIndex_, prog, isOpening, fadeColor_, edgeSoftness_, edgeColor_);
 	}
 }
 
@@ -218,6 +240,7 @@ void SceneManager::ChangeScene(const std::string& sceneName, float fadeDuration,
 		scene_ = sceneFactory_->CreateScene(sceneName);
 		if (scene_)
 		{
+			currentSceneName_ = sceneName;
 			scene_->SetSceneManager(this);
 			scene_->Initialize();
 		}
@@ -237,6 +260,7 @@ void SceneManager::ChangeScene(const std::string& sceneName, float fadeDuration,
 		scene_ = sceneFactory_->CreateScene(sceneName);
 		if (scene_)
 		{
+			currentSceneName_ = sceneName;
 			scene_->SetSceneManager(this);
 			scene_->Initialize();
 		}
@@ -255,4 +279,72 @@ void SceneManager::ChangeScene(const std::string& sceneName, float fadeDuration,
 	transitionState_ = TransitionState::FadeOut;
 
 	InitTransition();
+}
+
+void SceneManager::DrawSceneSelectorUI()
+{
+#ifdef USE_IMGUI
+	ImGui::Text("現在のシーン: ");
+	ImGui::SameLine();
+	ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "%s", currentSceneName_.c_str());
+
+	static bool immediateChange = false;
+	ImGui::Checkbox("即時切り替え (トランジション省略)", &immediateChange);
+
+	float dur = immediateChange ? 0.0f : fadeDuration_;
+
+	const char* scenes[] = { "TITLE", "GAMEPLAY", "GAMEOVER", "GAMECLEAR" };
+	const char* sceneLabels[] = { "タイトル (TITLE)", "ゲームプレイ (GAMEPLAY)", "ゲームオーバー (GAMEOVER)", "ゲームクリア (GAMECLEAR)" };
+
+	for (int i = 0; i < 4; ++i)
+	{
+		bool isCurrent = (currentSceneName_ == scenes[i]);
+		if (isCurrent)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.45f, 0.25f, 0.9f));
+		}
+
+		if (ImGui::Button(sceneLabels[i], ImVec2(160, 32)))
+		{
+			ChangeScene(scenes[i], dur, fadeColor_);
+		}
+
+		if (isCurrent)
+		{
+			ImGui::PopStyleColor();
+		}
+
+		if (i % 2 == 0)
+		{
+			ImGui::SameLine();
+		}
+	}
+#endif
+}
+
+void SceneManager::DrawTransitionSettingsUI()
+{
+#ifdef USE_IMGUI
+	ImGui::Text("ルール画像トランジション設定");
+	ImGui::SliderFloat("遷移時間 (秒)", &fadeDuration_, 0.1f, 3.0f, "%.2f s");
+	ImGui::SliderFloat("境界のぼかし (Softness)", &edgeSoftness_, 0.001f, 0.3f, "%.3f");
+
+	float fc[4] = { fadeColor_.x, fadeColor_.y, fadeColor_.z, fadeColor_.w };
+	if (ImGui::ColorEdit4("トランジション色", fc))
+	{
+		fadeColor_ = { fc[0], fc[1], fc[2], fc[3] };
+	}
+
+	float ec[4] = { edgeColor_.x, edgeColor_.y, edgeColor_.z, edgeColor_.w };
+	if (ImGui::ColorEdit4("エッジ発光色", ec))
+	{
+		edgeColor_ = { ec[0], ec[1], ec[2], ec[3] };
+	}
+
+	ImGui::Spacing();
+	if (ImGui::Button("テスト再生 (現シーン再読込)", ImVec2(200, 32)))
+	{
+		ChangeScene(currentSceneName_, fadeDuration_, fadeColor_);
+	}
+#endif
 }
