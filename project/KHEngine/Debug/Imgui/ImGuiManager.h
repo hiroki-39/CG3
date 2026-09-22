@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -38,6 +38,11 @@ public:
 	/// 終了処理
 	/// </summary>
 	void Finalize();
+
+	/// <summary>
+	/// モダンなダークテーマを適用
+	/// </summary>
+	static void ApplyModernDarkTheme();
 
 private:
 	WinApp* winApp_ = nullptr;

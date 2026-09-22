@@ -5,11 +5,26 @@
 #include <functional>
 #include "KHEngine/Core/Framework/BaseScene.h"
 #include "KHEngine/Scene/AbstractSceneFactory.h"
+#include "KHEngine/Math/Vector4.h"
+
+#include "KHEngine/Graphics/Transition/TransitionRenderer.h"
+
+class Sprite;
 
 class SceneManager
 {
 public:
+	enum class TransitionState
+	{
+		None,            // 通常時
+		FadeOut,         // 暗転中（旧シーン稼働中 -> 左右から中央へ閉じる）
+		FadeOutHold,     // 暗転完了・完全黒描画確定待ち（真っ黒を画面にPresent）
+		Loading,         // 暗転中ロード実行（旧シーン破棄＆新シーン初期化）
+		FadeInWait,      // ロード直後のタメ（先行更新と黒画面保持）
+		FadeIn           // 明転中（新シーン稼働中 -> 中央から左右端へ開く）
+	};
 
+	SceneManager();
 	~SceneManager();
 
 	void Update();
@@ -17,22 +32,59 @@ public:
 	void Draw();
 	void DrawUI();
 
-	
-	
-	
-	
-	void ChangeScene(const std::string& sceneName);
+	/// <summary>
+	/// シーン変更（トランジション付き）
+	/// </summary>
+	/// <param name="sceneName">遷移先のシーン名</param>
+	/// <param name="fadeDuration">フェードアウト/インにかける時間（秒）</param>
+	/// <param name="fadeColor">フェード色（デフォルト黒）</param>
+	void ChangeScene(const std::string& sceneName, float fadeDuration = 0.5f, const Vector4& fadeColor = { 0.0f, 0.0f, 0.0f, 1.0f });
 
-	
+	/// <summary>
+	/// 遷移中かどうか
+	/// </summary>
+	bool IsTransitioning() const { return transitionState_ != TransitionState::None; }
+
 	void SetSceneFactory(AbstractSceneFactory* factory) { sceneFactory_ = factory; }
 
-private:
-	
-	std::unique_ptr<BaseScene> nextScene_ = nullptr;
-	
-	std::unique_ptr<BaseScene> scene_ = nullptr;
+	const std::string& GetCurrentSceneName() const { return currentSceneName_; }
 
-	
+	// トランジション調整用
+	float GetFadeDuration() const { return fadeDuration_; }
+	void SetFadeDuration(float duration) { fadeDuration_ = duration; }
+	float GetEdgeSoftness() const { return edgeSoftness_; }
+	void SetEdgeSoftness(float s) { edgeSoftness_ = s; }
+	Vector4 GetFadeColor() const { return fadeColor_; }
+	void SetFadeColor(const Vector4& c) { fadeColor_ = c; }
+	Vector4 GetEdgeColor() const { return edgeColor_; }
+	void SetEdgeColor(const Vector4& c) { edgeColor_ = c; }
+
+	// ImGui用共通UI
+	void DrawSceneSelectorUI();
+	void DrawTransitionSettingsUI();
+
+private:
+	void InitTransition();
+
+private:
+	std::unique_ptr<BaseScene> nextScene_ = nullptr;
+	std::unique_ptr<BaseScene> scene_ = nullptr;
 	AbstractSceneFactory* sceneFactory_ = nullptr;
+
+	std::string currentSceneName_ = "TITLE";
+
+	// トランジション（ルール画像遷移）管理
+	TransitionState transitionState_ = TransitionState::None;
+	std::string nextSceneName_;
+	float fadeDuration_ = 0.6f;
+	float fadeTimer_ = 0.0f;
+	float transitionProgress_ = 0.0f;
+	float edgeSoftness_ = 0.06f;
+	int holdFrames_ = 0;
+	Vector4 fadeColor_ = { 0.0f, 0.0f, 0.0f, 1.0f };
+	Vector4 edgeColor_ = { 0.2f, 0.75f, 1.0f, 0.7f }; // 境界発光アクセント
+
+	std::unique_ptr<TransitionRenderer> transitionRenderer_ = nullptr;
+	uint32_t ruleTextureIndex_ = UINT32_MAX;
 };
 

@@ -36,6 +36,10 @@ public:
 
     ParticleEffect() = default;
     ~ParticleEffect() = default;
+    ParticleEffect(ParticleEffect&&) noexcept = default;
+    ParticleEffect& operator=(ParticleEffect&&) noexcept = default;
+    ParticleEffect(const ParticleEffect&) = delete;
+    ParticleEffect& operator=(const ParticleEffect&) = delete;
 
     void Initialize(DirectXCommon* dxCommon, SrvManager* srvManager);
     void Update(float dt, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, const Matrix4x4& billboardMatrix);
@@ -60,9 +64,12 @@ public:
     // エフェクト全体のベースカラーを設定
     void SetBaseColor(const Vector4& color);
 
-private:
+    // ノードへのアクセス
+    std::vector<std::unique_ptr<Node>>& GetNodes() { return nodes_; }
+    void ClearNodes() { nodes_.clear(); }
     void SetupRendererForNode(Node* node);
 
+private:
     std::vector<std::unique_ptr<Node>> nodes_;
     DirectXCommon* dxCommon_ = nullptr;
     SrvManager* srvManager_ = nullptr;

@@ -26,6 +26,10 @@ public:
     void LoadSettings(const std::string& filepath);
     void SaveSettings(const std::string& filepath);
     void DrawUI();
+    void DrawImGuiContent();
+
+    bool IsGodMode() const { return isGodMode_; }
+    void SetGodMode(bool god) { isGodMode_ = god; }
 
     
     
@@ -132,7 +136,7 @@ public:
         targetLimitYMax_ = limitYMax;
     }
     void ResetMoveLimits() {
-        targetLimitX_ = 22.0f;
+        targetLimitX_ = 35.0f;
         targetLimitYMin_ = -4.0f;
         targetLimitYMax_ = 10.0f;
     }
@@ -175,14 +179,14 @@ private:
     
     float speed_ = 0.45f;
     float reticleSpeed_ = 0.75f;
-    float moveLimitX_ = 22.0f;     
+    float moveLimitX_ = 35.0f;     
     float moveLimitY_ = 10.0f;     
     float attackInterval_ = 15.0f;
     float rollMaxTime_ = 15.0f;
-    float playerLimitX_ = 22.0f;   
+    float playerLimitX_ = 35.0f;   
     float playerLimitYMin_ = -4.0f;
     float playerLimitYMax_ = 10.0f;
-    float targetLimitX_ = 22.0f;   
+    float targetLimitX_ = 35.0f;   
     float targetLimitYMin_ = -4.0f;
     float targetLimitYMax_ = 10.0f;
     float followSpeed_ = 0.12f;
@@ -199,6 +203,7 @@ private:
     Vector3 modelRotOffset_ = { 0.0f, 0.0f, 0.0f };
     Vector3 playerScale_ = { 0.5f, 0.5f, 0.5f };
     Vector3 colliderSize_ = { 4.0f, 4.0f, 4.0f };
+    bool isGodMode_ = false;
 
     
     float currentPitch_ = 0.0f;

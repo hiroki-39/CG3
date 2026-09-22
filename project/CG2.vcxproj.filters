@@ -189,6 +189,9 @@
     <ClCompile Include="KHEngine\Graphics\PostProcess\PostProcess.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="KHEngine\Graphics\Transition\TransitionRenderer.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="KHEngine\Input\Input.h">
@@ -399,6 +402,9 @@
       <Filter>Game\Actor\Bullet</Filter>
     </ClInclude>
     <ClInclude Include="KHEngine\Graphics\PostProcess\PostProcess.h">
+      <Filter>繝倥ャ繝€繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="KHEngine\Graphics\Transition\TransitionRenderer.h">
       <Filter>繝倥ャ繝€繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
   </ItemGroup>

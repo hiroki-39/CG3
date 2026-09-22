@@ -230,7 +230,7 @@ void Rail::AddNarrowZone(float startT, float endT, float limitX, float limitYMin
 }
 
 void Rail::GetMoveLimits(float t, float& outLimitX, float& outLimitYMin, float& outLimitYMax) const {
-    outLimitX = 25.0f;
+    outLimitX = 35.0f;
     outLimitYMin = -5.0f;
     outLimitYMax = 12.0f;
 
@@ -254,10 +254,48 @@ void Rail::GetMoveLimits(float t, float& outLimitX, float& outLimitYMin, float& 
             // スムーズステップ (3w^2 - 2w^3)
             weight = weight * weight * (3.0f - 2.0f * weight);
 
-            outLimitX = (1.0f - weight) * 25.0f + weight * zone.limitX;
+            outLimitX = (1.0f - weight) * 35.0f + weight * zone.limitX;
             outLimitYMin = (1.0f - weight) * (-5.0f) + weight * zone.limitYMin;
             outLimitYMax = (1.0f - weight) * 12.0f + weight * zone.limitYMax;
             return;
         }
     }
+}
+
+float Rail::GetClosestProgress(const Vector3& worldPos, int sampleCount) const {
+    if (points_.empty()) return 0.0f;
+    if (sampleCount <= 1) return 0.0f;
+
+    float bestT = 0.0f;
+    float minSqDist = (std::numeric_limits<float>::max)();
+
+    // 1段階目: 粗いサンプリングで最近傍候補を探索
+    for (int i = 0; i <= sampleCount; ++i) {
+        float t = static_cast<float>(i) / static_cast<float>(sampleCount);
+        Vector3 p = GetPosition(t);
+        Vector3 diff = worldPos - p;
+        float sqDist = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+        if (sqDist < minSqDist) {
+            minSqDist = sqDist;
+            bestT = t;
+        }
+    }
+
+    // 2段階目: 候補周辺を細かくサンプリングして精度向上
+    float step = 1.0f / static_cast<float>(sampleCount);
+    float fineStart = (std::max)(0.0f, bestT - step);
+    float fineEnd = (std::min)(1.0f, bestT + step);
+    const int fineSteps = 20;
+    for (int j = 0; j <= fineSteps; ++j) {
+        float t = fineStart + (fineEnd - fineStart) * (static_cast<float>(j) / fineSteps);
+        Vector3 p = GetPosition(t);
+        Vector3 diff = worldPos - p;
+        float sqDist = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+        if (sqDist < minSqDist) {
+            minSqDist = sqDist;
+            bestT = t;
+        }
+    }
+
+    return std::clamp(bestT, 0.0f, 1.0f);
 }

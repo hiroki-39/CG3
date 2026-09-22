@@ -322,7 +322,14 @@ void PostProcess::DrawImGui()
 {
 #ifdef USE_IMGUI
 	ImGui::Begin("Post Process Editor");
+	DrawImGuiContent();
+	ImGui::End();
+#endif
+}
 
+void PostProcess::DrawImGuiContent()
+{
+#ifdef USE_IMGUI
 	for (auto& effect : effects_) {
 		ImGui::PushID(effect->name_.c_str());
 		ImGui::Checkbox(effect->name_.c_str(), &effect->isActive_);
@@ -337,15 +344,13 @@ void PostProcess::DrawImGui()
 	}
 
 	ImGui::Separator();
-	if (ImGui::Button("Save Settings")) {
+	if (ImGui::Button("設定を保存 (Save Settings)")) {
 		SaveToJson();
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Load Settings")) {
+	if (ImGui::Button("設定を読込 (Load Settings)")) {
 		LoadFromJson();
 	}
-
-	ImGui::End();
 #endif
 }
 

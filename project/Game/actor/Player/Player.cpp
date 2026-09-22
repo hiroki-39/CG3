@@ -100,7 +100,7 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
 
 // プレイヤー被弾時の処理
 void Player::OnCollision() {
-    if (invincibilityTimer_ > 0.0f || isDead_ || isRolling_) return; 
+    if (isGodMode_ || invincibilityTimer_ > 0.0f || isDead_ || isRolling_) return; 
     
     hp_ -= 1000;
     isDoubleShot_ = false;
@@ -758,17 +758,73 @@ void Player::SaveSettings(const std::string& filepath) {
 void Player::DrawUI() {
 #ifdef USE_IMGUI
     ImGui::Begin("Player Editor");
-    
-    if (ImGui::CollapsingHeader("Model Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-        const char* models[] = { "cube.obj", "player.obj", "monsterBall.obj","suzanne.obj"};
+    DrawImGuiContent();
+    ImGui::End();
+#endif
+}
+
+void Player::DrawImGuiContent() {
+#ifdef USE_IMGUI
+    // デバッグ・チート機能
+    if (ImGui::CollapsingHeader("Debug & Cheats", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Checkbox("ゴッドモード (無敵 / God Mode)", &isGodMode_);
+        ImGui::SameLine();
+        if (ImGui::Button("HP 全快 (Heal Full)")) {
+            hp_ = maxHp_;
+            isDead_ = false;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("即死 (Instant Kill)")) {
+            hp_ = 0;
+            isDead_ = true;
+        }
+
+        ImGui::DragInt("HP", &hp_, 10, 0, 10000);
+        ImGui::DragInt("Max HP", &maxHp_, 10, 1, 10000);
+        ImGui::Checkbox("ダブルショット (Double Shot)", &isDoubleShot_);
+    }
+
+    // 移動・可動域設定
+    if (ImGui::CollapsingHeader("Movement & Range Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::SliderFloat("左右制限 X (Player Limit X)", &playerLimitX_, 5.0f, 50.0f, "%.1f");
+        moveLimitX_ = playerLimitX_;
+        targetLimitX_ = playerLimitX_;
+
+        ImGui::SliderFloat("下限 Y (Player Limit Y Min)", &playerLimitYMin_, -20.0f, 0.0f, "%.1f");
+        ImGui::SliderFloat("上限 Y (Player Limit Y Max)", &playerLimitYMax_, 0.0f, 30.0f, "%.1f");
+        targetLimitYMin_ = playerLimitYMin_;
+        targetLimitYMax_ = playerLimitYMax_;
+
+        ImGui::Separator();
+        ImGui::SliderFloat("移動速度 (Speed)", &speed_, 0.05f, 2.0f, "%.2f");
+        ImGui::SliderFloat("照準速度 (Reticle Speed)", &reticleSpeed_, 0.1f, 3.0f, "%.2f");
+        ImGui::SliderFloat("追従速度 (Follow Speed)", &followSpeed_, 0.01f, 0.5f, "%.3f");
+        ImGui::SliderFloat("ロール時間 (Roll Max Time)", &rollMaxTime_, 5.0f, 60.0f, "%.0f frames");
+
+        ImGui::Separator();
+        ImGui::Text("地形衝突パラメータ");
+        ImGui::SliderFloat("ノックバック力", &terrainKnockbackPower_, 0.0f, 2.0f, "%.2f");
+        ImGui::SliderFloat("めり込み押し戻しマージン", &terrainPushMargin_, 0.01f, 0.5f, "%.2f");
+        ImGui::SliderFloat("衝突判定半径", &terrainCollisionRadius_, 0.1f, 3.0f, "%.2f");
+    }
+
+    // 攻撃・戦闘設定
+    if (ImGui::CollapsingHeader("Combat Settings")) {
+        ImGui::SliderFloat("攻撃間隔 (Attack Interval)", &attackInterval_, 1.0f, 60.0f, "%.0f frames");
+        ImGui::SliderFloat("弾速 (Bullet Speed)", &bulletSpeed_, 0.5f, 10.0f, "%.1f");
+    }
+
+    // モデル・外観設定
+    if (ImGui::CollapsingHeader("Model & Visual Settings")) {
+        const char* models[] = { "cube.obj", "player.obj", "monsterBall.obj", "suzanne.obj" };
         int currentModel = 0;
-        for (int i = 0; i < 3; ++i) {
+        for (int i = 0; i < 4; ++i) {
             if (modelName_ == models[i]) {
                 currentModel = i;
                 break;
             }
         }
-        if (ImGui::Combo("Model", &currentModel, models, 3)) {
+        if (ImGui::Combo("Model", &currentModel, models, 4)) {
             modelName_ = models[currentModel];
             if (object_) {
                 object_->SetModel(modelName_);
@@ -796,7 +852,6 @@ void Player::DrawUI() {
         }
         
         ImGui::Separator();
-        ImGui::Text("Transform Offset & Scale");
         float posOffset[3] = { modelPosOffset_.x, modelPosOffset_.y, modelPosOffset_.z };
         if (ImGui::DragFloat3("Position Offset", posOffset, 0.1f)) {
             modelPosOffset_ = { posOffset[0], posOffset[1], posOffset[2] };
@@ -805,35 +860,23 @@ void Player::DrawUI() {
         if (ImGui::DragFloat3("Rotation Offset", rotOffset, 0.05f)) {
             modelRotOffset_ = { rotOffset[0], rotOffset[1], rotOffset[2] };
         }
-        float scale[3] = { playerScale_.x, playerScale_.y, playerScale_.z };
         if (ImGui::DragFloat3("Player Scale", &playerScale_.x, 0.01f)) {
-            object_->SetScale(playerScale_);
+            if (object_) object_->SetScale(playerScale_);
         }
         if (ImGui::DragFloat3("Collider Size", &colliderSize_.x, 0.1f)) {
             if (colliderObject_) colliderObject_->SetScale(colliderSize_);
         }
-        ImGui::DragInt("HP", &hp_);
-        ImGui::DragInt("Max HP", &maxHp_);
     }
     
-    if (ImGui::CollapsingHeader("Movement Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::DragFloat("Reticle Speed", &reticleSpeed_, 0.01f, 0.1f, 5.0f);
-        ImGui::DragFloat("Follow Speed", &followSpeed_, 0.001f, 0.01f, 1.0f);
-        ImGui::DragFloat("Move Limit X", &moveLimitX_, 0.1f, 1.0f, 50.0f);
-        ImGui::DragFloat("Move Limit Y", &moveLimitY_, 0.1f, 1.0f, 50.0f);
-        ImGui::DragFloat("Player Limit X", &playerLimitX_, 0.1f, 1.0f, 50.0f);
-        ImGui::DragFloat("Player Limit Y Min", &playerLimitYMin_, 0.1f, -10.0f, 50.0f);
-        ImGui::DragFloat("Player Limit Y Max", &playerLimitYMax_, 0.1f, 1.0f, 50.0f);
-        ImGui::DragFloat("Roll Max Time", &rollMaxTime_, 1.0f, 1.0f, 60.0f); 
-        ImGui::DragFloat("Terrain Knockback Power", &terrainKnockbackPower_, 0.02f, 0.0f, 2.0f);
-        ImGui::DragFloat("Terrain Push Margin", &terrainPushMargin_, 0.01f, 0.0f, 0.5f);
-        ImGui::DragFloat("Terrain Collision Radius", &terrainCollisionRadius_, 0.02f, 0.1f, 5.0f);
-    }
-    if (ImGui::Button("Save Settings")) {
+    ImGui::Spacing();
+    ImGui::Separator();
+    if (ImGui::Button("設定をJSONに保存 (Save Settings)", ImVec2(200, 32))) {
         SaveSettings("resources/json/player/player_settings.json");
     }
-    
-    ImGui::End();
+    ImGui::SameLine();
+    if (ImGui::Button("JSONから再読込 (Reload Settings)", ImVec2(200, 32))) {
+        LoadSettings("resources/json/player/player_settings.json");
+    }
 #endif
 }
 

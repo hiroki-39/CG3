@@ -29,5 +29,6 @@ private:
     void DrawPerformance();
 
     DirectXCommon* dxCommon_ = nullptr;
-    bool showParticleEditor_ = true;
+    bool showParticleEditor_ = false;
+    bool resetLayout_ = false;
 };

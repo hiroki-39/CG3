@@ -150,13 +150,20 @@ void RailCameraController::ApplyTransform(const Vector3& playerLocalPos) {
 void RailCameraController::DrawImGui() {
 #ifdef USE_IMGUI
     if (ImGui::Begin("Rail & Camera Controller")) {
-        ImGui::SliderFloat("Rail Base Speed (m/s)", &baseSpeed_, 5.0f, 150.0f);
-        ImGui::SliderFloat("Speed Multiplier", &speedMultiplier_, 0.2f, 3.0f);
-        ImGui::SliderFloat("Progress", &progress_, 0.0f, 1.0f);
-        ImGui::DragFloat3("Camera Offset", &cameraOffset_.x, 0.1f);
-        ImGui::SliderFloat("Camera Follow Rate X", &cameraFollowRateX_, 0.0f, 1.0f);
-        ImGui::SliderFloat("Camera Follow Rate Y", &cameraFollowRateY_, 0.0f, 1.0f);
+        DrawImGuiContent();
     }
     ImGui::End();
+#endif
+}
+
+void RailCameraController::DrawImGuiContent() {
+#ifdef USE_IMGUI
+    ImGui::Text("レールカメラ設定");
+    ImGui::SliderFloat("レール基準速度 (m/s)", &baseSpeed_, 5.0f, 150.0f);
+    ImGui::SliderFloat("速度倍率 (Multiplier)", &speedMultiplier_, 0.2f, 3.0f);
+    ImGui::SliderFloat("進行度 (Progress)", &progress_, 0.0f, 1.0f);
+    ImGui::DragFloat3("カメラ位置オフセット", &cameraOffset_.x, 0.1f);
+    ImGui::SliderFloat("自機追従率 X (Follow Rate X)", &cameraFollowRateX_, 0.0f, 1.0f);
+    ImGui::SliderFloat("自機追従率 Y (Follow Rate Y)", &cameraFollowRateY_, 0.0f, 1.0f);
 #endif
 }

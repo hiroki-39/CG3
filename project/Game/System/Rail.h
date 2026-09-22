@@ -57,6 +57,11 @@ public:
     /// </summary>
     bool IsValid() const { return !points_.empty(); }
 
+    /// <summary>
+    /// 指定ワールド座標に最も近いレール進行度(0.0f〜1.0f)を取得する
+    /// </summary>
+    float GetClosestProgress(const Vector3& worldPos, int sampleCount = 100) const;
+
     // 狭窄区間（トンネル・建物隙間）の設定
     struct NarrowZone {
         float startT;

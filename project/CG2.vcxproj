@@ -233,6 +233,7 @@
     <ClCompile Include="KHEngine\Scene\SceneManager.cpp" />
     <ClCompile Include="KHEngine\Core\Resource\ResourceLocator.cpp" />
     <ClCompile Include="KHEngine\Scene\LevelLoader.cpp" />
+    <ClCompile Include="KHEngine\Graphics\Transition\TransitionRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Game\Scene\GamePlayScene.h" />
@@ -310,6 +311,7 @@
     <ClInclude Include="KHEngine\Scene\SceneFactory.h" />
     <ClInclude Include="KHEngine\Core\Resource\ResourceLocator.h" />
     <ClInclude Include="KHEngine\Scene\LevelLoader.h" />
+    <ClInclude Include="KHEngine\Graphics\Transition\TransitionRenderer.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

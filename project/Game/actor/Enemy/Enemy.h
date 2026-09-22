@@ -27,7 +27,7 @@ public:
     void SetMovePath(std::unique_ptr<Rail> path);
 
     void SetSpawnProgress(float progress) { spawnProgress_ = progress; }
-    void SetSpawnDelay(int delay) { spawnDelay_ = delay; }
+    void SetSpawnDelay(float delay) { spawnDelay_ = delay; }
     void SetTexturePath(const std::string& path);
 
     // Getter / Setter
@@ -37,7 +37,14 @@ public:
     }
     const LevelCollider& GetCollider() const { return collider_; }
     bool IsDead() const { return isDead_; }
+    bool IsActive() const { return isActive_; }
     const Rail* GetMovePath() const { return movePath_.get(); }
+    float GetSpawnProgress() const { return spawnProgress_; }
+    void SetRailProgress(float progress) { railProgress_ = progress; }
+    float GetRailProgress() const { return (railProgress_ >= 0.0f) ? railProgress_ : spawnProgress_; }
+    const Vector3& GetSpawnPos() const { return spawnPos_; }
+    float GetSpawnDist() const { return spawnDist_; }
+    const std::string& GetTypeName() const { return typeName_; }
 
     // 衝突判定用メソッド
     bool CheckCollision(const Sphere& bulletSphere) const;
@@ -62,6 +69,7 @@ private:
 
     bool isActive_ = false;
     float spawnProgress_ = 0.0f;
+    float railProgress_ = -1.0f;
     std::string texturePath_;
     bool isAutoAI_ = false;
     Vector3 aiOffset_ = {0.0f, 0.0f, 0.0f};

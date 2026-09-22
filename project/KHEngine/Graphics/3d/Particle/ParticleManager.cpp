@@ -7,7 +7,13 @@ ParticleManager* ParticleManager::instance_ = nullptr;
 
 ParticleManager* ParticleManager::GetInstance()
 {
-    if (instance_ == nullptr) instance_ = new ParticleManager();
+    if (instance_ == nullptr)
+    {
+        instance_ = new ParticleManager();
+        instance_->RegisterQuad("quad", "circle2.png");
+        instance_->RegisterRing("ring", "gradationLine.png", 32, 0.5f, 1.0f);
+        instance_->RegisterCylinder("Cylinder", "resources/sprites/gradationLine.png");
+    }
     return instance_;
 }
 
@@ -60,11 +66,16 @@ void ParticleManager::RegisterCylinder(const std::string& name, const std::strin
 void ParticleManager::SetupRendererFromAsset(ParticleRenderer& renderer, const std::string& name,
     DirectXCommon* dxCommon, SrvManager* srvManager, uint32_t maxInstances)
 {
-    assert(dxCommon != nullptr);
-    assert(srvManager != nullptr);
+    if (dxCommon == nullptr || srvManager == nullptr) return;
 
     auto it = assets_.find(name);
-    assert(it != assets_.end()); 
+    if (it == assets_.end())
+    {
+        // 万が一未登録ならデフォルトで四角形ポリゴンとして自動登録
+        RegisterQuad(name, "circle2.png");
+        it = assets_.find(name);
+        if (it == assets_.end()) return;
+    }
 
     renderer.Initialize(dxCommon, srvManager, maxInstances);
 

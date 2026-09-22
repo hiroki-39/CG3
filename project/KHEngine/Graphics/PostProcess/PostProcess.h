@@ -22,6 +22,7 @@ public:
 	/// エディタ(ImGui)での描画
 	/// </summary>
 	void DrawImGui();
+	void DrawImGuiContent();
 
 	/// <summary>
 	/// 設定の保存と読み込み（今回は枠組みだけ）
