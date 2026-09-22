@@ -1,4 +1,5 @@
 #include "EditorSystem.h"
+#include "EffectStudio.h"
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_internal.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
@@ -56,8 +57,10 @@ void EditorSystem::Draw(uint32_t gameSceneSrvIndex) {
             // 各ウィンドウを対応するドックに割り当てる
             ImGui::DockBuilderDockWindow("メニュー", dock_id_left);
             ImGui::DockBuilderDockWindow("インスペクター", dock_id_right);
+            ImGui::DockBuilderDockWindow("エフェクトエディター", dock_id_right);
             ImGui::DockBuilderDockWindow("タイムライン", dock_id_bottom);
             ImGui::DockBuilderDockWindow("ゲーム画面", dock_main_id);
+            ImGui::DockBuilderDockWindow("エフェクト画面", dock_main_id);
 
             // 構築完了
             ImGui::DockBuilderFinish(dockspace_id);
@@ -73,6 +76,10 @@ void EditorSystem::Draw(uint32_t gameSceneSrvIndex) {
     // 各ウィンドウの描画
     DrawViewport(gameSceneSrvIndex);
     
+    // エフェクトスタジオのウィンドウ描画
+    EffectStudio::GetInstance()->DrawViewportWindow();
+    EffectStudio::GetInstance()->DrawControlWindow();
+
     if (showParticleEditor_) {
         DrawParticleEditor();
     }
@@ -86,7 +93,9 @@ void EditorSystem::DrawMenuBar() {
             if (ImGui::MenuItem("デフォルトレイアウトに復元")) {
                 resetLayout_ = true;
             }
-            ImGui::MenuItem("スタンドアロン・パーティクルエディタ", nullptr, &showParticleEditor_);
+            ImGui::Separator();
+            ImGui::MenuItem("エフェクト画面 (ビューポート)", nullptr, &EffectStudio::GetInstance()->GetShowViewport());
+            ImGui::MenuItem("エフェクトエディター", nullptr, &EffectStudio::GetInstance()->GetShowEditor());
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();

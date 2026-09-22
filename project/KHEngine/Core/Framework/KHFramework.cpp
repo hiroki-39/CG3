@@ -5,6 +5,7 @@
 #include "KHEngine/Core/Utility/Crash/CrashDump.h"
 #include "KHEngine/Sound/Core/SoundManager.h"
 #include "KHEngine/Debug/Editor/EditorSystem.cpp"
+#include "KHEngine/Debug/Editor/EffectStudio.cpp"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include <chrono>
 
@@ -80,9 +81,12 @@ void KHFramework::FrameworkInitialize()
 
 	
 	InitializeEngineSubsystems();
+
+	// エンジンサブシステム（SrvManager等）の初期化完了後にエフェクトスタジオを初期化
+	EffectStudio::GetInstance()->Initialize(dxCommon_.get(), srvManager_);
 }
 
-void KHFramework::FrameworkUpdate(float /*deltaTime*/)
+void KHFramework::FrameworkUpdate(float deltaTime)
 {
 	
 	if (winApp_ && winApp_->ProcessMessage())
@@ -90,6 +94,9 @@ void KHFramework::FrameworkUpdate(float /*deltaTime*/)
 		endRequest_ = true;
 		return;
 	}
+
+	// エフェクトスタジオの更新
+	EffectStudio::GetInstance()->Update(deltaTime);
 
 	
 	if (input_)
@@ -129,7 +136,12 @@ void KHFramework::FrameworkDrawBegin()
 
 void KHFramework::FrameworkDrawEnd()
 {
-	
+	// エディターモード時、エフェクトスタジオのオフスクリーンレンダリングを実行
+	if (EngineServices::GetInstance()->GetEditorMode())
+	{
+		EffectStudio::GetInstance()->Render();
+	}
+
 	if (dxCommon_)
 	{
 		dxCommon_->PreDrawSwapchain();
@@ -245,6 +257,12 @@ void KHFramework::InitializeEngineSubsystems()
 	postProcess_ = std::make_unique<PostProcess>();
 	postProcess_->Initialize(dxCommon_.get());
 	EngineServices::GetInstance()->SetPostProcess(postProcess_.get());
+
+	// パーティクル基本プリミティブ（Quad, Ring, Cylinder）の登録
+	auto particleMgr = ParticleManager::GetInstance();
+	particleMgr->RegisterQuad("quad", "circle2.png");
+	particleMgr->RegisterRing("ring", "gradationLine.png", 32, 0.5f, 1.0f);
+	particleMgr->RegisterCylinder("Cylinder", "resources/sprites/gradationLine.png");
 
 	
 	TextureManager::GetInstance()->ExecuteUploadCommands();

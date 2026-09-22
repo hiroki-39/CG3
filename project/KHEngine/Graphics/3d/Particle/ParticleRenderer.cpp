@@ -223,16 +223,20 @@ void ParticleRenderer::Initialize(DirectXCommon* dxCommon, SrvManager* srvManage
 
 void ParticleRenderer::CreateVertexBuffer(const void* vertexData, uint32_t vertexCount, uint32_t vertexStride)
 {
-	assert(dxCommon_ != nullptr);
-	assert(vertexData != nullptr);
+	if (!dxCommon_ || !vertexData || vertexCount == 0 || vertexStride == 0) return;
 	vertexCount_ = vertexCount;
 	vertexStride_ = vertexStride;
 
 	const size_t bufferSize = static_cast<size_t>(vertexCount_) * vertexStride_;
 	vertexResource_ = dxCommon_->CreateBufferResource(bufferSize);
+	if (!vertexResource_) return;
+
 	void* mapped = nullptr;
-	vertexResource_->Map(0, nullptr, &mapped);
-	std::memcpy(mapped, vertexData, bufferSize);
+	HRESULT hr = vertexResource_->Map(0, nullptr, &mapped);
+	if (SUCCEEDED(hr) && mapped)
+	{
+		std::memcpy(mapped, vertexData, bufferSize);
+	}
 
 	vertexBufferView_.BufferLocation = vertexResource_->GetGPUVirtualAddress();
 	vertexBufferView_.SizeInBytes = static_cast<UINT>(bufferSize);
@@ -241,11 +245,15 @@ void ParticleRenderer::CreateVertexBuffer(const void* vertexData, uint32_t verte
 
 void ParticleRenderer::CreateMaterialBuffer(size_t sizeInBytes, const void* initData)
 {
-	assert(dxCommon_ != nullptr);
-	assert(initData != nullptr);
+	if (!dxCommon_ || !initData || sizeInBytes == 0) return;
 	materialResource_ = dxCommon_->CreateBufferResource(sizeInBytes);
-	materialResource_->Map(0, nullptr, &materialData_);
-	std::memcpy(materialData_, initData, sizeInBytes);
+	if (!materialResource_) return;
+
+	HRESULT hr = materialResource_->Map(0, nullptr, &materialData_);
+	if (SUCCEEDED(hr) && materialData_)
+	{
+		std::memcpy(materialData_, initData, sizeInBytes);
+	}
 	// GPU 側アドレスを保存（SetGraphicsRootConstantBufferView に渡す）
 	materialCBVAddress_ = materialResource_->GetGPUVirtualAddress();
 }

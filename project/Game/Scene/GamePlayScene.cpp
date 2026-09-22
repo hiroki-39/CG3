@@ -18,6 +18,7 @@
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Core/Resource/ResourceLocator.h"
 #include "externals/imgui/imgui.h"
+#include "KHEngine/Debug/Editor/EffectStudio.h"
 #include <filesystem>
 #include "KHEngine/Math/CollisionMath.h"
 #include "KHEngine/Scene/SceneManager.h"
@@ -1821,6 +1822,12 @@ void GamePlayScene::Update()
 	}
 
 #ifdef USE_IMGUI
+	// フレーム描画スコープ外（NewFrame前）の場合はImGui描画をスキップ
+	if (!ImGui::GetCurrentContext() || ImGui::GetFrameCount() <= 0)
+	{
+		return;
+	}
+
 	// =========================================================================
 	// 統合エディタUI: [左] メニュー  [右] インスペクター  [下] タイムライン
 	// =========================================================================
@@ -2041,15 +2048,12 @@ void GamePlayScene::Update()
 			ImGui::Spacing();
 			if (ImGui::CollapsingHeader("パーティクルエフェクト (Particles)", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				const char* items[] = { "Thruster (バーニア)", "Explosion (爆破)", "Hit (命中)", "Wind (風・スピード線)", "Trail (軌跡)" };
-				ImGui::Combo("対象エフェクト", &currentEditEffectIndex_, items, IM_ARRAYSIZE(items));
-
-				ImGui::Separator();
-				if (currentEditEffectIndex_ == 0) thrusterEffect_.DrawImGui();
-				else if (currentEditEffectIndex_ == 1) explosionEffect_.DrawImGui();
-				else if (currentEditEffectIndex_ == 2) hitEffect_.DrawImGui();
-				else if (currentEditEffectIndex_ == 3) windEffect_.DrawImGui();
-				else if (currentEditEffectIndex_ == 4) trailEffect_.DrawImGui();
+				if (ImGui::Button("エフェクト専用画面 (Effect Studio) を開く", ImVec2(-1, 36)))
+				{
+					EffectStudio::GetInstance()->GetShowViewport() = true;
+					EffectStudio::GetInstance()->GetShowEditor() = true;
+				}
+				ImGui::TextDisabled("※エフェクトの編集・保存は、中央上部の「エフェクト画面」および右側の「エフェクトエディター」で行えます。");
 			}
 		}
 		// 4. シーン・照明

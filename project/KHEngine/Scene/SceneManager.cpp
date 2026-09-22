@@ -190,8 +190,8 @@ void SceneManager::DrawUI()
 	}
 
 #ifdef USE_IMGUI
-	// GAMEPLAY以外のシーンでもエディタモード時にシーン移動できるようにする
-	if (currentSceneName_ != "GAMEPLAY")
+	// GAMEPLAYおよびTITLE以外のシーンでもエディタモード時にシーン移動できるようにする
+	if (currentSceneName_ != "GAMEPLAY" && currentSceneName_ != "TITLE")
 	{
 		ImGui::SetNextWindowSize(ImVec2(380, 260), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin("Scene Debug (F1: Toggle)", nullptr, ImGuiWindowFlags_AlwaysAutoResize))

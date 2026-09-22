@@ -33,12 +33,6 @@ void Application::Initialize()
 
     
     sceneManager_->ChangeScene("TITLE");
-
-    
-    if (sceneManager_)
-    {
-        sceneManager_->Update();
-    }
 }
 
 
