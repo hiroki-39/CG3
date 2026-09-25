@@ -1,7 +1,7 @@
 # Blender 4.4.1
 # www.blender.org
-mtllib pillar.mtl
-o pillar
+mtllib arch.mtl
+o arch
 v -1.000000 -1.000000 1.000000
 v -1.000000 1.000000 1.000000
 v -1.000000 -1.000000 -1.000000

@@ -63,7 +63,7 @@ void Model::Initialize(DirectXCommon* dxCommon, const ModelData& data)
 	modelData.material.textureIndex = TextureManager::GetInstance()->GetDefaultTextureIndex();
 }
 
-void Model::Draw()
+void Model::Draw(D3D12_GPU_VIRTUAL_ADDRESS materialCBV)
 {
 	if (modelData.vertices.empty() || modelData.indices.empty()) return;
 
@@ -73,8 +73,9 @@ void Model::Draw()
 	//IBVの設定
 	dxCommon->GetCommandList()->IASetIndexBuffer(&indexBufferView);
 
-	//CBVの設定
-	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
+	//CBVの設定（指定があればインスタンス固有のCBV、なければモデル共有CBV）
+	D3D12_GPU_VIRTUAL_ADDRESS cbv = (materialCBV != 0) ? materialCBV : materialResource_->GetGPUVirtualAddress();
+	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, cbv);
 
 	//SRVのDescriptorTableの先頭を設定
 	SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(2, modelData.material.textureIndex);

@@ -5,6 +5,7 @@
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Graphics/Resource/Texture/TextureManager.h"
 #include "KHEngine/Core/OS/WinApp.h"
+#include "KHEngine/UI/UITextManager.h"
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
 #endif
@@ -125,6 +126,7 @@ void SceneManager::Update()
 			currentSceneName_ = nextSceneName_;
 			scene_->SetSceneManager(this);
 			scene_->Initialize();
+			UITextManager::GetInstance()->SetCurrentScene(currentSceneName_);
 		}
 
 		// ロード完了：ロード時の重いフレーム（0.6秒など）によるdeltaTime急増を吸収するため、ウェイト状態へ
@@ -191,7 +193,7 @@ void SceneManager::DrawUI()
 
 #ifdef USE_IMGUI
 	// GAMEPLAYおよびTITLE以外のシーンでもエディタモード時にシーン移動できるようにする
-	if (currentSceneName_ != "GAMEPLAY" && currentSceneName_ != "TITLE")
+	if (currentSceneName_ != "GAMEPLAY" && currentSceneName_ != "TITLE" && EngineServices::GetInstance()->GetEditorMode())
 	{
 		ImGui::SetNextWindowSize(ImVec2(380, 260), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin("Scene Debug (F1: Toggle)", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
@@ -243,6 +245,7 @@ void SceneManager::ChangeScene(const std::string& sceneName, float fadeDuration,
 			currentSceneName_ = sceneName;
 			scene_->SetSceneManager(this);
 			scene_->Initialize();
+			UITextManager::GetInstance()->SetCurrentScene(currentSceneName_);
 		}
 		transitionState_ = TransitionState::None;
 		transitionProgress_ = 0.0f;
@@ -263,6 +266,7 @@ void SceneManager::ChangeScene(const std::string& sceneName, float fadeDuration,
 			currentSceneName_ = sceneName;
 			scene_->SetSceneManager(this);
 			scene_->Initialize();
+			UITextManager::GetInstance()->SetCurrentScene(currentSceneName_);
 		}
 		transitionState_ = TransitionState::None;
 		transitionProgress_ = 0.0f;

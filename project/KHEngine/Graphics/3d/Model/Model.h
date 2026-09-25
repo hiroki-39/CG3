@@ -80,9 +80,14 @@ public: //メンバ関数
 
 
 	/// <summary>
-	/// 描画処理
+	/// 描画処理（materialCBVを指定した場合はモデル共有の代わりに指定CBVをバインド）
 	/// </summary>
-	void Draw();
+	void Draw(D3D12_GPU_VIRTUAL_ADDRESS materialCBV = 0);
+
+	/// <summary>
+	/// マテリアルデータの取得
+	/// </summary>
+	const Material* GetMaterialData() const { return materialData_; }
 
 	/// <summary>
 	/// スカイボックス用のモデルデータを作成（今回追加）

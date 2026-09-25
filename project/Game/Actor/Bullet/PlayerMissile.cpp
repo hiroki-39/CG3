@@ -4,6 +4,7 @@
 #include <cmath>
 
 void PlayerMissile::Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& rotation, const Vector3& velocity, Object3d* parent, Enemy* targetEnemy) {
+    spawnPosition_ = position;
     position_ = position;
     previousPosition_ = position;
     velocity_ = velocity;
@@ -35,6 +36,18 @@ void PlayerMissile::Update(float gameSpeed) {
     
     deathTimer_ -= gameSpeed;
     if (deathTimer_ <= 0.0f) {
+        isDead_ = true;
+        return;
+    }
+
+    // 最大飛行射程チェック（発射地点からの移動距離が射程を超えたら消滅）
+    Vector3 flightDelta = {
+        position_.x - spawnPosition_.x,
+        position_.y - spawnPosition_.y,
+        position_.z - spawnPosition_.z
+    };
+    float flightDistSq = flightDelta.x * flightDelta.x + flightDelta.y * flightDelta.y + flightDelta.z * flightDelta.z;
+    if (flightDistSq > maxFlightDistance_ * maxFlightDistance_) {
         isDead_ = true;
         return;
     }

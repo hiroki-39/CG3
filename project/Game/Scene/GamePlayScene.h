@@ -19,6 +19,7 @@
 #include "Game/System/Rail.h"
 #include "Game/System/RailCameraController.h"
 #include "Game/Actor/Enemy/Enemy.h"
+#include "Game/Actor/Enemy/ArmoredTrainBoss.h"
 #include "Game/Actor/Obstacle/Obstacle.h"
 #include "Game/Actor/Item/EnhanceRing.h"
 #include <vector>
@@ -59,6 +60,7 @@ private:
     std::unique_ptr<RailCameraController> railCameraController_;
     float baseGameSpeed_ = 1.0f; 
     float gameSpeed_ = 1.0f;     
+    float lockOnMaxDistance_ = 350.0f; // ロックオン最大射程距離     
     
     
     bool isJustDodgeActive_ = false;
@@ -120,6 +122,10 @@ private:
     std::list<std::unique_ptr<Enemy>> enemies_;
     bool hasEnemySpawned_ = false; 
     
+    // 装甲列車ボス
+    std::unique_ptr<ArmoredTrainBoss> armoredTrainBoss_;
+    bool isBossSpawned_ = false;
+
     std::list<std::unique_ptr<EnemyBullet>> enemyBullets_;
     
     std::list<std::unique_ptr<Obstacle>> obstacles_;
@@ -127,10 +133,11 @@ private:
 
     
 #ifdef USE_IMGUI
-    bool isDrawCollider_ = true;
+    bool isDrawCollider_ = false; // デバッグ用コライダーはデフォルトOFF
 #else
     bool isDrawCollider_ = false;
 #endif
     float cameraShakeTimer_ = 0.0f;
     float lastLoadTimeMs_ = 0.0f;
+    int score_ = 0;
 };

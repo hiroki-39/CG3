@@ -73,6 +73,11 @@ public:
 
     void AddNarrowZone(float startT, float endT, float limitX = 10.0f, float limitYMin = -3.0f, float limitYMax = 8.0f);
     void GetMoveLimits(float t, float& outLimitX, float& outLimitYMin, float& outLimitYMax) const;
+    void SetDefaultMoveLimits(float limitX, float limitYMin, float limitYMax) {
+        defaultLimitX_ = limitX;
+        defaultLimitYMin_ = limitYMin;
+        defaultLimitYMax_ = limitYMax;
+    }
     const std::vector<NarrowZone>& GetNarrowZones() const { return narrowZones_; }
     void ClearNarrowZones() { narrowZones_.clear(); }
 
@@ -91,6 +96,11 @@ private:
     float totalLength_ = 0.0f;
     float customSpeed_ = 50.0f;
     bool useCustomSpeed_ = true;
+
+    // デフォルト移動制限（幅±35m, 下限-4m, 上限+20m）
+    float defaultLimitX_ = 35.0f;
+    float defaultLimitYMin_ = -4.0f;
+    float defaultLimitYMax_ = 20.0f;
 
     // 区間と区間内進行度を計算する補助関数
     void GetSegment(float rawT, int& outIndex, float& outLocalT) const;

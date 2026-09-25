@@ -6,6 +6,7 @@
 #include "KHEngine/Sound/Core/SoundManager.h"
 #include "KHEngine/Debug/Editor/EditorSystem.cpp"
 #include "KHEngine/Debug/Editor/EffectStudio.cpp"
+#include "KHEngine/Debug/Editor/EnemyStudio.cpp"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include <chrono>
 
@@ -82,8 +83,9 @@ void KHFramework::FrameworkInitialize()
 	
 	InitializeEngineSubsystems();
 
-	// エンジンサブシステム（SrvManager等）の初期化完了後にエフェクトスタジオを初期化
+	// エンジンサブシステム（SrvManager等）の初期化完了後にエフェクトスタジオおよびエネミースタジオを初期化
 	EffectStudio::GetInstance()->Initialize(dxCommon_.get(), srvManager_);
+	EnemyStudio::GetInstance()->Initialize(dxCommon_.get(), srvManager_, object3dCommon_.get());
 }
 
 void KHFramework::FrameworkUpdate(float deltaTime)
@@ -95,8 +97,9 @@ void KHFramework::FrameworkUpdate(float deltaTime)
 		return;
 	}
 
-	// エフェクトスタジオの更新
+	// エフェクトスタジオ・エネミースタジオの更新
 	EffectStudio::GetInstance()->Update(deltaTime);
+	EnemyStudio::GetInstance()->Update(deltaTime);
 
 	
 	if (input_)
@@ -119,10 +122,15 @@ void KHFramework::FrameworkUpdate(float deltaTime)
 	{
 		imguiManager_->Begin();
 
-		
-		
-		
-		EditorSystem::GetInstance()->Draw(postProcess_->GetResultSrvIndex());
+		if (EngineServices::GetInstance()->GetEditorMode())
+		{
+			EditorSystem::GetInstance()->Draw(postProcess_->GetResultSrvIndex());
+		}
+		else
+		{
+			// フルスクリーンプレイ時: ForegroundDrawListでUIテキストを描画
+			UITextManager::GetInstance()->Draw(ImGui::GetForegroundDrawList(), ImVec2(0.0f, 0.0f), ImVec2(1280.0f, 720.0f));
+		}
 	}
 }
 
@@ -136,10 +144,11 @@ void KHFramework::FrameworkDrawBegin()
 
 void KHFramework::FrameworkDrawEnd()
 {
-	// エディターモード時、エフェクトスタジオのオフスクリーンレンダリングを実行
+	// エディターモード時、エフェクトスタジオとエネミースタジオのオフスクリーンレンダリングを実行
 	if (EngineServices::GetInstance()->GetEditorMode())
 	{
 		EffectStudio::GetInstance()->Render();
+		EnemyStudio::GetInstance()->Render();
 	}
 
 	if (dxCommon_)
@@ -165,10 +174,8 @@ void KHFramework::FrameworkDrawEnd()
 	if (imguiManager_)
 	{
 		imguiManager_->End();
-		if (EngineServices::GetInstance()->GetEditorMode())
-		{
-			imguiManager_->Draw();
-		}
+		// エディターモードON、またはエディターモードOFF時のUIテキスト描画を反映
+		imguiManager_->Draw();
 	}
 
 	if (dxCommon_)
@@ -261,8 +268,8 @@ void KHFramework::InitializeEngineSubsystems()
 	// パーティクル基本プリミティブ（Quad, Ring, Cylinder）の登録
 	auto particleMgr = ParticleManager::GetInstance();
 	particleMgr->RegisterQuad("quad", "circle2.png");
-	particleMgr->RegisterRing("ring", "gradationLine.png", 32, 0.5f, 1.0f);
-	particleMgr->RegisterCylinder("Cylinder", "resources/sprites/gradationLine.png");
+	particleMgr->RegisterRing("ring", "resources/sprites/effect/gradationLine.png", 32, 0.5f, 1.0f);
+	particleMgr->RegisterCylinder("Cylinder", "resources/sprites/effect/gradationLine.png");
 
 	
 	TextureManager::GetInstance()->ExecuteUploadCommands();

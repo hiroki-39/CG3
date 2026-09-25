@@ -103,6 +103,328 @@ class DrawCollider:
         batch.draw(shader)
 
 
+# プレイヤー移動限界（ゲーム内設定と完全一致）
+PLAYER_LIMIT_X = 35.0      # 左右: ±35.0m (全幅 70m)
+PLAYER_LIMIT_Z_MIN = -4.0  # 下限: -4.0m
+PLAYER_LIMIT_Z_MAX = 20.0  # 上限: +20.0m (全高 24m)
+
+
+def get_curve_world_points(curve_obj):
+    """CURVEオブジェクトからワールド座標系の頂点列を取得する"""
+    try:
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        eval_obj = curve_obj.evaluated_get(depsgraph)
+        temp_mesh = eval_obj.to_mesh()
+        curve_pts = [curve_obj.matrix_world @ v.co for v in temp_mesh.vertices]
+        eval_obj.to_mesh_clear()
+        return curve_pts
+    except Exception:
+        return []
+
+
+def find_nearest_rail_and_basis(scene, target_pos):
+    """
+    シーン内のCURVE（レール）オブジェクトから、target_posに最も近いレール上の点、
+    および右(best_right)、上(best_up)、前(best_fwd)のローカル基底ベクトルを探索して返す。
+    レールが見つからない場合は None を返す。
+    """
+    curves = [o for o in scene.objects if o.type == 'CURVE' and o.visible_get()]
+    if not curves:
+        return None
+
+    best_dist = float('inf')
+    best_pt = None
+    best_right = None
+    best_up = None
+    best_fwd = None
+
+    for c_obj in curves:
+        curve_pts = get_curve_world_points(c_obj)
+        if len(curve_pts) < 2:
+            continue
+
+        sample_step = max(1, len(curve_pts) // 40)
+        sampled_pts = [curve_pts[i] for i in range(0, len(curve_pts), sample_step)]
+        if curve_pts and (not sampled_pts or sampled_pts[-1] != curve_pts[-1]):
+            sampled_pts.append(curve_pts[-1])
+
+        for idx, p in enumerate(sampled_pts):
+            d = (target_pos - p).length_squared
+            if d < best_dist:
+                best_dist = d
+                best_pt = p
+                if idx < len(sampled_pts) - 1:
+                    fwd = (sampled_pts[idx+1] - p).normalized()
+                else:
+                    fwd = (p - sampled_pts[idx-1]).normalized()
+                up_ref = mathutils.Vector((0, 0, 1))
+                if abs(fwd.dot(up_ref)) > 0.95:
+                    up_ref = mathutils.Vector((0, 1, 0))
+                right = fwd.cross(up_ref).normalized()
+                up = right.cross(fwd).normalized()
+                best_right = right
+                best_up = up
+                best_fwd = fwd
+
+    if best_pt is not None:
+        return best_pt, best_right, best_up, best_fwd
+    return None
+
+
+# プレイヤー行動範囲リアルタイム描画クラス
+class DrawPlayerRange:
+    handle = None
+
+    @staticmethod
+    def draw_player_range():
+        if not bpy.context.scene.get("show_player_move_range", True):
+            return
+
+        active_obj = bpy.context.active_object
+        if not active_obj:
+            return
+
+        shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+
+        # --- 1. レール(CURVE)をクリック（選択）した時：レール沿いの行動範囲トンネルを描画 ---
+        if active_obj.type == 'CURVE':
+            curve_pts = get_curve_world_points(active_obj)
+
+            if len(curve_pts) >= 2:
+                # サンプリング数を適正化（20〜35ステップ）
+                sample_step = max(1, len(curve_pts) // 25)
+                sampled_pts = [curve_pts[i] for i in range(0, len(curve_pts), sample_step)]
+                if curve_pts and (not sampled_pts or sampled_pts[-1] != curve_pts[-1]):
+                    sampled_pts.append(curve_pts[-1])
+
+                v_dict = {"pos": []}
+                i_list = []
+
+                # トンネル各断面と長手方向フレームの生成
+                for idx, p in enumerate(sampled_pts):
+                    if idx < len(sampled_pts) - 1:
+                        fwd = (sampled_pts[idx+1] - p).normalized()
+                    else:
+                        fwd = (p - sampled_pts[idx-1]).normalized()
+
+                    up_ref = mathutils.Vector((0, 0, 1))
+                    if abs(fwd.dot(up_ref)) > 0.95:
+                        up_ref = mathutils.Vector((0, 1, 0))
+                    right = fwd.cross(up_ref).normalized()
+                    up = right.cross(fwd).normalized()
+
+                    base_v = len(v_dict["pos"])
+                    # 4隅 (左下, 右下, 右上, 左上)
+                    c0 = p + right * (-PLAYER_LIMIT_X) + up * PLAYER_LIMIT_Z_MIN
+                    c1 = p + right * (PLAYER_LIMIT_X)  + up * PLAYER_LIMIT_Z_MIN
+                    c2 = p + right * (PLAYER_LIMIT_X)  + up * PLAYER_LIMIT_Z_MAX
+                    c3 = p + right * (-PLAYER_LIMIT_X) + up * PLAYER_LIMIT_Z_MAX
+                    
+                    # 断面中心の十字線
+                    m_bot = p + up * PLAYER_LIMIT_Z_MIN
+                    m_top = p + up * PLAYER_LIMIT_Z_MAX
+                    m_lft = p + right * (-PLAYER_LIMIT_X)
+                    m_rgt = p + right * (PLAYER_LIMIT_X)
+
+                    v_dict["pos"].extend([c0, c1, c2, c3, m_bot, m_top, m_lft, m_rgt])
+
+                    # 断面外枠
+                    i_list.extend([
+                        [base_v+0, base_v+1], [base_v+1, base_v+2],
+                        [base_v+2, base_v+3], [base_v+3, base_v+0]
+                    ])
+
+                    # 4ステップごとに中心十字線を描画
+                    if idx % 4 == 0:
+                        i_list.extend([
+                            [base_v+4, base_v+5], [base_v+6, base_v+7]
+                        ])
+
+                    # 前の断面と繋ぐ4本の長手方向レールライン（トンネルの稜線）
+                    if idx > 0:
+                        prev_v = base_v - 8
+                        i_list.extend([
+                            [prev_v+0, base_v+0], [prev_v+1, base_v+1],
+                            [prev_v+2, base_v+2], [prev_v+3, base_v+3]
+                        ])
+
+                # トンネルを描画（鮮やかなエメラルドグリーン）
+                if v_dict["pos"]:
+                    batch = gpu_extras.batch.batch_for_shader(shader, 'LINES', v_dict, indices=i_list)
+                    shader.bind()
+                    shader.uniform_float("color", [0.15, 0.95, 0.65, 0.85])
+                    batch.draw(shader)
+
+                # --- レール選択時：シーン内の敵がトンネル内にあるか自動チェック ---
+                enemy_objs = [o for o in bpy.context.scene.objects if o.visible_get() and (o.get("is_enemy_flag", False) or "enemy" in o.name.lower())]
+                if enemy_objs:
+                    warn_v = {"pos": []}
+                    warn_i = []
+                    ok_v = {"pos": []}
+                    ok_i = []
+
+                    for e_obj in enemy_objs:
+                        e_pos = e_obj.location
+                        # 最寄りのレール点を探索
+                        best_dist = float('inf')
+                        best_pt = sampled_pts[0]
+                        best_right = mathutils.Vector((1, 0, 0))
+                        best_up = mathutils.Vector((0, 0, 1))
+
+                        for idx, p in enumerate(sampled_pts):
+                            d = (e_pos - p).length_squared
+                            if d < best_dist:
+                                best_dist = d
+                                best_pt = p
+                                if idx < len(sampled_pts) - 1:
+                                    fwd = (sampled_pts[idx+1] - p).normalized()
+                                else:
+                                    fwd = (p - sampled_pts[idx-1]).normalized()
+                                up_ref = mathutils.Vector((0, 0, 1))
+                                if abs(fwd.dot(up_ref)) > 0.95:
+                                    up_ref = mathutils.Vector((0, 1, 0))
+                                best_right = fwd.cross(up_ref).normalized()
+                                best_up = best_right.cross(fwd).normalized()
+
+                        # 敵の相対座標
+                        rel = e_pos - best_pt
+                        local_x = rel.dot(best_right)
+                        local_z = rel.dot(best_up)
+
+                        in_range = (-PLAYER_LIMIT_X <= local_x <= PLAYER_LIMIT_X) and (PLAYER_LIMIT_Z_MIN <= local_z <= PLAYER_LIMIT_Z_MAX)
+
+                        if in_range:
+                            # 範囲内マーカー（緑の十字）
+                            base = len(ok_v["pos"])
+                            sz = 1.8
+                            ok_v["pos"].extend([
+                                e_pos + best_right * (-sz), e_pos + best_right * sz,
+                                e_pos + best_up * (-sz), e_pos + best_up * sz
+                            ])
+                            ok_i.extend([[base+0, base+1], [base+2, base+3]])
+                        else:
+                            # 範囲外警告（赤い枠＆最寄りの境界までの接続線）
+                            clamped_x = max(-PLAYER_LIMIT_X, min(PLAYER_LIMIT_X, local_x))
+                            clamped_z = max(PLAYER_LIMIT_Z_MIN, min(PLAYER_LIMIT_Z_MAX, local_z))
+                            border_pt = best_pt + best_right * clamped_x + best_up * clamped_z
+
+                            base = len(warn_v["pos"])
+                            sz = 2.2
+                            w0 = e_pos + best_right * (-sz) + best_up * (-sz)
+                            w1 = e_pos + best_right * (sz)  + best_up * (-sz)
+                            w2 = e_pos + best_right * (sz)  + best_up * (sz)
+                            w3 = e_pos + best_right * (-sz) + best_up * (sz)
+                            warn_v["pos"].extend([w0, w1, w2, w3, e_pos, border_pt])
+                            warn_i.extend([
+                                [base+0, base+1], [base+1, base+2], [base+2, base+3], [base+3, base+0],
+                                [base+4, base+5]
+                            ])
+
+                    if ok_v["pos"]:
+                        batch = gpu_extras.batch.batch_for_shader(shader, 'LINES', ok_v, indices=ok_i)
+                        shader.bind()
+                        shader.uniform_float("color", [0.2, 1.0, 0.4, 0.9])
+                        batch.draw(shader)
+
+                    if warn_v["pos"]:
+                        batch = gpu_extras.batch.batch_for_shader(shader, 'LINES', warn_v, indices=warn_i)
+                        shader.bind()
+                        shader.uniform_float("color", [1.0, 0.2, 0.2, 1.0])
+                        batch.draw(shader)
+
+        # --- 2. 敵オブジェクトが選択されている場合：最寄りレールを基準とした可動枠を表示 ---
+        elif active_obj.get("is_enemy_flag", False) or "enemy" in active_obj.name.lower():
+            pos = active_obj.location
+            info = find_nearest_rail_and_basis(bpy.context.scene, pos)
+
+            if info:
+                best_pt, best_right, best_up, best_fwd = info
+                rel = pos - best_pt
+                fwd_dist = rel.dot(best_fwd)
+                slice_center = best_pt + best_fwd * fwd_dist
+
+                local_x = rel.dot(best_right)
+                local_z = rel.dot(best_up)
+                in_range = (-PLAYER_LIMIT_X <= local_x <= PLAYER_LIMIT_X) and (PLAYER_LIMIT_Z_MIN <= local_z <= PLAYER_LIMIT_Z_MAX)
+                box_color = [0.2, 1.0, 0.5, 0.9] if in_range else [1.0, 0.25, 0.2, 1.0]
+
+                v_dict = {"pos": []}
+                i_list = []
+
+                # レール上の敵奥行き位置における断面枠
+                p0 = slice_center + best_right * (-PLAYER_LIMIT_X) + best_up * PLAYER_LIMIT_Z_MIN
+                p1 = slice_center + best_right * (PLAYER_LIMIT_X)  + best_up * PLAYER_LIMIT_Z_MIN
+                p2 = slice_center + best_right * (PLAYER_LIMIT_X)  + best_up * PLAYER_LIMIT_Z_MAX
+                p3 = slice_center + best_right * (-PLAYER_LIMIT_X) + best_up * PLAYER_LIMIT_Z_MAX
+
+                p_mid_bottom = slice_center + best_up * PLAYER_LIMIT_Z_MIN
+                p_mid_top    = slice_center + best_up * PLAYER_LIMIT_Z_MAX
+                p_mid_left   = slice_center + best_right * (-PLAYER_LIMIT_X)
+                p_mid_right  = slice_center + best_right * (PLAYER_LIMIT_X)
+
+                v_dict["pos"].extend([p0, p1, p2, p3, p_mid_bottom, p_mid_top, p_mid_left, p_mid_right])
+                i_list.extend([
+                    [0, 1], [1, 2], [2, 3], [3, 0],
+                    [4, 5], [6, 7]
+                ])
+
+                # レール中心から敵への接続線
+                s_idx = len(v_dict["pos"])
+                v_dict["pos"].extend([slice_center, pos])
+                i_list.append([s_idx, s_idx + 1])
+
+                # 範囲外の場合は最寄り境界点への警告線
+                if not in_range:
+                    clamped_x = max(-PLAYER_LIMIT_X, min(PLAYER_LIMIT_X, local_x))
+                    clamped_z = max(PLAYER_LIMIT_Z_MIN, min(PLAYER_LIMIT_Z_MAX, local_z))
+                    border_p = slice_center + best_right * clamped_x + best_up * clamped_z
+                    b_idx = len(v_dict["pos"])
+                    v_dict["pos"].extend([pos, border_p])
+                    i_list.append([b_idx, b_idx + 1])
+
+                batch = gpu_extras.batch.batch_for_shader(shader, 'LINES', v_dict, indices=i_list)
+                shader.bind()
+                shader.uniform_float("color", box_color)
+                batch.draw(shader)
+            else:
+                x, y, z = pos.x, pos.y, pos.z
+                in_range = (-PLAYER_LIMIT_X <= x <= PLAYER_LIMIT_X) and (PLAYER_LIMIT_Z_MIN <= z <= PLAYER_LIMIT_Z_MAX)
+                box_color = [0.2, 1.0, 0.5, 0.9] if in_range else [1.0, 0.25, 0.2, 1.0]
+
+                v_dict = {"pos": []}
+                i_list = []
+
+                # 敵の奥行き(Y)位置における断面矩形（ワールド原点基準フォールバック）
+                p0 = mathutils.Vector((-PLAYER_LIMIT_X, y, PLAYER_LIMIT_Z_MIN))
+                p1 = mathutils.Vector((PLAYER_LIMIT_X, y, PLAYER_LIMIT_Z_MIN))
+                p2 = mathutils.Vector((PLAYER_LIMIT_X, y, PLAYER_LIMIT_Z_MAX))
+                p3 = mathutils.Vector((-PLAYER_LIMIT_X, y, PLAYER_LIMIT_Z_MAX))
+                
+                p_mid_bottom = mathutils.Vector((0.0, y, PLAYER_LIMIT_Z_MIN))
+                p_mid_top = mathutils.Vector((0.0, y, PLAYER_LIMIT_Z_MAX))
+                p_mid_left = mathutils.Vector((-PLAYER_LIMIT_X, y, 0.0))
+                p_mid_right = mathutils.Vector((PLAYER_LIMIT_X, y, 0.0))
+
+                v_dict["pos"].extend([p0, p1, p2, p3, p_mid_bottom, p_mid_top, p_mid_left, p_mid_right])
+                i_list.extend([
+                    [0, 1], [1, 2], [2, 3], [3, 0],
+                    [4, 5], [6, 7]
+                ])
+
+                if not in_range:
+                    clamped_x = max(-PLAYER_LIMIT_X, min(PLAYER_LIMIT_X, x))
+                    clamped_z = max(PLAYER_LIMIT_Z_MIN, min(PLAYER_LIMIT_Z_MAX, z))
+                    nearest_p = mathutils.Vector((clamped_x, y, clamped_z))
+                    s_idx = len(v_dict["pos"])
+                    v_dict["pos"].extend([pos, nearest_p])
+                    i_list.append([s_idx, s_idx + 1])
+
+                batch = gpu_extras.batch.batch_for_shader(shader, 'LINES', v_dict, indices=i_list)
+                shader.bind()
+                shader.uniform_float("color", box_color)
+                batch.draw(shader)
+
+
 #オペレータ　頂点を伸ばす
 class MYADDON_OT_stretch_vertex(bpy.types.Operator):
     bl_idname = "myaddon.stretch_vertex"
@@ -274,10 +596,190 @@ class MYADDON_OT_create_player_and_camera(bpy.types.Operator):
         frustum_obj.rotation_euler = (0, 0, 0)
         frustum_obj["file_name"] = "CameraFrustum"
 
+        # 4. プレイヤー移動範囲枠 (PlayerMoveArea) の生成
+        area_name = "PlayerMoveArea"
+        area_obj = None
+        if area_name in bpy.data.objects:
+            area_obj = bpy.data.objects[area_name]
+        else:
+            # 幅70m (X: -35~+35), 高14m (Z: -4~+10), 奥行き2m
+            a_verts = [
+                (-PLAYER_LIMIT_X, 0, PLAYER_LIMIT_Z_MIN),
+                (PLAYER_LIMIT_X,  0, PLAYER_LIMIT_Z_MIN),
+                (PLAYER_LIMIT_X,  0, PLAYER_LIMIT_Z_MAX),
+                (-PLAYER_LIMIT_X, 0, PLAYER_LIMIT_Z_MAX),
+                (0.0, 0, PLAYER_LIMIT_Z_MIN),
+                (0.0, 0, PLAYER_LIMIT_Z_MAX),
+                (-PLAYER_LIMIT_X, 0, 0.0),
+                (PLAYER_LIMIT_X,  0, 0.0),
+            ]
+            a_edges = [
+                (0, 1), (1, 2), (2, 3), (3, 0),
+                (4, 5), (6, 7)
+            ]
+            a_mesh = bpy.data.meshes.new(area_name)
+            a_mesh.from_pydata(a_verts, a_edges, [])
+            a_mesh.update()
+            area_obj = bpy.data.objects.new(area_name, a_mesh)
+            context.scene.collection.objects.link(area_obj)
+
+        area_obj.display_type = 'WIRE'
+        area_obj.show_in_front = True
+        area_obj.color = (0.2, 1.0, 0.5, 1.0)
+        area_obj.parent = player_obj
+        context.view_layer.update()
+        area_obj.matrix_parent_inverse = player_obj.matrix_world.inverted()
+        area_obj.location = (0, 0, 0)
+        area_obj.rotation_euler = (0, 0, 0)
+        area_obj["file_name"] = "PlayerMoveArea"
+
         context.view_layer.objects.active = player_obj
         player_obj.select_set(True)
 
-        print("プレイヤーとカメラ（視界枠付き）を生成しました。")
+        print("プレイヤー、カメラ、および移動範囲枠(PlayerMoveArea)を生成しました。")
+        return {'FINISHED'}
+
+#オペレータ プレイヤー行動範囲ガイド生成 (トンネル/ボックス)
+class MYADDON_OT_create_player_range_guide(bpy.types.Operator):
+    bl_idname = "myaddon.create_player_range_guide"
+    bl_label = "プレイヤー行動範囲ガイド生成"
+    bl_description = "プレイヤーの移動可能範囲（幅70m×高14m）を示すガイドトンネルまたはボックスを生成します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        guide_name = "PlayerRangeGuide"
+        if guide_name in bpy.data.objects:
+            old_obj = bpy.data.objects[guide_name]
+            bpy.data.objects.remove(old_obj, do_unlink=True)
+
+        # レール（CURVE）オブジェクトの検出
+        curve_obj = None
+        if context.active_object and context.active_object.type == 'CURVE':
+            curve_obj = context.active_object
+        else:
+            for obj in context.scene.objects:
+                if obj.type == 'CURVE' and obj.visible_get():
+                    curve_obj = obj
+                    break
+
+        verts = []
+        edges = []
+
+        if curve_obj:
+            depsgraph = context.evaluated_depsgraph_get()
+            eval_obj = curve_obj.evaluated_get(depsgraph)
+            temp_mesh = eval_obj.to_mesh()
+            curve_pts = [curve_obj.matrix_world @ v.co for v in temp_mesh.vertices]
+            eval_obj.to_mesh_clear()
+
+            sample_step = max(1, len(curve_pts) // 40)
+            sampled_pts = [curve_pts[i] for i in range(0, len(curve_pts), sample_step)]
+            if curve_pts and (not sampled_pts or sampled_pts[-1] != curve_pts[-1]):
+                sampled_pts.append(curve_pts[-1])
+
+            if len(sampled_pts) >= 2:
+                for idx, p in enumerate(sampled_pts):
+                    if idx < len(sampled_pts) - 1:
+                        fwd = (sampled_pts[idx+1] - p).normalized()
+                    else:
+                        fwd = (p - sampled_pts[idx-1]).normalized()
+                    
+                    up_ref = mathutils.Vector((0, 0, 1))
+                    if abs(fwd.dot(up_ref)) > 0.95:
+                        up_ref = mathutils.Vector((0, 1, 0))
+                    right = fwd.cross(up_ref).normalized()
+                    up = right.cross(fwd).normalized()
+
+                    base_v = len(verts)
+                    c0 = p + right * (-PLAYER_LIMIT_X) + up * PLAYER_LIMIT_Z_MIN
+                    c1 = p + right * (PLAYER_LIMIT_X)  + up * PLAYER_LIMIT_Z_MIN
+                    c2 = p + right * (PLAYER_LIMIT_X)  + up * PLAYER_LIMIT_Z_MAX
+                    c3 = p + right * (-PLAYER_LIMIT_X) + up * PLAYER_LIMIT_Z_MAX
+                    verts.extend([c0, c1, c2, c3])
+
+                    edges.extend([
+                        (base_v+0, base_v+1), (base_v+1, base_v+2),
+                        (base_v+2, base_v+3), (base_v+3, base_v+0)
+                    ])
+
+                    if idx > 0:
+                        prev_v = base_v - 4
+                        edges.extend([
+                            (prev_v+0, base_v+0), (prev_v+1, base_v+1),
+                            (prev_v+2, base_v+2), (prev_v+3, base_v+3)
+                        ])
+
+        # レールがない場合の直方体ガイド
+        if not verts:
+            center = context.scene.cursor.location
+            y_start = center.y - 100.0
+            y_steps = [y_start + i * 25.0 for i in range(9)]
+            for idx, y in enumerate(y_steps):
+                base_v = len(verts)
+                c0 = mathutils.Vector((-PLAYER_LIMIT_X, y, PLAYER_LIMIT_Z_MIN))
+                c1 = mathutils.Vector((PLAYER_LIMIT_X, y, PLAYER_LIMIT_Z_MIN))
+                c2 = mathutils.Vector((PLAYER_LIMIT_X, y, PLAYER_LIMIT_Z_MAX))
+                c3 = mathutils.Vector((-PLAYER_LIMIT_X, y, PLAYER_LIMIT_Z_MAX))
+                verts.extend([c0, c1, c2, c3])
+
+                edges.extend([
+                    (base_v+0, base_v+1), (base_v+1, base_v+2),
+                    (base_v+2, base_v+3), (base_v+3, base_v+0)
+                ])
+                if idx > 0:
+                    prev_v = base_v - 4
+                    edges.extend([
+                        (prev_v+0, base_v+0), (prev_v+1, base_v+1),
+                        (prev_v+2, base_v+2), (prev_v+3, base_v+3)
+                    ])
+
+        mesh = bpy.data.meshes.new(guide_name)
+        mesh.from_pydata(verts, edges, [])
+        mesh.update()
+
+        guide_obj = bpy.data.objects.new(guide_name, mesh)
+        guide_obj.display_type = 'WIRE'
+        guide_obj.show_in_front = True
+        guide_obj.color = (0.2, 0.9, 0.5, 1.0)
+        guide_obj.hide_render = True
+        guide_obj["file_name"] = guide_name
+        context.scene.collection.objects.link(guide_obj)
+
+        self.report({'INFO'}, "プレイヤー行動範囲ガイドを生成しました。")
+        return {'FINISHED'}
+
+#オペレータ 敵を行動範囲内に収める
+class MYADDON_OT_clamp_enemy_to_range(bpy.types.Operator):
+    bl_idname = "myaddon.clamp_enemy_to_range"
+    bl_label = "敵を行動範囲内に収める"
+    bl_description = "選択中の敵オブジェクトの座標を、最寄りの移動レールから見たプレイヤー行動範囲（幅:±35m, 高さ:-4~+10m）内に自動修正します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        obj = context.active_object
+        if not obj:
+            return {'CANCELLED'}
+        
+        loc = obj.location
+        info = find_nearest_rail_and_basis(context.scene, loc)
+        if info:
+            best_pt, best_right, best_up, best_fwd = info
+            rel = loc - best_pt
+            local_x = rel.dot(best_right)
+            local_z = rel.dot(best_up)
+            clamped_x = max(-PLAYER_LIMIT_X, min(PLAYER_LIMIT_X, local_x))
+            clamped_z = max(PLAYER_LIMIT_Z_MIN, min(PLAYER_LIMIT_Z_MAX, local_z))
+
+            fwd_proj = rel.dot(best_fwd) * best_fwd
+            new_loc = best_pt + fwd_proj + best_right * clamped_x + best_up * clamped_z
+            obj.location = new_loc
+            self.report({'INFO'}, f"移動レール基準で修正しました: 横オフセット={clamped_x:+.1f}m, 縦オフセット={clamped_z:+.1f}m")
+        else:
+            new_x = max(-PLAYER_LIMIT_X, min(PLAYER_LIMIT_X, loc.x))
+            new_z = max(PLAYER_LIMIT_Z_MIN, min(PLAYER_LIMIT_Z_MAX, loc.z))
+            obj.location.x = new_x
+            obj.location.z = new_z
+            self.report({'INFO'}, f"ワールド座標を修正しました: X={new_x:+.1f}, Z={new_z:+.1f}")
         return {'FINISHED'}
 
 #オペレータ　ゲームカメラ生成
@@ -412,24 +914,71 @@ class OBJECT_PT_enemy_settings(bpy.types.Panel):
         obj = context.object
         self.layout.prop(obj, "is_enemy_flag")
         if obj.is_enemy_flag:
-            self.layout.prop(obj, "enemy_type")
-            self.layout.prop(obj, "enemy_target")
-            self.layout.prop(obj, "enemy_max_y")
-            self.layout.prop(obj, "enemy_min_y")
-            
+            self.layout.prop(obj, "enemy_type", text="敵タイプ")
+
+            # プレイヤー行動範囲の情報とステータス
+            box_range = self.layout.box()
+            box_range.label(text="【プレイヤー行動可能範囲】", icon='SHADING_BBOX')
+            col = box_range.column(align=True)
+            col.label(text=f"左右 (X): ±{PLAYER_LIMIT_X:.0f}m (全幅 {PLAYER_LIMIT_X*2:.0f}m)")
+            col.label(text=f"上下 (Z): {PLAYER_LIMIT_Z_MIN:.0f}m 〜 +{PLAYER_LIMIT_Z_MAX:.0f}m (全高 {PLAYER_LIMIT_Z_MAX-PLAYER_LIMIT_Z_MIN:.0f}m)")
+
+            # 最寄りレール基準で現在位置をチェック
+            info = find_nearest_rail_and_basis(context.scene, obj.location)
+            if info:
+                best_pt, best_right, best_up, _ = info
+                rel = obj.location - best_pt
+                local_x = rel.dot(best_right)
+                local_z = rel.dot(best_up)
+                in_range = (-PLAYER_LIMIT_X <= local_x <= PLAYER_LIMIT_X) and (PLAYER_LIMIT_Z_MIN <= local_z <= PLAYER_LIMIT_Z_MAX)
+
+                col.separator()
+                col.label(text=f"最寄りレールからのオフセット:")
+                col.label(text=f"  左右: {local_x:+.1f}m (可動域: ±{PLAYER_LIMIT_X:.0f}m)")
+                col.label(text=f"  上下: {local_z:+.1f}m (可動域: {PLAYER_LIMIT_Z_MIN:.0f}m〜+{PLAYER_LIMIT_Z_MAX:.0f}m)")
+            else:
+                x, z = obj.location.x, obj.location.z
+                in_range = (-PLAYER_LIMIT_X <= x <= PLAYER_LIMIT_X) and (PLAYER_LIMIT_Z_MIN <= z <= PLAYER_LIMIT_Z_MAX)
+                col.separator()
+                col.label(text=f"ワールド原点基準 (レール未配置):")
+                col.label(text=f"  左右 (X): {x:+.1f}m")
+                col.label(text=f"  上下 (Z): {z:+.1f}m")
+
+            if in_range:
+                box_range.label(text="✔ プレイヤーの行動範囲内です", icon='CHECKMARK')
+            else:
+                box_range.label(text="⚠ 範囲外です (倒しにくくなります)", icon='ERROR')
+                box_range.operator(MYADDON_OT_clamp_enemy_to_range.bl_idname, text="レール基準の範囲内に収める", icon='SNAP_ON')
+
+            box_range.operator(MYADDON_OT_create_player_range_guide.bl_idname, text="行動範囲ガイド(トンネル)を生成", icon='CURVE_PATH')
+
             box = self.layout.box()
-            box.label(text="AI・行動パターン")
-            box.prop(obj, "enemy_behavior")
-            box.prop(obj, "enemy_speed")
-            box.prop(obj, "enemy_shoot_interval")
-            box.prop(obj, "enemy_spawn_dist")
-            
-            box = self.layout.box()
-            box.label(text="スポナー・編隊設定")
-            box.prop(obj, "enemy_spawn_count")
-            box.prop(obj, "enemy_spawn_interval")
-            box.prop(obj, "enemy_formation_type")
-            box.prop(obj, "enemy_formation_spacing")
+            box.label(text="【ゲーム側エディタ連携】", icon='INFO')
+            box.label(text="モデル・当たり判定・HP・速度・陣形は")
+            box.label(text="ゲーム側の「エネミーエディター」で設定されます。")
+
+#パネル Rail Settings (レール選択時に行動範囲情報を表示)
+class OBJECT_PT_rail_settings(bpy.types.Panel):
+    """レールのプレイヤー可動範囲パネル"""
+    bl_idname = "OBJECT_PT_rail_settings"
+    bl_label = "レール行動範囲設定 (Rail Player Range)"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "object"
+
+    @classmethod
+    def poll(cls, context):
+        return context.object and context.object.type == 'CURVE'
+
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box()
+        box.label(text="【レール沿いのプレイヤー行動可能範囲】", icon='SHADING_BBOX')
+        col = box.column(align=True)
+        col.label(text=f"左右 (幅): ±{PLAYER_LIMIT_X:.0f}m (全幅 {PLAYER_LIMIT_X*2:.0f}m)")
+        col.label(text=f"上下 (高): {PLAYER_LIMIT_Z_MIN:.0f}m 〜 +{PLAYER_LIMIT_Z_MAX:.0f}m (全高 {PLAYER_LIMIT_Z_MAX-PLAYER_LIMIT_Z_MIN:.0f}m)")
+        box.label(text="※3Dビュー上でレールに沿った緑のトンネル枠が表示されます", icon='INFO')
+        box.operator(MYADDON_OT_create_player_range_guide.bl_idname, text="トンネルガイドをメッシュとして生成", icon='CURVE_PATH')
 
 #オペレータ　シーン出力
 class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
@@ -451,6 +1000,10 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
 
         # 非表示（目玉アイコンがオフなど）のオブジェクトは出力しない
         if not object.visible_get():
+            return
+
+        # ガイド用オブジェクトや視界枠はエクスポートしない
+        if object.name.startswith("PlayerRangeGuide") or object.name.startswith("PlayerMoveArea") or object.name.startswith("CameraFrustum"):
             return
 
         #シーンのオブジェクト1個分のjsonオブジェクト作成
@@ -482,37 +1035,14 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
         if "spawn_progress" in object:
             json_object["spawn_progress"] = object["spawn_progress"]
 
-        # 敵フラグと設定
+        # 敵フラグと設定（ゲーム側のエネミープリセットマネージャーと連携）
         is_enemy = getattr(object, "is_enemy_flag", False) or object.get("is_enemy", False)
         if is_enemy:
             json_object["is_enemy"] = True
             if hasattr(object, "enemy_type"):
                 json_object["enemy_type"] = object.enemy_type
-            if hasattr(object, "enemy_target") and object.enemy_target:
-                json_object["enemy_target_name"] = object.enemy_target.name
-                json_object["enemy_target_pos"] = (object.enemy_target.location.x, object.enemy_target.location.y, object.enemy_target.location.z)
-            if hasattr(object, "enemy_max_y"):
-                json_object["enemy_max_y"] = object.enemy_max_y
-            if hasattr(object, "enemy_min_y"):
-                json_object["enemy_min_y"] = object.enemy_min_y
-                
-            # 新規追加のプロパティを日本語キーで出力
-            if hasattr(object, "enemy_behavior"):
-                json_object["行動パターン"] = object.enemy_behavior
-            if hasattr(object, "enemy_spawn_count"):
-                json_object["出現数"] = object.enemy_spawn_count
-            if hasattr(object, "enemy_spawn_interval"):
-                json_object["出現間隔"] = object.enemy_spawn_interval
-            if hasattr(object, "enemy_formation_type"):
-                json_object["陣形"] = object.enemy_formation_type
-            if hasattr(object, "enemy_formation_spacing"):
-                json_object["陣形間隔"] = object.enemy_formation_spacing
-            if hasattr(object, "enemy_speed"):
-                json_object["移動速度"] = object.enemy_speed
-            if hasattr(object, "enemy_shoot_interval"):
-                json_object["射撃間隔"] = object.enemy_shoot_interval
-            if hasattr(object, "enemy_spawn_dist"):
-                json_object["出現距離"] = object.enemy_spawn_dist
+            elif "enemy_type" in object:
+                json_object["enemy_type"] = object["enemy_type"]
 
         # 破壊フラグ
         if "is_destructible" in object:
@@ -829,8 +1359,8 @@ class MYADDON_OT_export_objs(bpy.types.Operator):
             if "file_name" in object and object["file_name"] != "":
                 file_name = object["file_name"]
 
-            # カメラやフラスタムは出力しない
-            if file_name in ["GameCamera", "CameraFrustum"]:
+            # カメラやフラスタム、行動範囲ガイドは出力しない
+            if file_name in ["GameCamera", "CameraFrustum", "PlayerRangeGuide", "PlayerMoveArea"]:
                 continue
             
             base_name = file_name.split('.')[0]
@@ -892,6 +1422,7 @@ class TOPBAR_MT_my_menu(bpy.types.Menu):
         self.layout.operator(MYADDON_OT_create_fighter.bl_idname, text = MYADDON_OT_create_fighter.bl_label)
         self.layout.operator(MYADDON_OT_create_asteroid.bl_idname, text = MYADDON_OT_create_asteroid.bl_label)
         self.layout.operator(MYADDON_OT_create_player_and_camera.bl_idname, text = MYADDON_OT_create_player_and_camera.bl_label)
+        self.layout.operator(MYADDON_OT_create_player_range_guide.bl_idname, text = MYADDON_OT_create_player_range_guide.bl_label)
         self.layout.operator(MYADDON_OT_create_game_camera.bl_idname, text = MYADDON_OT_create_game_camera.bl_label)
         self.layout.operator(MYADDON_OT_export_scene.bl_idname, text = MYADDON_OT_export_scene.bl_label)
         self.layout.operator(MYADDON_OT_export_objs.bl_idname, text = MYADDON_OT_export_objs.bl_label)
@@ -910,6 +1441,8 @@ classes  = (
     MYADDON_OT_create_fighter,
     MYADDON_OT_create_asteroid,
     MYADDON_OT_create_player_and_camera,
+    MYADDON_OT_create_player_range_guide,
+    MYADDON_OT_clamp_enemy_to_range,
     MYADDON_OT_create_game_camera,
     MYADDON_OT_export_scene,
     MYADDON_OT_export_objs,
@@ -920,6 +1453,7 @@ classes  = (
     MYADDON_OT_add_destructible,
     OBJECT_PT_destructible,
     OBJECT_PT_enemy_settings,
+    OBJECT_PT_rail_settings,
 )
 
 #登録の関数
@@ -941,54 +1475,25 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     
-    # プロパティの登録
-    bpy.types.Object.is_enemy_flag = bpy.props.BoolProperty(name="Is Enemy", default=False)
+    # プロパティの登録（敵設定はゲーム側のEnemyStudioと連携するため、タイプのみ指定）
+    bpy.types.Object.is_enemy_flag = bpy.props.BoolProperty(name="敵として配置 (Is Enemy)", default=False)
     bpy.types.Object.enemy_type = bpy.props.EnumProperty(
         items=[
-            ('RUSHER', "Rusher (突進)", ""),
-            ('SHOOTER', "Shooter (弾)", ""),
-            ('HOMING', "Homing (ホーミング)", ""),
-            ('TURRET', "Turret (固定砲台)", "")
+            ('PATROL_H', "左右往復エネミー (PATROL_H)", "左右に行き来して攻撃する敵"),
+            ('PATROL_V', "上下往復エネミー (PATROL_V)", "上下に行き来して攻撃する敵"),
+            ('RUSHER', "突撃型エネミー (RUSHER)", "突進タイプの小型敵"),
+            ('SHOOTER', "射撃型エネミー (SHOOTER)", "弾を発射する敵"),
+            ('HOMING', "誘導弾エネミー (HOMING)", "ホーミング弾を撃つ敵"),
+            ('TURRET', "地上砲台 (TURRET)", "地上に設置される固定砲台"),
+            ('ARMORED_TRAIN_LOCO', "ボス: 装甲列車 (機関車)", "中ボス・装甲列車の先頭車両"),
+            ('ARMORED_TRAIN_TURRET', "ボス: 装甲列車 (砲塔車)", "装甲列車の旋回砲塔車"),
+            ('ARMORED_TRAIN_MISSILE', "ボス: 装甲列車 (ミサイル車)", "装甲列車のミサイル車"),
         ],
-        name="Enemy Type",
-        default='RUSHER'
+        name="敵タイプ",
+        description="ゲーム側エディタで設定した敵プリセットと紐付けられます",
+        default='PATROL_H'
     )
-    bpy.types.Object.enemy_target = bpy.props.PointerProperty(
-        type=bpy.types.Object,
-        name="Target Position",
-        description="移動先となるオブジェクト(Emptyなど)"
-    )
-    bpy.types.Object.enemy_max_y = bpy.props.FloatProperty(name="Max Y", default=10.0)
-    bpy.types.Object.enemy_min_y = bpy.props.FloatProperty(name="Min Y", default=-10.0)
-    
-    # 拡張プロパティ
-    bpy.types.Object.enemy_behavior = bpy.props.EnumProperty(
-        items=[
-            ('STRAIGHT', "STRAIGHT (直進)", ""),
-            ('CROSS', "CROSS (横切る)", ""),
-            ('APPROACH', "APPROACH (接近・離脱)", ""),
-            ('STAY', "STAY (固定砲台)", ""),
-            ('PATH', "PATH (カーブに沿う)", "")
-        ],
-        name="行動パターン",
-        default='STRAIGHT'
-    )
-    bpy.types.Object.enemy_spawn_count = bpy.props.IntProperty(name="出現数", default=1, min=1)
-    bpy.types.Object.enemy_spawn_interval = bpy.props.IntProperty(name="出現間隔(F)", default=30, min=0)
-    bpy.types.Object.enemy_formation_type = bpy.props.EnumProperty(
-        items=[
-            ('NONE', "NONE (同じ場所・時間差)", ""),
-            ('LINE', "LINE (縦一列)", ""),
-            ('V_SHAPE', "V_SHAPE (V字編隊)", ""),
-            ('HORIZONTAL', "HORIZONTAL (横一列)", "")
-        ],
-        name="陣形",
-        default='NONE'
-    )
-    bpy.types.Object.enemy_formation_spacing = bpy.props.FloatProperty(name="陣形間隔", default=10.0)
-    bpy.types.Object.enemy_speed = bpy.props.FloatProperty(name="移動速度", default=1.0)
-    bpy.types.Object.enemy_shoot_interval = bpy.props.IntProperty(name="射撃間隔(F)", default=180, min=0)
-    bpy.types.Object.enemy_spawn_dist = bpy.props.FloatProperty(name="出現距離", default=800.0)
+    bpy.types.Scene.show_player_move_range = bpy.props.BoolProperty(name="プレイヤー行動範囲を表示", default=True)
 
     #メニューに項目を追加
     bpy.types.TOPBAR_MT_editor_menus.append(
@@ -997,6 +1502,7 @@ def register():
 
     #描画関数を3Dビューに追加
     DrawCollider.handle = bpy.types.SpaceView3D.draw_handler_add(DrawCollider.draw_collider, (), 'WINDOW', 'POST_VIEW')
+    DrawPlayerRange.handle = bpy.types.SpaceView3D.draw_handler_add(DrawPlayerRange.draw_player_range, (), 'WINDOW', 'POST_VIEW')
     
     print("レベルエディタが有効化されました")
 
@@ -1008,22 +1514,17 @@ def unregister():
             TOPBAR_MT_my_menu.submenu
         )
         #描画関数を3Dビューから削除
-        bpy.types.SpaceView3D.draw_handler_remove(DrawCollider.handle, 'WINDOW')
+        if DrawCollider.handle:
+            bpy.types.SpaceView3D.draw_handler_remove(DrawCollider.handle, 'WINDOW')
+            DrawCollider.handle = None
+        if DrawPlayerRange.handle:
+            bpy.types.SpaceView3D.draw_handler_remove(DrawPlayerRange.handle, 'WINDOW')
+            DrawPlayerRange.handle = None
 
         del bpy.types.Object.is_enemy_flag
         del bpy.types.Object.enemy_type
-        del bpy.types.Object.enemy_target
-        del bpy.types.Object.enemy_max_y
-        del bpy.types.Object.enemy_min_y
-        
-        del bpy.types.Object.enemy_behavior
-        del bpy.types.Object.enemy_spawn_count
-        del bpy.types.Object.enemy_spawn_interval
-        del bpy.types.Object.enemy_formation_type
-        del bpy.types.Object.enemy_formation_spacing
-        del bpy.types.Object.enemy_speed
-        del bpy.types.Object.enemy_shoot_interval
-        del bpy.types.Object.enemy_spawn_dist
+        if hasattr(bpy.types.Scene, "show_player_move_range"):
+            del bpy.types.Scene.show_player_move_range
     except:
         pass
 

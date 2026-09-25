@@ -44,9 +44,29 @@ public:
 	/// </summary>
 	static void ApplyModernDarkTheme();
 
+	// フォント種別
+	enum class FontType
+	{
+		Default = 0,
+		Japanese_MPLUS,
+		Japanese_MPLUS_Large,
+		English_FiraMono,
+		English_FiraMono_Large,
+		Count
+	};
+
+	/// <summary>
+	/// 指定フォントの取得
+	/// </summary>
+	ImFont* GetFont(FontType type) const;
+
 private:
 	WinApp* winApp_ = nullptr;
 
 	DirectXCommon* dxCommon_;
+
+#ifdef USE_IMGUI
+	ImFont* fonts_[static_cast<size_t>(FontType::Count)] = {};
+#endif
 };
 

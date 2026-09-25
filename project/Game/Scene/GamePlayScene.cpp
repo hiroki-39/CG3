@@ -19,9 +19,12 @@
 #include "KHEngine/Core/Resource/ResourceLocator.h"
 #include "externals/imgui/imgui.h"
 #include "KHEngine/Debug/Editor/EffectStudio.h"
+#include "KHEngine/Debug/Editor/EnemyStudio.h"
+#include "Game/Actor/Enemy/EnemyPresetManager.h"
 #include <filesystem>
 #include "KHEngine/Math/CollisionMath.h"
 #include "KHEngine/Scene/SceneManager.h"
+#include "KHEngine/UI/UITextManager.h"
 #include <chrono>
 
 static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, std::list<std::unique_ptr<EnhanceRing>>& enhanceRings, std::vector<Enemy*> parentEnemies = {})
@@ -53,7 +56,13 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 
 	bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName.find("Invisible") != std::string::npos) || (node.fileName.find("ColliderOnly") != std::string::npos);
 	bool isRing = (node.fileName.find("Ring") != std::string::npos) || (node.name.find("Ring") != std::string::npos) || (node.name.find("強化リング") != std::string::npos) || (node.fileName.find("Heal") != std::string::npos) || (node.name.find("Heal") != std::string::npos) || (node.name.find("回復") != std::string::npos);
-	bool isEnemy = (node.fileName.find("Fighter") != std::string::npos || node.fileName.find("Asteroid") != std::string::npos || node.fileName.find("Enemy") != std::string::npos);
+	bool isEnemy = node.isEnemy ||
+		(node.fileName.find("Fighter") != std::string::npos) ||
+		(node.fileName.find("Asteroid") != std::string::npos) ||
+		(node.fileName.find("Enemy") != std::string::npos) ||
+		(node.fileName.find("enemy") != std::string::npos) ||
+		(node.name.find("Enemy") != std::string::npos) ||
+		(node.name.find("enemy") != std::string::npos);
 
 	if (isRing)
 	{
@@ -67,9 +76,63 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 		ring->Initialize(common, node.translation, node.scale, node.rotation, node.fileName, type, skyboxTexIndex, node.collider);
 		enhanceRings.push_back(std::move(ring));
 	}
+	else if (isEnemy)
+	{
+		currentEnemies.clear();
+		auto presetMgr = EnemyPresetManager::GetInstance();
+		std::string enemyType = node.enemyType;
+		if (enemyType.empty())
+		{
+			enemyType = "RUSHER";
+		}
+		const auto* preset = presetMgr->GetPreset(enemyType);
+
+		std::string formationType = node.formationType;
+		int count = node.spawnCount;
+		float spacing = node.formationSpacing;
+
+		// Blender側で陣形指定がない場合、ゲーム側プリセットの陣形設定を自動適用
+		if (preset)
+		{
+			if (formationType == "NONE" || formationType.empty() || count <= 1)
+			{
+				formationType = preset->formationType;
+				count = preset->formationCount;
+				spacing = preset->formationSpacing;
+			}
+		}
+
+		int spawnCount = (std::max)(1, count);
+		auto offsets = EnemyPresetManager::CalculateFormationOffsets(formationType, spawnCount, spacing);
+
+		for (int i = 0; i < spawnCount; ++i)
+		{
+			auto enemy = std::make_unique<Enemy>();
+
+			LevelObjectData spawnNode = node;
+			spawnNode.enemyType = enemyType;
+			if (i < static_cast<int>(offsets.size()))
+			{
+				spawnNode.translation.x += offsets[i].x;
+				spawnNode.translation.y += offsets[i].y;
+				spawnNode.translation.z += offsets[i].z;
+			}
+
+			enemy->Initialize(common, spawnNode, skyboxTexIndex);
+			enemy->SetSpawnProgress(node.spawnProgress);
+			enemy->SetSpawnDelay(static_cast<float>(i * node.spawnInterval));
+
+			if (!node.texturePath.empty())
+			{
+				enemy->SetTexturePath(node.texturePath);
+			}
+
+			currentEnemies.push_back(enemy.get());
+			enemies.push_back(std::move(enemy));
+		}
+	}
 	else if (isObstacle)
 	{
-
 		auto obstacle = std::make_unique<Obstacle>();
 
 		Vector3 rotRad;
@@ -84,61 +147,6 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 			obstacle->SetTexturePath(node.texturePath);
 		}
 		obstacles.push_back(std::move(obstacle));
-	}
-	else if (isEnemy)
-	{
-		currentEnemies.clear();
-		int count = std::max<int>(1, node.spawnCount);
-		for (int i = 0; i < count; ++i)
-		{
-			auto enemy = std::make_unique<Enemy>();
-
-
-			Vector3 offset = { 0, 0, 0 };
-			if (node.formationType == "LINE")
-			{
-				offset.z = i * node.formationSpacing;
-			}
-			else if (node.formationType == "V_SHAPE")
-			{
-				if (i > 0)
-				{
-					float side = (i % 2 == 1) ? 1.0f : -1.0f;
-					int row = (i + 1) / 2;
-					offset.x = side * row * node.formationSpacing;
-					offset.z = row * node.formationSpacing;
-				}
-			}
-			else if (node.formationType == "HORIZONTAL")
-			{
-				if (i > 0)
-				{
-					float side = (i % 2 == 1) ? 1.0f : -1.0f;
-					int row = (i + 1) / 2;
-					offset.x = side * row * node.formationSpacing;
-				}
-			}
-
-
-			LevelObjectData spawnNode = node;
-			spawnNode.translation.x += offset.x;
-			spawnNode.translation.y += offset.y;
-			spawnNode.translation.z += offset.z;
-
-			enemy->Initialize(common, spawnNode, skyboxTexIndex);
-			enemy->SetSpawnProgress(node.spawnProgress);
-			enemy->SetSpawnDelay(i * node.spawnInterval);
-
-			if (!node.texturePath.empty())
-			{
-				enemy->SetTexturePath(node.texturePath);
-			}
-
-
-			currentEnemies.push_back(enemy.get());
-
-			enemies.push_back(std::move(enemy));
-		}
 	}
 	else if (node.type == "MESH")
 	{
@@ -237,7 +245,13 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
 
 	bool isObstacle = (node.fileName.find("Obstacle") != std::string::npos) || (node.fileName.find("Invisible") != std::string::npos) || (node.fileName.find("ColliderOnly") != std::string::npos);
 	bool isRing = (node.fileName.find("Ring") != std::string::npos) || (node.name.find("Ring") != std::string::npos) || (node.name.find("強化リング") != std::string::npos) || (node.fileName.find("Heal") != std::string::npos) || (node.name.find("Heal") != std::string::npos) || (node.name.find("回復") != std::string::npos);
-	bool isEnemy = (node.fileName.find("Fighter") != std::string::npos || node.fileName.find("Asteroid") != std::string::npos || node.fileName.find("Enemy") != std::string::npos);
+	bool isEnemy = node.isEnemy ||
+		(node.fileName.find("Fighter") != std::string::npos) ||
+		(node.fileName.find("Asteroid") != std::string::npos) ||
+		(node.fileName.find("Enemy") != std::string::npos) ||
+		(node.fileName.find("enemy") != std::string::npos) ||
+		(node.name.find("Enemy") != std::string::npos) ||
+		(node.name.find("enemy") != std::string::npos);
 
 	if (isRing)
 	{
@@ -250,6 +264,60 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
 
 		ring->Initialize(common, node.translation, node.scale, node.rotation, node.fileName, type, skyboxTexIndex, node.collider);
 		enhanceRings.push_back(std::move(ring));
+	}
+	else if (isEnemy)
+	{
+		currentEnemies.clear();
+		auto presetMgr = EnemyPresetManager::GetInstance();
+		std::string enemyType = node.enemyType;
+		if (enemyType.empty())
+		{
+			enemyType = "RUSHER";
+		}
+		const auto* preset = presetMgr->GetPreset(enemyType);
+
+		std::string formationType = node.formationType;
+		int count = node.spawnCount;
+		float spacing = node.formationSpacing;
+
+		// Blender側で陣形指定がない場合、ゲーム側プリセットの陣形設定を自動適用
+		if (preset)
+		{
+			if (formationType == "NONE" || formationType.empty() || count <= 1)
+			{
+				formationType = preset->formationType;
+				count = preset->formationCount;
+				spacing = preset->formationSpacing;
+			}
+		}
+
+		int spawnCount = (std::max)(1, count);
+		auto offsets = EnemyPresetManager::CalculateFormationOffsets(formationType, spawnCount, spacing);
+
+		for (int i = 0; i < spawnCount; ++i)
+		{
+			auto enemy = std::make_unique<Enemy>();
+
+			LevelObjectData spawnNode = node;
+			spawnNode.enemyType = enemyType;
+			if (i < static_cast<int>(offsets.size()))
+			{
+				spawnNode.translation.x += offsets[i].x;
+				spawnNode.translation.y += offsets[i].y;
+				spawnNode.translation.z += offsets[i].z;
+			}
+
+			enemy->Initialize(common, spawnNode, skyboxTexIndex);
+			enemy->SetSpawnProgress(node.spawnProgress);
+			enemy->SetSpawnDelay(static_cast<float>(i * node.spawnInterval));
+
+			if (!node.texturePath.empty())
+			{
+				enemy->SetTexturePath(node.texturePath);
+			}
+			currentEnemies.push_back(enemy.get());
+			enemies.push_back(std::move(enemy));
+		}
 	}
 	else if (isObstacle)
 	{
@@ -266,58 +334,6 @@ static void LoadEnemiesOnlyFromNode(const LevelObjectData& node, Object3dCommon*
 			obstacle->SetTexturePath(node.texturePath);
 		}
 		obstacles.push_back(std::move(obstacle));
-	}
-	else if (isEnemy)
-	{
-		currentEnemies.clear();
-		int count = std::max<int>(1, node.spawnCount);
-		for (int i = 0; i < count; ++i)
-		{
-			auto enemy = std::make_unique<Enemy>();
-
-
-			Vector3 offset = { 0, 0, 0 };
-			if (node.formationType == "LINE")
-			{
-				offset.z = i * node.formationSpacing;
-			}
-			else if (node.formationType == "V_SHAPE")
-			{
-				if (i > 0)
-				{
-					float side = (i % 2 == 1) ? 1.0f : -1.0f;
-					int row = (i + 1) / 2;
-					offset.x = side * row * node.formationSpacing;
-					offset.z = row * node.formationSpacing;
-				}
-			}
-			else if (node.formationType == "HORIZONTAL")
-			{
-				if (i > 0)
-				{
-					float side = (i % 2 == 1) ? 1.0f : -1.0f;
-					int row = (i + 1) / 2;
-					offset.x = side * row * node.formationSpacing;
-				}
-			}
-
-
-			LevelObjectData spawnNode = node;
-			spawnNode.translation.x += offset.x;
-			spawnNode.translation.y += offset.y;
-			spawnNode.translation.z += offset.z;
-
-			enemy->Initialize(common, spawnNode, skyboxTexIndex);
-			enemy->SetSpawnProgress(node.spawnProgress);
-			enemy->SetSpawnDelay(i * node.spawnInterval);
-
-			if (!node.texturePath.empty())
-			{
-				enemy->SetTexturePath(node.texturePath);
-			}
-			currentEnemies.push_back(enemy.get());
-			enemies.push_back(std::move(enemy));
-		}
 	}
 
 	for (const auto& child : node.children)
@@ -355,8 +371,8 @@ void GamePlayScene::Initialize()
 
 
 	ParticleManager::GetInstance()->RegisterQuad("quad", "circle2.png");
-	ParticleManager::GetInstance()->RegisterRing("ring", "gradationLine.png", 32, 0.5f, 1.0f);
-	ParticleManager::GetInstance()->RegisterCylinder("Cylinder", "resources/sprites/gradationLine.png");
+	ParticleManager::GetInstance()->RegisterRing("ring", "resources/sprites/effect/gradationLine.png", 32, 0.5f, 1.0f);
+	ParticleManager::GetInstance()->RegisterCylinder("Cylinder", "resources/sprites/effect/gradationLine.png");
 
 	uint32_t instancingSrvIndex = UINT32_MAX;
 
@@ -383,8 +399,9 @@ void GamePlayScene::Initialize()
 	texManager->LoadTexture("circle2.png");
 	texManager->LoadTexture("gradationLine.png");
 	texManager->LoadTexture("sprites/white.png");
-	texManager->LoadTexture("sprites/prticle_kira.png");
-	texManager->LoadTexture("sprites/hart.png");
+	texManager->LoadTexture("prticle_kira.png");
+	texManager->LoadTexture("hart.png");
+	texManager->LoadTexture("light.png");
 
 
 	uint32_t uvCheckerTex = TextureManager::GetInstance()->GetTextureIndexByFilePath("uvChecker.png");
@@ -488,6 +505,16 @@ void GamePlayScene::Initialize()
 
 	windEffect_.Initialize(dxCommon, srvManager);
 	windEffect_.LoadFromJson("wind.json");
+
+	// 装甲列車ボスの初期化
+	armoredTrainBoss_ = std::make_unique<ArmoredTrainBoss>();
+	Vector3 bossSpawnPos = { 0.0f, 0.0f, 150.0f };
+	armoredTrainBoss_->Initialize(object3dCommon, bossSpawnPos, skybox_->GetCubemapSrvIndex());
+	if (!mainRails_.empty())
+	{
+		armoredTrainBoss_->SetRail(mainRails_[0].get());
+	}
+	isBossSpawned_ = false;
 
 	auto tUp0 = std::chrono::high_resolution_clock::now();
 	texManager->ExecuteUploadCommands();
@@ -1243,7 +1270,7 @@ void GamePlayScene::Update()
 
 			if ((*it)->IsDead())
 			{
-
+				score_ += 100;
 				explosionEffect_.SetPosition((*it)->GetPosition());
 				explosionEffect_.Play();
 				it = enemies_.erase(it);
@@ -1254,6 +1281,67 @@ void GamePlayScene::Update()
 			}
 		}
 
+		// 装甲列車ボスの更新と弾当たり判定
+		if (armoredTrainBoss_ && isBossSpawned_)
+		{
+			Vector3 camPos = activeCamera_ ? activeCamera_->GetTranslate() : Vector3{ 0,0,0 };
+			armoredTrainBoss_->Update(camPos, player_.get(), enemyBullets_, gameSpeed_);
+
+			// プレイヤー通常弾との判定
+			for (auto& bullet : bullets_)
+			{
+				if (bullet->IsDead()) continue;
+				Sphere bulletSphere = { bullet->GetPosition(), 1.5f };
+				int hitCarIdx = -1;
+				if (armoredTrainBoss_->CheckCollision(bulletSphere, &hitCarIdx))
+				{
+					bullet->OnCollision();
+					armoredTrainBoss_->OnDamaged(hitCarIdx, 1);
+					hitEffect_.SetPosition(bulletSphere.center);
+					hitEffect_.Play();
+					score_ += 50;
+				}
+			}
+
+			// プレイヤーミサイルとの判定
+			for (auto& missile : missiles_)
+			{
+				if (missile->IsDead()) continue;
+				Sphere missileSphere = { missile->GetPosition(), 2.0f };
+				int hitCarIdx = -1;
+				if (armoredTrainBoss_->CheckCollision(missileSphere, &hitCarIdx))
+				{
+					missile->OnCollision();
+					armoredTrainBoss_->OnDamaged(hitCarIdx, 4);
+					hitEffect_.SetPosition(missileSphere.center);
+					hitEffect_.Play();
+					explosionEffect_.SetPosition(missileSphere.center);
+					explosionEffect_.Play();
+					score_ += 200;
+				}
+			}
+
+			// ボス完全撃破時の演出
+			if (armoredTrainBoss_->IsDefeated())
+			{
+				static float bossExplodeTimer = 0.0f;
+				bossExplodeTimer += gameSpeed_;
+				if (bossExplodeTimer >= 10.0f)
+				{
+					bossExplodeTimer = 0.0f;
+					const auto& cars = armoredTrainBoss_->GetCarriages();
+					if (!cars.empty())
+					{
+						int randCar = rand() % cars.size();
+						if (cars[randCar].object)
+						{
+							explosionEffect_.SetPosition(cars[randCar].object->GetTranslate());
+							explosionEffect_.Play();
+						}
+					}
+				}
+			}
+		}
 
 		for (auto it = enemyBullets_.begin(); it != enemyBullets_.end();)
 		{
@@ -1541,9 +1629,10 @@ void GamePlayScene::Update()
 					float dist = 0.0f;
 					bool hit = enemy->CheckRaycast(ray, &dist);
 
-					if (hit)
+					float maxLockDist = player_ ? player_->GetLockOnMaxDistance() : lockOnMaxDistance_;
+					// 最大射程距離以内の敵のみロックオン対象とする
+					if (hit && dist <= maxLockDist)
 					{
-
 						Vector3 enemyPos = enemy->GetPosition();
 						Vector3 toEnemy = { enemyPos.x - cameraPos.x, enemyPos.y - cameraPos.y, enemyPos.z - cameraPos.z };
 						float toEnemyLen = std::sqrt(toEnemy.x * toEnemy.x + toEnemy.y * toEnemy.y + toEnemy.z * toEnemy.z);
@@ -1554,10 +1643,8 @@ void GamePlayScene::Update()
 							toEnemy.z /= toEnemyLen;
 						}
 
-
 						float dot = ray.direction.x * toEnemy.x + ray.direction.y * toEnemy.y + ray.direction.z * toEnemy.z;
 						float angle = std::acos(std::clamp(dot, -1.0f, 1.0f));
-
 
 						float score = angle * 100.0f + dist * 0.1f;
 
@@ -1576,7 +1663,6 @@ void GamePlayScene::Update()
 				}
 			}
 
-
 			float minEnemyDist = 1000000.0f;
 			for (auto& enemy : enemies_)
 			{
@@ -1591,21 +1677,22 @@ void GamePlayScene::Update()
 				}
 			}
 
-
+			float maxLockDist = player_ ? player_->GetLockOnMaxDistance() : lockOnMaxDistance_;
 			if (isLockOn)
 			{
-				player_->SetReticleColor({ 1.0f, 0.0f, 0.0f, 1.0f });
+				player_->SetReticleColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // ロックオン時: 赤
 				player_->SetLockOn(true, lockOnPos, lockOnEnemy);
 			}
 			else
 			{
-				if (minEnemyDist < 100.0f)
+				if (minEnemyDist < maxLockDist)
 				{
-
+					// 射程内に敵が存在する（接近: オレンジ）
 					player_->SetReticleColor({ 1.0f, 0.6f, 0.0f, 1.0f });
 				}
 				else
 				{
+					// 射程外（通常: 白）
 					player_->SetReticleColor({ 1.0f, 1.0f, 1.0f, 1.0f });
 				}
 				player_->SetLockOn(false);
@@ -1821,9 +1908,31 @@ void GamePlayScene::Update()
 		}
 	}
 
+	// UIテキストの動的更新 (スコア、ロックオン数、HP)
+	if (player_)
+	{
+		char scoreStr[64];
+		snprintf(scoreStr, sizeof(scoreStr), "SCORE: %06d", score_);
+		UITextManager::GetInstance()->SetText("Score", scoreStr);
+
+		char lockOnStr[64];
+		snprintf(lockOnStr, sizeof(lockOnStr), "LOCK ON: %zu / %d", player_->GetLockedEnemyCount(), Player::GetMaxMissiles());
+		UITextManager::GetInstance()->SetText("LockOn", lockOnStr);
+
+		char hpStr[64];
+		snprintf(hpStr, sizeof(hpStr), "HP: %d / %d", player_->GetHp(), player_->GetMaxHp());
+		UITextManager::GetInstance()->SetText("PlayerHP", hpStr);
+	}
+
 #ifdef USE_IMGUI
 	// フレーム描画スコープ外（NewFrame前）の場合はImGui描画をスキップ
 	if (!ImGui::GetCurrentContext() || ImGui::GetFrameCount() <= 0)
+	{
+		return;
+	}
+
+	// エディターモードが無効（全画面プレイ時）はエディタUIを描画しない
+	if (!services || !services->GetEditorMode())
 	{
 		return;
 	}
@@ -1835,8 +1944,10 @@ void GamePlayScene::Update()
 	const char* navItems[] = {
 		"ゲーム・進行",
 		"プレイヤー",
+		"エネミー・装甲列車ボス",
 		"演出・シェーダー",
-		"シーン・照明"
+		"シーン・照明",
+		"UIテキスト配置"
 	};
 
 	// -------------------------------------------------------------
@@ -2022,8 +2133,72 @@ void GamePlayScene::Update()
 				ImGui::TextDisabled("プレイヤーが存在しません。");
 			}
 		}
-		// 3. 演出・シェーダー
+		// 3. エネミー・装甲列車ボス
 		else if (currentNavIndex == 2)
+		{
+			ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "■ エネミー・装甲列車ボス (Enemy & Boss)");
+			ImGui::Separator();
+
+			if (ImGui::CollapsingHeader("装甲列車（中ボス）制御 (Armored Train Boss)", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				if (!isBossSpawned_)
+				{
+					if (ImGui::Button("装甲列車ボスを出現させる (Spawn Boss)", ImVec2(-1, 38)))
+					{
+						isBossSpawned_ = true;
+						if (armoredTrainBoss_)
+						{
+							if (railCameraController_ && !mainRails_.empty())
+							{
+								float curProg = railCameraController_->GetProgress();
+								float bossProg = std::min(1.0f, curProg + 0.15f);
+								armoredTrainBoss_->SetRailProgress(bossProg);
+								armoredTrainBoss_->SetRail(mainRails_[0].get());
+							}
+							armoredTrainBoss_->SetActive(true);
+						}
+					}
+				}
+				else
+				{
+					if (ImGui::Button("装甲列車ボスを退場させる (Despawn Boss)", ImVec2(-1, 38)))
+					{
+						isBossSpawned_ = false;
+						if (armoredTrainBoss_) armoredTrainBoss_->SetActive(false);
+					}
+
+					if (armoredTrainBoss_)
+					{
+						float hpRate = armoredTrainBoss_->GetTotalHpRate();
+						ImGui::ProgressBar(hpRate, ImVec2(-1, 24), "BOSS TOTAL HP");
+						ImGui::Text(armoredTrainBoss_->IsDefeated() ? "状態: 撃破完了 (DEFEATED)" : "状態: 戦闘中 (ENGAGED)");
+
+						ImGui::Separator();
+						ImGui::Text("各車両ステータス:");
+						const auto& cars = armoredTrainBoss_->GetCarriages();
+						for (size_t c = 0; c < cars.size(); ++c)
+						{
+							ImGui::Text("[%zu] %s: HP %d / %d %s",
+								c, cars[c].displayName.c_str(), cars[c].hp, cars[c].maxHp,
+								cars[c].isDestroyed ? "(破壊済)" : "(稼働中)");
+						}
+					}
+				}
+			}
+
+			ImGui::Spacing();
+			if (ImGui::CollapsingHeader("敵専用エディタ (Enemy Studio)", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				if (ImGui::Button("エネミー専用画面 (Enemy Studio) を開く", ImVec2(-1, 36)))
+				{
+					EnemyStudio::GetInstance()->GetShowViewport() = true;
+					EnemyStudio::GetInstance()->GetShowEditor() = true;
+				}
+				ImGui::TextDisabled("※敵モデル・陣形・当たり判定（コライダー）の編集は、中央上の「エネミー画面」および右側の「エネミーエディター」で行えます。");
+			}
+		}
+		// 4. 演出・シェーダー
+		else if (currentNavIndex == 3)
 		{
 			ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "■ 演出・トランジション・シェーダー");
 			ImGui::Separator();
@@ -2056,8 +2231,8 @@ void GamePlayScene::Update()
 				ImGui::TextDisabled("※エフェクトの編集・保存は、中央上部の「エフェクト画面」および右側の「エフェクトエディター」で行えます。");
 			}
 		}
-		// 4. シーン・照明
-		else if (currentNavIndex == 3)
+		// 5. シーン・照明
+		else if (currentNavIndex == 4)
 		{
 			ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "■ カメラ・照明・配置モデル");
 			ImGui::Separator();
@@ -2441,6 +2616,11 @@ void GamePlayScene::Update()
 				}
 			}
 		}
+		// 6. UIテキスト配置
+		else if (currentNavIndex == 5)
+		{
+			UITextManager::GetInstance()->DrawImGuiEditor();
+		}
 	}
 	ImGui::End();
 
@@ -2779,6 +2959,10 @@ void GamePlayScene::Draw()
 		}
 		enemy->Draw();
 	}
+	if (armoredTrainBoss_ && isBossSpawned_)
+	{
+		armoredTrainBoss_->Draw();
+	}
 	for (auto& obstacle : obstacles_)
 	{
 		if (enableCulling)
@@ -2811,6 +2995,10 @@ void GamePlayScene::Draw()
 		for (auto& enemy : enemies_)
 		{
 			enemy->DrawCollider();
+		}
+		if (armoredTrainBoss_ && isBossSpawned_)
+		{
+			armoredTrainBoss_->DrawCollider();
 		}
 		for (auto& obstacle : obstacles_)
 		{

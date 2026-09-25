@@ -87,5 +87,5 @@ private:
     Vector3 cameraOffset_ = { 0.0f, 2.5f, -8.0f }; // カメラオフセット
     Vector3 currentCameraLocalPos_ = { 0.0f, 2.5f, -8.0f }; // スムーズ補間用カメラローカル位置
     float cameraFollowRateX_ = 0.70f;  // 自機の移動に伴うカメラ横追従（自機を画面内に収めつつ大きくスライド）
-    float cameraFollowRateY_ = 0.60f;  // 自機の移動に伴うカメラ縦追従
+    float cameraFollowRateY_ = 0.68f;  // 自機の移動に伴うカメラ縦追従（上限引き上げ時の見切れを防止）
 };

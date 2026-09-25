@@ -19,7 +19,7 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     object_ = std::make_unique<Object3d>();
     object_->Initialize(object3dCommon);
     object_->SetModel(modelName_);
-    object_->GetModel()->SetColor(color_);
+    object_->SetColor(color_);
     object_->SetEnvironmentTextureIndex(skyboxTexIndex);
     object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
     object_->SetScale(playerScale_);
@@ -530,10 +530,10 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
                                (ePos.y - playerPos.y) * (ePos.y - playerPos.y) + 
                                (ePos.z - playerPos.z) * (ePos.z - playerPos.z);
                 
-                if (distSq < 1500.0f * 1500.0f && ePos.z > playerPos.z) { 
+                if (distSq < (lockOnMaxDistance_ * lockOnMaxDistance_) && ePos.z > playerPos.z) { 
                     if (lockOnDelayTimer_ <= 0.0f) {
                         multiLockedEnemies_.push_back({enemy.get(), 0.0f});
-                        lockOnDelayTimer_ = 60.0f; 
+                        lockOnDelayTimer_ = lockOnInterval_; 
                         break; 
                     }
                 }
@@ -545,7 +545,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
             if (i < multiLockedEnemies_.size() && !multiLockedEnemies_[i].enemy->IsDead()) {
                 multiLockedEnemies_[i].lockedTime += gameSpeed;
                 float lockTime = multiLockedEnemies_[i].lockedTime;
-                bool isLockCompleted = lockTime >= 20.0f; 
+                bool isLockCompleted = lockTime >= lockOnCompleteTime_; 
 
                 
                 Vector3 ePos = multiLockedEnemies_[i].enemy->GetColliderCenter();
@@ -559,7 +559,8 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
                 
                 
                 if (!isLockCompleted) {
-                    float rotationAngle = (lockTime / 20.0f) * 6.2831853f; 
+                    float duration = (std::max)(1.0f, lockOnCompleteTime_);
+                    float rotationAngle = (lockTime / duration) * 6.2831853f; 
                     lockOnReticles_[i]->SetRotation({0.0f, 0.0f, rotationAngle});
                 } else {
                     lockOnReticles_[i]->SetRotation({0.0f, 0.0f, 0.0f}); 
@@ -664,9 +665,9 @@ void Player::LoadSettings(const std::string& filepath) {
         if (j.contains("moveLimitY")) moveLimitY_ = j["moveLimitY"];
         if (j.contains("attackInterval")) attackInterval_ = j["attackInterval"];
         if (j.contains("rollMaxTime")) rollMaxTime_ = j["rollMaxTime"];
-        if (j.contains("playerLimitX")) playerLimitX_ = j["playerLimitX"];
-        if (j.contains("playerLimitYMin")) playerLimitYMin_ = j["playerLimitYMin"];
-        if (j.contains("playerLimitYMax")) playerLimitYMax_ = j["playerLimitYMax"];
+        if (j.contains("playerLimitX")) { playerLimitX_ = j["playerLimitX"]; targetLimitX_ = playerLimitX_; }
+        if (j.contains("playerLimitYMin")) { playerLimitYMin_ = j["playerLimitYMin"]; targetLimitYMin_ = playerLimitYMin_; }
+        if (j.contains("playerLimitYMax")) { playerLimitYMax_ = j["playerLimitYMax"]; targetLimitYMax_ = playerLimitYMax_; }
         if (j.contains("followSpeed")) followSpeed_ = j["followSpeed"];
         if (j.contains("bulletSpeed")) bulletSpeed_ = j["bulletSpeed"];
         if (j.contains("modelName")) modelName_ = j["modelName"];
@@ -703,11 +704,15 @@ void Player::LoadSettings(const std::string& filepath) {
         if (j.contains("terrainKnockbackPower")) terrainKnockbackPower_ = j["terrainKnockbackPower"];
         if (j.contains("terrainPushMargin")) terrainPushMargin_ = j["terrainPushMargin"];
         if (j.contains("terrainCollisionRadius")) terrainCollisionRadius_ = j["terrainCollisionRadius"];
+        if (j.contains("lockOnCompleteTime")) lockOnCompleteTime_ = j["lockOnCompleteTime"];
+        if (j.contains("lockOnInterval")) lockOnInterval_ = j["lockOnInterval"];
+        if (j.contains("missileReloadTime")) missileReloadTime_ = j["missileReloadTime"];
+        if (j.contains("lockOnMaxDistance")) lockOnMaxDistance_ = j["lockOnMaxDistance"];
         file.close();
         
         if (object_) {
             object_->SetModel(modelName_);
-            object_->GetModel()->SetColor(color_);
+            object_->SetColor(color_);
             object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
             if (accessory_) {
                 accessory_->SetParent(object_.get());
@@ -741,6 +746,10 @@ void Player::SaveSettings(const std::string& filepath) {
     j["terrainKnockbackPower"] = terrainKnockbackPower_;
     j["terrainPushMargin"] = terrainPushMargin_;
     j["terrainCollisionRadius"] = terrainCollisionRadius_;
+    j["lockOnCompleteTime"] = lockOnCompleteTime_;
+    j["lockOnInterval"] = lockOnInterval_;
+    j["missileReloadTime"] = missileReloadTime_;
+    j["lockOnMaxDistance"] = lockOnMaxDistance_;
 
     std::filesystem::path p(filepath);
     if (p.has_parent_path()) {
@@ -814,6 +823,25 @@ void Player::DrawImGuiContent() {
         ImGui::SliderFloat("弾速 (Bullet Speed)", &bulletSpeed_, 0.5f, 10.0f, "%.1f");
     }
 
+    // ロックオン弾（ミサイル）設定
+    if (ImGui::CollapsingHeader("ロックオン弾設定 (Lock-On / Missile Settings)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::SliderFloat("ロックオン完了時間 (Lock Time)", &lockOnCompleteTime_, 1.0f, 120.0f, "%.0f frames");
+        ImGui::TextDisabled("  ※約 %.2f 秒 (捕捉から照準完了までの時間)", lockOnCompleteTime_ / 60.0f);
+
+        ImGui::SliderFloat("連続ロックオン間隔 (Lock Interval)", &lockOnInterval_, 5.0f, 180.0f, "%.0f frames");
+        ImGui::TextDisabled("  ※約 %.2f 秒 (次の敵をロックするまでの間隔)", lockOnInterval_ / 60.0f);
+
+        ImGui::SliderFloat("ミサイルリロード時間 (Reload Time)", &missileReloadTime_, 10.0f, 300.0f, "%.0f frames");
+        ImGui::TextDisabled("  ※約 %.2f 秒 (全弾発射後の再装填時間)", missileReloadTime_ / 60.0f);
+
+        ImGui::SliderFloat("ロックオン最大射程 (Max Distance)", &lockOnMaxDistance_, 50.0f, 800.0f, "%.0f m");
+
+        ImGui::Spacing();
+        if (ImGui::Button("ロックオン設定をJSONに保存 (Save Settings)", ImVec2(-1, 28))) {
+            SaveSettings("resources/json/player/player_settings.json");
+        }
+    }
+
     // モデル・外観設定
     if (ImGui::CollapsingHeader("Model & Visual Settings")) {
         const char* models[] = { "cube.obj", "player.obj", "monsterBall.obj", "suzanne.obj" };
@@ -828,7 +856,7 @@ void Player::DrawImGuiContent() {
             modelName_ = models[currentModel];
             if (object_) {
                 object_->SetModel(modelName_);
-                object_->GetModel()->SetColor(color_);
+                object_->SetColor(color_);
                 object_->SetEnvironmentTextureIndex(skyboxTexIndex_);
                 object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
                 if (accessory_) {
@@ -841,7 +869,7 @@ void Player::DrawImGuiContent() {
         if (ImGui::ColorEdit4("Color", col)) {
             color_ = { col[0], col[1], col[2], col[3] };
             if (object_) {
-                object_->GetModel()->SetColor(color_);
+                object_->SetColor(color_);
             }
         }
         

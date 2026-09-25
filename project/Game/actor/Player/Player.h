@@ -107,6 +107,16 @@ public:
         lockOnTargetEnemy_ = targetEnemy;
     }
 
+    // ロックオン弾（ミサイル）パラメータアクセサ
+    float GetLockOnCompleteTime() const { return lockOnCompleteTime_; }
+    void SetLockOnCompleteTime(float time) { lockOnCompleteTime_ = time; }
+    float GetLockOnInterval() const { return lockOnInterval_; }
+    void SetLockOnInterval(float interval) { lockOnInterval_ = interval; }
+    float GetMissileReloadTime() const { return missileReloadTime_; }
+    void SetMissileReloadTime(float time) { missileReloadTime_ = time; }
+    float GetLockOnMaxDistance() const { return lockOnMaxDistance_; }
+    void SetLockOnMaxDistance(float dist) { lockOnMaxDistance_ = dist; }
+
     bool IsBoosting() const { return isBoosting_; }
 
     
@@ -128,6 +138,8 @@ public:
     bool IsDead() const { return isDead_; }
     int GetHp() const { return hp_; }
     int GetMaxHp() const { return maxHp_; }
+    size_t GetLockedEnemyCount() const { return multiLockedEnemies_.size(); }
+    static int GetMaxMissiles() { return MAX_MISSILES; }
 
     // 動的移動制限（ソフトリミット）
     void SetTargetMoveLimits(float limitX, float limitYMin, float limitYMax) {
@@ -138,7 +150,7 @@ public:
     void ResetMoveLimits() {
         targetLimitX_ = 35.0f;
         targetLimitYMin_ = -4.0f;
-        targetLimitYMax_ = 10.0f;
+        targetLimitYMax_ = 20.0f;
     }
     float GetLimitX() const { return playerLimitX_; }
     float GetLimitYMin() const { return playerLimitYMin_; }
@@ -180,15 +192,15 @@ private:
     float speed_ = 0.45f;
     float reticleSpeed_ = 0.75f;
     float moveLimitX_ = 35.0f;     
-    float moveLimitY_ = 10.0f;     
+    float moveLimitY_ = 20.0f;     
     float attackInterval_ = 15.0f;
     float rollMaxTime_ = 15.0f;
     float playerLimitX_ = 35.0f;   
     float playerLimitYMin_ = -4.0f;
-    float playerLimitYMax_ = 10.0f;
+    float playerLimitYMax_ = 20.0f;
     float targetLimitX_ = 35.0f;   
     float targetLimitYMin_ = -4.0f;
-    float targetLimitYMax_ = 10.0f;
+    float targetLimitYMax_ = 20.0f;
     float followSpeed_ = 0.12f;
     float bulletSpeed_ = 3.0f;
     float terrainKnockbackPower_ = 0.35f; // 壁・地面に当たった時の反発速度
@@ -253,9 +265,12 @@ private:
     };
     std::vector<LockOnTarget> multiLockedEnemies_;
     float missileReloadTimer_ = 0.0f;
-    const float missileReloadTime_ = 120.0f; 
+    float missileReloadTime_ = 120.0f;     // 発射後のリロード時間 (フレーム数)
     float lockOnAnimTimer_ = 0.0f; 
     float lockOnDelayTimer_ = 0.0f;
+    float lockOnCompleteTime_ = 20.0f;     // ロックオン完了所要時間 (フレーム数)
+    float lockOnInterval_ = 60.0f;         // 敵1体を捕捉してから次の敵をロックするまでの間隔 (フレーム数)
+    float lockOnMaxDistance_ = 350.0f;     // ロックオン最大射程 (m)
 
     
     bool isDodgeTriggered_ = false;

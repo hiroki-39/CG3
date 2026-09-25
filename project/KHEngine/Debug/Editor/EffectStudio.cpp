@@ -29,8 +29,8 @@ void EffectStudio::Initialize(DirectXCommon* dxCommon, SrvManager* srvManager)
     // パーティクル基本プリミティブアセットの登録確認
     auto particleMgr = ParticleManager::GetInstance();
     particleMgr->RegisterQuad("quad", "circle2.png");
-    particleMgr->RegisterRing("ring", "gradationLine.png", 32, 0.5f, 1.0f);
-    particleMgr->RegisterCylinder("Cylinder", "resources/sprites/gradationLine.png");
+    particleMgr->RegisterRing("ring", "resources/sprites/effect/gradationLine.png", 32, 0.5f, 1.0f);
+    particleMgr->RegisterCylinder("Cylinder", "resources/sprites/effect/gradationLine.png");
 
     // プレビュー用エフェクト初期化
     previewEffect_.Initialize(dxCommon_, srvManager_);

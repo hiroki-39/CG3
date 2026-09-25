@@ -17,7 +17,6 @@ public:
     void Update3DObjectOnly() {
         if (object_) object_->Update();
         if (colliderObject_) colliderObject_->Update();
-        if (shadowObject_) shadowObject_->Update();
     }
     void Draw();
     void DrawCollider(); // デバッグ描画用
@@ -32,8 +31,11 @@ public:
 
     // Getter / Setter
     const Vector3& GetPosition() const { return position_; }
+    Vector3 GetVisualPosition() const {
+        return { position_.x + modelPosOffset_.x, position_.y + modelPosOffset_.y, position_.z + modelPosOffset_.z };
+    }
     Vector3 GetColliderCenter() const {
-        return { position_.x + collider_.center.x, position_.y + collider_.center.y, position_.z + collider_.center.z };
+        return { position_.x + modelPosOffset_.x + collider_.center.x, position_.y + modelPosOffset_.y + collider_.center.y, position_.z + modelPosOffset_.z + collider_.center.z };
     }
     const LevelCollider& GetCollider() const { return collider_; }
     bool IsDead() const { return isDead_; }
@@ -53,7 +55,6 @@ public:
 private:
     std::unique_ptr<Object3d> object_;
     std::unique_ptr<Object3d> colliderObject_; // デバッグ描画用オブジェクト
-    std::unique_ptr<Object3d> shadowObject_; // 丸影用オブジェクト
     Object3dCommon* object3dCommon_ = nullptr; // 弾の発射用
     Vector3 spawnPos_; // 初期配置座標
     Vector3 position_;
@@ -77,17 +78,24 @@ private:
     // 拡張AI用プロパティ（新規追加分）
     std::string behavior_ = "STRAIGHT"; // 行動パターン
     float moveSpeed_ = 1.0f;            // 移動速度
-    float shootInterval_ = 180.0f;           // 射撃間隔
+    float moveAmplitude_ = 10.0f;       // 移動幅（往復の振幅）
+    float shootInterval_ = 180.0f;      // 射撃間隔
     float spawnDist_ = 800.0f;          // 出現距離
     float spawnDelay_ = 0.0f;                // スポナーで生成された時の遅延（フレーム数）
     float activeTimer_ = 0.0f;               // アクティブになってからの経過時間
+    bool isHomingBullet_ = false;       // 弾のホーミング有無
+    float bulletSpeed_ = 2.0f;          // 弾速
 
     // 拡張AI用プロパティ（既存）
     Vector3 targetPos_;
-    float maxY_ = 10.0f;
-    float minY_ = -10.0f;
+    bool hasHeightLimit_ = false;
+    float maxY_ = 1000.0f;
+    float minY_ = -1000.0f;
     int formationId_ = -1;
     float invincibilityTimer_ = 0.0f;
     float attackTimer_ = 0.0f;
     Vector3 dashVelocity_ = {0.0f, 0.0f, 0.0f};
+    Vector4 color_ = {1.0f, 1.0f, 1.0f, 1.0f};
+    Vector3 rotation_ = {0.0f, 3.14159265f, 0.0f};
+    Vector3 modelPosOffset_ = {0.0f, 0.0f, 0.0f};
 };

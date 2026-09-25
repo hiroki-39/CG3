@@ -30,5 +30,6 @@ private:
 
     DirectXCommon* dxCommon_ = nullptr;
     bool showParticleEditor_ = false;
+    bool showUITextEditor_ = true;
     bool resetLayout_ = false;
 };

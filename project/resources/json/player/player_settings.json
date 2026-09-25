@@ -13,7 +13,7 @@
         1.0
     ],
     "followSpeed": 0.07999999821186066,
-    "hp": 10000,
+    "hp": 7000,
     "maxHp": 10000,
     "modelName": "player.obj",
     "modelPosOffset": [
@@ -27,9 +27,9 @@
         0.0
     ],
     "moveLimitX": 35.0,
-    "moveLimitY": 10.0,
+    "moveLimitY": 20.0,
     "playerLimitX": 35.0,
-    "playerLimitYMax": 10.0,
+    "playerLimitYMax": 20.0,
     "playerLimitYMin": -4.0,
     "playerScale": [
         0.5,
@@ -39,5 +39,12 @@
     "reflection": false,
     "reticleSpeed": 0.75,
     "rollMaxTime": 15.0,
-    "speed": 0.45
+    "speed": 0.44999998807907104,
+    "terrainCollisionRadius": 0.800000011920929,
+    "terrainKnockbackPower": 1.5,
+    "terrainPushMargin": 0.05000000074505806,
+    "lockOnCompleteTime": 20.0,
+    "lockOnInterval": 60.0,
+    "missileReloadTime": 120.0,
+    "lockOnMaxDistance": 350.0
 }

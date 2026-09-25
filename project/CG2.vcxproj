@@ -164,6 +164,8 @@
     <ClCompile Include="Game\Actor\Bullet\PlayerMissile.cpp" />
     <ClCompile Include="Game\Actor\Bullet\EnemyBullet.cpp" />
     <ClCompile Include="Game\Actor\Enemy\Enemy.cpp" />
+    <ClCompile Include="Game\Actor\Enemy\EnemyPresetManager.cpp" />
+    <ClCompile Include="Game\Actor\Enemy\ArmoredTrainBoss.cpp" />
     <ClCompile Include="Game\Actor\Obstacle\Obstacle.cpp" />
     <ClCompile Include="Game\Actor\Item\EnhanceRing.cpp" />
     <ClCompile Include="KHEngine\Graphics\3d\Primitive\Ring.cpp" />
@@ -234,6 +236,7 @@
     <ClCompile Include="KHEngine\Core\Resource\ResourceLocator.cpp" />
     <ClCompile Include="KHEngine\Scene\LevelLoader.cpp" />
     <ClCompile Include="KHEngine\Graphics\Transition\TransitionRenderer.cpp" />
+    <ClCompile Include="KHEngine\UI\UITextManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Game\Scene\GamePlayScene.h" />
@@ -246,6 +249,8 @@
     <ClInclude Include="Game\Actor\Bullet\PlayerMissile.h" />
     <ClInclude Include="Game\Actor\Bullet\EnemyBullet.h" />
     <ClInclude Include="Game\Actor\Enemy\Enemy.h" />
+    <ClInclude Include="Game\Actor\Enemy\EnemyPresetManager.h" />
+    <ClInclude Include="Game\Actor\Enemy\ArmoredTrainBoss.h" />
     <ClInclude Include="Game\Actor\Obstacle\Obstacle.h" />
     <ClInclude Include="Game\Actor\Item\EnhanceRing.h" />
     <ClInclude Include="Game\System\Application.h" />
@@ -312,6 +317,7 @@
     <ClInclude Include="KHEngine\Core\Resource\ResourceLocator.h" />
     <ClInclude Include="KHEngine\Scene\LevelLoader.h" />
     <ClInclude Include="KHEngine\Graphics\Transition\TransitionRenderer.h" />
+    <ClInclude Include="KHEngine\UI\UITextManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

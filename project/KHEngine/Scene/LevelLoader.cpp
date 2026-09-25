@@ -48,9 +48,11 @@ void LevelLoader::ParseObject(const void* jsonNodePtr, LevelObjectData& objectDa
     }
     if (objJson.contains("enemy_max_y")) {
         objectData.enemyMaxY = objJson["enemy_max_y"].get<float>();
+        objectData.hasHeightLimit = true;
     }
     if (objJson.contains("enemy_min_y")) {
         objectData.enemyMinY = objJson["enemy_min_y"].get<float>();
+        objectData.hasHeightLimit = true;
     }
     if (objJson.contains("enemy_formation_id")) {
         objectData.enemyFormationId = objJson["enemy_formation_id"].get<int>();

@@ -46,8 +46,9 @@ struct LevelObjectData {
     std::string enemyType = "RUSHER";
     std::string enemyTargetName = "";
     Vector3 enemyTargetPos;
-    float enemyMaxY = 10.0f;
-    float enemyMinY = -10.0f;
+    bool hasHeightLimit = false;
+    float enemyMaxY = 1000.0f;
+    float enemyMinY = -1000.0f;
     int enemyFormationId = -1;
 
     // スポナー設定

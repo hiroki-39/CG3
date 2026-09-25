@@ -70,6 +70,7 @@ void TitleScene::Initialize()
         modelManager->LoadModel("Ring.obj");
         modelManager->LoadModel("heal.obj");
         modelManager->LoadModel("rail.obj");
+        modelManager->LoadModel("beam.obj");
     }
 
     // 3. スカイボックス（26.7MB）および主要テクスチャの事前ロード
@@ -79,8 +80,9 @@ void TitleScene::Initialize()
     texManager->LoadTexture("circle2.png");
     texManager->LoadTexture("gradationLine.png");
     texManager->LoadTexture("sprites/white.png");
-    texManager->LoadTexture("sprites/prticle_kira.png");
-    texManager->LoadTexture("sprites/hart.png");
+    texManager->LoadTexture("prticle_kira.png");
+    texManager->LoadTexture("hart.png");
+    texManager->LoadTexture("light.png");
 
     // 全テクスチャ（モデル用・スカイボックス用含む）を一括アップロード
     texManager->ExecuteUploadCommands();
@@ -110,6 +112,12 @@ void TitleScene::Update()
 #ifdef USE_IMGUI
     // フレーム描画スコープ外（NewFrame前）の場合はImGui描画をスキップ
     if (!ImGui::GetCurrentContext() || ImGui::GetFrameCount() <= 0)
+    {
+        return;
+    }
+
+    // エディターモードが無効（全画面表示時）はエディタUIを描画しない
+    if (!services->GetEditorMode())
     {
         return;
     }
