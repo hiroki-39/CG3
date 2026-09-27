@@ -44,6 +44,8 @@ public:
 	/// 遷移中かどうか
 	/// </summary>
 	bool IsTransitioning() const { return transitionState_ != TransitionState::None; }
+	TransitionState GetTransitionState() const { return transitionState_; }
+	float GetTransitionProgress() const { return transitionProgress_; }
 
 	void SetSceneFactory(AbstractSceneFactory* factory) { sceneFactory_ = factory; }
 

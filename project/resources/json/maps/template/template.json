@@ -2,13 +2,13 @@
     "name": "Scene",
     "objects": [
         {
-            "type": "EMPTY",
-            "name": "Enemy_Fighter",
+            "type": "MESH",
+            "name": "enemy",
             "transform": {
                 "translation": [
-                    107.11219787597656,
-                    702.9973754882812,
-                    62.27029800415039
+                    134.19287109375,
+                    964.950927734375,
+                    12.676189422607422
                 ],
                 "rotation": [
                     0.0,
@@ -21,267 +21,18 @@
                     1.0
                 ]
             },
-            "file_name": "Fighter",
             "is_enemy": true,
-            "enemy_type": "SHOOTER",
-            "enemy_max_y": 20.0,
-            "enemy_min_y": 5.0,
-            "行動パターン": "PATH",
-            "出現数": 4,
-            "出現間隔": 15,
-            "陣形": "LINE",
-            "陣形間隔": 20.0,
-            "移動速度": 0.940000057220459,
-            "射撃間隔": 300,
-            "出現距離": 1000.0,
-            "is_destructible": true,
-            "collider": {
-                "type": "OBB",
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    5.0,
-                    5.0,
-                    5.0
-                ]
-            },
-            "children": [
-                {
-                    "type": "CURVE",
-                    "name": "ベジエカーブ",
-                    "transform": {
-                        "translation": [
-                            -25.252029418945312,
-                            0.00030517578125,
-                            -0.7802238464355469
-                        ],
-                        "rotation": [
-                            0.0,
-                            -0.0,
-                            -179.99998474121094
-                        ],
-                        "scale": [
-                            23.2359676361084,
-                            23.2359676361084,
-                            23.2359676361084
-                        ]
-                    },
-                    "is_destructible": true,
-                    "curve_points_debug": "Script is updated!",
-                    "curve_points": [
-                        {
-                            "position": {
-                                "x": 105.09613800048828,
-                                "y": 702.9976806640625,
-                                "z": 61.490074157714844
-                            },
-                            "handle_left": {
-                                "x": 112.16094207763672,
-                                "y": 702.9976806640625,
-                                "z": 61.490074157714844
-                            },
-                            "handle_right": {
-                                "x": 98.03132629394531,
-                                "y": 702.9976806640625,
-                                "z": 61.490074157714844
-                            },
-                            "tilt": 0.0
-                        },
-                        {
-                            "position": {
-                                "x": 87.00033569335938,
-                                "y": 702.9976806640625,
-                                "z": 61.490074157714844
-                            },
-                            "handle_left": {
-                                "x": 93.8140869140625,
-                                "y": 704.8506469726562,
-                                "z": 61.71555709838867
-                            },
-                            "handle_right": {
-                                "x": 79.58138275146484,
-                                "y": 700.9801635742188,
-                                "z": 61.244564056396484
-                            },
-                            "tilt": 0.0
-                        },
-                        {
-                            "position": {
-                                "x": 70.04815673828125,
-                                "y": 693.029541015625,
-                                "z": 60.277061462402344
-                            },
-                            "handle_left": {
-                                "x": 74.58338928222656,
-                                "y": 699.2359008789062,
-                                "z": 60.5679817199707
-                            },
-                            "handle_right": {
-                                "x": 65.15296173095703,
-                                "y": 686.3306274414062,
-                                "z": 59.963050842285156
-                            },
-                            "tilt": 0.0
-                        },
-                        {
-                            "position": {
-                                "x": 65.33061981201172,
-                                "y": 672.2931518554688,
-                                "z": 60.11000061035156
-                            },
-                            "handle_left": {
-                                "x": 65.7872314453125,
-                                "y": 680.5833740234375,
-                                "z": 60.09024429321289
-                            },
-                            "handle_right": {
-                                "x": 65.01568603515625,
-                                "y": 666.5752563476562,
-                                "z": 60.12362289428711
-                            },
-                            "tilt": 0.0
-                        },
-                        {
-                            "position": {
-                                "x": 66.9939956665039,
-                                "y": 657.720947265625,
-                                "z": 60.294029235839844
-                            },
-                            "handle_left": {
-                                "x": 68.8363265991211,
-                                "y": 663.1424560546875,
-                                "z": 60.21315383911133
-                            },
-                            "handle_right": {
-                                "x": 62.38349914550781,
-                                "y": 644.1535034179688,
-                                "z": 60.49641799926758
-                            },
-                            "tilt": 0.0
-                        },
-                        {
-                            "position": {
-                                "x": 41.47441482543945,
-                                "y": 631.340576171875,
-                                "z": 60.77101516723633
-                            },
-                            "handle_left": {
-                                "x": 44.11003112792969,
-                                "y": 645.4265747070312,
-                                "z": 60.87676239013672
-                            },
-                            "handle_right": {
-                                "x": 38.1214485168457,
-                                "y": 613.4207763671875,
-                                "z": 60.63648986816406
-                            },
-                            "tilt": 0.0
-                        },
-                        {
-                            "position": {
-                                "x": 59.61170196533203,
-                                "y": 588.3253784179688,
-                                "z": 59.589332580566406
-                            },
-                            "handle_left": {
-                                "x": 52.28083801269531,
-                                "y": 605.0169677734375,
-                                "z": 59.757572174072266
-                            },
-                            "handle_right": {
-                                "x": 63.5971565246582,
-                                "y": 579.2509155273438,
-                                "z": 59.497867584228516
-                            },
-                            "tilt": 0.0
-                        },
-                        {
-                            "position": {
-                                "x": 70.1631088256836,
-                                "y": 565.2352294921875,
-                                "z": 59.763309478759766
-                            },
-                            "handle_left": {
-                                "x": 73.07996368408203,
-                                "y": 574.7068481445312,
-                                "z": 59.62458038330078
-                            },
-                            "handle_right": {
-                                "x": 62.162689208984375,
-                                "y": 539.25634765625,
-                                "z": 60.14381790161133
-                            },
-                            "tilt": 0.0
-                        },
-                        {
-                            "position": {
-                                "x": 10.60992431640625,
-                                "y": 529.162841796875,
-                                "z": 60.74208068847656
-                            },
-                            "handle_left": {
-                                "x": 11.529545783996582,
-                                "y": 556.3324584960938,
-                                "z": 60.8774528503418
-                            },
-                            "handle_right": {
-                                "x": 9.635775566101074,
-                                "y": 500.382568359375,
-                                "z": 60.59868240356445
-                            },
-                            "tilt": 0.0
-                        },
-                        {
-                            "position": {
-                                "x": 70.9657211303711,
-                                "y": 486.7862548828125,
-                                "z": 59.30376434326172
-                            },
-                            "handle_left": {
-                                "x": 62.33289337158203,
-                                "y": 514.245849609375,
-                                "z": 60.15154266357422
-                            },
-                            "handle_right": {
-                                "x": 77.72642517089844,
-                                "y": 465.28155517578125,
-                                "z": 58.639835357666016
-                            },
-                            "tilt": 0.0
-                        },
-                        {
-                            "position": {
-                                "x": 51.18760681152344,
-                                "y": 432.5354309082031,
-                                "z": 57.73064422607422
-                            },
-                            "handle_left": {
-                                "x": 58.909210205078125,
-                                "y": 453.715576171875,
-                                "z": 58.34480667114258
-                            },
-                            "handle_right": {
-                                "x": 43.466007232666016,
-                                "y": 411.3552551269531,
-                                "z": 57.116477966308594
-                            },
-                            "tilt": 0.0
-                        }
-                    ]
-                }
-            ]
+            "enemy_type": "PATROL_H",
+            "is_destructible": true
         },
         {
-            "type": "EMPTY",
-            "name": "Enemy_Fighter.003",
+            "type": "MESH",
+            "name": "enemy.001",
             "transform": {
                 "translation": [
-                    -25.17691421508789,
-                    381.9462585449219,
-                    70.2092056274414
+                    69.80680847167969,
+                    1020.751708984375,
+                    15.508707046508789
                 ],
                 "rotation": [
                     0.0,
@@ -294,42 +45,18 @@
                     1.0
                 ]
             },
-            "file_name": "Fighter",
             "is_enemy": true,
-            "enemy_type": "TURRET",
-            "enemy_max_y": 20.0,
-            "enemy_min_y": 5.0,
-            "行動パターン": "STAY",
-            "出現数": 1,
-            "出現間隔": 30,
-            "陣形": "NONE",
-            "陣形間隔": 10.0,
-            "移動速度": 2.0,
-            "射撃間隔": 180,
-            "出現距離": 500.0,
-            "is_destructible": true,
-            "collider": {
-                "type": "OBB",
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    5.0,
-                    5.0,
-                    5.0
-                ]
-            }
+            "enemy_type": "PATROL_V",
+            "is_destructible": true
         },
         {
-            "type": "EMPTY",
-            "name": "Enemy_Fighter.001",
+            "type": "MESH",
+            "name": "enemy.002",
             "transform": {
                 "translation": [
-                    -5.410064697265625,
-                    1052.81787109375,
-                    0.6255455017089844
+                    87.10783386230469,
+                    1284.9547119140625,
+                    18.810420989990234
                 ],
                 "rotation": [
                     0.0,
@@ -342,43 +69,18 @@
                     1.0
                 ]
             },
-            "file_name": "Fighter",
-            "spawn_progress": 0.0,
             "is_enemy": true,
             "enemy_type": "TURRET",
-            "enemy_max_y": 10.0,
-            "enemy_min_y": -10.0,
-            "行動パターン": "STAY",
-            "出現数": 1,
-            "出現間隔": 30,
-            "陣形": "NONE",
-            "陣形間隔": 10.0,
-            "移動速度": 1.0,
-            "射撃間隔": 180,
-            "出現距離": 800.0,
-            "is_destructible": true,
-            "collider": {
-                "type": "OBB",
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    2.0,
-                    2.0,
-                    2.0
-                ]
-            }
+            "is_destructible": true
         },
         {
-            "type": "EMPTY",
-            "name": "Enemy_Fighter.002",
+            "type": "MESH",
+            "name": "enemy.003",
             "transform": {
                 "translation": [
-                    28.20073699951172,
-                    1052.81787109375,
-                    0.6255455017089844
+                    81.23847961425781,
+                    1890.0416259765625,
+                    30.831340789794922
                 ],
                 "rotation": [
                     0.0,
@@ -391,43 +93,18 @@
                     1.0
                 ]
             },
-            "file_name": "Fighter",
-            "spawn_progress": 0.0,
             "is_enemy": true,
             "enemy_type": "TURRET",
-            "enemy_max_y": 10.0,
-            "enemy_min_y": -10.0,
-            "行動パターン": "STAY",
-            "出現数": 1,
-            "出現間隔": 30,
-            "陣形": "NONE",
-            "陣形間隔": 10.0,
-            "移動速度": 1.0,
-            "射撃間隔": 180,
-            "出現距離": 800.0,
-            "is_destructible": true,
-            "collider": {
-                "type": "OBB",
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    2.0,
-                    2.0,
-                    2.0
-                ]
-            }
+            "is_destructible": true
         },
         {
-            "type": "EMPTY",
-            "name": "Enemy_Fighter.004",
+            "type": "MESH",
+            "name": "enemy.004",
             "transform": {
                 "translation": [
-                    66.99784088134766,
-                    1052.81787109375,
-                    0.6255455017089844
+                    81.7293472290039,
+                    1954.1043701171875,
+                    23.845134735107422
                 ],
                 "rotation": [
                     0.0,
@@ -440,43 +117,18 @@
                     1.0
                 ]
             },
-            "file_name": "Fighter",
-            "spawn_progress": 0.0,
             "is_enemy": true,
             "enemy_type": "TURRET",
-            "enemy_max_y": 10.0,
-            "enemy_min_y": -10.0,
-            "行動パターン": "STAY",
-            "出現数": 1,
-            "出現間隔": 30,
-            "陣形": "NONE",
-            "陣形間隔": 10.0,
-            "移動速度": 1.0,
-            "射撃間隔": 180,
-            "出現距離": 800.0,
-            "is_destructible": true,
-            "collider": {
-                "type": "OBB",
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    2.0,
-                    2.0,
-                    2.0
-                ]
-            }
+            "is_destructible": true
         },
         {
-            "type": "EMPTY",
-            "name": "Enemy_Fighter.005",
+            "type": "MESH",
+            "name": "enemy.005",
             "transform": {
                 "translation": [
-                    138.31076049804688,
-                    1053.025634765625,
-                    21.369953155517578
+                    92.13520812988281,
+                    2622.8583984375,
+                    21.19672393798828
                 ],
                 "rotation": [
                     0.0,
@@ -489,43 +141,18 @@
                     1.0
                 ]
             },
-            "file_name": "Fighter",
-            "spawn_progress": 0.0,
             "is_enemy": true,
-            "enemy_type": "TURRET",
-            "enemy_max_y": 10.0,
-            "enemy_min_y": -10.0,
-            "行動パターン": "STAY",
-            "出現数": 1,
-            "出現間隔": 30,
-            "陣形": "NONE",
-            "陣形間隔": 10.0,
-            "移動速度": 1.0,
-            "射撃間隔": 180,
-            "出現距離": 800.0,
-            "is_destructible": true,
-            "collider": {
-                "type": "OBB",
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    2.0,
-                    2.0,
-                    2.0
-                ]
-            }
+            "enemy_type": "PATROL_V",
+            "is_destructible": true
         },
         {
-            "type": "EMPTY",
-            "name": "Enemy_Fighter.006",
+            "type": "MESH",
+            "name": "enemy.006",
             "transform": {
                 "translation": [
-                    156.5592498779297,
-                    1053.025634765625,
-                    24.697961807250977
+                    40.05826950073242,
+                    2377.878173828125,
+                    16.856178283691406
                 ],
                 "rotation": [
                     0.0,
@@ -538,34 +165,753 @@
                     1.0
                 ]
             },
-            "file_name": "Fighter",
-            "spawn_progress": 0.0,
             "is_enemy": true,
             "enemy_type": "TURRET",
-            "enemy_max_y": 10.0,
-            "enemy_min_y": -10.0,
-            "行動パターン": "STAY",
-            "出現数": 1,
-            "出現間隔": 30,
-            "陣形": "NONE",
-            "陣形間隔": 10.0,
-            "移動速度": 1.0,
-            "射撃間隔": 180,
-            "出現距離": 800.0,
-            "is_destructible": true,
-            "collider": {
-                "type": "OBB",
-                "center": [
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.007",
+            "transform": {
+                "translation": [
+                    17.315778732299805,
+                    3008.300048828125,
+                    4.7438201904296875
+                ],
+                "rotation": [
                     0.0,
-                    0.0,
+                    -0.0,
                     0.0
                 ],
-                "size": [
-                    2.0,
-                    2.0,
-                    2.0
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
                 ]
-            }
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_V",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.008",
+            "transform": {
+                "translation": [
+                    -81.93258666992188,
+                    3251.918701171875,
+                    20.842519760131836
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.009",
+            "transform": {
+                "translation": [
+                    101.52822875976562,
+                    1322.626708984375,
+                    25.990642547607422
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_H",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.010",
+            "transform": {
+                "translation": [
+                    121.87873077392578,
+                    1284.9547119140625,
+                    18.810420989990234
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.011",
+            "transform": {
+                "translation": [
+                    98.56961059570312,
+                    1517.2574462890625,
+                    14.205495834350586
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_H",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.012",
+            "transform": {
+                "translation": [
+                    108.93750762939453,
+                    1835.2293701171875,
+                    14.205495834350586
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_H",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.013",
+            "transform": {
+                "translation": [
+                    93.81550598144531,
+                    1890.0416259765625,
+                    30.698183059692383
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.014",
+            "transform": {
+                "translation": [
+                    105.74598693847656,
+                    1890.0416259765625,
+                    30.698183059692383
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.015",
+            "transform": {
+                "translation": [
+                    115.0462417602539,
+                    1890.0416259765625,
+                    30.698183059692383
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.016",
+            "transform": {
+                "translation": [
+                    94.73502349853516,
+                    1954.1043701171875,
+                    23.845134735107422
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.017",
+            "transform": {
+                "translation": [
+                    109.54835510253906,
+                    1954.1043701171875,
+                    23.845134735107422
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.018",
+            "transform": {
+                "translation": [
+                    35.633018493652344,
+                    2622.8583984375,
+                    23.10065269470215
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_V",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.019",
+            "transform": {
+                "translation": [
+                    40.05826950073242,
+                    2361.21923828125,
+                    16.856178283691406
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.020",
+            "transform": {
+                "translation": [
+                    40.05826950073242,
+                    2343.572021484375,
+                    16.856178283691406
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.021",
+            "transform": {
+                "translation": [
+                    109.81680297851562,
+                    2377.878173828125,
+                    16.856178283691406
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.022",
+            "transform": {
+                "translation": [
+                    110.82772827148438,
+                    2361.21923828125,
+                    16.856178283691406
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.023",
+            "transform": {
+                "translation": [
+                    111.68057250976562,
+                    2343.572021484375,
+                    16.856178283691406
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.026",
+            "transform": {
+                "translation": [
+                    -81.93258666992188,
+                    3241.11376953125,
+                    20.842519760131836
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.027",
+            "transform": {
+                "translation": [
+                    -81.93258666992188,
+                    3229.663818359375,
+                    20.842519760131836
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.028",
+            "transform": {
+                "translation": [
+                    -81.97343444824219,
+                    3221.2041015625,
+                    20.671560287475586
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.029",
+            "transform": {
+                "translation": [
+                    -81.97343444824219,
+                    3211.623046875,
+                    20.671560287475586
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "TURRET",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.030",
+            "transform": {
+                "translation": [
+                    15.768272399902344,
+                    3688.1630859375,
+                    21.74471664428711
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_V",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.031",
+            "transform": {
+                "translation": [
+                    17.985904693603516,
+                    4542.82763671875,
+                    21.285999298095703
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_H",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.032",
+            "transform": {
+                "translation": [
+                    17.985904693603516,
+                    4542.82763671875,
+                    12.045875549316406
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_H",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.033",
+            "transform": {
+                "translation": [
+                    -15.740344047546387,
+                    5351.13525390625,
+                    21.285999298095703
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_H",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.034",
+            "transform": {
+                "translation": [
+                    -43.89893341064453,
+                    5576.88818359375,
+                    20.815155029296875
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_V",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.035",
+            "transform": {
+                "translation": [
+                    16.454418182373047,
+                    5576.88818359375,
+                    20.815155029296875
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_V",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.036",
+            "transform": {
+                "translation": [
+                    22.405029296875,
+                    5810.8798828125,
+                    20.815155029296875
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_H",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.037",
+            "transform": {
+                "translation": [
+                    70.18910217285156,
+                    6019.88525390625,
+                    22.281211853027344
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_H",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.038",
+            "transform": {
+                "translation": [
+                    70.18910217285156,
+                    6466.16064453125,
+                    23.215002059936523
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_V",
+            "is_destructible": true
+        },
+        {
+            "type": "MESH",
+            "name": "enemy.039",
+            "transform": {
+                "translation": [
+                    8.28240966796875,
+                    6466.16064453125,
+                    22.281211853027344
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_enemy": true,
+            "enemy_type": "PATROL_V",
+            "is_destructible": true
         },
         {
             "type": "CURVE",
@@ -592,72 +938,18 @@
             "curve_points": [
                 {
                     "position": {
-                        "x": 0.0,
-                        "y": -1.0,
-                        "z": 5.0
-                    },
-                    "handle_left": {
-                        "x": 0.0,
-                        "y": -21.09873390197754,
-                        "z": 5.0
-                    },
-                    "handle_right": {
-                        "x": 0.0,
-                        "y": 19.09873390197754,
-                        "z": 5.0
-                    },
-                    "tilt": 0.0
-                },
-                {
-                    "position": {
-                        "x": 0.0,
-                        "y": 50.48089599609375,
-                        "z": 5.0
-                    },
-                    "handle_left": {
-                        "x": 0.1284252405166626,
-                        "y": 30.382612228393555,
-                        "z": 5.039822101593018
-                    },
-                    "handle_right": {
-                        "x": -0.221674382686615,
-                        "y": 85.17247772216797,
-                        "z": 4.931263446807861
-                    },
-                    "tilt": 0.0
-                },
-                {
-                    "position": {
-                        "x": -1.1355681419372559,
-                        "y": 139.33395385742188,
-                        "z": 4.647884845733643
-                    },
-                    "handle_left": {
-                        "x": -2.1506619453430176,
-                        "y": 104.6565170288086,
-                        "z": 4.716680526733398
-                    },
-                    "handle_right": {
-                        "x": 2.516038417816162,
-                        "y": 264.07940673828125,
-                        "z": 4.400404930114746
-                    },
-                    "tilt": 0.0
-                },
-                {
-                    "position": {
                         "x": 21.639305114746094,
                         "y": 458.18212890625,
                         "z": 4.647884845733643
                     },
                     "handle_left": {
-                        "x": 7.621453285217285,
-                        "y": 334.1727294921875,
+                        "x": 8.937058448791504,
+                        "y": 376.2526550292969,
                         "z": 4.647884845733643
                     },
                     "handle_right": {
-                        "x": 30.95183753967285,
-                        "y": 540.5657348632812,
+                        "x": 34.341552734375,
+                        "y": 540.111572265625,
                         "z": 4.647884845733643
                     },
                     "tilt": 0.0
@@ -1245,9 +1537,9 @@
             "name": "Ring",
             "transform": {
                 "translation": [
-                    25.803009033203125,
-                    279.86737060546875,
-                    19.212623596191406
+                    97.5408935546875,
+                    1024.703125,
+                    6.775689125061035
                 ],
                 "rotation": [
                     90.00000762939453,
@@ -1282,9 +1574,262 @@
             "name": "Heal",
             "transform": {
                 "translation": [
-                    66.45455169677734,
-                    348.00250244140625,
-                    21.898469924926758
+                    88.69183349609375,
+                    1385.817138671875,
+                    16.337488174438477
+                ],
+                "rotation": [
+                    90.00000762939453,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    3.0,
+                    3.0,
+                    1.0
+                ]
+            },
+            "file_name": "heal",
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.5,
+                    1.5,
+                    1.5
+                ]
+            }
+        },
+        {
+            "type": "MESH",
+            "name": "Ring.001",
+            "transform": {
+                "translation": [
+                    105.90770721435547,
+                    1555.747314453125,
+                    9.559600830078125
+                ],
+                "rotation": [
+                    90.00000762939453,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    3.0,
+                    3.0,
+                    1.0
+                ]
+            },
+            "file_name": "Ring",
+            "is_destructible": true,
+            "texture_path": "white.png",
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.5,
+                    1.5,
+                    1.5
+                ]
+            }
+        },
+        {
+            "type": "MESH",
+            "name": "Heal.001",
+            "transform": {
+                "translation": [
+                    116.95459747314453,
+                    1385.817138671875,
+                    16.337488174438477
+                ],
+                "rotation": [
+                    90.00000762939453,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    3.0,
+                    3.0,
+                    1.0
+                ]
+            },
+            "file_name": "heal",
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.5,
+                    1.5,
+                    1.5
+                ]
+            }
+        },
+        {
+            "type": "MESH",
+            "name": "Heal.002",
+            "transform": {
+                "translation": [
+                    64.76715087890625,
+                    2621.53564453125,
+                    16.337488174438477
+                ],
+                "rotation": [
+                    90.00000762939453,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    3.0,
+                    3.0,
+                    1.0
+                ]
+            },
+            "file_name": "heal",
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.5,
+                    1.5,
+                    1.5
+                ]
+            }
+        },
+        {
+            "type": "MESH",
+            "name": "Heal.003",
+            "transform": {
+                "translation": [
+                    -51.27621841430664,
+                    3266.43212890625,
+                    16.337488174438477
+                ],
+                "rotation": [
+                    90.00000762939453,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    3.0,
+                    3.0,
+                    1.0
+                ]
+            },
+            "file_name": "heal",
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.5,
+                    1.5,
+                    1.5
+                ]
+            }
+        },
+        {
+            "type": "MESH",
+            "name": "Heal.004",
+            "transform": {
+                "translation": [
+                    -62.62684631347656,
+                    5224.52880859375,
+                    16.337488174438477
+                ],
+                "rotation": [
+                    90.00000762939453,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    3.0,
+                    3.0,
+                    1.0
+                ]
+            },
+            "file_name": "heal",
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.5,
+                    1.5,
+                    1.5
+                ]
+            }
+        },
+        {
+            "type": "MESH",
+            "name": "Heal.005",
+            "transform": {
+                "translation": [
+                    15.066150665283203,
+                    5726.0986328125,
+                    15.292105674743652
+                ],
+                "rotation": [
+                    90.00000762939453,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    3.0,
+                    3.0,
+                    1.0
+                ]
+            },
+            "file_name": "heal",
+            "is_destructible": true,
+            "collider": {
+                "type": "OBB",
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.5,
+                    1.5,
+                    1.5
+                ]
+            }
+        },
+        {
+            "type": "MESH",
+            "name": "Heal.006",
+            "transform": {
+                "translation": [
+                    43.676822662353516,
+                    6405.2607421875,
+                    15.292105674743652
                 ],
                 "rotation": [
                     90.00000762939453,
@@ -1319,7 +1864,7 @@
             "transform": {
                 "translation": [
                     0.0,
-                    500.0,
+                    502.764892578125,
                     0.0
                 ],
                 "rotation": [
@@ -1334,7 +1879,7 @@
                 ]
             },
             "is_destructible": true,
-            "texture_path": "ground.png"
+            "texture_path": "FieldGround.png"
         },
         {
             "type": "MESH",
@@ -1388,7 +1933,7 @@
             "transform": {
                 "translation": [
                     0.0,
-                    6500.0,
+                    6462.97705078125,
                     0.0
                 ],
                 "rotation": [
@@ -1430,12 +1975,12 @@
         },
         {
             "type": "MESH",
-            "name": "AITerrain_01_PLAINS.001",
+            "name": "arch_1",
             "transform": {
                 "translation": [
-                    0.0,
-                    1500.0,
-                    0.0
+                    654.4490356445312,
+                    1186.9620361328125,
+                    7.048250198364258
                 ],
                 "rotation": [
                     0.0,
@@ -1449,16 +1994,16 @@
                 ]
             },
             "is_destructible": true,
-            "texture_path": "FieldGround.png"
+            "texture_path": "wall.png"
         },
         {
             "type": "MESH",
-            "name": "AITerrain_Background_Mountains.001",
+            "name": "collapsed bridge",
             "transform": {
                 "translation": [
-                    0.0,
-                    4000.0,
-                    0.0
+                    -0.843968391418457,
+                    3153.7138671875,
+                    17.227882385253906
                 ],
                 "rotation": [
                     0.0,
@@ -1472,16 +2017,39 @@
                 ]
             },
             "is_destructible": true,
-            "texture_path": "grass.png"
+            "texture_path": "wall.png"
         },
         {
             "type": "MESH",
-            "name": "pillar",
+            "name": "bridge",
             "transform": {
                 "translation": [
-                    77.6605224609375,
+                    154.62295532226562,
+                    1020.462158203125,
+                    43.350677490234375
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_destructible": true,
+            "texture_path": "wall.png.001"
+        },
+        {
+            "type": "MESH",
+            "name": "top_building",
+            "transform": {
+                "translation": [
+                    101.57417297363281,
                     1392.6849365234375,
-                    10.32664966583252
+                    5.998476982116699
                 ],
                 "rotation": [
                     0.0,
@@ -1489,21 +2057,22 @@
                     0.0
                 ],
                 "scale": [
-                    5.0,
-                    5.0,
-                    50.0
+                    1.0,
+                    1.0,
+                    1.0
                 ]
             },
-            "is_destructible": true
+            "is_destructible": true,
+            "texture_path": "Light brown.png"
         },
         {
             "type": "MESH",
-            "name": "pillar.001",
+            "name": "wall",
             "transform": {
                 "translation": [
-                    137.97779846191406,
-                    1392.6849365234375,
-                    45.36454772949219
+                    83.48197937011719,
+                    2642.822509765625,
+                    36.193603515625
                 ],
                 "rotation": [
                     0.0,
@@ -1511,21 +2080,22 @@
                     0.0
                 ],
                 "scale": [
-                    5.0,
-                    5.0,
-                    50.0
+                    17.64002227783203,
+                    15.0,
+                    34.794246673583984
                 ]
             },
-            "is_destructible": true
+            "is_destructible": true,
+            "texture_path": "wall.png.001"
         },
         {
             "type": "MESH",
-            "name": "pillar.002",
+            "name": "under_building",
             "transform": {
                 "translation": [
-                    106.69329071044922,
-                    1433.30419921875,
-                    45.36454772949219
+                    9.277281761169434,
+                    2363.903076171875,
+                    8.138265609741211
                 ],
                 "rotation": [
                     0.0,
@@ -1533,100 +2103,13 @@
                     0.0
                 ],
                 "scale": [
-                    5.0,
-                    21.38536834716797,
-                    50.0
+                    1.0,
+                    1.0,
+                    1.0
                 ]
             },
-            "is_destructible": true
-        },
-        {
-            "type": "MESH",
-            "name": "pillar.003",
-            "transform": {
-                "translation": [
-                    134.09588623046875,
-                    1604.048583984375,
-                    45.36454772949219
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    5.0,
-                    5.0,
-                    50.0
-                ]
-            },
-            "is_destructible": true
-        },
-        {
-            "type": "MESH",
-            "name": "pillar.004",
-            "transform": {
-                "translation": [
-                    77.18428039550781,
-                    1604.048583984375,
-                    45.36454772949219
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    5.0,
-                    5.0,
-                    50.0
-                ]
-            },
-            "is_destructible": true
-        },
-        {
-            "type": "MESH",
-            "name": "pillar.006",
-            "transform": {
-                "translation": [
-                    85.75421905517578,
-                    1567.847412109375,
-                    45.36454772949219
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    5.0,
-                    5.0,
-                    50.0
-                ]
-            },
-            "is_destructible": true
-        },
-        {
-            "type": "MESH",
-            "name": "pillar.005",
-            "transform": {
-                "translation": [
-                    102.03972625732422,
-                    1504.5469970703125,
-                    45.36454772949219
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    5.0,
-                    21.38536834716797,
-                    50.0
-                ]
-            },
-            "is_destructible": true
+            "is_destructible": true,
+            "texture_path": "gray.png"
         }
     ]
 }

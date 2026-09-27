@@ -132,6 +132,10 @@ public://メンバ関数
 	void SetSelectLightings(int32_t v) { if (model) model->SetSelectLightings(v); }
 	int32_t GetSelectLightings() const { return model ? model->GetSelectLightings() : 0; }
 
+	// インスタンス固有マテリアルカラー設定
+	void SetColor(const Vector4& color);
+	Vector4 GetColor() const;
+
 	// メッシュコリジョン判定
 	bool CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* outResult = nullptr) const;
 	bool CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult = nullptr) const;
@@ -204,6 +208,11 @@ private://メンバ変数
 	Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
 	// データを書き込む
 	SpotLight* spotLightData_ = nullptr;
+
+	// インスタンス固有マテリアル用のリソース
+	Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
+	Model::Material* materialData_ = nullptr;
+	bool hasCustomMaterial_ = false;
 
 	Transform transform;
 	Matrix4x4 worldMatrix_;

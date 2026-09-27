@@ -8,6 +8,7 @@
 #include "KHEngine/Graphics/PostProcess/PostProcess.h"
 
 class AbstractSceneFactory;
+class SceneManager;
 
 class EngineServices
 {
@@ -28,6 +29,10 @@ public:
 	// シーンファクトリーの Setter/Getter を追加
 	void SetSceneFactory(AbstractSceneFactory* factory) { sceneFactory_ = factory; }
 	AbstractSceneFactory* GetSceneFactory() const { return sceneFactory_; }
+
+	// シーンマネージャーの Setter/Getter
+	void SetSceneManager(SceneManager* sm) { sceneManager_ = sm; }
+	SceneManager* GetSceneManager() const { return sceneManager_; }
 
 	Object3dCommon* GetObject3dCommon() const { return object3dCommon_; }
 	DirectXCommon* GetDirectXCommon() const { return dxCommon_; }
@@ -59,12 +64,13 @@ private:
 
 	// 追加: シーンファクトリー参照
 	AbstractSceneFactory* sceneFactory_ = nullptr;
+	SceneManager* sceneManager_ = nullptr;
 
 	PostProcess* postProcess_ = nullptr;
 
 	float deltaTime_ = 1.0f / 60.0f;
 
-#ifdef USE_IMGUI
+#ifdef ENABLE_EDITOR
 	bool isEditorMode_ = true;
 #else
 	bool isEditorMode_ = false;

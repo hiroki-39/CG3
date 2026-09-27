@@ -33,9 +33,10 @@ public:
     void OnCollision() { isDead_ = true; }
 
 private:
-    std::unique_ptr<Object3d> object_ = nullptr;
+    std::unique_ptr<Object3d> object_ = nullptr; // 高エネルギーレーザービーム
     std::unique_ptr<Object3d> colliderObject_ = nullptr;
     Vector3 velocity_ = { 0.0f, 0.0f, 1.5f }; // 速度ベクトル
+    Vector3 rotation_ = { 0.0f, 0.0f, 0.0f }; // 進行方向への向き
     Vector3 previousPosition_ = { 0.0f, 0.0f, 0.0f };
     bool isDead_ = false;
     float deathTimer_ = 180.0f; // 寿命（フレーム）

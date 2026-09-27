@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "Game/Actor/Enemy/Enemy.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleManager.h"
+#include "KHEngine/Sound/Core/SoundManager.h"
 
 void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex) {
     // プレイヤーと関連オブジェクトの初期化
@@ -19,7 +20,7 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
     object_ = std::make_unique<Object3d>();
     object_->Initialize(object3dCommon);
     object_->SetModel(modelName_);
-    object_->GetModel()->SetColor(color_);
+    object_->SetColor(color_);
     object_->SetEnvironmentTextureIndex(skyboxTexIndex);
     object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
     object_->SetScale(playerScale_);
@@ -76,13 +77,17 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
         mountedMissiles_[i]->SetModel("missile.obj");
         mountedMissiles_[i]->SetParent(object_.get());
         float xOffset = 0.0f;
-        float zOffset = 0.0f;
-        if (i == 0) { xOffset = -1.5f; zOffset = 0.0f; } 
-        else if (i == 1) { xOffset = 1.5f; zOffset = 0.0f; } 
-        else if (i == 2) { xOffset = -2.8f; zOffset = 0.0f; } 
-        else if (i == 3) { xOffset = 2.8f; zOffset = 0.0f; } 
-        
         float yOffset = -0.2f;
+        float zOffset = 0.0f;
+        if (i == 0) { xOffset = -1.5f; yOffset = -0.2f; zOffset = 0.0f; } 
+        else if (i == 1) { xOffset = 1.5f; yOffset = -0.2f; zOffset = 0.0f; } 
+        else if (i == 2) { xOffset = -2.8f; yOffset = -0.2f; zOffset = 0.0f; } 
+        else if (i == 3) { xOffset = 2.8f; yOffset = -0.2f; zOffset = 0.0f; } 
+        else if (i == 4) { xOffset = -2.0f; yOffset = -0.35f; zOffset = -0.8f; } 
+        else if (i == 5) { xOffset = 2.0f; yOffset = -0.35f; zOffset = -0.8f; } 
+        else if (i == 6) { xOffset = -3.4f; yOffset = -0.35f; zOffset = -0.8f; } 
+        else if (i == 7) { xOffset = 3.4f; yOffset = -0.35f; zOffset = -0.8f; } 
+        
         mountedMissiles_[i]->SetTranslate({xOffset, yOffset, zOffset});
         mountedMissiles_[i]->SetScale({1.0f, 1.0f, 1.0f}); 
         
@@ -96,6 +101,9 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
         mountedMissiles_[i]->Update();
         lockOnReticles_[i]->Update();
     }
+
+    SetPowerUpLevel(0);
+    ResetBoost();
 }
 
 // プレイヤー被弾時の処理
@@ -103,7 +111,7 @@ void Player::OnCollision() {
     if (isGodMode_ || invincibilityTimer_ > 0.0f || isDead_ || isRolling_) return; 
     
     hp_ -= 1000;
-    isDoubleShot_ = false;
+    // 被弾しても強化状態（ダブルショット）は維持する
     if (hp_ <= 0) {
         isDead_ = true;
     } else {
@@ -156,7 +164,7 @@ bool Player::OnTerrainCollision(const Vector3& worldNormal, float penetrationDep
     bool causedDamage = false;
     if (invincibilityTimer_ <= 0.0f) {
         hp_ -= 1000;
-        isDoubleShot_ = false;
+        // 地形衝突時も強化状態（ダブルショット）は維持する
         if (hp_ <= 0) {
             isDead_ = true;
         } else {
@@ -199,6 +207,15 @@ OBB Player::GetWorldOBB() const {
 
 // プレイヤーの毎フレームの更新処理
 void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed) {
+    if (isCutsceneActive_) {
+        prevLogicalPosition_ = logicalPosition_;
+        logicalPosition_ = cutscenePos_;
+        baseRotation_ = cutsceneRot_;
+        velocity_ = { 0.0f, 0.0f };
+        Update3DObjectOnly();
+        return;
+    }
+
     prevLogicalPosition_ = logicalPosition_;
     Move(gameSpeed);
     Attack(bullets, missiles, enemies, parentCamera, gameSpeed);
@@ -229,11 +246,16 @@ void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
 }
 
 void Player::Draw() {
-    if (reticle_) {
-        reticle_->Draw();
-    }
-    if (frontReticle_) {
-        frontReticle_->Draw();
+    if (!isVisible_) return;
+
+    // カットシーン演出中は照準UIを非表示にして映画的没入感を高める
+    if (!isCutsceneActive_) {
+        if (reticle_) {
+            reticle_->Draw();
+        }
+        if (frontReticle_) {
+            frontReticle_->Draw();
+        }
     }
     
     bool shouldDrawPlayer = true;
@@ -250,7 +272,7 @@ void Player::Draw() {
         if (accessory_) {
             accessory_->Draw();
         }
-        for (int i = 0; i < MAX_MISSILES; ++i) {
+        for (int i = 0; i < maxMissiles_; ++i) {
             if (mountedMissiles_[i]) {
                 
                 if (currentWeapon_ == WeaponType::MISSILE && missileReloadTimer_ <= 0.0f) {
@@ -329,8 +351,35 @@ void Player::Move(float gameSpeed) {
         }
     }
 
+    // ブーストキー判定
+    bool boostKeyPressed = input_->PushKey(DIK_LSHIFT);
     
-    isBoosting_ = input_->PushKey(DIK_LSHIFT);
+    // オーバーヒートからの復帰判定（25%まで回復したら再使用可能）
+    if (isBoostOverheated_) {
+        if (boostEnergy_ >= maxBoostEnergy_ * 0.25f) {
+            isBoostOverheated_ = false;
+        }
+    }
+
+    if (boostKeyPressed && !isBoostOverheated_ && boostEnergy_ > 0.0f) {
+        isBoosting_ = true;
+        boostEnergy_ -= boostConsumeRate_ * gameSpeed;
+        boostRecoverDelayTimer_ = kBoostRecoverDelay_;
+        if (boostEnergy_ <= 0.0f) {
+            boostEnergy_ = 0.0f;
+            isBoostOverheated_ = true;
+            isBoosting_ = false; // 枯渇した瞬間にブースト強制終了
+        }
+    } else {
+        isBoosting_ = false;
+        // ブースト非使用時のエネルギー回復処理（少しディレイを置いてから自然回復）
+        if (boostRecoverDelayTimer_ > 0.0f) {
+            boostRecoverDelayTimer_ -= gameSpeed;
+        } else {
+            boostEnergy_ = std::min(maxBoostEnergy_, boostEnergy_ + boostRecoverRate_ * gameSpeed);
+        }
+    }
+
     bool isBraking = input_->PushKey(DIK_LCONTROL);
     
     float targetZ = 0.0f; 
@@ -520,7 +569,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
                 }
 
                 
-                if (multiLockedEnemies_.size() >= MAX_MISSILES) {
+                if (multiLockedEnemies_.size() >= static_cast<size_t>(maxMissiles_)) {
                     break;
                 }
 
@@ -530,10 +579,10 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
                                (ePos.y - playerPos.y) * (ePos.y - playerPos.y) + 
                                (ePos.z - playerPos.z) * (ePos.z - playerPos.z);
                 
-                if (distSq < 1500.0f * 1500.0f && ePos.z > playerPos.z) { 
+                if (distSq < (lockOnMaxDistance_ * lockOnMaxDistance_) && ePos.z > playerPos.z) { 
                     if (lockOnDelayTimer_ <= 0.0f) {
                         multiLockedEnemies_.push_back({enemy.get(), 0.0f});
-                        lockOnDelayTimer_ = 60.0f; 
+                        lockOnDelayTimer_ = lockOnInterval_; 
                         break; 
                     }
                 }
@@ -545,7 +594,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
             if (i < multiLockedEnemies_.size() && !multiLockedEnemies_[i].enemy->IsDead()) {
                 multiLockedEnemies_[i].lockedTime += gameSpeed;
                 float lockTime = multiLockedEnemies_[i].lockedTime;
-                bool isLockCompleted = lockTime >= 20.0f; 
+                bool isLockCompleted = lockTime >= lockOnCompleteTime_; 
 
                 
                 Vector3 ePos = multiLockedEnemies_[i].enemy->GetColliderCenter();
@@ -559,7 +608,8 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
                 
                 
                 if (!isLockCompleted) {
-                    float rotationAngle = (lockTime / 20.0f) * 6.2831853f; 
+                    float duration = (std::max)(1.0f, lockOnCompleteTime_);
+                    float rotationAngle = (lockTime / duration) * 6.2831853f; 
                     lockOnReticles_[i]->SetRotation({0.0f, 0.0f, rotationAngle});
                 } else {
                     lockOnReticles_[i]->SetRotation({0.0f, 0.0f, 0.0f}); 
@@ -571,6 +621,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
 
         
         if (!input_->PushKey(DIK_SPACE) && !multiLockedEnemies_.empty() && missileReloadTimer_ <= 0.0f) {
+            bool hasLaunched = false;
             for (size_t i = 0; i < multiLockedEnemies_.size(); ++i) {
                 if (multiLockedEnemies_[i].enemy->IsDead()) continue;
                 
@@ -581,9 +632,14 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
                 auto newMissile = std::make_unique<PlayerMissile>();
                 newMissile->Initialize(object3dCommon_, spawnPos, spawnRot, {0,0,0}, parentCamera, multiLockedEnemies_[i].enemy);
                 missiles.push_back(std::move(newMissile));
+                hasLaunched = true;
 
                 
                 lockOnReticles_[i]->SetScale({0.001f, 0.001f, 0.001f});
+            }
+
+            if (hasLaunched) {
+                SoundManager::GetInstance()->PlaySE("launcher.mp3", 0.9f);
             }
             
             multiLockedEnemies_.clear();
@@ -650,6 +706,9 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
             newBullet->Initialize(object3dCommon_, playerPos, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
             bullets.push_back(std::move(newBullet));
         }
+
+        // 通常ショットSE再生
+        SoundManager::GetInstance()->PlaySE("player_shot.mp3", 0.7f);
     }
 }
 
@@ -664,9 +723,9 @@ void Player::LoadSettings(const std::string& filepath) {
         if (j.contains("moveLimitY")) moveLimitY_ = j["moveLimitY"];
         if (j.contains("attackInterval")) attackInterval_ = j["attackInterval"];
         if (j.contains("rollMaxTime")) rollMaxTime_ = j["rollMaxTime"];
-        if (j.contains("playerLimitX")) playerLimitX_ = j["playerLimitX"];
-        if (j.contains("playerLimitYMin")) playerLimitYMin_ = j["playerLimitYMin"];
-        if (j.contains("playerLimitYMax")) playerLimitYMax_ = j["playerLimitYMax"];
+        if (j.contains("playerLimitX")) { playerLimitX_ = j["playerLimitX"]; targetLimitX_ = playerLimitX_; }
+        if (j.contains("playerLimitYMin")) { playerLimitYMin_ = j["playerLimitYMin"]; targetLimitYMin_ = playerLimitYMin_; }
+        if (j.contains("playerLimitYMax")) { playerLimitYMax_ = j["playerLimitYMax"]; targetLimitYMax_ = playerLimitYMax_; }
         if (j.contains("followSpeed")) followSpeed_ = j["followSpeed"];
         if (j.contains("bulletSpeed")) bulletSpeed_ = j["bulletSpeed"];
         if (j.contains("modelName")) modelName_ = j["modelName"];
@@ -703,11 +762,15 @@ void Player::LoadSettings(const std::string& filepath) {
         if (j.contains("terrainKnockbackPower")) terrainKnockbackPower_ = j["terrainKnockbackPower"];
         if (j.contains("terrainPushMargin")) terrainPushMargin_ = j["terrainPushMargin"];
         if (j.contains("terrainCollisionRadius")) terrainCollisionRadius_ = j["terrainCollisionRadius"];
+        if (j.contains("lockOnCompleteTime")) lockOnCompleteTime_ = j["lockOnCompleteTime"];
+        if (j.contains("lockOnInterval")) lockOnInterval_ = j["lockOnInterval"];
+        if (j.contains("missileReloadTime")) missileReloadTime_ = j["missileReloadTime"];
+        if (j.contains("lockOnMaxDistance")) lockOnMaxDistance_ = j["lockOnMaxDistance"];
         file.close();
         
         if (object_) {
             object_->SetModel(modelName_);
-            object_->GetModel()->SetColor(color_);
+            object_->SetColor(color_);
             object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
             if (accessory_) {
                 accessory_->SetParent(object_.get());
@@ -741,6 +804,10 @@ void Player::SaveSettings(const std::string& filepath) {
     j["terrainKnockbackPower"] = terrainKnockbackPower_;
     j["terrainPushMargin"] = terrainPushMargin_;
     j["terrainCollisionRadius"] = terrainCollisionRadius_;
+    j["lockOnCompleteTime"] = lockOnCompleteTime_;
+    j["lockOnInterval"] = lockOnInterval_;
+    j["missileReloadTime"] = missileReloadTime_;
+    j["lockOnMaxDistance"] = lockOnMaxDistance_;
 
     std::filesystem::path p(filepath);
     if (p.has_parent_path()) {
@@ -802,6 +869,20 @@ void Player::DrawImGuiContent() {
         ImGui::SliderFloat("ロール時間 (Roll Max Time)", &rollMaxTime_, 5.0f, 60.0f, "%.0f frames");
 
         ImGui::Separator();
+        ImGui::Text("ブーストゲージ設定 (Boost Settings)");
+        char boostOverlay[64];
+        if (isBoostOverheated_) snprintf(boostOverlay, sizeof(boostOverlay), "OVERHEAT! (%.0f%%)", GetBoostRatio() * 100.0f);
+        else if (isBoosting_) snprintf(boostOverlay, sizeof(boostOverlay), "BOOSTING (%.0f%%)", GetBoostRatio() * 100.0f);
+        else snprintf(boostOverlay, sizeof(boostOverlay), "%.0f / %.0f (%.0f%%)", boostEnergy_, maxBoostEnergy_, GetBoostRatio() * 100.0f);
+        ImGui::ProgressBar(GetBoostRatio(), ImVec2(-1, 18), boostOverlay);
+        ImGui::SliderFloat("最大ブースト量 (Max Boost)", &maxBoostEnergy_, 50.0f, 300.0f, "%.0f");
+        ImGui::SliderFloat("消費速度 (Consume Rate)", &boostConsumeRate_, 0.1f, 2.0f, "%.2f /frame");
+        ImGui::SliderFloat("回復速度 (Recover Rate)", &boostRecoverRate_, 0.05f, 1.5f, "%.2f /frame");
+        if (ImGui::Button("ブースト全快 (Refill Boost)")) {
+            ResetBoost();
+        }
+
+        ImGui::Separator();
         ImGui::Text("地形衝突パラメータ");
         ImGui::SliderFloat("ノックバック力", &terrainKnockbackPower_, 0.0f, 2.0f, "%.2f");
         ImGui::SliderFloat("めり込み押し戻しマージン", &terrainPushMargin_, 0.01f, 0.5f, "%.2f");
@@ -812,6 +893,25 @@ void Player::DrawImGuiContent() {
     if (ImGui::CollapsingHeader("Combat Settings")) {
         ImGui::SliderFloat("攻撃間隔 (Attack Interval)", &attackInterval_, 1.0f, 60.0f, "%.0f frames");
         ImGui::SliderFloat("弾速 (Bullet Speed)", &bulletSpeed_, 0.5f, 10.0f, "%.1f");
+    }
+
+    // ロックオン弾（ミサイル）設定
+    if (ImGui::CollapsingHeader("ロックオン弾設定 (Lock-On / Missile Settings)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::SliderFloat("ロックオン完了時間 (Lock Time)", &lockOnCompleteTime_, 1.0f, 120.0f, "%.0f frames");
+        ImGui::TextDisabled("  ※約 %.2f 秒 (捕捉から照準完了までの時間)", lockOnCompleteTime_ / 60.0f);
+
+        ImGui::SliderFloat("連続ロックオン間隔 (Lock Interval)", &lockOnInterval_, 5.0f, 180.0f, "%.0f frames");
+        ImGui::TextDisabled("  ※約 %.2f 秒 (次の敵をロックするまでの間隔)", lockOnInterval_ / 60.0f);
+
+        ImGui::SliderFloat("ミサイルリロード時間 (Reload Time)", &missileReloadTime_, 10.0f, 300.0f, "%.0f frames");
+        ImGui::TextDisabled("  ※約 %.2f 秒 (全弾発射後の再装填時間)", missileReloadTime_ / 60.0f);
+
+        ImGui::SliderFloat("ロックオン最大射程 (Max Distance)", &lockOnMaxDistance_, 50.0f, 800.0f, "%.0f m");
+
+        ImGui::Spacing();
+        if (ImGui::Button("ロックオン設定をJSONに保存 (Save Settings)", ImVec2(-1, 28))) {
+            SaveSettings("resources/json/player/player_settings.json");
+        }
     }
 
     // モデル・外観設定
@@ -828,7 +928,7 @@ void Player::DrawImGuiContent() {
             modelName_ = models[currentModel];
             if (object_) {
                 object_->SetModel(modelName_);
-                object_->GetModel()->SetColor(color_);
+                object_->SetColor(color_);
                 object_->SetEnvironmentTextureIndex(skyboxTexIndex_);
                 object_->SetEnvironmentCoefficient(reflection_ ? 1.0f : 0.0f);
                 if (accessory_) {
@@ -841,7 +941,7 @@ void Player::DrawImGuiContent() {
         if (ImGui::ColorEdit4("Color", col)) {
             color_ = { col[0], col[1], col[2], col[3] };
             if (object_) {
-                object_->GetModel()->SetColor(color_);
+                object_->SetColor(color_);
             }
         }
         
@@ -904,4 +1004,34 @@ Vector3 Player::GetRightWingPosition() const {
         rightWingLocal.x * mat.m[0][1] + rightWingLocal.y * mat.m[1][1] + rightWingLocal.z * mat.m[2][1] + mat.m[3][1],
         rightWingLocal.x * mat.m[0][2] + rightWingLocal.y * mat.m[1][2] + rightWingLocal.z * mat.m[2][2] + mat.m[3][2]
     };
+}
+
+void Player::PowerUp() {
+    SetPowerUpLevel(powerUpLevel_ + 1);
+}
+
+void Player::SetPowerUpLevel(int level) {
+    powerUpLevel_ = level;
+    if (level <= 0) {
+        // 通常状態
+        isDoubleShot_ = false;
+        maxMissiles_ = 4;
+        lockOnCompleteTime_ = defaultLockOnCompleteTime_;
+        lockOnInterval_ = defaultLockOnInterval_;
+        missileReloadTime_ = defaultMissileReloadTime_;
+    } else if (level == 1) {
+        // 強化リング1個目: ダブルショット解放
+        isDoubleShot_ = true;
+        maxMissiles_ = 4;
+        lockOnCompleteTime_ = defaultLockOnCompleteTime_;
+        lockOnInterval_ = defaultLockOnInterval_;
+        missileReloadTime_ = defaultMissileReloadTime_;
+    } else if (level >= 2) {
+        // 強化リング2個目: 最大ロックオン数が4から8へ拡張 & ロックオン速度大幅向上！
+        isDoubleShot_ = true;
+        maxMissiles_ = 8;
+        lockOnCompleteTime_ = 10.0f; // 20f -> 10f (ロックオン所要時間半分・高速化)
+        lockOnInterval_ = 24.0f;     // 60f -> 24f (連続捕捉間隔が大幅短縮)
+        missileReloadTime_ = 90.0f;  // 120f -> 90f (リロード短縮)
+    }
 }

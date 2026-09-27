@@ -39,8 +39,18 @@ public: //構造体
 
 	struct MaterialData
 	{
+		std::string name;
 		std::string textureFilePath;
 		uint32_t textureIndex = 0;
+		Microsoft::WRL::ComPtr<ID3D12Resource> materialResource;
+		Material* materialData = nullptr;
+	};
+
+	struct SubMesh
+	{
+		uint32_t indexCount = 0;
+		uint32_t startIndex = 0;
+		uint32_t materialIndex = 0;
 	};
 
 	struct Node
@@ -50,11 +60,13 @@ public: //構造体
 		std::vector<Node> children;
 	};
 
-	struct  ModelData
+	struct ModelData
 	{
 		std::vector<VertexData> vertices;
 		std::vector<uint32_t> indices;
-		MaterialData material;
+		std::vector<SubMesh> subMeshes;
+		std::vector<MaterialData> materials;
+		MaterialData material; // 互換性のための単一マテリアル（materials[0]）
 		Node rootNode;
 		Vector3 boundingCenter = { 0.0f, 0.0f, 0.0f };
 		float boundingRadius = 0.0f;
@@ -80,9 +92,14 @@ public: //メンバ関数
 
 
 	/// <summary>
-	/// 描画処理
+	/// 描画処理（materialCBVを指定した場合はモデル共有の代わりに指定CBVをバインド）
 	/// </summary>
-	void Draw();
+	void Draw(D3D12_GPU_VIRTUAL_ADDRESS materialCBV = 0);
+
+	/// <summary>
+	/// マテリアルデータの取得
+	/// </summary>
+	const Material* GetMaterialData() const { return materialData_; }
 
 	/// <summary>
 	/// スカイボックス用のモデルデータを作成（今回追加）
@@ -97,18 +114,23 @@ public: //メンバ関数
 	/// <summary>
 	/// テクスチャのインデックスを上書き設定
 	/// </summary>
-	inline void SetTextureIndex(uint32_t index) { modelData.material.textureIndex = index; }
+	inline void SetTextureIndex(uint32_t index) { 
+		modelData.material.textureIndex = index; 
+		if (!modelData.materials.empty()) {
+			modelData.materials[0].textureIndex = index;
+		}
+	}
 
 	/// <summary>
-	/// ライティングの有効/無効を設定
+	/// ライティングの有効/無効を設定（全マテリアルに反映）
 	/// </summary>
-	inline void SetEnableLighting(bool enable) { if (materialData_) materialData_->enableLighting = enable ? 1 : 0; }
+	void SetEnableLighting(bool enable);
 
-	inline int32_t GetSelectLightings() const { return materialData_ ? materialData_->selectLightings : 0; }
-	inline float GetEnvironmentCoefficient() const { return materialData_ ? materialData_->environmentCoefficient : 0.0f; }
+	int32_t GetSelectLightings() const;
+	float GetEnvironmentCoefficient() const;
 
-	inline void SetSelectLightings(int32_t v) { if (materialData_) materialData_->selectLightings = v; }
-	inline void SetEnvironmentCoefficient(float v) { if (materialData_) materialData_->environmentCoefficient = v; }
+	void SetSelectLightings(int32_t v);
+	void SetEnvironmentCoefficient(float v);
 
 	// コリジョン用データ取得
 	const ModelData& GetModelData() const { return modelData; }

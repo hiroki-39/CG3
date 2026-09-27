@@ -1,0 +1,382 @@
+{
+    "presets": {
+        "ARMORED_TRAIN_LOCO": {
+            "behavior": "TRAIN_LOCO",
+            "bulletSpeed": 2.5,
+            "colliderCenter": [
+                0.0,
+                1.5,
+                0.0
+            ],
+            "colliderRadius": 2.0,
+            "colliderSize": [
+                5.0,
+                4.0,
+                13.0
+            ],
+            "colliderType": "BOX",
+            "color": [
+                0.3499999940395355,
+                0.3499999940395355,
+                0.4000000059604645,
+                1.0
+            ],
+            "displayName": "装甲列車・機関車 (先頭車両)",
+            "formationCount": 1,
+            "formationSpacing": 15.0,
+            "formationType": "NONE",
+            "hp": 50,
+            "isHomingBullet": false,
+            "modelName": "cube.obj",
+            "modelPosOffset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "moveAmplitude": 10.0,
+            "moveSpeed": 0.5,
+            "scale": [
+                4.0,
+                3.200000047683716,
+                12.0
+            ],
+            "shootInterval": 60.0
+        },
+        "ARMORED_TRAIN_MISSILE": {
+            "behavior": "TRAIN_MISSILE",
+            "bulletSpeed": 1.2999999523162842,
+            "colliderCenter": [
+                0.0,
+                1.5,
+                0.0
+            ],
+            "colliderRadius": 2.0,
+            "colliderSize": [
+                4.5,
+                3.799999952316284,
+                11.0
+            ],
+            "colliderType": "BOX",
+            "color": [
+                0.44999998807907104,
+                0.3799999952316284,
+                0.3799999952316284,
+                1.0
+            ],
+            "displayName": "装甲列車・ミサイルコンテナ車",
+            "formationCount": 1,
+            "formationSpacing": 15.0,
+            "formationType": "NONE",
+            "hp": 30,
+            "isHomingBullet": true,
+            "modelName": "cube.obj",
+            "modelPosOffset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "moveAmplitude": 10.0,
+            "moveSpeed": 0.5,
+            "scale": [
+                3.5999999046325684,
+                3.0,
+                10.0
+            ],
+            "shootInterval": 140.0
+        },
+        "ARMORED_TRAIN_TURRET": {
+            "behavior": "TRAIN_TURRET",
+            "bulletSpeed": 2.0,
+            "colliderCenter": [
+                0.0,
+                1.2999999523162842,
+                0.0
+            ],
+            "colliderRadius": 2.0,
+            "colliderSize": [
+                4.5,
+                3.5,
+                11.0
+            ],
+            "colliderType": "BOX",
+            "color": [
+                0.4000000059604645,
+                0.41999998688697815,
+                0.44999998807907104,
+                1.0
+            ],
+            "displayName": "装甲列車・旋回砲塔車",
+            "formationCount": 1,
+            "formationSpacing": 15.0,
+            "formationType": "NONE",
+            "hp": 30,
+            "isHomingBullet": false,
+            "modelName": "cube.obj",
+            "modelPosOffset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "moveAmplitude": 10.0,
+            "moveSpeed": 0.5,
+            "scale": [
+                3.5999999046325684,
+                2.5999999046325684,
+                10.0
+            ],
+            "shootInterval": 80.0
+        },
+        "HOMING": {
+            "behavior": "HOVER_SHOOT",
+            "bulletSpeed": 1.399999976158142,
+            "colliderCenter": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "colliderRadius": 2.5,
+            "colliderSize": [
+                2.0,
+                2.0,
+                2.0
+            ],
+            "colliderType": "SPHERE",
+            "color": [
+                0.800000011920929,
+                0.20000000298023224,
+                1.0,
+                1.0
+            ],
+            "displayName": "誘導弾エネミー (HOMING)",
+            "formationCount": 1,
+            "formationSpacing": 10.0,
+            "formationType": "NONE",
+            "hp": 3,
+            "isHomingBullet": true,
+            "modelName": "suzanne.obj",
+            "modelPosOffset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "moveAmplitude": 8.0,
+            "moveSpeed": 0.6000000238418579,
+            "scale": [
+                1.5,
+                1.5,
+                1.5
+            ],
+            "shootInterval": 160.0
+        },
+        "PATROL_H": {
+            "behavior": "PATROL_H",
+            "bulletSpeed": 1.7999999523162842,
+            "colliderCenter": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "colliderRadius": 2.4000000953674316,
+            "colliderSize": [
+                2.0,
+                2.0,
+                2.0
+            ],
+            "colliderType": "SPHERE",
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                1.0,
+                1.0
+            ],
+            "displayName": "左右往復エネミー (PATROL_H)",
+            "formationCount": 4,
+            "formationSpacing": 10.0,
+            "formationType": "LINE_H",
+            "hp": 1,
+            "isHomingBullet": false,
+            "modelName": "enemy.obj",
+            "modelPosOffset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "moveAmplitude": 33.5,
+            "moveSpeed": 0.5,
+            "scale": [
+                3.0,
+                3.0,
+                3.0
+            ],
+            "shootInterval": 120.0
+        },
+        "PATROL_V": {
+            "behavior": "PATROL_V",
+            "bulletSpeed": 1.7999999523162842,
+            "colliderCenter": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "colliderRadius": 2.4000000953674316,
+            "colliderSize": [
+                2.0,
+                2.0,
+                2.0
+            ],
+            "colliderType": "BOX",
+            "color": [
+                0.4000000059604645,
+                1.0,
+                0.4000000059604645,
+                1.0
+            ],
+            "displayName": "上下往復エネミー (PATROL_V)",
+            "formationCount": 3,
+            "formationSpacing": 10.0,
+            "formationType": "LINE_H",
+            "hp": 1,
+            "isHomingBullet": false,
+            "modelName": "enemy.obj",
+            "modelPosOffset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "moveAmplitude": 3.0,
+            "moveSpeed": 0.5,
+            "scale": [
+                3.0,
+                3.0,
+                3.0
+            ],
+            "shootInterval": 120.0
+        },
+        "RUSHER": {
+            "behavior": "STRAIGHT",
+            "bulletSpeed": 2.0,
+            "colliderCenter": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "colliderRadius": 2.200000047683716,
+            "colliderSize": [
+                2.0,
+                2.0,
+                2.0
+            ],
+            "colliderType": "SPHERE",
+            "color": [
+                1.0,
+                0.4000000059604645,
+                0.4000000059604645,
+                1.0
+            ],
+            "displayName": "突撃型エネミー (RUSHER)",
+            "formationCount": 3,
+            "formationSpacing": 12.0,
+            "formationType": "V_SHAPE",
+            "hp": 1,
+            "isHomingBullet": false,
+            "modelName": "suzanne.obj",
+            "modelPosOffset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "moveAmplitude": 10.0,
+            "moveSpeed": 1.0,
+            "scale": [
+                1.2000000476837158,
+                1.2000000476837158,
+                1.2000000476837158
+            ],
+            "shootInterval": 0.0
+        },
+        "SHOOTER": {
+            "behavior": "SIN_WAVE",
+            "bulletSpeed": 1.7999999523162842,
+            "colliderCenter": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "colliderRadius": 2.4000000953674316,
+            "colliderSize": [
+                2.0,
+                2.0,
+                2.0
+            ],
+            "colliderType": "SPHERE",
+            "color": [
+                1.0,
+                0.800000011920929,
+                0.20000000298023224,
+                1.0
+            ],
+            "displayName": "射撃型エネミー (SHOOTER)",
+            "formationCount": 3,
+            "formationSpacing": 14.0,
+            "formationType": "LINE_H",
+            "hp": 2,
+            "isHomingBullet": false,
+            "modelName": "suzanne.obj",
+            "modelPosOffset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "moveAmplitude": 12.0,
+            "moveSpeed": 0.800000011920929,
+            "scale": [
+                1.399999976158142,
+                1.399999976158142,
+                1.399999976158142
+            ],
+            "shootInterval": 120.0
+        },
+        "TURRET": {
+            "behavior": "TURRET",
+            "bulletSpeed": 2.200000047683716,
+            "colliderCenter": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "colliderRadius": 2.0,
+            "colliderSize": [
+                3.0,
+                3.0,
+                3.0
+            ],
+            "colliderType": "BOX",
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "displayName": "地上砲台 (TURRET)",
+            "formationCount": 1,
+            "formationSpacing": 10.0,
+            "formationType": "NONE",
+            "hp": 1,
+            "isHomingBullet": false,
+            "modelName": "fixedTurret.obj",
+            "modelPosOffset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "moveAmplitude": 0.0,
+            "moveSpeed": 0.0,
+            "scale": [
+                4.0,
+                4.0,
+                4.0
+            ],
+            "shootInterval": 90.0
+        }
+    }
+}

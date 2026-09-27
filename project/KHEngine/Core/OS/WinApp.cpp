@@ -63,7 +63,7 @@ void WinApp::Initialize()
 	//ウィンドウの生成
 	hwnd = CreateWindow(
 		wc.lpszClassName,     //クラス名
-		L"GE3_LE2B_04_カトウ_ヒロキ",       //タイトルバー名
+		L"カトウ_ヒロキ_アクロバット・トリガー",       //タイトルバー名
 		WS_OVERLAPPEDWINDOW,  //ウィンドウスタイル
 		CW_USEDEFAULT,        //表示座X標(Windowsに任せる)
 		CW_USEDEFAULT,        //表示Y座標(WindowsOSに任せる)

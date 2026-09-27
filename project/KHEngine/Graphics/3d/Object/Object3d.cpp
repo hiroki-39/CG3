@@ -112,8 +112,51 @@ void Object3d::Draw()
 	//モデルの描画
 	if (model)
 	{
-		model->Draw();
+		D3D12_GPU_VIRTUAL_ADDRESS matAddr = (hasCustomMaterial_ && materialResource_) ? materialResource_->GetGPUVirtualAddress() : 0;
+		model->Draw(matAddr);
 	}
+}
+
+void Object3d::SetColor(const Vector4& color)
+{
+	if (!materialResource_ && dxCommon)
+	{
+		materialResource_ = dxCommon->CreateBufferResource(sizeof(Model::Material));
+		materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+		if (model && model->GetMaterialData())
+		{
+			*materialData_ = *model->GetMaterialData();
+		}
+		else
+		{
+			materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+			materialData_->enableLighting = 1;
+			materialData_->selectLightings = 2;
+			materialData_->uvTransform = Matrix4x4::Identity();
+			materialData_->shininess = 40.0f;
+			materialData_->specularColor = { 1.0f, 1.0f, 1.0f };
+			materialData_->environmentCoefficient = 0.0f;
+			materialData_->fresnelF0 = 0.04f;
+		}
+	}
+	if (materialData_)
+	{
+		materialData_->color = color;
+		hasCustomMaterial_ = true;
+	}
+}
+
+Vector4 Object3d::GetColor() const
+{
+	if (materialData_)
+	{
+		return materialData_->color;
+	}
+	if (model && model->GetMaterialData())
+	{
+		return model->GetMaterialData()->color;
+	}
+	return { 1.0f, 1.0f, 1.0f, 1.0f };
 }
 
 void Object3d::SetModel(const std::string& filePath)
@@ -129,6 +172,14 @@ void Object3d::SetModel(const std::string& filePath)
 
 	// デバッグ用にアサート（実運用ならログ出力に変更してもよい）
 	assert(model != nullptr);
+
+	// 既にカスタムマテリアルが設定されている場合、モデルのマテリアル設定（ライティング等）をベースに同期
+	if (hasCustomMaterial_ && materialData_ && model && model->GetMaterialData())
+	{
+		Vector4 curColor = materialData_->color;
+		*materialData_ = *model->GetMaterialData();
+		materialData_->color = curColor; // 設定したカラーを保持
+	}
 }
 
 void Object3d::CreateTransformationMatrixResource()

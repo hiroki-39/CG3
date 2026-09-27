@@ -37,14 +37,20 @@ std::string ResourceLocator::Resolve(const std::string& logicalName, ResourceLoc
 		break;
 	case AssetType::Texture:
 		candidates = {
-			"resources/textures",
+			"resources/sprites/effect",
+			"resources/sprites/effects",
 			"resources/sprites",
+			"resources/textures/effect",
+			"resources/textures/effects",
+			"resources/textures",
 			"resources/ui",
 			"resources"
 		};
 		break;
 	case AssetType::Audio:
 		candidates = {
+			"resources/audio/BGM",
+			"resources/audio/SE",
 			"resources/audio",
 			"resources/sounds",
 			"resources",
@@ -52,6 +58,8 @@ std::string ResourceLocator::Resolve(const std::string& logicalName, ResourceLoc
 		break;
 	case AssetType::Sprite:
 		candidates = {
+			"resources/sprites/effect",
+			"resources/sprites/effects",
 			"resources/sprites",
 			"resources/textures",
 			"resources"
@@ -65,6 +73,14 @@ std::string ResourceLocator::Resolve(const std::string& logicalName, ResourceLoc
 	// 拡張子が無ければワイルドカードとして一般的な拡張子も試す（テクスチャ/音声で有用）
 	std::vector<std::string> tryNames;
 	tryNames.push_back(logicalName);
+
+	// ディレクトリ区切り文字が含まれる場合、ファイル名単体も候補に追加（フォルダ移動への追従）
+	fs::path logicalPath(reinterpret_cast<const char8_t*>(logicalName.c_str()));
+	std::string fileName = reinterpret_cast<const char*>(logicalPath.filename().u8string().c_str());
+	if (!fileName.empty() && fileName != logicalName)
+	{
+		tryNames.push_back(fileName);
+	}
 
 	// もし拡張子がない場合は典型的な候補を追加
 	auto hasExt = fs::path(reinterpret_cast<const char8_t*>(logicalName.c_str())).has_extension();

@@ -38,18 +38,22 @@ public:
     float GetRollTimer() const { return rollTimer_; }
     float GetRollMaxTime() const { return rollMaxTime_; }
     
-    
-    
-    
+    /// <summary>
+    /// カットシーン演出用オーバーライド設定
+    /// </summary>
+    void SetCutsceneOverride(bool active, const Vector3& localPos = { 0.0f, 0.0f, 0.0f }, const Vector3& localRot = { 0.0f, 0.0f, 0.0f }) {
+        isCutsceneActive_ = active;
+        cutscenePos_ = localPos;
+        cutsceneRot_ = localRot;
+        if (active) {
+            logicalPosition_ = localPos;
+            baseRotation_ = localRot;
+        }
+    }
+    bool IsCutsceneActive() const { return isCutsceneActive_; }
 
-    
-    
-    
     void Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera = nullptr, float gameSpeed = 1.0f);
 
-    
-    
-    
     void Draw();
 
     void DrawCollider();
@@ -57,6 +61,10 @@ public:
     Object3d* GetColliderObject() const { return colliderObject_.get(); }
 
     void Update3DObjectOnly() {
+        if (isCutsceneActive_) {
+            logicalPosition_ = cutscenePos_;
+            baseRotation_ = cutsceneRot_;
+        }
         if (object_) {
             object_->SetScale(playerScale_);
             object_->SetRotation(Vector3(
@@ -107,7 +115,23 @@ public:
         lockOnTargetEnemy_ = targetEnemy;
     }
 
-    bool IsBoosting() const { return isBoosting_; }
+    // ロックオン弾（ミサイル）パラメータアクセサ
+    float GetLockOnCompleteTime() const { return lockOnCompleteTime_; }
+    void SetLockOnCompleteTime(float time) { lockOnCompleteTime_ = time; }
+    float GetLockOnInterval() const { return lockOnInterval_; }
+    void SetLockOnInterval(float interval) { lockOnInterval_ = interval; }
+    float GetMissileReloadTime() const { return missileReloadTime_; }
+    void SetMissileReloadTime(float time) { missileReloadTime_ = time; }
+    float GetLockOnMaxDistance() const { return lockOnMaxDistance_; }
+    void SetLockOnMaxDistance(float dist) { lockOnMaxDistance_ = dist; }
+
+    bool IsBoosting() const { return isBoosting_ || isCutsceneActive_; }
+    float GetBoostEnergy() const { return boostEnergy_; }
+    float GetMaxBoostEnergy() const { return maxBoostEnergy_; }
+    float GetBoostRatio() const { return maxBoostEnergy_ > 0.0f ? (boostEnergy_ / maxBoostEnergy_) : 0.0f; }
+    bool IsBoostOverheated() const { return isBoostOverheated_; }
+    void SetBoostEnergy(float energy) { boostEnergy_ = std::clamp(energy, 0.0f, maxBoostEnergy_); }
+    void ResetBoost() { boostEnergy_ = maxBoostEnergy_; isBoostOverheated_ = false; }
 
     
     bool ConsumeDodgeTrigger() {
@@ -124,10 +148,27 @@ public:
     float GetTerrainCollisionRadius() const { return terrainCollisionRadius_; }
     void SetTerrainCollisionRadius(float radius) { terrainCollisionRadius_ = radius; }
     void Heal(int amount) { hp_ += amount; if (hp_ > maxHp_) hp_ = maxHp_; }
-    void PowerUp() { isDoubleShot_ = true; }
+    void PowerUp();
+    void SetPowerUpLevel(int level);
+    int GetPowerUpLevel() const { return powerUpLevel_; }
     bool IsDead() const { return isDead_; }
+    void SetDead(bool dead) { isDead_ = dead; }
     int GetHp() const { return hp_; }
     int GetMaxHp() const { return maxHp_; }
+    size_t GetLockedEnemyCount() const { return multiLockedEnemies_.size(); }
+    int GetMaxMissiles() const { return maxMissiles_; }
+    static int GetMaxAllowedMissiles() { return MAX_MISSILES; }
+
+    void SetVisible(bool visible) { isVisible_ = visible; }
+    bool IsVisible() const { return isVisible_; }
+    const Vector3& GetRotation() const { return baseRotation_; }
+    Vector3 GetWorldPosition() const {
+        if (object_) {
+            const Matrix4x4& wMat = object_->GetmatWorld();
+            return { wMat.m[3][0], wMat.m[3][1], wMat.m[3][2] };
+        }
+        return logicalPosition_;
+    }
 
     // 動的移動制限（ソフトリミット）
     void SetTargetMoveLimits(float limitX, float limitYMin, float limitYMax) {
@@ -138,7 +179,7 @@ public:
     void ResetMoveLimits() {
         targetLimitX_ = 35.0f;
         targetLimitYMin_ = -4.0f;
-        targetLimitYMax_ = 10.0f;
+        targetLimitYMax_ = 20.0f;
     }
     float GetLimitX() const { return playerLimitX_; }
     float GetLimitYMin() const { return playerLimitYMin_; }
@@ -180,15 +221,15 @@ private:
     float speed_ = 0.45f;
     float reticleSpeed_ = 0.75f;
     float moveLimitX_ = 35.0f;     
-    float moveLimitY_ = 10.0f;     
+    float moveLimitY_ = 20.0f;     
     float attackInterval_ = 15.0f;
     float rollMaxTime_ = 15.0f;
     float playerLimitX_ = 35.0f;   
     float playerLimitYMin_ = -4.0f;
-    float playerLimitYMax_ = 10.0f;
+    float playerLimitYMax_ = 20.0f;
     float targetLimitX_ = 35.0f;   
     float targetLimitYMin_ = -4.0f;
-    float targetLimitYMax_ = 10.0f;
+    float targetLimitYMax_ = 20.0f;
     float followSpeed_ = 0.12f;
     float bulletSpeed_ = 3.0f;
     float terrainKnockbackPower_ = 0.35f; // 壁・地面に当たった時の反発速度
@@ -241,10 +282,19 @@ private:
 
     
     bool isBoosting_ = false;
+    float boostEnergy_ = 100.0f;
+    float maxBoostEnergy_ = 100.0f;
+    float boostConsumeRate_ = 1.5f;          // ブースト消費量/フレーム（約1.11秒で枯渇: さらに1/3減少）
+    float boostRecoverRate_ = 0.5f;          // ブースト回復量/フレーム（約3.3秒で全回復）
+    float boostRecoverDelayTimer_ = 0.0f;    // ブースト解除後の回復遅延タイマー
+    const float kBoostRecoverDelay_ = 12.0f; // 約0.2秒のディレイ
+    bool isBoostOverheated_ = false;         // エネルギー枯渇時のオーバーヒート状態
 
     
     WeaponType currentWeapon_ = WeaponType::NORMAL;
-    static const int MAX_MISSILES = 4;
+    static const int MAX_MISSILES = 8;
+    int maxMissiles_ = 4;                  // 現在の最大同時ロックオン可能数（初期4、2個目の強化リングで8）
+    int powerUpLevel_ = 0;                 // 強化段階 (0: 通常, 1: ダブルショット, 2: ロックオン8 & 高速化)
     std::array<std::unique_ptr<Object3d>, MAX_MISSILES> mountedMissiles_;
     std::array<std::unique_ptr<Object3d>, MAX_MISSILES> lockOnReticles_;
     struct LockOnTarget {
@@ -253,9 +303,15 @@ private:
     };
     std::vector<LockOnTarget> multiLockedEnemies_;
     float missileReloadTimer_ = 0.0f;
-    const float missileReloadTime_ = 120.0f; 
+    float missileReloadTime_ = 120.0f;     // 発射後のリロード時間 (フレーム数)
     float lockOnAnimTimer_ = 0.0f; 
     float lockOnDelayTimer_ = 0.0f;
+    float lockOnCompleteTime_ = 20.0f;     // ロックオン完了所要時間 (フレーム数)
+    float lockOnInterval_ = 60.0f;         // 敵1体を捕捉してから次の敵をロックするまでの間隔 (フレーム数)
+    float lockOnMaxDistance_ = 350.0f;     // ロックオン最大射程 (m)
+    float defaultLockOnCompleteTime_ = 20.0f;
+    float defaultLockOnInterval_ = 60.0f;
+    float defaultMissileReloadTime_ = 120.0f;
 
     
     bool isDodgeTriggered_ = false;
@@ -265,6 +321,12 @@ private:
     int maxHp_ = 10000;
     float invincibilityTimer_ = 0.0f;
     bool isDead_ = false;
+    bool isVisible_ = true;
     bool isDoubleShot_ = false;
+
+    // カットシーン演出用
+    bool isCutsceneActive_ = false;
+    Vector3 cutscenePos_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 cutsceneRot_ = { 0.0f, 0.0f, 0.0f };
 };
 

@@ -189,6 +189,31 @@ PixelShaderOutput main(VertexShaderOutput input)
                 output.color.a = gMaterial.color.a * textureColor.a;
             }
             break;
+        case 6:
+            {
+                // ===== ビーム・高エネルギー発光（ホワイトハイライト + ネオンプラズマ） =====
+                // 視線と法線の内積から、中心軸付近に鋭い光芯を入れる
+                float32_t NdotV = saturate(dot(normal, toEye));
+                
+                // コア（超高エネルギーハイライト）：中心線を鋭く細くハイライト
+                float32_t core = pow(NdotV, 4.0f);
+                
+                // リム（輪郭のプラズマ膜）：輪郭部にネオン光をまとう
+                float32_t rim = pow(1.0f - NdotV, 2.0f);
+                
+                // ベースとなるネオンカラー
+                float32_t3 baseColor = gMaterial.color.rgb;
+                
+                // 外周は鮮烈なネオンカラー、中心線にスッと細く白い光芯が通る
+                float32_t3 glowColor = lerp(baseColor, float32_t3(1.0f, 1.0f, 1.0f), core * 0.70f);
+                
+                // 輪郭にプラズマ光を付加
+                glowColor += baseColor * (rim * 0.5f);
+                
+                output.color.rgb = glowColor * textureColor.rgb;
+                output.color.a = gMaterial.color.a * textureColor.a;
+            }
+            break;
     }
 
     // 環境マッピング

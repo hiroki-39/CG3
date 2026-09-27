@@ -39,30 +39,34 @@ void SoundManager::Initialize()
 // 終了処理
 void SoundManager::Finalize()
 {
-// 多重呼び出し防止
-if (!xAudio2) return;
+	// 多重呼び出し防止
+	if (!xAudio2) return;
 
-HRESULT result;
+	StopBGM();
+	StopAllSE();
+	soundCache_.clear();
 
-// Media Foundationの終了処理
-result = MFShutdown();
-assert(SUCCEEDED(result));
+	HRESULT result;
 
-// マスターボイスの破棄（xAudio2が有効な場合のみ）
-if (masteringVoice && xAudio2)
-{
-	masteringVoice->DestroyVoice();
-	masteringVoice = nullptr;
-}
+	// Media Foundationの終了処理
+	result = MFShutdown();
+	assert(SUCCEEDED(result));
 
-// XAudio2内部スレッドの処理完了を待つ
-if (xAudio2) {
-	xAudio2->CommitChanges(0); // 0は全ての変更を即時反映
-	xAudio2->StopEngine();     // エンジン停止で内部スレッド終了を待つ
-}
+	// マスターボイスの破棄（xAudio2が有効な場合のみ）
+	if (masteringVoice && xAudio2)
+	{
+		masteringVoice->DestroyVoice();
+		masteringVoice = nullptr;
+	}
 
-// XAudio2の解放
-xAudio2.Reset();
+	// XAudio2内部スレッドの処理完了を待つ
+	if (xAudio2) {
+		xAudio2->CommitChanges(0); // 0は全ての変更を即時反映
+		xAudio2->StopEngine();     // エンジン停止で内部スレッド終了を待つ
+	}
+
+	// XAudio2の解放
+	xAudio2.Reset();
 }
 
 SoundManager::SoundData SoundManager::SoundLoadWave(const char* filename)
@@ -253,4 +257,145 @@ void SoundManager::SoundUnload(SoundData* soundData)
 IXAudio2* SoundManager::GetXAudio2() const
 {
 	return xAudio2.Get();
+}
+
+const SoundManager::SoundData& SoundManager::GetOrLoadSound(const std::string& filename)
+{
+	auto it = soundCache_.find(filename);
+	if (it != soundCache_.end())
+	{
+		return it->second;
+	}
+
+	SoundData data = SoundLoadFile(filename);
+	auto inserted = soundCache_.emplace(filename, std::move(data));
+	return inserted.first->second;
+}
+
+void SoundManager::PlayBGM(const std::string& filename, float volume, bool loop)
+{
+	bgmVolume_ = volume;
+
+	if (currentBgmName_ == filename && bgmVoice_ != nullptr)
+	{
+		bgmVoice_->SetVolume(volume);
+		return;
+	}
+
+	StopBGM();
+
+	if (filename.empty() || !xAudio2) return;
+
+	const SoundData& sound = GetOrLoadSound(filename);
+	if (sound.buffer.empty()) return;
+
+	HRESULT hr = xAudio2->CreateSourceVoice(&bgmVoice_, &sound.wfex);
+	if (FAILED(hr) || !bgmVoice_) return;
+
+	XAUDIO2_BUFFER buf{};
+	buf.pAudioData = sound.buffer.data();
+	buf.AudioBytes = static_cast<UINT32>(sound.buffer.size());
+	buf.Flags = XAUDIO2_END_OF_STREAM;
+	buf.LoopCount = loop ? XAUDIO2_LOOP_INFINITE : 0;
+
+	bgmVoice_->SetVolume(volume);
+	bgmVoice_->SubmitSourceBuffer(&buf);
+	bgmVoice_->Start();
+
+	currentBgmName_ = filename;
+}
+
+void SoundManager::StopBGM()
+{
+	if (bgmVoice_)
+	{
+		bgmVoice_->Stop();
+		bgmVoice_->FlushSourceBuffers();
+		bgmVoice_->DestroyVoice();
+		bgmVoice_ = nullptr;
+	}
+	currentBgmName_.clear();
+}
+
+void SoundManager::SetBGMVolume(float volume)
+{
+	bgmVolume_ = volume;
+	if (bgmVoice_)
+	{
+		bgmVoice_->SetVolume(volume);
+	}
+}
+
+bool SoundManager::IsBGMPlaying() const
+{
+	return bgmVoice_ != nullptr;
+}
+
+void SoundManager::PlaySE(const std::string& filename, float volume)
+{
+	if (filename.empty() || !xAudio2) return;
+
+	// 再生完了済みボイスの回収
+	Update();
+
+	const SoundData& sound = GetOrLoadSound(filename);
+	if (sound.buffer.empty()) return;
+
+	IXAudio2SourceVoice* voice = nullptr;
+	HRESULT hr = xAudio2->CreateSourceVoice(&voice, &sound.wfex);
+	if (FAILED(hr) || !voice) return;
+
+	XAUDIO2_BUFFER buf{};
+	buf.pAudioData = sound.buffer.data();
+	buf.AudioBytes = static_cast<UINT32>(sound.buffer.size());
+	buf.Flags = XAUDIO2_END_OF_STREAM;
+	buf.LoopCount = 0;
+
+	voice->SetVolume(volume);
+	voice->SubmitSourceBuffer(&buf);
+	voice->Start();
+
+	activeSEVoices_.push_back(voice);
+}
+
+void SoundManager::StopAllSE()
+{
+	for (auto voice : activeSEVoices_)
+	{
+		if (voice)
+		{
+			voice->Stop();
+			voice->FlushSourceBuffers();
+			voice->DestroyVoice();
+		}
+	}
+	activeSEVoices_.clear();
+}
+
+void SoundManager::Update()
+{
+	// 再生完了したSEボイスを安全に破棄
+	for (auto it = activeSEVoices_.begin(); it != activeSEVoices_.end();)
+	{
+		IXAudio2SourceVoice* voice = *it;
+		if (!voice)
+		{
+			it = activeSEVoices_.erase(it);
+			continue;
+		}
+
+		XAUDIO2_VOICE_STATE state{};
+		voice->GetState(&state);
+		if (state.BuffersQueued == 0)
+		{
+			voice->Stop();
+			voice->FlushSourceBuffers();
+			voice->DestroyVoice();
+			it = activeSEVoices_.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
 }

@@ -1,5 +1,6 @@
 #include "ImGuiManager.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
+#include <filesystem>
 
 void ImGuiManager::Initialize([[maybe_unused]]DirectXCommon* dxcommon, [[maybe_unused]] WinApp* winApp)
 {
@@ -21,11 +22,55 @@ void ImGuiManager::Initialize([[maybe_unused]]DirectXCommon* dxcommon, [[maybe_u
 	// スタイル
 	ApplyModernDarkTheme();
 
-	io.Fonts->AddFontFromFileTTF(
-		"Resources/font/YuGothR.ttc",   // フォントファイルのパス
-		14.0f,                          // フォントサイズ
-		nullptr,
-		io.Fonts->GetGlyphRangesJapanese()    // 日本語の範囲（ひらがな・カタカナ・漢字）
+	// 各種フォントの安全なロード
+	auto loadFont = [&](const std::string& path, float size, const ImWchar* glyphRanges) -> ImFont* {
+		if (std::filesystem::exists(path)) {
+			return io.Fonts->AddFontFromFileTTF(path.c_str(), size, nullptr, glyphRanges);
+		}
+		std::string altPath = path;
+		if (altPath.rfind("resources/", 0) == 0) {
+			altPath.replace(0, 10, "Resources/");
+		} else if (altPath.rfind("Resources/", 0) == 0) {
+			altPath.replace(0, 10, "resources/");
+		}
+		if (std::filesystem::exists(altPath)) {
+			return io.Fonts->AddFontFromFileTTF(altPath.c_str(), size, nullptr, glyphRanges);
+		}
+		return nullptr;
+	};
+
+	// 1. デフォルトUIフォント (YuGothR 14px)
+	fonts_[static_cast<size_t>(FontType::Default)] = loadFont(
+		"resources/font/YuGothR.ttc",
+		14.0f,
+		io.Fonts->GetGlyphRangesJapanese()
+	);
+	if (!fonts_[static_cast<size_t>(FontType::Default)]) {
+		fonts_[static_cast<size_t>(FontType::Default)] = io.Fonts->AddFontDefault();
+	}
+
+	// 2. 日本語 MPLUS フォント (通常 24px / 大 48px)
+	fonts_[static_cast<size_t>(FontType::Japanese_MPLUS)] = loadFont(
+		"resources/font/MPLUS1p-Medium.ttf",
+		24.0f,
+		io.Fonts->GetGlyphRangesJapanese()
+	);
+	fonts_[static_cast<size_t>(FontType::Japanese_MPLUS_Large)] = loadFont(
+		"resources/font/MPLUS1p-Medium.ttf",
+		48.0f,
+		io.Fonts->GetGlyphRangesJapanese()
+	);
+
+	// 3. 英数等幅 FiraMono フォント (スコア・タイマー等用 通常 24px / 大 48px)
+	fonts_[static_cast<size_t>(FontType::English_FiraMono)] = loadFont(
+		"resources/font/FiraMono-Medium.ttf",
+		24.0f,
+		io.Fonts->GetGlyphRangesDefault()
+	);
+	fonts_[static_cast<size_t>(FontType::English_FiraMono_Large)] = loadFont(
+		"resources/font/FiraMono-Medium.ttf",
+		48.0f,
+		io.Fonts->GetGlyphRangesDefault()
 	);
 
 	// Win32 側の初期化
@@ -102,6 +147,9 @@ void ImGuiManager::Draw()
 void ImGuiManager::Finalize()
 {
 #ifdef USE_IMGUI
+
+	// ウィンドウレイアウトをディスクに確実に保存
+	ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename);
 
 	// ImGuiのDX12終了処理
 	ImGui_ImplDX12_Shutdown();
@@ -211,3 +259,15 @@ void ImGuiManager::ApplyModernDarkTheme()
 	colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.36f, 0.70f, 1.00f, 1.00f);
 #endif // USE_IMGUI
 }
+
+#ifdef USE_IMGUI
+ImFont* ImGuiManager::GetFont(FontType type) const
+{
+	size_t idx = static_cast<size_t>(type);
+	if (idx < static_cast<size_t>(FontType::Count) && fonts_[idx] != nullptr)
+	{
+		return fonts_[idx];
+	}
+	return fonts_[static_cast<size_t>(FontType::Default)];
+}
+#endif

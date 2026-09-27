@@ -30,13 +30,15 @@ private:
     std::unique_ptr<Object3d> object_ = nullptr;
     std::unique_ptr<Object3d> colliderObject_ = nullptr;
     
+    Vector3 spawnPosition_ = { 0.0f, 0.0f, 0.0f };
     Vector3 position_ = { 0.0f, 0.0f, 0.0f };
     Vector3 velocity_ = { 0.0f, 0.0f, 0.0f };
     Vector3 previousPosition_ = { 0.0f, 0.0f, 0.0f };
     Vector3 rotation_ = { 0.0f, 0.0f, 0.0f };
 
     bool isDead_ = false;
-    float deathTimer_ = 300.0f; // 寿命（フレーム）
+    float deathTimer_ = 180.0f; // 寿命（フレーム: 約3秒）
+    float maxFlightDistance_ = 380.0f; // 最大飛行射程（m）
     
     Enemy* targetEnemy_ = nullptr;
 

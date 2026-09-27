@@ -1,9 +1,11 @@
 #include "EditorSystem.h"
 #include "EffectStudio.h"
+#include "EnemyStudio.h"
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_internal.h"
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleManager.h"
+#include "KHEngine/UI/UITextManager.h"
 
 EditorSystem* EditorSystem::GetInstance() {
     static EditorSystem instance;
@@ -12,6 +14,7 @@ EditorSystem* EditorSystem::GetInstance() {
 
 void EditorSystem::Initialize(DirectXCommon* dxCommon) {
     dxCommon_ = dxCommon;
+    UITextManager::GetInstance()->Initialize();
 }
 
 void EditorSystem::Draw(uint32_t gameSceneSrvIndex) {
@@ -38,8 +41,12 @@ void EditorSystem::Draw(uint32_t gameSceneSrvIndex) {
     if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
         ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
 
-        // レイアウトのリセット要求、または初回生成時にレイアウト（左メニュー・中央画面・右インスペクター）を構築
-        if (resetLayout_ || ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
+        // DockSpaceを配置
+        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+
+        static bool isFirstFrame = true;
+        // 明示的なリセット要求、またはiniにドッキング情報が存在しない初回起動時のみ初期構築
+        if (resetLayout_ || (isFirstFrame && ImGui::DockBuilderGetNode(dockspace_id) == nullptr)) {
             resetLayout_ = false;
             ImGui::DockBuilderRemoveNode(dockspace_id);
             ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
@@ -57,16 +64,18 @@ void EditorSystem::Draw(uint32_t gameSceneSrvIndex) {
             // 各ウィンドウを対応するドックに割り当てる
             ImGui::DockBuilderDockWindow("メニュー", dock_id_left);
             ImGui::DockBuilderDockWindow("インスペクター", dock_id_right);
+            ImGui::DockBuilderDockWindow("UIテキストエディタ", dock_id_right);
             ImGui::DockBuilderDockWindow("エフェクトエディター", dock_id_right);
+            ImGui::DockBuilderDockWindow("エネミーエディター", dock_id_right);
             ImGui::DockBuilderDockWindow("タイムライン", dock_id_bottom);
             ImGui::DockBuilderDockWindow("ゲーム画面", dock_main_id);
             ImGui::DockBuilderDockWindow("エフェクト画面", dock_main_id);
+            ImGui::DockBuilderDockWindow("エネミー画面", dock_main_id);
 
             // 構築完了
             ImGui::DockBuilderFinish(dockspace_id);
         }
-
-        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+        isFirstFrame = false;
     }
 
     DrawMenuBar();
@@ -80,8 +89,19 @@ void EditorSystem::Draw(uint32_t gameSceneSrvIndex) {
     EffectStudio::GetInstance()->DrawViewportWindow();
     EffectStudio::GetInstance()->DrawControlWindow();
 
+    // エネミースタジオのウィンドウ描画
+    EnemyStudio::GetInstance()->DrawViewportWindow();
+    EnemyStudio::GetInstance()->DrawControlWindow();
+
     if (showParticleEditor_) {
         DrawParticleEditor();
+    }
+
+    if (showUITextEditor_) {
+        if (ImGui::Begin("UIテキストエディタ", &showUITextEditor_)) {
+            UITextManager::GetInstance()->DrawImGuiEditor();
+        }
+        ImGui::End();
     }
 #endif
 }
@@ -90,12 +110,19 @@ void EditorSystem::DrawMenuBar() {
 #ifdef USE_IMGUI
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("ウィンドウ")) {
+            if (ImGui::MenuItem("現在のレイアウトを保存 (Save Layout)")) {
+                ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename);
+            }
             if (ImGui::MenuItem("デフォルトレイアウトに復元")) {
                 resetLayout_ = true;
             }
             ImGui::Separator();
+            ImGui::MenuItem("UIテキストエディタ", nullptr, &showUITextEditor_);
             ImGui::MenuItem("エフェクト画面 (ビューポート)", nullptr, &EffectStudio::GetInstance()->GetShowViewport());
             ImGui::MenuItem("エフェクトエディター", nullptr, &EffectStudio::GetInstance()->GetShowEditor());
+            ImGui::Separator();
+            ImGui::MenuItem("エネミー画面 (ビューポート)", nullptr, &EnemyStudio::GetInstance()->GetShowViewport());
+            ImGui::MenuItem("エネミーエディター", nullptr, &EnemyStudio::GetInstance()->GetShowEditor());
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
@@ -116,7 +143,13 @@ void EditorSystem::DrawViewport(uint32_t srvIndex) {
         D3D12_GPU_DESCRIPTOR_HANDLE srvHandle = srvManager->GetSRVGPUDescriptorHandle(srvIndex);
 
         // 画像を表示 (UVを上下反転させる必要がある場合があります)
+        ImVec2 imagePos = ImGui::GetCursorScreenPos();
+        viewportPos_ = imagePos;
+        viewportSize_ = contentSize;
         ImGui::Image((ImTextureID)srvHandle.ptr, contentSize);
+
+        // ゲーム画面上にUIテキストを描画 (1280x720 基準の座標・スケーリング)
+        UITextManager::GetInstance()->Draw(ImGui::GetWindowDrawList(), imagePos, contentSize);
     }
     ImGui::End();
     ImGui::PopStyleVar();
