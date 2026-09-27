@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <xaudio2.h>
 #include <wrl.h>
 #include <unordered_map>
@@ -76,10 +76,55 @@ public:
 	/// <param name="filename">音声ファイル名</param>
 	SoundData SoundLoadFile(const std::string& filename);
 
-	///<summary>
+	/// <summary>
 	/// 音声データ解放
-	///</summary>
+	/// </summary>
 	void SoundUnload(SoundData* soundData);
+
+	/// <summary>
+	/// 音声ファイルを取得（キャッシュがあればそれを返し、なければロードしてキャッシュ）
+	/// </summary>
+	const SoundData& GetOrLoadSound(const std::string& filename);
+
+	/// <summary>
+	/// BGM再生（既存BGMがあれば停止して新BGMを開始）
+	/// </summary>
+	void PlayBGM(const std::string& filename, float volume = 0.25f, bool loop = true);
+
+	/// <summary>
+	/// BGM停止
+	/// </summary>
+	void StopBGM();
+
+	/// <summary>
+	/// BGM音量設定（0.0f〜1.0f）
+	/// </summary>
+	void SetBGMVolume(float volume);
+
+	/// <summary>
+	/// 現在のBGM音量取得
+	/// </summary>
+	float GetBGMVolume() const { return bgmVolume_; }
+
+	/// <summary>
+	/// BGM再生中かどうか
+	/// </summary>
+	bool IsBGMPlaying() const;
+
+	/// <summary>
+	/// 効果音（SE）のワンショット再生
+	/// </summary>
+	void PlaySE(const std::string& filename, float volume = 1.0f);
+
+	/// <summary>
+	/// 全効果音の停止
+	/// </summary>
+	void StopAllSE();
+
+	/// <summary>
+	/// 再生終了したSEボイスの回収・更新処理
+	/// </summary>
+	void Update();
 
 	///<summary>
 	/// XAudio2の取得
@@ -98,4 +143,15 @@ private:
 
 	Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
 	IXAudio2MasteringVoice* masteringVoice = nullptr;
+
+	// サウンドデータキャッシュ
+	std::unordered_map<std::string, SoundData> soundCache_;
+
+	// BGM用ボイスと再生中ファイル名
+	IXAudio2SourceVoice* bgmVoice_ = nullptr;
+	std::string currentBgmName_;
+	float bgmVolume_ = 0.25f;
+
+	// 再生中SEボイスのリスト
+	std::vector<IXAudio2SourceVoice*> activeSEVoices_;
 };

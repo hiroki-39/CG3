@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "Game/Actor/Enemy/Enemy.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleManager.h"
+#include "KHEngine/Sound/Core/SoundManager.h"
 
 void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex) {
     // プレイヤーと関連オブジェクトの初期化
@@ -76,13 +77,17 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
         mountedMissiles_[i]->SetModel("missile.obj");
         mountedMissiles_[i]->SetParent(object_.get());
         float xOffset = 0.0f;
-        float zOffset = 0.0f;
-        if (i == 0) { xOffset = -1.5f; zOffset = 0.0f; } 
-        else if (i == 1) { xOffset = 1.5f; zOffset = 0.0f; } 
-        else if (i == 2) { xOffset = -2.8f; zOffset = 0.0f; } 
-        else if (i == 3) { xOffset = 2.8f; zOffset = 0.0f; } 
-        
         float yOffset = -0.2f;
+        float zOffset = 0.0f;
+        if (i == 0) { xOffset = -1.5f; yOffset = -0.2f; zOffset = 0.0f; } 
+        else if (i == 1) { xOffset = 1.5f; yOffset = -0.2f; zOffset = 0.0f; } 
+        else if (i == 2) { xOffset = -2.8f; yOffset = -0.2f; zOffset = 0.0f; } 
+        else if (i == 3) { xOffset = 2.8f; yOffset = -0.2f; zOffset = 0.0f; } 
+        else if (i == 4) { xOffset = -2.0f; yOffset = -0.35f; zOffset = -0.8f; } 
+        else if (i == 5) { xOffset = 2.0f; yOffset = -0.35f; zOffset = -0.8f; } 
+        else if (i == 6) { xOffset = -3.4f; yOffset = -0.35f; zOffset = -0.8f; } 
+        else if (i == 7) { xOffset = 3.4f; yOffset = -0.35f; zOffset = -0.8f; } 
+        
         mountedMissiles_[i]->SetTranslate({xOffset, yOffset, zOffset});
         mountedMissiles_[i]->SetScale({1.0f, 1.0f, 1.0f}); 
         
@@ -96,6 +101,9 @@ void Player::Initialize(Object3dCommon* object3dCommon, uint32_t skyboxTexIndex)
         mountedMissiles_[i]->Update();
         lockOnReticles_[i]->Update();
     }
+
+    SetPowerUpLevel(0);
+    ResetBoost();
 }
 
 // プレイヤー被弾時の処理
@@ -103,7 +111,7 @@ void Player::OnCollision() {
     if (isGodMode_ || invincibilityTimer_ > 0.0f || isDead_ || isRolling_) return; 
     
     hp_ -= 1000;
-    isDoubleShot_ = false;
+    // 被弾しても強化状態（ダブルショット）は維持する
     if (hp_ <= 0) {
         isDead_ = true;
     } else {
@@ -156,7 +164,7 @@ bool Player::OnTerrainCollision(const Vector3& worldNormal, float penetrationDep
     bool causedDamage = false;
     if (invincibilityTimer_ <= 0.0f) {
         hp_ -= 1000;
-        isDoubleShot_ = false;
+        // 地形衝突時も強化状態（ダブルショット）は維持する
         if (hp_ <= 0) {
             isDead_ = true;
         } else {
@@ -199,6 +207,15 @@ OBB Player::GetWorldOBB() const {
 
 // プレイヤーの毎フレームの更新処理
 void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed) {
+    if (isCutsceneActive_) {
+        prevLogicalPosition_ = logicalPosition_;
+        logicalPosition_ = cutscenePos_;
+        baseRotation_ = cutsceneRot_;
+        velocity_ = { 0.0f, 0.0f };
+        Update3DObjectOnly();
+        return;
+    }
+
     prevLogicalPosition_ = logicalPosition_;
     Move(gameSpeed);
     Attack(bullets, missiles, enemies, parentCamera, gameSpeed);
@@ -229,11 +246,16 @@ void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
 }
 
 void Player::Draw() {
-    if (reticle_) {
-        reticle_->Draw();
-    }
-    if (frontReticle_) {
-        frontReticle_->Draw();
+    if (!isVisible_) return;
+
+    // カットシーン演出中は照準UIを非表示にして映画的没入感を高める
+    if (!isCutsceneActive_) {
+        if (reticle_) {
+            reticle_->Draw();
+        }
+        if (frontReticle_) {
+            frontReticle_->Draw();
+        }
     }
     
     bool shouldDrawPlayer = true;
@@ -250,7 +272,7 @@ void Player::Draw() {
         if (accessory_) {
             accessory_->Draw();
         }
-        for (int i = 0; i < MAX_MISSILES; ++i) {
+        for (int i = 0; i < maxMissiles_; ++i) {
             if (mountedMissiles_[i]) {
                 
                 if (currentWeapon_ == WeaponType::MISSILE && missileReloadTimer_ <= 0.0f) {
@@ -329,8 +351,35 @@ void Player::Move(float gameSpeed) {
         }
     }
 
+    // ブーストキー判定
+    bool boostKeyPressed = input_->PushKey(DIK_LSHIFT);
     
-    isBoosting_ = input_->PushKey(DIK_LSHIFT);
+    // オーバーヒートからの復帰判定（25%まで回復したら再使用可能）
+    if (isBoostOverheated_) {
+        if (boostEnergy_ >= maxBoostEnergy_ * 0.25f) {
+            isBoostOverheated_ = false;
+        }
+    }
+
+    if (boostKeyPressed && !isBoostOverheated_ && boostEnergy_ > 0.0f) {
+        isBoosting_ = true;
+        boostEnergy_ -= boostConsumeRate_ * gameSpeed;
+        boostRecoverDelayTimer_ = kBoostRecoverDelay_;
+        if (boostEnergy_ <= 0.0f) {
+            boostEnergy_ = 0.0f;
+            isBoostOverheated_ = true;
+            isBoosting_ = false; // 枯渇した瞬間にブースト強制終了
+        }
+    } else {
+        isBoosting_ = false;
+        // ブースト非使用時のエネルギー回復処理（少しディレイを置いてから自然回復）
+        if (boostRecoverDelayTimer_ > 0.0f) {
+            boostRecoverDelayTimer_ -= gameSpeed;
+        } else {
+            boostEnergy_ = std::min(maxBoostEnergy_, boostEnergy_ + boostRecoverRate_ * gameSpeed);
+        }
+    }
+
     bool isBraking = input_->PushKey(DIK_LCONTROL);
     
     float targetZ = 0.0f; 
@@ -520,7 +569,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
                 }
 
                 
-                if (multiLockedEnemies_.size() >= MAX_MISSILES) {
+                if (multiLockedEnemies_.size() >= static_cast<size_t>(maxMissiles_)) {
                     break;
                 }
 
@@ -572,6 +621,7 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
 
         
         if (!input_->PushKey(DIK_SPACE) && !multiLockedEnemies_.empty() && missileReloadTimer_ <= 0.0f) {
+            bool hasLaunched = false;
             for (size_t i = 0; i < multiLockedEnemies_.size(); ++i) {
                 if (multiLockedEnemies_[i].enemy->IsDead()) continue;
                 
@@ -582,9 +632,14 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
                 auto newMissile = std::make_unique<PlayerMissile>();
                 newMissile->Initialize(object3dCommon_, spawnPos, spawnRot, {0,0,0}, parentCamera, multiLockedEnemies_[i].enemy);
                 missiles.push_back(std::move(newMissile));
+                hasLaunched = true;
 
                 
                 lockOnReticles_[i]->SetScale({0.001f, 0.001f, 0.001f});
+            }
+
+            if (hasLaunched) {
+                SoundManager::GetInstance()->PlaySE("launcher.mp3", 0.9f);
             }
             
             multiLockedEnemies_.clear();
@@ -651,6 +706,9 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
             newBullet->Initialize(object3dCommon_, playerPos, velocity, parentCamera, isLockOn_ ? lockOnTargetEnemy_ : nullptr);
             bullets.push_back(std::move(newBullet));
         }
+
+        // 通常ショットSE再生
+        SoundManager::GetInstance()->PlaySE("player_shot.mp3", 0.7f);
     }
 }
 
@@ -811,6 +869,20 @@ void Player::DrawImGuiContent() {
         ImGui::SliderFloat("ロール時間 (Roll Max Time)", &rollMaxTime_, 5.0f, 60.0f, "%.0f frames");
 
         ImGui::Separator();
+        ImGui::Text("ブーストゲージ設定 (Boost Settings)");
+        char boostOverlay[64];
+        if (isBoostOverheated_) snprintf(boostOverlay, sizeof(boostOverlay), "OVERHEAT! (%.0f%%)", GetBoostRatio() * 100.0f);
+        else if (isBoosting_) snprintf(boostOverlay, sizeof(boostOverlay), "BOOSTING (%.0f%%)", GetBoostRatio() * 100.0f);
+        else snprintf(boostOverlay, sizeof(boostOverlay), "%.0f / %.0f (%.0f%%)", boostEnergy_, maxBoostEnergy_, GetBoostRatio() * 100.0f);
+        ImGui::ProgressBar(GetBoostRatio(), ImVec2(-1, 18), boostOverlay);
+        ImGui::SliderFloat("最大ブースト量 (Max Boost)", &maxBoostEnergy_, 50.0f, 300.0f, "%.0f");
+        ImGui::SliderFloat("消費速度 (Consume Rate)", &boostConsumeRate_, 0.1f, 2.0f, "%.2f /frame");
+        ImGui::SliderFloat("回復速度 (Recover Rate)", &boostRecoverRate_, 0.05f, 1.5f, "%.2f /frame");
+        if (ImGui::Button("ブースト全快 (Refill Boost)")) {
+            ResetBoost();
+        }
+
+        ImGui::Separator();
         ImGui::Text("地形衝突パラメータ");
         ImGui::SliderFloat("ノックバック力", &terrainKnockbackPower_, 0.0f, 2.0f, "%.2f");
         ImGui::SliderFloat("めり込み押し戻しマージン", &terrainPushMargin_, 0.01f, 0.5f, "%.2f");
@@ -932,4 +1004,34 @@ Vector3 Player::GetRightWingPosition() const {
         rightWingLocal.x * mat.m[0][1] + rightWingLocal.y * mat.m[1][1] + rightWingLocal.z * mat.m[2][1] + mat.m[3][1],
         rightWingLocal.x * mat.m[0][2] + rightWingLocal.y * mat.m[1][2] + rightWingLocal.z * mat.m[2][2] + mat.m[3][2]
     };
+}
+
+void Player::PowerUp() {
+    SetPowerUpLevel(powerUpLevel_ + 1);
+}
+
+void Player::SetPowerUpLevel(int level) {
+    powerUpLevel_ = level;
+    if (level <= 0) {
+        // 通常状態
+        isDoubleShot_ = false;
+        maxMissiles_ = 4;
+        lockOnCompleteTime_ = defaultLockOnCompleteTime_;
+        lockOnInterval_ = defaultLockOnInterval_;
+        missileReloadTime_ = defaultMissileReloadTime_;
+    } else if (level == 1) {
+        // 強化リング1個目: ダブルショット解放
+        isDoubleShot_ = true;
+        maxMissiles_ = 4;
+        lockOnCompleteTime_ = defaultLockOnCompleteTime_;
+        lockOnInterval_ = defaultLockOnInterval_;
+        missileReloadTime_ = defaultMissileReloadTime_;
+    } else if (level >= 2) {
+        // 強化リング2個目: 最大ロックオン数が4から8へ拡張 & ロックオン速度大幅向上！
+        isDoubleShot_ = true;
+        maxMissiles_ = 8;
+        lockOnCompleteTime_ = 10.0f; // 20f -> 10f (ロックオン所要時間半分・高速化)
+        lockOnInterval_ = 24.0f;     // 60f -> 24f (連続捕捉間隔が大幅短縮)
+        missileReloadTime_ = 90.0f;  // 120f -> 90f (リロード短縮)
+    }
 }

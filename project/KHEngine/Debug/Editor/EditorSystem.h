@@ -1,5 +1,6 @@
 #pragma once
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
+#include "externals/imgui/imgui.h"
 #include <cstdint>
 
 /**
@@ -15,6 +16,10 @@ public:
     
     // ImGui描画処理。メインループのImGui描画セクションで呼び出してください。
     void Draw(uint32_t gameSceneSrvIndex);
+
+    // ゲーム画面ビューポートのスクリーン座標・サイズ（UIクリッピング等用）
+    ImVec2 GetViewportPos() const { return viewportPos_; }
+    ImVec2 GetViewportSize() const { return viewportSize_; }
 
 private:
     EditorSystem() = default;
@@ -32,4 +37,7 @@ private:
     bool showParticleEditor_ = false;
     bool showUITextEditor_ = true;
     bool resetLayout_ = false;
+
+    ImVec2 viewportPos_ = { 0.0f, 0.0f };
+    ImVec2 viewportSize_ = { 1280.0f, 720.0f };
 };

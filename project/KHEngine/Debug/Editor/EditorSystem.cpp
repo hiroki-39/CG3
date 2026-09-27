@@ -144,6 +144,8 @@ void EditorSystem::DrawViewport(uint32_t srvIndex) {
 
         // 画像を表示 (UVを上下反転させる必要がある場合があります)
         ImVec2 imagePos = ImGui::GetCursorScreenPos();
+        viewportPos_ = imagePos;
+        viewportSize_ = contentSize;
         ImGui::Image((ImTextureID)srvHandle.ptr, contentSize);
 
         // ゲーム画面上にUIテキストを描画 (1280x720 基準の座標・スケーリング)

@@ -13,8 +13,12 @@
         1.0
     ],
     "followSpeed": 0.07999999821186066,
-    "hp": 7000,
+    "hp": 10000,
+    "lockOnCompleteTime": 20.0,
+    "lockOnInterval": 60.0,
+    "lockOnMaxDistance": 350.0,
     "maxHp": 10000,
+    "missileReloadTime": 120.0,
     "modelName": "player.obj",
     "modelPosOffset": [
         0.0,
@@ -42,9 +46,5 @@
     "speed": 0.44999998807907104,
     "terrainCollisionRadius": 0.800000011920929,
     "terrainKnockbackPower": 1.5,
-    "terrainPushMargin": 0.05000000074505806,
-    "lockOnCompleteTime": 20.0,
-    "lockOnInterval": 60.0,
-    "missileReloadTime": 120.0,
-    "lockOnMaxDistance": 350.0
+    "terrainPushMargin": 0.05000000074505806
 }

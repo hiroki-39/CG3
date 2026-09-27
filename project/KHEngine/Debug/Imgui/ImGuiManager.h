@@ -55,10 +55,12 @@ public:
 		Count
 	};
 
+#ifdef USE_IMGUI
 	/// <summary>
 	/// 指定フォントの取得
 	/// </summary>
 	ImFont* GetFont(FontType type) const;
+#endif
 
 private:
 	WinApp* winApp_ = nullptr;

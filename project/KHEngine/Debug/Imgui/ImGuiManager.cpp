@@ -260,16 +260,14 @@ void ImGuiManager::ApplyModernDarkTheme()
 #endif // USE_IMGUI
 }
 
+#ifdef USE_IMGUI
 ImFont* ImGuiManager::GetFont(FontType type) const
 {
-#ifdef USE_IMGUI
 	size_t idx = static_cast<size_t>(type);
 	if (idx < static_cast<size_t>(FontType::Count) && fonts_[idx] != nullptr)
 	{
 		return fonts_[idx];
 	}
 	return fonts_[static_cast<size_t>(FontType::Default)];
-#else
-	return nullptr;
-#endif
-}
+}
+#endif

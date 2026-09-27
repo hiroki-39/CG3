@@ -30,6 +30,7 @@ void Application::Initialize()
     
     sceneManager_ = std::make_unique<SceneManager>();
     sceneManager_->SetSceneFactory(sceneFactory_.get());
+    services->SetSceneManager(sceneManager_.get());
 
     
     sceneManager_->ChangeScene("TITLE");
@@ -38,7 +39,8 @@ void Application::Initialize()
 
 void Application::Finalize()
 {
-    
+    EngineServices::GetInstance()->SetSceneManager(nullptr);
+
     if (sceneManager_)
     {
         sceneManager_.reset();

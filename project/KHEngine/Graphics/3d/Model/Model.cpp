@@ -29,17 +29,37 @@ void Model::Initialize(ModelCommon* modelCommon, const std::string& directoryPat
 	//マテリアルの作成
 	CreateMaterialResource();
 
-	// .objの参照しているテクスチャを読み込み（存在しない場合はデフォルトテクスチャにフォールバック）
-	if (!modelData.material.textureFilePath.empty())
+	// 全マテリアルのテクスチャを読み込み
+	for (auto& mat : modelData.materials)
 	{
-		TextureManager::GetInstance()->LoadTexture(modelData.material.textureFilePath);
-		modelData.material.textureIndex =
-			TextureManager::GetInstance()->GetTextureIndexByFilePath(modelData.material.textureFilePath);
+		if (!mat.textureFilePath.empty())
+		{
+			TextureManager::GetInstance()->LoadTexture(mat.textureFilePath);
+			mat.textureIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath(mat.textureFilePath);
+		}
+		else
+		{
+			mat.textureIndex = TextureManager::GetInstance()->GetDefaultTextureIndex();
+		}
+	}
+
+	// 単一マテリアル（後方互換性）の更新
+	if (!modelData.materials.empty())
+	{
+		modelData.material = modelData.materials[0];
 	}
 	else
 	{
-		// テクスチャ未指定のモデルはデフォルトテクスチャを使って描画する
-		modelData.material.textureIndex = TextureManager::GetInstance()->GetDefaultTextureIndex();
+		if (!modelData.material.textureFilePath.empty())
+		{
+			TextureManager::GetInstance()->LoadTexture(modelData.material.textureFilePath);
+			modelData.material.textureIndex =
+				TextureManager::GetInstance()->GetTextureIndexByFilePath(modelData.material.textureFilePath);
+		}
+		else
+		{
+			modelData.material.textureIndex = TextureManager::GetInstance()->GetDefaultTextureIndex();
+		}
 	}
 }
 
@@ -67,21 +87,46 @@ void Model::Draw(D3D12_GPU_VIRTUAL_ADDRESS materialCBV)
 {
 	if (modelData.vertices.empty() || modelData.indices.empty()) return;
 
-	//VBVの設定
+	// VBVの設定
 	dxCommon->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView);
 
-	//IBVの設定
+	// IBVの設定
 	dxCommon->GetCommandList()->IASetIndexBuffer(&indexBufferView);
 
-	//CBVの設定（指定があればインスタンス固有のCBV、なければモデル共有CBV）
-	D3D12_GPU_VIRTUAL_ADDRESS cbv = (materialCBV != 0) ? materialCBV : materialResource_->GetGPUVirtualAddress();
-	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, cbv);
+	// サブメッシュが存在しない場合（スカイボックスや手動生成モデルなど）は従来通り一括描画
+	if (modelData.subMeshes.empty())
+	{
+		D3D12_GPU_VIRTUAL_ADDRESS cbv = (materialCBV != 0) ? materialCBV : materialResource_->GetGPUVirtualAddress();
+		dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, cbv);
+		SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(2, modelData.material.textureIndex);
+		dxCommon->GetCommandList()->DrawIndexedInstanced(UINT(modelData.indices.size()), 1, 0, 0, 0);
+	}
+	else
+	{
+		// サブメッシュごとにマテリアル/テクスチャを切り替えて描画（マルチマテリアル対応）
+		for (const auto& subMesh : modelData.subMeshes)
+		{
+			if (subMesh.indexCount == 0) continue;
 
-	//SRVのDescriptorTableの先頭を設定
-	SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(2, modelData.material.textureIndex);
+			uint32_t matIdx = subMesh.materialIndex;
+			uint32_t texIdx = modelData.material.textureIndex;
+			D3D12_GPU_VIRTUAL_ADDRESS cbv = (materialCBV != 0) ? materialCBV : materialResource_->GetGPUVirtualAddress();
 
-	//描画！
-	dxCommon->GetCommandList()->DrawIndexedInstanced(UINT(modelData.indices.size()), 1, 0, 0, 0);
+			if (matIdx < modelData.materials.size())
+			{
+				const auto& mat = modelData.materials[matIdx];
+				texIdx = mat.textureIndex;
+				if (materialCBV == 0 && mat.materialResource)
+				{
+					cbv = mat.materialResource->GetGPUVirtualAddress();
+				}
+			}
+
+			dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, cbv);
+			SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(2, texIdx);
+			dxCommon->GetCommandList()->DrawIndexedInstanced(subMesh.indexCount, 1, subMesh.startIndex, 0, 0);
+		}
+	}
 }
 
 void Model::CreateBufferResource()
@@ -127,29 +172,44 @@ void Model::CreateBufferResource()
 
 void Model::CreateMaterialResource()
 {
-	//マテリアル用のリソースを作る
+	// マテリアル用の共有リソースを作る（単一マテリアルやフォールバック用）
 	materialResource_ = dxCommon->CreateBufferResource(sizeof(Material));
 
-	//書き込む為のアドレスを取得
+	// 書き込む為のアドレスを取得
 	materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
 
-	//色の設定
+	// 色の設定
 	materialData_->color = { 1.0f,1.0f,1.0f,1.0f };
 
-	//Lightingを有効化
+	// Lightingを有効化
 	materialData_->enableLighting = true;
 
-	//Lightingの種類の設定
+	// Lightingの種類の設定
 	materialData_->selectLightings = 2;
 
-	//単位行列を書き込む
+	// 単位行列を書き込む
 	materialData_->uvTransform = Matrix4x4::Identity();
 
-	//鏡面反射の強さ
+	// 鏡面反射の強さ
 	materialData_->shininess = 40.0f;
 	materialData_->specularColor = { 1.0f,1.0f,1.0f };
 	materialData_->environmentCoefficient = 0.0f;
 	materialData_->fresnelF0 = 0.04f; // 非金属のデフォルト
+
+	// 各マテリアルごとのConstantBufferリソース作成
+	for (auto& mat : modelData.materials)
+	{
+		mat.materialResource = dxCommon->CreateBufferResource(sizeof(Material));
+		mat.materialResource->Map(0, nullptr, reinterpret_cast<void**>(&mat.materialData));
+		mat.materialData->color = { 1.0f,1.0f,1.0f,1.0f };
+		mat.materialData->enableLighting = true;
+		mat.materialData->selectLightings = 2;
+		mat.materialData->uvTransform = Matrix4x4::Identity();
+		mat.materialData->shininess = 40.0f;
+		mat.materialData->specularColor = { 1.0f,1.0f,1.0f };
+		mat.materialData->environmentCoefficient = 0.0f;
+		mat.materialData->fresnelF0 = 0.04f;
+	}
 }
 
 Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std::string & filename)
@@ -166,38 +226,106 @@ Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std
 		return modelData;
 	}
 
-	/*--- 3.マテリアル情報の読み込み ---*/
+	// テクスチャファイルパスを解決するラムダヘルパー（大文字小文字無視・スペルミスフォールバック対応）
+	auto resolveTexturePath = [&](const std::string& texName) -> std::string {
+		if (texName.empty()) return "";
+		std::string fullPath = directoryPath + "/" + texName;
+		if (std::filesystem::exists(fullPath)) return fullPath;
+		if (std::filesystem::exists(texName)) return texName;
 
+		try {
+			std::string filenameOnly = std::filesystem::path(texName).filename().string();
+			for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
+				if (entry.is_regular_file()) {
+					std::string entryName = entry.path().filename().string();
+					if (_stricmp(entryName.c_str(), filenameOnly.c_str()) == 0) {
+						return entry.path().string();
+					}
+				}
+			}
+			// yellow / yallow のスペル違いフォールバック
+			if (filenameOnly.find("yellow") != std::string::npos || filenameOnly.find("yallow") != std::string::npos) {
+				std::string alt1 = directoryPath + "/yellow.png";
+				std::string alt2 = directoryPath + "/yallow.png";
+				if (std::filesystem::exists(alt1)) return alt1;
+				if (std::filesystem::exists(alt2)) return alt2;
+			}
+		} catch (...) {}
+
+		return fullPath;
+	};
+
+	/*--- 3.マテリアル情報の読み込み ---*/
+	modelData.materials.resize(scene->mNumMaterials);
 	for (uint32_t materialIndex = 0; materialIndex < scene->mNumMaterials; ++materialIndex)
 	{
 		aiMaterial* material = scene->mMaterials[materialIndex];
+		aiString matName;
+		material->Get(AI_MATKEY_NAME, matName);
+		modelData.materials[materialIndex].name = matName.C_Str();
+
 		if (material->GetTextureCount(aiTextureType_DIFFUSE) != 0)
 		{
 			aiString textureFilePath;
 			material->GetTexture(aiTextureType_DIFFUSE, 0, &textureFilePath);
-
-			std::string texPath = textureFilePath.C_Str();
-			std::string fullPath = directoryPath + "/" + texPath;
-			if (std::filesystem::exists(fullPath)) {
-				modelData.material.textureFilePath = fullPath;
-			} else {
-				modelData.material.textureFilePath = texPath;
-			}
+			modelData.materials[materialIndex].textureFilePath = resolveTexturePath(textureFilePath.C_Str());
 		}
 	}
 
-	// Assimpがテクスチャを見つけられなかった場合のフォールバック
-	if (modelData.material.textureFilePath.empty())
+	// Assimpがテクスチャを見つけられなかった場合のフォールバック（.mtl直接パース）
+	bool anyTextureFound = false;
+	for (const auto& m : modelData.materials) {
+		if (!m.textureFilePath.empty()) { anyTextureFound = true; break; }
+	}
+
+	if (!anyTextureFound)
 	{
 		std::string mtlFilename = filename.substr(0, filename.find_last_of('.')) + ".mtl";
-		MaterialData fallbackMat = LoadMaterialTemplateFile(directoryPath, mtlFilename);
-		if (!fallbackMat.textureFilePath.empty())
+		std::vector<MaterialData> mtlMats;
+		std::ifstream mtlFile(directoryPath + "/" + mtlFilename);
+		if (mtlFile.is_open())
 		{
-			std::string fullPath = fallbackMat.textureFilePath;
-			if (std::filesystem::exists(fullPath)) {
-				modelData.material.textureFilePath = fullPath;
+			std::string line;
+			MaterialData curMat;
+			bool inMat = false;
+			while (std::getline(mtlFile, line))
+			{
+				std::istringstream s(line);
+				std::string ident;
+				s >> ident;
+				if (ident == "newmtl")
+				{
+					if (inMat) mtlMats.push_back(curMat);
+					curMat = MaterialData();
+					s >> curMat.name;
+					inMat = true;
+				}
+				else if (ident == "map_Kd")
+				{
+					std::string texName;
+					s >> texName;
+					curMat.textureFilePath = resolveTexturePath(texName);
+				}
+			}
+			if (inMat) mtlMats.push_back(curMat);
+		}
+
+		for (size_t i = 0; i < mtlMats.size() && i < modelData.materials.size(); ++i)
+		{
+			if (modelData.materials[i].textureFilePath.empty())
+			{
+				modelData.materials[i].textureFilePath = mtlMats[i].textureFilePath;
 			}
 		}
+		if (modelData.materials.empty() && !mtlMats.empty())
+		{
+			modelData.materials = mtlMats;
+		}
+	}
+
+	if (!modelData.materials.empty())
+	{
+		modelData.material = modelData.materials[0];
 	}
 
 	modelData.rootNode = model.ReadNode(scene->mRootNode);
@@ -221,6 +349,7 @@ Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std
 	{
 		aiMesh* mesh = scene->mMeshes[meshIndex];
 		uint32_t baseVertexIndex = static_cast<uint32_t>(modelData.vertices.size());
+		uint32_t startSubMeshIndex = static_cast<uint32_t>(modelData.indices.size());
 
 		for (uint32_t v = 0; v < mesh->mNumVertices; ++v)
 		{
@@ -259,6 +388,16 @@ Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std
 			modelData.indices.push_back(baseVertexIndex + face.mIndices[2]);
 			modelData.indices.push_back(baseVertexIndex + face.mIndices[1]);
 		}
+
+		uint32_t subMeshIndexCount = static_cast<uint32_t>(modelData.indices.size()) - startSubMeshIndex;
+		if (subMeshIndexCount > 0)
+		{
+			SubMesh subMesh;
+			subMesh.indexCount = subMeshIndexCount;
+			subMesh.startIndex = startSubMeshIndex;
+			subMesh.materialIndex = mesh->mMaterialIndex;
+			modelData.subMeshes.push_back(subMesh);
+		}
 	}
 
 	// バウンディング中心と半径を算出
@@ -281,10 +420,7 @@ Model::ModelData Model::LoadObjFile(const std::string & directoryPath, const std
 		modelData.boundingRadius = std::sqrt(maxDistSq);
 	}
 
-
-
 	/*--- 4.Modeldataを返す ---*/
-
 	return modelData;
 }
 
@@ -370,6 +506,57 @@ void Model::SetColor(const Vector4& color)
 	if (materialData_) {
 		materialData_->color = color;
 	}
+	for (auto& mat : modelData.materials) {
+		if (mat.materialData) {
+			mat.materialData->color = color;
+		}
+	}
+}
+
+void Model::SetEnableLighting(bool enable)
+{
+	if (materialData_) {
+		materialData_->enableLighting = enable ? 1 : 0;
+	}
+	for (auto& mat : modelData.materials) {
+		if (mat.materialData) {
+			mat.materialData->enableLighting = enable ? 1 : 0;
+		}
+	}
+}
+
+void Model::SetSelectLightings(int32_t v)
+{
+	if (materialData_) {
+		materialData_->selectLightings = v;
+	}
+	for (auto& mat : modelData.materials) {
+		if (mat.materialData) {
+			mat.materialData->selectLightings = v;
+		}
+	}
+}
+
+void Model::SetEnvironmentCoefficient(float v)
+{
+	if (materialData_) {
+		materialData_->environmentCoefficient = v;
+	}
+	for (auto& mat : modelData.materials) {
+		if (mat.materialData) {
+			mat.materialData->environmentCoefficient = v;
+		}
+	}
+}
+
+int32_t Model::GetSelectLightings() const
+{
+	return materialData_ ? materialData_->selectLightings : 0;
+}
+
+float Model::GetEnvironmentCoefficient() const
+{
+	return materialData_ ? materialData_->environmentCoefficient : 0.0f;
 }
 
 Model::Node Model::ReadNode(aiNode* node)

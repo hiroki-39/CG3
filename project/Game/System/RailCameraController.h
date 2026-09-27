@@ -67,6 +67,21 @@ public:
     void SetCameraFollowRate(float rateX, float rateY) { cameraFollowRateX_ = rateX; cameraFollowRateY_ = rateY; }
 
     /// <summary>
+    /// カットシーン用シネマティックカメラの設定
+    /// </summary>
+    /// <param name="active">シネマティックカメラ有効フラグ</param>
+    /// <param name="localPos">レールアンカーローカルでのカメラ位置</param>
+    /// <param name="localLookAtTarget">レールアンカーローカルでの注視点（例: 自機のローカル位置）</param>
+    /// <param name="blendWeight">0.0f(通常カメラ) 〜 1.0f(シネマティックカメラ)</param>
+    void SetCinematicCamera(bool active, const Vector3& localPos, const Vector3& localLookAtTarget, float blendWeight = 1.0f) {
+        isCinematicActive_ = active;
+        cinematicLocalPos_ = localPos;
+        cinematicLookAt_ = localLookAtTarget;
+        cinematicBlend_ = blendWeight;
+    }
+    bool IsCinematicActive() const { return isCinematicActive_; }
+
+    /// <summary>
     /// ImGuiデバッグUI
     /// </summary>
     void DrawImGui();
@@ -88,4 +103,10 @@ private:
     Vector3 currentCameraLocalPos_ = { 0.0f, 2.5f, -8.0f }; // スムーズ補間用カメラローカル位置
     float cameraFollowRateX_ = 0.70f;  // 自機の移動に伴うカメラ横追従（自機を画面内に収めつつ大きくスライド）
     float cameraFollowRateY_ = 0.68f;  // 自機の移動に伴うカメラ縦追従（上限引き上げ時の見切れを防止）
+
+    // シネマティック演出用
+    bool isCinematicActive_ = false;
+    Vector3 cinematicLocalPos_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 cinematicLookAt_ = { 0.0f, 0.0f, 0.0f };
+    float cinematicBlend_ = 0.0f;
 };

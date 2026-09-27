@@ -49,6 +49,8 @@ std::string ResourceLocator::Resolve(const std::string& logicalName, ResourceLoc
 		break;
 	case AssetType::Audio:
 		candidates = {
+			"resources/audio/BGM",
+			"resources/audio/SE",
 			"resources/audio",
 			"resources/sounds",
 			"resources",

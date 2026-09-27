@@ -121,6 +121,7 @@ public:
 	/// </summary>
 	bool HasTextItem(const std::string& id, const std::string& sceneName = "") const;
 
+#ifdef USE_IMGUI
 	/// <summary>
 	/// ImGui インスペクター用エディタGUI
 	/// </summary>
@@ -133,6 +134,13 @@ public:
 	/// <param name="screenOffset">描画領域の左上スクリーン座標</param>
 	/// <param name="screenSize">描画領域の画面サイズ</param>
 	void Draw(ImDrawList* drawList, const ImVec2& screenOffset, const ImVec2& screenSize);
+
+	/// <summary>
+	/// ゲーム内通常HUD全体の表示アルファを設定（カットシーン中・演出中の一括フェード・非表示用）
+	/// </summary>
+	void SetHudAlpha(float alpha) { hudAlpha_ = alpha; }
+	float GetHudAlpha() const { return hudAlpha_; }
+#endif
 
 private:
 	UITextManager() = default;
@@ -151,6 +159,7 @@ private:
 	std::unordered_map<std::string, SceneTextContainer> scenes_;
 	std::vector<std::string> knownScenes_ = { "TITLE", "GAMEPLAY", "GAMECLEAR", "GAMEOVER" };
 
-	int selectedItemIndex_ = 0;
-	bool showGizmo_ = true;
+	int selectedItemIndex_ = -1;
+	bool showGizmo_ = false;
+	float hudAlpha_ = 1.0f;
 };

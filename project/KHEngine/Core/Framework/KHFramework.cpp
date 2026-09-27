@@ -4,9 +4,13 @@
 #include "KHEngine/Core/Utility/Log/Logger.h"
 #include "KHEngine/Core/Utility/Crash/CrashDump.h"
 #include "KHEngine/Sound/Core/SoundManager.h"
+#include "KHEngine/Graphics/3d/Particle/ParticleManager.h"
+#include "KHEngine/UI/UITextManager.h"
+#ifdef ENABLE_EDITOR
 #include "KHEngine/Debug/Editor/EditorSystem.cpp"
 #include "KHEngine/Debug/Editor/EffectStudio.cpp"
 #include "KHEngine/Debug/Editor/EnemyStudio.cpp"
+#endif
 #include "KHEngine/Core/Services/EngineServices.h"
 #include <chrono>
 
@@ -77,15 +81,21 @@ void KHFramework::FrameworkInitialize()
 	imguiManager_ = std::make_unique<ImGuiManager>();
 	imguiManager_->Initialize(dxCommon_.get(), winApp_.get());
 
-	
+	// UIテキスト管理システムの初期化（設定JSONの読み込み）
+	UITextManager::GetInstance()->Initialize();
+
+#ifdef ENABLE_EDITOR
 	EditorSystem::GetInstance()->Initialize(dxCommon_.get());
+#endif
 
 	
 	InitializeEngineSubsystems();
 
+#ifdef ENABLE_EDITOR
 	// エンジンサブシステム（SrvManager等）の初期化完了後にエフェクトスタジオおよびエネミースタジオを初期化
 	EffectStudio::GetInstance()->Initialize(dxCommon_.get(), srvManager_);
 	EnemyStudio::GetInstance()->Initialize(dxCommon_.get(), srvManager_, object3dCommon_.get());
+#endif
 }
 
 void KHFramework::FrameworkUpdate(float deltaTime)
@@ -97,15 +107,18 @@ void KHFramework::FrameworkUpdate(float deltaTime)
 		return;
 	}
 
+#ifdef ENABLE_EDITOR
 	// エフェクトスタジオ・エネミースタジオの更新
 	EffectStudio::GetInstance()->Update(deltaTime);
 	EnemyStudio::GetInstance()->Update(deltaTime);
+#endif
 
 	
 	if (input_)
 	{
 		input_->Update();
 
+#ifdef ENABLE_EDITOR
 		// F1キーでエディタモード（ImGui表示）をトグル
 		if (input_->TriggerKey(DIK_F1))
 		{
@@ -115,23 +128,30 @@ void KHFramework::FrameworkUpdate(float deltaTime)
 				services->SetEditorMode(!services->GetEditorMode());
 			}
 		}
+#endif
 	}
 
-	
+	// サウンドマネージャーの更新（再生終了したSEボイスの回収）
+	SoundManager::GetInstance()->Update();
+
+#ifdef USE_IMGUI
 	if (imguiManager_)
 	{
 		imguiManager_->Begin();
 
+#ifdef ENABLE_EDITOR
 		if (EngineServices::GetInstance()->GetEditorMode())
 		{
 			EditorSystem::GetInstance()->Draw(postProcess_->GetResultSrvIndex());
 		}
 		else
+#endif
 		{
 			// フルスクリーンプレイ時: ForegroundDrawListでUIテキストを描画
 			UITextManager::GetInstance()->Draw(ImGui::GetForegroundDrawList(), ImVec2(0.0f, 0.0f), ImVec2(1280.0f, 720.0f));
 		}
 	}
+#endif
 }
 
 void KHFramework::FrameworkDrawBegin()
@@ -144,12 +164,14 @@ void KHFramework::FrameworkDrawBegin()
 
 void KHFramework::FrameworkDrawEnd()
 {
+#ifdef ENABLE_EDITOR
 	// エディターモード時、エフェクトスタジオとエネミースタジオのオフスクリーンレンダリングを実行
 	if (EngineServices::GetInstance()->GetEditorMode())
 	{
 		EffectStudio::GetInstance()->Render();
 		EnemyStudio::GetInstance()->Render();
 	}
+#endif
 
 	if (dxCommon_)
 	{

@@ -1,5 +1,6 @@
 #include "UITextManager.h"
 #include "KHEngine/Core/Services/EngineServices.h"
+#include "KHEngine/Scene/SceneManager.h"
 #include "externals/nlohmann/json.hpp"
 #include <fstream>
 #include <filesystem>
@@ -38,6 +39,7 @@ void UITextManager::SetCurrentScene(const std::string& sceneName)
 {
 	if (sceneName.empty()) return;
 	currentScene_ = sceneName;
+	hudAlpha_ = 1.0f;
 	GetOrCreateScene(currentScene_);
 
 	if (followActiveScene_)
@@ -159,6 +161,150 @@ void UITextManager::SetupDefaultScenes()
 		missionItem.isVisible = false;
 		gameplayScene.items.push_back(missionItem);
 		gameplayScene.itemMap[missionItem.id] = 3;
+
+		UITextItem readyItem;
+		readyItem.id = "CutsceneReady";
+		readyItem.text = "READY...";
+		readyItem.position = { 640.0f, 280.0f };
+		readyItem.fontSize = 42.0f;
+		readyItem.fontType = ImGuiManager::FontType::English_FiraMono_Large;
+		readyItem.color = { 1.0f, 0.9f, 0.3f, 1.0f };
+		readyItem.hasOutline = true;
+		readyItem.outlineColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		readyItem.outlineThickness = 2.5f;
+		readyItem.hasShadow = true;
+		readyItem.shadowColor = { 0.0f, 0.0f, 0.0f, 0.7f };
+		readyItem.shadowOffset = { 2.0f, 2.0f };
+		readyItem.align = UITextAlign::Center;
+		readyItem.isVisible = false;
+		gameplayScene.items.push_back(readyItem);
+		gameplayScene.itemMap[readyItem.id] = 4;
+
+		UITextItem missionStartItem;
+		missionStartItem.id = "CutsceneMissionStart";
+		missionStartItem.text = "MISSION START!";
+		missionStartItem.position = { 640.0f, 270.0f };
+		missionStartItem.fontSize = 56.0f;
+		missionStartItem.fontType = ImGuiManager::FontType::English_FiraMono_Large;
+		missionStartItem.color = { 0.24f, 1.0f, 0.55f, 1.0f };
+		missionStartItem.hasOutline = true;
+		missionStartItem.outlineColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		missionStartItem.outlineThickness = 3.0f;
+		missionStartItem.hasShadow = true;
+		missionStartItem.shadowColor = { 0.0f, 0.0f, 0.0f, 0.7f };
+		missionStartItem.shadowOffset = { 3.0f, 3.0f };
+		missionStartItem.align = UITextAlign::Center;
+		missionStartItem.isVisible = false;
+		gameplayScene.items.push_back(missionStartItem);
+		gameplayScene.itemMap[missionStartItem.id] = 5;
+
+		UITextItem gameOverTitle;
+		gameOverTitle.id = "GameOverTitle";
+		gameOverTitle.text = "GAME OVER";
+		gameOverTitle.position = { 640.0f, 275.0f };
+		gameOverTitle.fontSize = 64.0f;
+		gameOverTitle.fontType = ImGuiManager::FontType::English_FiraMono_Large;
+		gameOverTitle.color = { 0.92f, 0.12f, 0.18f, 1.0f };
+		gameOverTitle.hasOutline = true;
+		gameOverTitle.outlineColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		gameOverTitle.outlineThickness = 3.0f;
+		gameOverTitle.hasShadow = true;
+		gameOverTitle.shadowColor = { 0.0f, 0.0f, 0.0f, 0.8f };
+		gameOverTitle.shadowOffset = { 3.0f, 3.0f };
+		gameOverTitle.align = UITextAlign::Center;
+		gameOverTitle.isVisible = false;
+		gameplayScene.items.push_back(gameOverTitle);
+		gameplayScene.itemMap[gameOverTitle.id] = 6;
+
+		UITextItem gameOverRetry;
+		gameOverRetry.id = "GameOverRetry";
+		gameOverRetry.text = "RETRY MISSION";
+		gameOverRetry.position = { 640.0f, 420.0f };
+		gameOverRetry.fontSize = 28.0f;
+		gameOverRetry.fontType = ImGuiManager::FontType::English_FiraMono;
+		gameOverRetry.color = { 1.0f, 0.9f, 0.6f, 1.0f };
+		gameOverRetry.hasOutline = true;
+		gameOverRetry.outlineColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		gameOverRetry.outlineThickness = 2.0f;
+		gameOverRetry.hasShadow = true;
+		gameOverRetry.shadowColor = { 0.0f, 0.0f, 0.0f, 0.7f };
+		gameOverRetry.shadowOffset = { 2.0f, 2.0f };
+		gameOverRetry.align = UITextAlign::Center;
+		gameOverRetry.isVisible = false;
+		gameplayScene.items.push_back(gameOverRetry);
+		gameplayScene.itemMap[gameOverRetry.id] = 7;
+
+		UITextItem gameOverTitleNav;
+		gameOverTitleNav.id = "GameOverTitleNav";
+		gameOverTitleNav.text = "RETURN TO TITLE";
+		gameOverTitleNav.position = { 640.0f, 470.0f };
+		gameOverTitleNav.fontSize = 24.0f;
+		gameOverTitleNav.fontType = ImGuiManager::FontType::English_FiraMono;
+		gameOverTitleNav.color = { 0.7f, 0.75f, 0.8f, 1.0f };
+		gameOverTitleNav.hasOutline = true;
+		gameOverTitleNav.outlineColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		gameOverTitleNav.outlineThickness = 2.0f;
+		gameOverTitleNav.hasShadow = true;
+		gameOverTitleNav.shadowColor = { 0.0f, 0.0f, 0.0f, 0.7f };
+		gameOverTitleNav.shadowOffset = { 2.0f, 2.0f };
+		gameOverTitleNav.align = UITextAlign::Center;
+		gameOverTitleNav.isVisible = false;
+		gameplayScene.items.push_back(gameOverTitleNav);
+		gameplayScene.itemMap[gameOverTitleNav.id] = 8;
+
+		UITextItem clearTitle;
+		clearTitle.id = "ClearTitle";
+		clearTitle.text = "MISSION COMPLETE";
+		clearTitle.position = { 640.0f, 260.0f };
+		clearTitle.fontSize = 54.0f;
+		clearTitle.fontType = ImGuiManager::FontType::English_FiraMono_Large;
+		clearTitle.color = { 1.0f, 0.85f, 0.2f, 1.0f };
+		clearTitle.hasOutline = true;
+		clearTitle.outlineColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		clearTitle.outlineThickness = 3.0f;
+		clearTitle.hasShadow = true;
+		clearTitle.shadowColor = { 0.0f, 0.0f, 0.0f, 0.8f };
+		clearTitle.shadowOffset = { 3.0f, 3.0f };
+		clearTitle.align = UITextAlign::Center;
+		clearTitle.isVisible = false;
+		gameplayScene.items.push_back(clearTitle);
+		gameplayScene.itemMap[clearTitle.id] = 9;
+
+		UITextItem clearScore;
+		clearScore.id = "ClearScore";
+		clearScore.text = "SCORE: 000000";
+		clearScore.position = { 640.0f, 360.0f };
+		clearScore.fontSize = 32.0f;
+		clearScore.fontType = ImGuiManager::FontType::English_FiraMono;
+		clearScore.color = { 1.0f, 1.0f, 1.0f, 1.0f };
+		clearScore.hasOutline = true;
+		clearScore.outlineColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		clearScore.outlineThickness = 2.0f;
+		clearScore.hasShadow = true;
+		clearScore.shadowColor = { 0.0f, 0.0f, 0.0f, 0.7f };
+		clearScore.shadowOffset = { 2.0f, 2.0f };
+		clearScore.align = UITextAlign::Center;
+		clearScore.isVisible = false;
+		gameplayScene.items.push_back(clearScore);
+		gameplayScene.itemMap[clearScore.id] = 10;
+
+		UITextItem clearReturn;
+		clearReturn.id = "ClearReturn";
+		clearReturn.text = "PRESS SPACE TO RETURN TO TITLE";
+		clearReturn.position = { 640.0f, 520.0f };
+		clearReturn.fontSize = 24.0f;
+		clearReturn.fontType = ImGuiManager::FontType::English_FiraMono;
+		clearReturn.color = { 0.85f, 0.9f, 0.95f, 1.0f };
+		clearReturn.hasOutline = true;
+		clearReturn.outlineColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		clearReturn.outlineThickness = 2.0f;
+		clearReturn.hasShadow = true;
+		clearReturn.shadowColor = { 0.0f, 0.0f, 0.0f, 0.7f };
+		clearReturn.shadowOffset = { 2.0f, 2.0f };
+		clearReturn.align = UITextAlign::Center;
+		clearReturn.isVisible = false;
+		gameplayScene.items.push_back(clearReturn);
+		gameplayScene.itemMap[clearReturn.id] = 11;
 	}
 
 	// 3. GAMECLEAR
@@ -459,9 +605,9 @@ void UITextManager::LoadSettings()
 	}
 }
 
+#ifdef USE_IMGUI
 void UITextManager::DrawImGuiEditor()
 {
-#ifdef USE_IMGUI
 	ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "■ UIテキスト配置エディタ (シーン別)");
 	ImGui::Separator();
 
@@ -686,13 +832,54 @@ void UITextManager::DrawImGuiEditor()
 	}
 
 	ImGui::Columns(1);
-#endif
 }
 
 void UITextManager::Draw(ImDrawList* drawList, const ImVec2& screenOffset, const ImVec2& screenSize)
 {
-#ifdef USE_IMGUI
 	if (!drawList || screenSize.x <= 0.0f || screenSize.y <= 0.0f) return;
+	if (hudAlpha_ <= 0.001f) return;
+
+	// トランジション（画面遷移）中のアルファ制御
+	float transitionAlpha = 1.0f;
+	if (auto sceneManager = EngineServices::GetInstance()->GetSceneManager())
+	{
+		if (sceneManager->IsTransitioning())
+		{
+			auto state = sceneManager->GetTransitionState();
+			float prog = sceneManager->GetTransitionProgress();
+			switch (state)
+			{
+			case SceneManager::TransitionState::FadeOut:
+				// 画面が閉じるにつれてフェードアウト (prog: 0.0 -> 1.0)
+				transitionAlpha = (std::max)(0.0f, 1.0f - prog);
+				break;
+			case SceneManager::TransitionState::FadeOutHold:
+			case SceneManager::TransitionState::Loading:
+			case SceneManager::TransitionState::FadeInWait:
+				// 暗転中・ロード中は完全に非表示
+				transitionAlpha = 0.0f;
+				break;
+			case SceneManager::TransitionState::FadeIn:
+				// 画面が開くにつれてフェードイン (prog: 0.0 -> 1.0)
+				transitionAlpha = (std::min)(1.0f, prog);
+				break;
+			default:
+				transitionAlpha = 1.0f;
+				break;
+			}
+		}
+	}
+
+	// 画面遷移の完全暗転中はUIテキストを描画せず、ビューポートを真っ黒にしてテキストを完全に「画面遷移の後ろ」に隠す
+	if (transitionAlpha <= 0.001f)
+	{
+		drawList->AddRectFilled(
+			screenOffset,
+			ImVec2(screenOffset.x + screenSize.x, screenOffset.y + screenSize.y),
+			IM_COL32(0, 0, 0, 255)
+		);
+		return;
+	}
 
 	auto imguiManager = EngineServices::GetInstance()->GetImGuiManager();
 
@@ -708,6 +895,8 @@ void UITextManager::Draw(ImDrawList* drawList, const ImVec2& screenOffset, const
 
 	auto& sceneItems = sIt->second.items;
 	bool isEditingCurrentScene = (editingScene_ == currentScene_);
+
+	float effectiveAlpha = transitionAlpha * hudAlpha_;
 
 	for (size_t i = 0; i < sceneItems.size(); ++i)
 	{
@@ -739,7 +928,7 @@ void UITextManager::Draw(ImDrawList* drawList, const ImVec2& screenOffset, const
 		// 1. 影の描画
 		if (item.hasShadow)
 		{
-			ImU32 shadowCol = ImColor(item.shadowColor.x, item.shadowColor.y, item.shadowColor.z, item.shadowColor.w);
+			ImU32 shadowCol = ImColor(item.shadowColor.x, item.shadowColor.y, item.shadowColor.z, item.shadowColor.w * effectiveAlpha);
 			ImVec2 shadowPos(textPos.x + item.shadowOffset.x * uniformScale, textPos.y + item.shadowOffset.y * uniformScale);
 			drawList->AddText(font, scaledFontSize, shadowPos, shadowCol, item.text.c_str());
 		}
@@ -747,7 +936,7 @@ void UITextManager::Draw(ImDrawList* drawList, const ImVec2& screenOffset, const
 		// 2. 縁取り (アウトライン) の描画
 		if (item.hasOutline)
 		{
-			ImU32 outlineCol = ImColor(item.outlineColor.x, item.outlineColor.y, item.outlineColor.z, item.outlineColor.w);
+			ImU32 outlineCol = ImColor(item.outlineColor.x, item.outlineColor.y, item.outlineColor.z, item.outlineColor.w * effectiveAlpha);
 			float thick = item.outlineThickness * uniformScale;
 			const float offsets[8][2] = {
 				{ -thick, -thick }, {  0.0f, -thick }, {  thick, -thick },
@@ -761,11 +950,18 @@ void UITextManager::Draw(ImDrawList* drawList, const ImVec2& screenOffset, const
 		}
 
 		// 3. 本体のテキスト描画
-		ImU32 textCol = ImColor(item.color.x, item.color.y, item.color.z, item.color.w);
+		ImU32 textCol = ImColor(item.color.x, item.color.y, item.color.z, item.color.w * effectiveAlpha);
 		drawList->AddText(font, scaledFontSize, textPos, textCol, item.text.c_str());
 
-		// 4. エディタで選択中の項目の場合、ギズモ（枠線）を表示 & マウス直接ドラッグ
-		if (isEditingCurrentScene && showGizmo_ && static_cast<int>(i) == selectedItemIndex_)
+		// 4. エディタモード中かつ選択中の項目の場合のみ、ギズモ（枠線）を表示 & マウス直接ドラッグ（通常プレイ中・リリース時は絶対に非表示）
+#ifdef ENABLE_EDITOR
+		bool isEditorActive = false;
+		if (auto services = EngineServices::GetInstance())
+		{
+			isEditorActive = services->GetEditorMode();
+		}
+
+		if (isEditorActive && transitionAlpha >= 0.99f && isEditingCurrentScene && showGizmo_ && static_cast<int>(i) == selectedItemIndex_)
 		{
 			ImVec2 boxMin(textPos.x - 4.0f, textPos.y - 2.0f);
 			ImVec2 boxMax(textPos.x + textSize.x + 4.0f, textPos.y + textSize.y + 2.0f);
@@ -799,6 +995,18 @@ void UITextManager::Draw(ImDrawList* drawList, const ImVec2& screenOffset, const
 				}
 			}
 		}
-	}
 #endif
+	}
+
+	// 画面遷移（トランジション）の黒カーテンをテキストの手前に被せることで、テキストを完全に「画面遷移の後ろ」に配置
+	if (transitionAlpha < 0.999f)
+	{
+		float blackAlpha = std::clamp(1.0f - transitionAlpha, 0.0f, 1.0f);
+		drawList->AddRectFilled(
+			screenOffset,
+			ImVec2(screenOffset.x + screenSize.x, screenOffset.y + screenSize.y),
+			IM_COL32(0, 0, 0, static_cast<int>(255.0f * blackAlpha))
+		);
+	}
 }
+#endif

@@ -55,6 +55,8 @@ void RailCameraController::Reset() {
     currentRailIndex_ = 0;
     speedMultiplier_ = 1.0f;
     currentCameraLocalPos_ = cameraOffset_;
+    isCinematicActive_ = false;
+    cinematicBlend_ = 0.0f;
     ApplyTransform({0.0f, 0.0f, 0.0f});
 }
 
@@ -133,13 +135,62 @@ void RailCameraController::ApplyTransform(const Vector3& playerLocalPos) {
         // 自機とカメラの相対ズレに応じた微小なカメラ首振り（自機を常に中心付近に捉え、見切れを完全防止）
         float relX = playerLocalPos.x - currentCameraLocalPos_.x;
         float relY = playerLocalPos.y - currentCameraLocalPos_.y;
-        float cameraLookYaw = relX * 0.015f;
-        float cameraLookPitch = -relY * 0.012f;
+        float cameraLookYaw = std::clamp(relX * 0.015f, -0.30f, 0.30f);
+        float cameraLookPitch = std::clamp(-relY * 0.012f, -0.35f, 0.35f);
         Vector3 finalCameraRot = {
             anchorRot.x + cameraLookPitch,
             anchorRot.y + cameraLookYaw,
             anchorRot.z
         };
+
+        // シネマティック演出（カットシーン等）のオーバーライド適用
+        if (isCinematicActive_ && cinematicBlend_ > 0.0001f) {
+            // シネマティックカメラのワールド位置
+            Vector3 cinWorldPos = {
+                cinematicLocalPos_.x * rotMatrix.m[0][0] + cinematicLocalPos_.y * rotMatrix.m[1][0] + cinematicLocalPos_.z * rotMatrix.m[2][0] + eye.x,
+                cinematicLocalPos_.x * rotMatrix.m[0][1] + cinematicLocalPos_.y * rotMatrix.m[1][1] + cinematicLocalPos_.z * rotMatrix.m[2][1] + eye.y,
+                cinematicLocalPos_.x * rotMatrix.m[0][2] + cinematicLocalPos_.y * rotMatrix.m[1][2] + cinematicLocalPos_.z * rotMatrix.m[2][2] + eye.z
+            };
+
+            // 注視点（自機など）のワールド位置
+            Vector3 lookTargetWorld = {
+                cinematicLookAt_.x * rotMatrix.m[0][0] + cinematicLookAt_.y * rotMatrix.m[1][0] + cinematicLookAt_.z * rotMatrix.m[2][0] + eye.x,
+                cinematicLookAt_.x * rotMatrix.m[0][1] + cinematicLookAt_.y * rotMatrix.m[1][1] + cinematicLookAt_.z * rotMatrix.m[2][1] + eye.y,
+                cinematicLookAt_.x * rotMatrix.m[0][2] + cinematicLookAt_.y * rotMatrix.m[1][2] + cinematicLookAt_.z * rotMatrix.m[2][2] + eye.z
+            };
+
+            // カメラから注視点への方向ベクトル
+            Vector3 dir = {
+                lookTargetWorld.x - cinWorldPos.x,
+                lookTargetWorld.y - cinWorldPos.y,
+                lookTargetWorld.z - cinWorldPos.z
+            };
+            float dist = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+            Vector3 cinRot = finalCameraRot;
+            if (dist > 0.001f) {
+                dir.x /= dist; dir.y /= dist; dir.z /= dist;
+                float cinYaw = std::atan2(dir.x, dir.z);
+                float cinPitch = std::asin(std::clamp(-dir.y, -1.0f, 1.0f));
+                cinRot = { cinPitch, cinYaw, anchorRot.z };
+            }
+
+            // 通常カメラとシネマティックカメラのブレンド補間
+            float w = std::clamp(cinematicBlend_, 0.0f, 1.0f);
+            cameraWorldPos = {
+                cameraWorldPos.x * (1.0f - w) + cinWorldPos.x * w,
+                cameraWorldPos.y * (1.0f - w) + cinWorldPos.y * w,
+                cameraWorldPos.z * (1.0f - w) + cinWorldPos.z * w
+            };
+
+            // 角度の補間（Yawの最短回転を考慮）
+            float diffYaw = cinRot.y - finalCameraRot.y;
+            while (diffYaw > 3.14159265f) diffYaw -= 6.2831853f;
+            while (diffYaw < -3.14159265f) diffYaw += 6.2831853f;
+
+            finalCameraRot.x = finalCameraRot.x * (1.0f - w) + cinRot.x * w;
+            finalCameraRot.y = finalCameraRot.y + diffYaw * w;
+            finalCameraRot.z = finalCameraRot.z * (1.0f - w) + cinRot.z * w;
+        }
 
         camera_->SetTranslate(cameraWorldPos);
         camera_->SetRotation(finalCameraRot);

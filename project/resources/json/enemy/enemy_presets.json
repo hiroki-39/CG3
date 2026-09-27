@@ -195,7 +195,7 @@
             "formationType": "LINE_H",
             "hp": 1,
             "isHomingBullet": false,
-            "modelName": "suzanne.obj",
+            "modelName": "enemy.obj",
             "modelPosOffset": [
                 0.0,
                 0.0,
@@ -204,9 +204,9 @@
             "moveAmplitude": 33.5,
             "moveSpeed": 0.5,
             "scale": [
-                1.399999976158142,
-                1.399999976158142,
-                1.399999976158142
+                3.0,
+                3.0,
+                3.0
             ],
             "shootInterval": 120.0
         },
@@ -237,7 +237,7 @@
             "formationType": "LINE_H",
             "hp": 1,
             "isHomingBullet": false,
-            "modelName": "suzanne.obj",
+            "modelName": "enemy.obj",
             "modelPosOffset": [
                 0.0,
                 0.0,
@@ -246,9 +246,9 @@
             "moveAmplitude": 3.0,
             "moveSpeed": 0.5,
             "scale": [
-                1.399999976158142,
-                1.399999976158142,
-                1.399999976158142
+                3.0,
+                3.0,
+                3.0
             ],
             "shootInterval": 120.0
         },
@@ -352,18 +352,18 @@
             ],
             "colliderType": "BOX",
             "color": [
-                0.6000000238418579,
-                0.6000000238418579,
-                0.699999988079071,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "displayName": "地上砲台 (TURRET)",
             "formationCount": 1,
             "formationSpacing": 10.0,
             "formationType": "NONE",
-            "hp": 2,
+            "hp": 1,
             "isHomingBullet": false,
-            "modelName": "cube.obj",
+            "modelName": "fixedTurret.obj",
             "modelPosOffset": [
                 0.0,
                 0.0,
