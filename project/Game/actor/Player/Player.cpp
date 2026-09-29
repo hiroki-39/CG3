@@ -1,5 +1,6 @@
 #include "Player.h"
 #include "Game/Actor/Bullet/PlayerMissile.h"
+#include "Game/Actor/Enemy/ArmoredTrainBoss.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Debug/Imgui/ImGuiManager.h"
 #include "externals/nlohmann/json.hpp"
@@ -206,7 +207,7 @@ OBB Player::GetWorldOBB() const {
 }
 
 // プレイヤーの毎フレームの更新処理
-void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed) {
+void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed, ArmoredTrainBoss* boss) {
     if (isCutsceneActive_) {
         prevLogicalPosition_ = logicalPosition_;
         logicalPosition_ = cutscenePos_;
@@ -218,7 +219,7 @@ void Player::Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
 
     prevLogicalPosition_ = logicalPosition_;
     Move(gameSpeed);
-    Attack(bullets, missiles, enemies, parentCamera, gameSpeed);
+    Attack(bullets, missiles, enemies, parentCamera, gameSpeed, boss);
 
     if (invincibilityTimer_ > 0.0f) {
         invincibilityTimer_ -= gameSpeed;
@@ -316,31 +317,18 @@ void Player::Move(float gameSpeed) {
     if (!input_) return;
 
     
-    if (lastQPressTime_ < 1000.0f) lastQPressTime_ += gameSpeed;
-    if (lastEPressTime_ < 1000.0f) lastEPressTime_ += gameSpeed;
-
-    
+    // 回避（バレルロール）判定：Qキーで左回避、Eキーで右回避（単押しで即座に発動）
     if (!isRolling_) {
         if (input_->TriggerKey(DIK_Q)) {
-            if (lastQPressTime_ <= doubleTapThreshold_) {
-                isRolling_ = true;
-                rollTimer_ = 0.0f;
-                rollDirection_ = -1.0f; 
-                isDodgeTriggered_ = true;
-                lastQPressTime_ = 1000.0f;
-            } else {
-                lastQPressTime_ = 0.0f;
-            }
+            isRolling_ = true;
+            rollTimer_ = 0.0f;
+            rollDirection_ = -1.0f; 
+            isDodgeTriggered_ = true;
         } else if (input_->TriggerKey(DIK_E)) {
-            if (lastEPressTime_ <= doubleTapThreshold_) {
-                isRolling_ = true;
-                rollTimer_ = 0.0f;
-                rollDirection_ = 1.0f; 
-                isDodgeTriggered_ = true;
-                lastEPressTime_ = 1000.0f;
-            } else {
-                lastEPressTime_ = 0.0f;
-            }
+            isRolling_ = true;
+            rollTimer_ = 0.0f;
+            rollDirection_ = 1.0f; 
+            isDodgeTriggered_ = true;
         }
     }
 
@@ -529,7 +517,7 @@ void Player::Move(float gameSpeed) {
 }
 
 // プレイヤーの攻撃（弾・ミサイル発射）処理
-void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed) {
+void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed, ArmoredTrainBoss* boss) {
     if (!input_) return;
 
     
@@ -557,10 +545,9 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
             const Matrix4x4& mat = object_->GetmatWorld();
             Vector3 playerPos = { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
             
-            
+            // 1. 通常敵のロックオン探索
             for (const auto& enemy : enemies) {
                 if (enemy->IsDead()) continue;
-                
                 
                 auto it = std::find_if(multiLockedEnemies_.begin(), multiLockedEnemies_.end(),
                     [&](const LockOnTarget& target) { return target.enemy == enemy.get(); });
@@ -568,12 +555,10 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
                     continue;
                 }
 
-                
                 if (multiLockedEnemies_.size() >= static_cast<size_t>(maxMissiles_)) {
                     break;
                 }
 
-                
                 Vector3 ePos = enemy->GetColliderCenter();
                 float distSq = (ePos.x - playerPos.x) * (ePos.x - playerPos.x) + 
                                (ePos.y - playerPos.y) * (ePos.y - playerPos.y) + 
@@ -581,9 +566,42 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
                 
                 if (distSq < (lockOnMaxDistance_ * lockOnMaxDistance_) && ePos.z > playerPos.z) { 
                     if (lockOnDelayTimer_ <= 0.0f) {
-                        multiLockedEnemies_.push_back({enemy.get(), 0.0f});
+                        multiLockedEnemies_.push_back({ enemy.get(), nullptr, -1, 0.0f });
                         lockOnDelayTimer_ = lockOnInterval_; 
                         break; 
+                    }
+                }
+            }
+
+            // 2. 装甲列車ボスの部位（各車両）のロックオン探索
+            if (boss && boss->IsActive() && !boss->IsDefeated()) {
+                const auto& carriages = boss->GetCarriages();
+                for (int i = 0; i < static_cast<int>(carriages.size()); ++i) {
+                    if (boss->IsCarriageDestroyed(i)) continue;
+
+                    // 既にこの車両部位をロックオン済みかチェック
+                    auto it = std::find_if(multiLockedEnemies_.begin(), multiLockedEnemies_.end(),
+                        [&](const LockOnTarget& target) { return target.boss == boss && target.carriageIndex == i; });
+                    if (it != multiLockedEnemies_.end()) {
+                        continue;
+                    }
+
+                    if (multiLockedEnemies_.size() >= static_cast<size_t>(maxMissiles_)) {
+                        break;
+                    }
+
+                    Vector3 carPos = boss->GetCarriagePosition(i);
+                    float distSq = (carPos.x - playerPos.x) * (carPos.x - playerPos.x) + 
+                                   (carPos.y - playerPos.y) * (carPos.y - playerPos.y) + 
+                                   (carPos.z - playerPos.z) * (carPos.z - playerPos.z);
+
+                    // 射程内、かつ自機の前方にある車両をロック
+                    if (distSq < (lockOnMaxDistance_ * lockOnMaxDistance_) && carPos.z > (playerPos.z - 20.0f)) {
+                        if (lockOnDelayTimer_ <= 0.0f) {
+                            multiLockedEnemies_.push_back({ nullptr, boss, i, 0.0f });
+                            lockOnDelayTimer_ = lockOnInterval_;
+                            break;
+                        }
                     }
                 }
             }
@@ -591,21 +609,35 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
 
         
         for (int i = 0; i < MAX_MISSILES; ++i) {
-            if (i < multiLockedEnemies_.size() && !multiLockedEnemies_[i].enemy->IsDead()) {
+            bool isValidTarget = false;
+            Vector3 targetPos = { 0, 0, 0 };
+            if (i < static_cast<int>(multiLockedEnemies_.size())) {
+                const auto& t = multiLockedEnemies_[i];
+                if (t.boss) {
+                    if (!t.boss->IsDefeated() && !t.boss->IsCarriageDestroyed(t.carriageIndex)) {
+                        isValidTarget = true;
+                        targetPos = t.boss->GetCarriagePosition(t.carriageIndex);
+                    }
+                } else if (t.enemy) {
+                    if (!t.enemy->IsDead()) {
+                        isValidTarget = true;
+                        targetPos = t.enemy->GetColliderCenter();
+                    }
+                }
+            }
+
+            if (isValidTarget) {
                 multiLockedEnemies_[i].lockedTime += gameSpeed;
                 float lockTime = multiLockedEnemies_[i].lockedTime;
                 bool isLockCompleted = lockTime >= lockOnCompleteTime_; 
 
-                
-                Vector3 ePos = multiLockedEnemies_[i].enemy->GetColliderCenter();
                 const Matrix4x4& mat = object_->GetmatWorld();
                 Vector3 pPos = { mat.m[3][0], mat.m[3][1], mat.m[3][2] };
-                float dz = ePos.z - pPos.z;
+                float dz = targetPos.z - pPos.z;
                 float baseScale = 2.0f + (std::max)(0.0f, dz) * 0.02f;
                 float scale = baseScale + (baseScale * 0.15f) * std::sinf(lockOnAnimTimer_ * 2.0f);
                 lockOnReticles_[i]->SetScale({scale, scale, scale});
-                lockOnReticles_[i]->SetTranslate(multiLockedEnemies_[i].enemy->GetColliderCenter());
-                
+                lockOnReticles_[i]->SetTranslate(targetPos);
                 
                 if (!isLockCompleted) {
                     float duration = (std::max)(1.0f, lockOnCompleteTime_);
@@ -623,18 +655,26 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
         if (!input_->PushKey(DIK_SPACE) && !multiLockedEnemies_.empty() && missileReloadTimer_ <= 0.0f) {
             bool hasLaunched = false;
             for (size_t i = 0; i < multiLockedEnemies_.size(); ++i) {
-                if (multiLockedEnemies_[i].enemy->IsDead()) continue;
+                const auto& t = multiLockedEnemies_[i];
+                bool isDead = false;
+                if (t.boss) {
+                    isDead = t.boss->IsDefeated() || t.boss->IsCarriageDestroyed(t.carriageIndex);
+                } else if (t.enemy) {
+                    isDead = t.enemy->IsDead();
+                } else {
+                    isDead = true;
+                }
+                if (isDead) continue;
                 
                 const Matrix4x4& mountedMat = mountedMissiles_[i]->GetmatWorld();
                 Vector3 spawnPos = { mountedMat.m[3][0], mountedMat.m[3][1], mountedMat.m[3][2] };
                 Vector3 spawnRot = object_->GetRotation(); 
                 
                 auto newMissile = std::make_unique<PlayerMissile>();
-                newMissile->Initialize(object3dCommon_, spawnPos, spawnRot, {0,0,0}, parentCamera, multiLockedEnemies_[i].enemy);
+                newMissile->Initialize(object3dCommon_, spawnPos, spawnRot, {0,0,0}, parentCamera, t.enemy, t.boss, t.carriageIndex);
                 missiles.push_back(std::move(newMissile));
                 hasLaunched = true;
 
-                
                 lockOnReticles_[i]->SetScale({0.001f, 0.001f, 0.001f});
             }
 
@@ -647,10 +687,14 @@ void Player::Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list
             attackTimer_ = attackInterval_;
         }
         
-        
         multiLockedEnemies_.erase(
             std::remove_if(multiLockedEnemies_.begin(), multiLockedEnemies_.end(),
-                [](const LockOnTarget& t) { return t.enemy->IsDead(); }),
+                [](const LockOnTarget& t) {
+                    if (t.boss) {
+                        return t.boss->IsDefeated() || t.boss->IsCarriageDestroyed(t.carriageIndex);
+                    }
+                    return t.enemy ? t.enemy->IsDead() : true;
+                }),
             multiLockedEnemies_.end()
         );
     } 

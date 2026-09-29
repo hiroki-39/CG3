@@ -122,13 +122,34 @@ def get_curve_world_points(curve_obj):
         return []
 
 
+def is_rail_player_range_enabled(curve_obj):
+    """
+    指定されたCURVEオブジェクトでプレイヤー行動範囲の表示が有効化されているかを判定する。
+    1. オブジェクトのプロパティまたはカスタムプロパティ 'show_player_range' があればそのブール値
+    2. 未設定の場合は、名前が 'rail.01', 'main_rail', 'player' を含むメインレールならTrue、それ以外（敵レール等）はFalse
+    """
+    if not curve_obj or curve_obj.type != 'CURVE':
+        return False
+    if hasattr(curve_obj, "show_player_range"):
+        return bool(curve_obj.show_player_range)
+    if "show_player_range" in curve_obj:
+        return bool(curve_obj["show_player_range"])
+    name_lower = curve_obj.name.lower()
+    if "rail.01" in name_lower or "main" in name_lower or "player" in name_lower:
+        return True
+    return False
+
+
 def find_nearest_rail_and_basis(scene, target_pos):
     """
     シーン内のCURVE（レール）オブジェクトから、target_posに最も近いレール上の点、
     および右(best_right)、上(best_up)、前(best_fwd)のローカル基底ベクトルを探索して返す。
+    プレイヤー行動範囲が有効なレール（メインレール）を優先して探索する。
     レールが見つからない場合は None を返す。
     """
-    curves = [o for o in scene.objects if o.type == 'CURVE' and o.visible_get()]
+    all_curves = [o for o in scene.objects if o.type == 'CURVE' and o.visible_get()]
+    player_curves = [o for o in all_curves if is_rail_player_range_enabled(o)]
+    curves = player_curves if player_curves else all_curves
     if not curves:
         return None
 
@@ -187,7 +208,10 @@ class DrawPlayerRange:
         shader = gpu.shader.from_builtin('UNIFORM_COLOR')
 
         # --- 1. レール(CURVE)をクリック（選択）した時：レール沿いの行動範囲トンネルを描画 ---
+        # カスタムプロパティ（show_player_range）でチェックされているレールのみ描画
         if active_obj.type == 'CURVE':
+            if not is_rail_player_range_enabled(active_obj):
+                return
             curve_pts = get_curve_world_points(active_obj)
 
             if len(curve_pts) >= 2:
@@ -652,15 +676,20 @@ class MYADDON_OT_create_player_range_guide(bpy.types.Operator):
             old_obj = bpy.data.objects[guide_name]
             bpy.data.objects.remove(old_obj, do_unlink=True)
 
-        # レール（CURVE）オブジェクトの検出
+        # レール（CURVE）オブジェクトの検出（プレイヤー行動範囲が有効なレールを優先）
         curve_obj = None
         if context.active_object and context.active_object.type == 'CURVE':
             curve_obj = context.active_object
         else:
             for obj in context.scene.objects:
-                if obj.type == 'CURVE' and obj.visible_get():
+                if obj.type == 'CURVE' and obj.visible_get() and is_rail_player_range_enabled(obj):
                     curve_obj = obj
                     break
+            if not curve_obj:
+                for obj in context.scene.objects:
+                    if obj.type == 'CURVE' and obj.visible_get():
+                        curve_obj = obj
+                        break
 
         verts = []
         edges = []
@@ -957,6 +986,50 @@ class OBJECT_PT_enemy_settings(bpy.types.Panel):
             box.label(text="モデル・当たり判定・HP・速度・陣形は")
             box.label(text="ゲーム側の「エネミーエディター」で設定されます。")
 
+# オペレータ ボス出現進行度の自動計算
+class MYADDON_OT_calc_boss_spawn_progress(bpy.types.Operator):
+    bl_idname = "myaddon.calc_boss_spawn_progress"
+    bl_label = "本線レールから進行度を自動計算"
+    bl_description = "このボスレールの始点に最も近いメインレールの進行度(0.0〜1.0)を自動算出して設定します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        obj = context.object
+        if not obj or obj.type != 'CURVE':
+            return {'CANCELLED'}
+
+        pts = get_curve_world_points(obj)
+        if not pts:
+            self.report({'WARNING'}, "レールの頂点を取得できませんでした")
+            return {'CANCELLED'}
+        start_pt = pts[0]
+
+        main_curves = [o for o in context.scene.objects if o.type == 'CURVE' and o != obj and is_rail_player_range_enabled(o)]
+        if not main_curves:
+            main_curves = [o for o in context.scene.objects if o.type == 'CURVE' and o != obj]
+        if not main_curves:
+            self.report({'WARNING'}, "メインレールが見つかりませんでした")
+            return {'CANCELLED'}
+
+        main_obj = main_curves[0]
+        main_pts = get_curve_world_points(main_obj)
+        if len(main_pts) < 2:
+            self.report({'WARNING'}, "メインレールのサンプリングに失敗しました")
+            return {'CANCELLED'}
+
+        best_dist = float('inf')
+        best_idx = 0
+        for i, p in enumerate(main_pts):
+            d = (start_pt - p).length_squared
+            if d < best_dist:
+                best_dist = d
+                best_idx = i
+
+        calc_prog = best_idx / float(len(main_pts) - 1)
+        obj["spawn_progress"] = round(calc_prog, 3)
+        self.report({'INFO'}, f"ボス出現進行度を {obj['spawn_progress']:.3f} ({obj['spawn_progress']*100:.1f}%) に設定しました")
+        return {'FINISHED'}
+
 #パネル Rail Settings (レール選択時に行動範囲情報を表示)
 class OBJECT_PT_rail_settings(bpy.types.Panel):
     """レールのプレイヤー可動範囲パネル"""
@@ -972,13 +1045,33 @@ class OBJECT_PT_rail_settings(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+        obj = context.object
+
         box = layout.box()
-        box.label(text="【レール沿いのプレイヤー行動可能範囲】", icon='SHADING_BBOX')
-        col = box.column(align=True)
-        col.label(text=f"左右 (幅): ±{PLAYER_LIMIT_X:.0f}m (全幅 {PLAYER_LIMIT_X*2:.0f}m)")
-        col.label(text=f"上下 (高): {PLAYER_LIMIT_Z_MIN:.0f}m 〜 +{PLAYER_LIMIT_Z_MAX:.0f}m (全高 {PLAYER_LIMIT_Z_MAX-PLAYER_LIMIT_Z_MIN:.0f}m)")
-        box.label(text="※3Dビュー上でレールに沿った緑のトンネル枠が表示されます", icon='INFO')
-        box.operator(MYADDON_OT_create_player_range_guide.bl_idname, text="トンネルガイドをメッシュとして生成", icon='CURVE_PATH')
+        box.label(text="【レール種別設定】", icon='CURVE_DATA')
+        box.prop(obj, "show_player_range", text="プレイヤー行動範囲を表示する (メインレール)")
+
+        is_enabled = is_rail_player_range_enabled(obj)
+        if is_enabled:
+            box_range = layout.box()
+            box_range.label(text="【レール沿いのプレイヤー行動可能範囲】", icon='SHADING_BBOX')
+            col = box_range.column(align=True)
+            col.label(text=f"左右 (幅): ±{PLAYER_LIMIT_X:.0f}m (全幅 {PLAYER_LIMIT_X*2:.0f}m)")
+            col.label(text=f"上下 (高): {PLAYER_LIMIT_Z_MIN:.0f}m 〜 +{PLAYER_LIMIT_Z_MAX:.0f}m (全高 {PLAYER_LIMIT_Z_MAX-PLAYER_LIMIT_Z_MIN:.0f}m)")
+            box_range.label(text="※3Dビュー上でレールに沿った緑のトンネル枠が表示されます", icon='INFO')
+            box_range.operator(MYADDON_OT_create_player_range_guide.bl_idname, text="トンネルガイドをメッシュとして生成", icon='CURVE_PATH')
+        else:
+            box.label(text="※チェックOFF: 行動範囲トンネルは非表示になります (敵レール用)", icon='HIDE_OFF')
+
+        # ボスレール設定セクション
+        box_boss = layout.box()
+        box_boss.label(text="【ボス戦トリガー設定 (Boss Spawn Settings)】", icon='PIN')
+        if "spawn_progress" not in obj:
+            obj["spawn_progress"] = 0.60
+        box_boss.prop(obj, '["spawn_progress"]', text="出現進行度 (0.0〜1.0)", slider=True)
+        box_boss.operator(MYADDON_OT_calc_boss_spawn_progress.bl_idname, text="本線レールから出現位置を自動計算", icon='AUTO')
+        prog_val = float(obj.get("spawn_progress", 0.60))
+        box_boss.label(text=f"※プレイヤー進行度 {prog_val*100:.1f}% 到達でボス戦が開始します", icon='INFO')
 
 #オペレータ　シーン出力
 class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
@@ -1074,6 +1167,7 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
            # カーブ(レール)情報のエクスポート
         if object.type == 'CURVE':
             json_object["curve_points_debug"] = "Script is updated!"
+            json_object["show_player_range"] = is_rail_player_range_enabled(object)
             curve_data = object.data
             matrix_world = object.matrix_world
             points_list = []
@@ -1442,6 +1536,7 @@ classes  = (
     MYADDON_OT_create_asteroid,
     MYADDON_OT_create_player_and_camera,
     MYADDON_OT_create_player_range_guide,
+    MYADDON_OT_calc_boss_spawn_progress,
     MYADDON_OT_clamp_enemy_to_range,
     MYADDON_OT_create_game_camera,
     MYADDON_OT_export_scene,
@@ -1494,6 +1589,11 @@ def register():
         default='PATROL_H'
     )
     bpy.types.Scene.show_player_move_range = bpy.props.BoolProperty(name="プレイヤー行動範囲を表示", default=True)
+    bpy.types.Object.show_player_range = bpy.props.BoolProperty(
+        name="プレイヤー行動範囲を表示",
+        description="このレール沿いにプレイヤーの行動範囲（トンネル・ガイド）を表示するかどうか。敵レールの場合はオフにしてください",
+        default=False
+    )
 
     #メニューに項目を追加
     bpy.types.TOPBAR_MT_editor_menus.append(
@@ -1523,6 +1623,8 @@ def unregister():
 
         del bpy.types.Object.is_enemy_flag
         del bpy.types.Object.enemy_type
+        if hasattr(bpy.types.Object, "show_player_range"):
+            del bpy.types.Object.show_player_range
         if hasattr(bpy.types.Scene, "show_player_move_range"):
             del bpy.types.Scene.show_player_move_range
     except:

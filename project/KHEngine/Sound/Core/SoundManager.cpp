@@ -1,6 +1,7 @@
 #include "SoundManager.h"
 #include "KHEngine/Core/Utility/String/StringUtility.h"
 #include "KHEngine/Core/Resource/ResourceLocator.h"
+#include "KHEngine/Core/Services/EngineServices.h"
 #include <mfapi.h>
 #include <mfobjects.h>
 #include <mfidl.h>
@@ -276,13 +277,38 @@ void SoundManager::PlayBGM(const std::string& filename, float volume, bool loop)
 {
 	bgmVolume_ = volume;
 
+	// 保留情報を更新（どのシーンでも呼ばれた最新のBGMを記録）
+	pendingBgm_.filename = filename;
+	pendingBgm_.volume = volume;
+	pendingBgm_.loop = loop;
+	pendingBgm_.hasPending = true;
+
+#ifdef ENABLE_EDITOR
+	// Develop構成時、ゲーム再生ボタンが押されるまでBGMは鳴らさない
+	if (!EngineServices::GetInstance()->IsGamePlaying())
+	{
+		// すでに再生中のBGMがあれば停止しておく（保留情報は保持）
+		if (bgmVoice_)
+		{
+			StopBGM(false);
+		}
+		isBgmPaused_ = false;
+		return;
+	}
+#endif
+
 	if (currentBgmName_ == filename && bgmVoice_ != nullptr)
 	{
 		bgmVoice_->SetVolume(volume);
+		if (isBgmPaused_)
+		{
+			bgmVoice_->Start();
+			isBgmPaused_ = false;
+		}
 		return;
 	}
 
-	StopBGM();
+	StopBGM(false);
 
 	if (filename.empty() || !xAudio2) return;
 
@@ -303,9 +329,10 @@ void SoundManager::PlayBGM(const std::string& filename, float volume, bool loop)
 	bgmVoice_->Start();
 
 	currentBgmName_ = filename;
+	isBgmPaused_ = false;
 }
 
-void SoundManager::StopBGM()
+void SoundManager::StopBGM(bool clearPending)
 {
 	if (bgmVoice_)
 	{
@@ -315,6 +342,40 @@ void SoundManager::StopBGM()
 		bgmVoice_ = nullptr;
 	}
 	currentBgmName_.clear();
+	isBgmPaused_ = false;
+	if (clearPending)
+	{
+		pendingBgm_.hasPending = false;
+	}
+}
+
+void SoundManager::OnGamePlayStateChanged(bool isPlaying)
+{
+#ifdef ENABLE_EDITOR
+	if (isPlaying)
+	{
+		// ゲーム再生開始時: 一時停止中だった場合は再開、そうでなく保留BGMがあれば新規再生
+		if (isBgmPaused_ && bgmVoice_)
+		{
+			bgmVoice_->Start();
+			isBgmPaused_ = false;
+		}
+		else if (pendingBgm_.hasPending && !pendingBgm_.filename.empty())
+		{
+			PlayBGM(pendingBgm_.filename, pendingBgm_.volume, pendingBgm_.loop);
+		}
+	}
+	else
+	{
+		// ゲーム一時停止・停止時: 再生中のBGMを一時停止し、SEをすべて停止
+		if (bgmVoice_ && !isBgmPaused_)
+		{
+			bgmVoice_->Stop();
+			isBgmPaused_ = true;
+		}
+		StopAllSE();
+	}
+#endif
 }
 
 void SoundManager::SetBGMVolume(float volume)
@@ -333,6 +394,14 @@ bool SoundManager::IsBGMPlaying() const
 
 void SoundManager::PlaySE(const std::string& filename, float volume)
 {
+#ifdef ENABLE_EDITOR
+	// Develop構成時、ゲーム再生ボタンが押されるまでSEは鳴らさない
+	if (!EngineServices::GetInstance()->IsGamePlaying())
+	{
+		return;
+	}
+#endif
+
 	if (filename.empty() || !xAudio2) return;
 
 	// 再生完了済みボイスの回収

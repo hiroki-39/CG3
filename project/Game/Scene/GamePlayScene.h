@@ -57,6 +57,7 @@ private:
     
     
     std::vector<std::unique_ptr<Rail>> mainRails_;
+    std::unique_ptr<Rail> bossRail_; // ボス戦専用レール (BossRail)
     std::unique_ptr<RailCameraController> railCameraController_;
     float baseGameSpeed_ = 1.0f; 
     float gameSpeed_ = 1.0f;     
@@ -137,6 +138,37 @@ private:
     // 装甲列車ボス
     std::unique_ptr<ArmoredTrainBoss> armoredTrainBoss_;
     bool isBossSpawned_ = false;
+
+    // ボス戦進行ステップ
+    enum class BossBattleStep {
+        NOT_ACTIVE,        // 通常道中
+        WARNING_ALERT,     // WARNING警告演出中
+        BATTLE,            // ボス戦闘中
+        DEFEATED_SEQUENCE, // 撃破演出中（連続大爆発・スロー）
+        FINISHED           // 撃破完了
+    };
+    BossBattleStep bossBattleStep_ = BossBattleStep::NOT_ACTIVE;
+    float bossSpawnProgressThreshold_ = 0.60f; // 自動出現するレール進行度閾値（60%地点）
+    float bossWarningTimer_ = 0.0f;
+    const float kBossWarningDuration = 2.8f;
+    float bossDefeatTimer_ = 0.0f;
+    const float kBossDefeatDuration = 3.5f;
+    float bossDisplayedHpRate_ = 1.0f; // 遅延追従HPバー用
+    float bossWarningSirenTimer_ = 0.0f;
+
+    // ボス戦専用UIスプライト
+    std::unique_ptr<Sprite> bossHpBarBgSprite_;
+    std::unique_ptr<Sprite> bossHpBarDelaySprite_;
+    std::unique_ptr<Sprite> bossHpBarSprite_;
+    std::unique_ptr<Sprite> bossWarningBandTopSprite_;
+    std::unique_ptr<Sprite> bossWarningBandBottomSprite_;
+    std::unique_ptr<Sprite> bossWarningFlashSprite_;
+
+    void StartBossWarningSequence();
+    void UpdateBossBattle(float dt);
+    void DrawBossUI();
+    void LoadBossSettings();
+    void SaveBossSettings();
 
     std::list<std::unique_ptr<EnemyBullet>> enemyBullets_;
     

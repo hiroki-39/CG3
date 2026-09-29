@@ -94,7 +94,13 @@ public:
 	/// <summary>
 	/// BGM停止
 	/// </summary>
-	void StopBGM();
+	/// <param name="clearPending">保留中のBGMリクエストも消去するかどうか</param>
+	void StopBGM(bool clearPending = true);
+
+	/// <summary>
+	/// ゲーム再生状態変更通知（Develop構成時用）
+	/// </summary>
+	void OnGamePlayStateChanged(bool isPlaying);
 
 	/// <summary>
 	/// BGM音量設定（0.0f〜1.0f）
@@ -151,6 +157,17 @@ private:
 	IXAudio2SourceVoice* bgmVoice_ = nullptr;
 	std::string currentBgmName_;
 	float bgmVolume_ = 0.25f;
+
+	// 保留中BGM情報と一時停止状態
+	struct PendingBGM
+	{
+		std::string filename;
+		float volume = 0.25f;
+		bool loop = true;
+		bool hasPending = false;
+	};
+	PendingBGM pendingBgm_;
+	bool isBgmPaused_ = false;
 
 	// 再生中SEボイスのリスト
 	std::vector<IXAudio2SourceVoice*> activeSEVoices_;

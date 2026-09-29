@@ -139,7 +139,10 @@ public://メンバ関数
 	// メッシュコリジョン判定
 	bool CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* outResult = nullptr) const;
 	bool CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult = nullptr) const;
+	bool RaycastDown(float x, float z, float startY, float* outGroundY, Vector3* outNormal = nullptr) const;
 	bool HasMeshCollider() const { return hasMeshCollider_; }
+	void SetCollisionEnabled(bool enable) { isCollisionEnabled_ = enable; }
+	bool IsCollisionEnabled() const { return isCollisionEnabled_; }
 
 	// バウンディング球の取得（カリング用）
 	bool GetBoundingSphere(Vector3& outCenter, float& outRadius) const;
@@ -224,5 +227,6 @@ private://メンバ変数
 	mutable AABB broadAABB_;
 	mutable bool hasMeshCollider_ = false;
 	mutable bool isTrianglesInitialized_ = false;
+	bool isCollisionEnabled_ = true;
 	void EnsureTriangles() const;
 };

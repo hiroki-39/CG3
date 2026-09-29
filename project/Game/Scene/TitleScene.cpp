@@ -201,7 +201,13 @@ void TitleScene::Update()
     // 決定ボタン押下時の判定（自機を傾けて急降下しゲーム開始）
     // -------------------------------------------------------------
     bool isDecisionPressed = false;
-    if (input)
+#ifdef ENABLE_EDITOR
+    bool isPlaying = services->IsGamePlaying();
+#else
+    bool isPlaying = true;
+#endif
+
+    if (input && isPlaying)
     {
         if (input->TriggerKey(DIK_SPACE) || input->TriggerKey(DIK_RETURN) ||
             input->TriggerPadButton(XINPUT_GAMEPAD_A) || input->TriggerPadButton(XINPUT_GAMEPAD_START))
@@ -231,8 +237,11 @@ void TitleScene::Update()
     // -------------------------------------------------------------
     // 自機のアニメーション（降下演出 / 前進登場演出 / アイドルホバリング）
     // -------------------------------------------------------------
-    const float dt = 1.0f / 60.0f;
-    idleTimer_ += dt;
+    const float dt = isPlaying ? (1.0f / 60.0f) : 0.0f;
+    if (isPlaying)
+    {
+        idleTimer_ += dt;
+    }
 
     Vector3 curPos = targetPos_;
     Vector3 curRot = playerRot_; // 基本回転はすべて 0
@@ -366,24 +375,30 @@ void TitleScene::Update()
             // 巡航中はクールな高エネルギーシアンブルー
             thrusterEffect_.SetBaseColor({ 0.5f, 0.85f, 1.0f, 1.0f });
         }
-        thrusterEffect_.Play();
+        if (isPlaying)
+        {
+            thrusterEffect_.Play();
+        }
         thrusterEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
 
         // 2. 周辺気流粒子（スピードパーティクル）
-        int windSpawnCount = isDiving_ ? 8 : (isIntro_ ? 6 : 2);
-        std::uniform_real_distribution<float> distOffsetX(-7.0f, 7.0f);
-        std::uniform_real_distribution<float> distOffsetY(-2.5f, 3.5f);
-        std::uniform_real_distribution<float> distOffsetZ(10.0f, 35.0f);
-
-        for (int i = 0; i < windSpawnCount; ++i)
+        if (isPlaying)
         {
-            Vector3 windSpawnPos = {
-                curPos.x + distOffsetX(randomEngine_),
-                curPos.y + distOffsetY(randomEngine_),
-                curPos.z + distOffsetZ(randomEngine_)
-            };
-            windEffect_.SetPosition(windSpawnPos);
-            windEffect_.Play();
+            int windSpawnCount = isDiving_ ? 8 : (isIntro_ ? 6 : 2);
+            std::uniform_real_distribution<float> distOffsetX(-7.0f, 7.0f);
+            std::uniform_real_distribution<float> distOffsetY(-2.5f, 3.5f);
+            std::uniform_real_distribution<float> distOffsetZ(10.0f, 35.0f);
+
+            for (int i = 0; i < windSpawnCount; ++i)
+            {
+                Vector3 windSpawnPos = {
+                    curPos.x + distOffsetX(randomEngine_),
+                    curPos.y + distOffsetY(randomEngine_),
+                    curPos.z + distOffsetZ(randomEngine_)
+                };
+                windEffect_.SetPosition(windSpawnPos);
+                windEffect_.Play();
+            }
         }
         windEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
     }
@@ -430,10 +445,30 @@ void TitleScene::Update()
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::TextDisabled("F1: UI表示切替");
+        if (services->IsGamePlaying())
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.85f, 0.55f, 0.15f, 1.0f));
+            if (ImGui::Button("一時停止 (Pause)", ImVec2(-1, 30)))
+            {
+                services->SetGamePlaying(false);
+            }
+            ImGui::PopStyleColor();
+        }
+        else
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.68f, 0.30f, 1.0f));
+            if (ImGui::Button("ゲーム再生 (Play)", ImVec2(-1, 30)))
+            {
+                services->SetGamePlaying(true);
+            }
+            ImGui::PopStyleColor();
+        }
+
         if (ImGui::Button("ゲームプレイ開始 (SPACE)", ImVec2(-1, 32)))
         {
             if (!isDiving_)
             {
+                services->SetGamePlaying(true);
                 isDiving_ = true;
                 diveTimer_ = 0.0f;
                 diveStartPos_ = playerPos_;
@@ -485,6 +520,40 @@ void TitleScene::Update()
             }
 
             ImGui::Spacing();
+            if (ImGui::CollapsingHeader("ゲームプレイ制御 (Playback Control)", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                if (services->IsGamePlaying())
+                {
+                    if (ImGui::Button("一時停止 (Pause)", ImVec2(130, 36)))
+                    {
+                        services->SetGamePlaying(false);
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("全画面 (F1で復帰)", ImVec2(140, 36)))
+                    {
+                        services->SetEditorMode(false);
+                        services->SetGamePlaying(true);
+                    }
+                    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "状態: プレイ中 (PLAYING)");
+                }
+                else
+                {
+                    if (ImGui::Button("開始 (Play)", ImVec2(130, 36)))
+                    {
+                        services->SetGamePlaying(true);
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("全画面プレイ", ImVec2(140, 36)))
+                    {
+                        services->SetGamePlaying(true);
+                        services->SetEditorMode(false);
+                    }
+                    ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f), "状態: 停止中 (STOPPED - BGM/SE待機)");
+                    ImGui::TextDisabled("※再生ボタンを押すまでBGMとSEは鳴りません");
+                }
+            }
+
+            ImGui::Spacing();
             if (ImGui::CollapsingHeader("タイトル画面制御 (Title Control)", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 ImGui::Text("現在: タイトル画面 (TITLE SCENE)");
@@ -495,6 +564,7 @@ void TitleScene::Update()
                 {
                     if (!isDiving_)
                     {
+                        services->SetGamePlaying(true);
                         isDiving_ = true;
                         diveTimer_ = 0.0f;
                         diveStartPos_ = playerPos_;

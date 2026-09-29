@@ -125,7 +125,13 @@ void KHFramework::FrameworkUpdate(float deltaTime)
 			auto services = EngineServices::GetInstance();
 			if (services)
 			{
-				services->SetEditorMode(!services->GetEditorMode());
+				bool newMode = !services->GetEditorMode();
+				services->SetEditorMode(newMode);
+				// 全画面モードに入ったときはゲームを再生状態にする
+				if (!newMode)
+				{
+					services->SetGamePlaying(true);
+				}
 			}
 		}
 #endif

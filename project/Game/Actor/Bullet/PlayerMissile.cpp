@@ -1,15 +1,18 @@
 #include "PlayerMissile.h"
 #include "Game/Actor/Enemy/Enemy.h"
+#include "Game/Actor/Enemy/ArmoredTrainBoss.h"
 #include "KHEngine/Graphics/3d/Model/ModelManager.h"
 #include <cmath>
 
-void PlayerMissile::Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& rotation, const Vector3& velocity, Object3d* parent, Enemy* targetEnemy) {
+void PlayerMissile::Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& rotation, const Vector3& velocity, Object3d* parent, Enemy* targetEnemy, ArmoredTrainBoss* targetBoss, int targetCarriageIndex) {
     spawnPosition_ = position;
     position_ = position;
     previousPosition_ = position;
     velocity_ = velocity;
     rotation_ = rotation;
     targetEnemy_ = targetEnemy;
+    targetBoss_ = targetBoss;
+    targetCarriageIndex_ = targetCarriageIndex;
     
     object_ = std::make_unique<Object3d>();
     object_->Initialize(object3dCommon);
@@ -72,8 +75,18 @@ void PlayerMissile::Update(float gameSpeed) {
     else if (currentPhase_ == Phase::FLIGHT) {
         phaseTimer_ += gameSpeed;
         // ホーミング（追尾）フェーズ
-        if (targetEnemy_ && !targetEnemy_->IsDead()) {
-            Vector3 targetPos = targetEnemy_->GetColliderCenter();
+        Vector3 targetPos = { 0, 0, 0 };
+        bool hasTarget = false;
+
+        if (targetBoss_ && !targetBoss_->IsDefeated() && !targetBoss_->IsCarriageDestroyed(targetCarriageIndex_)) {
+            targetPos = targetBoss_->GetCarriagePosition(targetCarriageIndex_);
+            hasTarget = true;
+        } else if (targetEnemy_ && !targetEnemy_->IsDead()) {
+            targetPos = targetEnemy_->GetColliderCenter();
+            hasTarget = true;
+        }
+
+        if (hasTarget) {
             Vector3 toTarget = {
                 targetPos.x - position_.x,
                 targetPos.y - position_.y,
