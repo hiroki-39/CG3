@@ -144,7 +144,7 @@ public:
     }
 
     void OnCollision();
-    bool OnTerrainCollision(const Vector3& worldNormal, float penetrationDepth, Object3d* parentCamera = nullptr);
+    bool OnTerrainCollision(const Vector3& worldNormal, float penetrationDepth, Object3d* parentCamera = nullptr, const Vector3* hitPoint = nullptr);
     OBB GetWorldOBB() const;
     float GetTerrainCollisionRadius() const { return terrainCollisionRadius_; }
     void SetTerrainCollisionRadius(float radius) { terrainCollisionRadius_ = radius; }
@@ -236,6 +236,8 @@ private:
     float terrainKnockbackPower_ = 0.35f; // 壁・地面に当たった時の反発速度
     float terrainPushMargin_ = 0.05f;     // めり込み押し戻しマージン
     float terrainCollisionRadius_ = 0.8f; // 地形・障害物との衝突判定球の半径
+    float terrainBlockTimer_ = 0.0f;       // 衝突直後の障害物方向への入力遮断タイマー
+    Vector2 terrainBlockDir_ = { 0.0f, 0.0f }; // 遮断する方向ベクトル
 
     
     std::string modelName_ = "cube.obj";

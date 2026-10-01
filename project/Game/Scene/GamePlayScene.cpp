@@ -1873,7 +1873,7 @@ void GamePlayScene::Update()
 				CollisionResult colRes;
 				if ((*it)->CheckCollisionWithOBB(playerOBB, &colRes))
 				{
-					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get());
+					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get(), &colRes.hitPoint);
 					// プレイヤー地形・障害物衝突パーティクル（作り直すため一旦無効化）
 					// hitEffect_.SetPosition(colRes.hitPoint);
 					// hitEffect_.Play();
@@ -1908,7 +1908,7 @@ void GamePlayScene::Update()
 				CollisionResult colRes;
 				if (modelObj->CheckCollisionWithOBB(playerOBB, &colRes))
 				{
-					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get());
+					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get(), &colRes.hitPoint);
 					// プレイヤー地形モデル衝突パーティクル（作り直すため一旦無効化）
 					// hitEffect_.SetPosition(colRes.hitPoint);
 					// hitEffect_.Play();

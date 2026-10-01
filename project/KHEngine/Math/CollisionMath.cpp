@@ -363,7 +363,7 @@ namespace CollisionMath {
             float penetration = r - std::abs(d);
             outResult->penetrationDepth = (std::max)(penetration, 0.01f);
 
-            // ワールド法線: 三角形の面法線を基準とし、OBB中心から外側へ向かう方向
+            // ワールド法線: モデルの表面法線（外側向き）を常に尊重して押し戻し方向とする
             Vector3 worldNormal = tri.normal;
             float wnLen = std::sqrt(worldNormal.x * worldNormal.x + worldNormal.y * worldNormal.y + worldNormal.z * worldNormal.z);
             if (wnLen > 1e-4f) {
@@ -378,13 +378,6 @@ namespace CollisionMath {
                 };
             }
 
-            // OBB中心から接触点へのベクトルとの内積で向きを確認（中心から離れる向きに揃える）
-            Vector3 toCenter = { obb.center.x - outResult->hitPoint.x, obb.center.y - outResult->hitPoint.y, obb.center.z - outResult->hitPoint.z };
-            if (toCenter.x * worldNormal.x + toCenter.y * worldNormal.y + toCenter.z * worldNormal.z < 0.0f) {
-                worldNormal.x = -worldNormal.x;
-                worldNormal.y = -worldNormal.y;
-                worldNormal.z = -worldNormal.z;
-            }
             outResult->normal = worldNormal;
         }
 
