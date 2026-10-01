@@ -163,6 +163,10 @@ void LevelLoader::ParseObject(const void* jsonNodePtr, LevelObjectData& objectDa
         }
     }
 
+    if (objJson.contains("show_player_range")) {
+        objectData.showPlayerRange = objJson["show_player_range"].get<bool>();
+    }
+
     // 子オブジェクト（再帰）
     if (objJson.contains("children") && objJson["children"].is_array()) {
         for (const auto& childJson : objJson["children"]) {

@@ -125,6 +125,15 @@ void SceneManager::Update()
 		{
 			currentSceneName_ = nextSceneName_;
 			scene_->SetSceneManager(this);
+
+#ifdef ENABLE_EDITOR
+			// エディタモード時は新シーン移行時に停止状態にし、再生ボタンが押されるまでBGM/SEを待機
+			if (EngineServices::GetInstance()->GetEditorMode())
+			{
+				EngineServices::GetInstance()->SetGamePlaying(false);
+			}
+#endif
+
 			scene_->Initialize();
 			UITextManager::GetInstance()->SetCurrentScene(currentSceneName_);
 		}

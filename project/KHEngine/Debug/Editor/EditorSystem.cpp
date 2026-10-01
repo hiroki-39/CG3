@@ -6,6 +6,7 @@
 #include "KHEngine/Graphics/Resource/Descriptor/SrvManager.h"
 #include "KHEngine/Graphics/3d/Particle/ParticleManager.h"
 #include "KHEngine/UI/UITextManager.h"
+#include "KHEngine/Core/Services/EngineServices.h"
 
 EditorSystem* EditorSystem::GetInstance() {
     static EditorSystem instance;
@@ -125,6 +126,45 @@ void EditorSystem::DrawMenuBar() {
             ImGui::MenuItem("エネミーエディター", nullptr, &EnemyStudio::GetInstance()->GetShowEditor());
             ImGui::EndMenu();
         }
+
+        // --- 全シーン共通 ゲーム再生制御 (Play / Pause) ---
+        auto services = EngineServices::GetInstance();
+        bool isPlaying = services->IsGamePlaying();
+
+        // メニューバー中央付近に配置
+        float menuBarWidth = ImGui::GetWindowWidth();
+        float buttonAreaWidth = 260.0f;
+        float spacing = (menuBarWidth - buttonAreaWidth) * 0.5f - 80.0f;
+        if (spacing > 10.0f) {
+            ImGui::SameLine(spacing);
+        } else {
+            ImGui::SameLine();
+        }
+
+        if (isPlaying) {
+            // 再生中: 一時停止ボタンを表示
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.85f, 0.55f, 0.15f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.95f, 0.65f, 0.25f, 1.0f));
+            if (ImGui::Button("一時停止 (Pause)", ImVec2(140, 0))) {
+                services->SetGamePlaying(false);
+            }
+            ImGui::PopStyleColor(2);
+
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "● プレイ中 (PLAYING)");
+        } else {
+            // 停止中: 再生ボタンを表示
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.68f, 0.30f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.82f, 0.38f, 1.0f));
+            if (ImGui::Button("ゲーム再生 (Play)", ImVec2(140, 0))) {
+                services->SetGamePlaying(true);
+            }
+            ImGui::PopStyleColor(2);
+
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f), "■ 停止中 (BGM/SE待機)");
+        }
+
         ImGui::EndMenuBar();
     }
 #endif

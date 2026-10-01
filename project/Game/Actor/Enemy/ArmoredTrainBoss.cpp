@@ -20,21 +20,25 @@ void ArmoredTrainBoss::Initialize(Object3dCommon* object3dCommon, const Vector3&
 
     carriages_.clear();
 
-    // 0: 先頭重装甲機関車 (Locomotive)
+    // 0: 先頭重装甲機関車 (Locomotive) - 巨大要塞機関車
     {
         TrainCarriage car;
         car.name = "Locomotive";
         car.displayName = "先頭装甲機関車 (Main Core)";
         car.modelName = "cube.obj";
-        car.scale = { 4.5f, 3.6f, 13.0f };
+        car.baseScale = { 10.0f, 8.5f, 26.0f };
+        car.scale = car.baseScale;
         car.color = { 0.35f, 0.38f, 0.42f, 1.0f };
+        car.baseLengthOffset = 0.0f;
         car.lengthOffset = 0.0f;
         car.hp = 80;
         car.maxHp = 80;
         car.attackInterval = 100.0f;
         car.collider.type = "BOX";
-        car.collider.center = { 0.0f, 1.8f, 0.0f };
-        car.collider.size = { 4.8f, 3.8f, 13.5f };
+        car.baseColliderCenter = { 0.0f, 0.0f, 0.0f };
+        car.collider.center = car.baseColliderCenter;
+        car.baseColliderSize = { 10.5f, 9.0f, 27.0f };
+        car.collider.size = car.baseColliderSize;
         carriages_.push_back(std::move(car));
     }
 
@@ -44,15 +48,19 @@ void ArmoredTrainBoss::Initialize(Object3dCommon* object3dCommon, const Vector3&
         car.name = "TurretCar";
         car.displayName = "旋回重砲塔車";
         car.modelName = "cube.obj";
-        car.scale = { 4.0f, 2.8f, 10.5f };
+        car.baseScale = { 9.0f, 7.0f, 22.0f };
+        car.scale = car.baseScale;
         car.color = { 0.42f, 0.45f, 0.48f, 1.0f };
-        car.lengthOffset = -13.5f;
+        car.baseLengthOffset = -27.0f;
+        car.lengthOffset = car.baseLengthOffset;
         car.hp = 40;
         car.maxHp = 40;
         car.attackInterval = 75.0f;
         car.collider.type = "BOX";
-        car.collider.center = { 0.0f, 1.4f, 0.0f };
-        car.collider.size = { 4.2f, 3.0f, 11.0f };
+        car.baseColliderCenter = { 0.0f, 0.0f, 0.0f };
+        car.collider.center = car.baseColliderCenter;
+        car.baseColliderSize = { 9.5f, 7.5f, 23.0f };
+        car.collider.size = car.baseColliderSize;
         carriages_.push_back(std::move(car));
     }
 
@@ -62,15 +70,19 @@ void ArmoredTrainBoss::Initialize(Object3dCommon* object3dCommon, const Vector3&
         car.name = "MissileCar";
         car.displayName = "垂直ミサイルコンテナ車";
         car.modelName = "cube.obj";
-        car.scale = { 4.0f, 3.2f, 10.5f };
+        car.baseScale = { 9.0f, 7.8f, 22.0f };
+        car.scale = car.baseScale;
         car.color = { 0.48f, 0.38f, 0.38f, 1.0f };
-        car.lengthOffset = -25.5f;
+        car.baseLengthOffset = -52.0f;
+        car.lengthOffset = car.baseLengthOffset;
         car.hp = 40;
         car.maxHp = 40;
         car.attackInterval = 130.0f;
         car.collider.type = "BOX";
-        car.collider.center = { 0.0f, 1.6f, 0.0f };
-        car.collider.size = { 4.2f, 3.4f, 11.0f };
+        car.baseColliderCenter = { 0.0f, 0.0f, 0.0f };
+        car.collider.center = car.baseColliderCenter;
+        car.baseColliderSize = { 9.5f, 8.2f, 23.0f };
+        car.collider.size = car.baseColliderSize;
         carriages_.push_back(std::move(car));
     }
 
@@ -80,15 +92,19 @@ void ArmoredTrainBoss::Initialize(Object3dCommon* object3dCommon, const Vector3&
         car.name = "GeneratorCar";
         car.displayName = "動力ジェネレーター車 (サブコア)";
         car.modelName = "cube.obj";
-        car.scale = { 3.8f, 2.6f, 9.5f };
+        car.baseScale = { 8.5f, 6.5f, 20.0f };
+        car.scale = car.baseScale;
         car.color = { 0.32f, 0.45f, 0.55f, 1.0f };
-        car.lengthOffset = -37.0f;
+        car.baseLengthOffset = -76.0f;
+        car.lengthOffset = car.baseLengthOffset;
         car.hp = 30;
         car.maxHp = 30;
         car.attackInterval = 180.0f;
         car.collider.type = "BOX";
-        car.collider.center = { 0.0f, 1.3f, 0.0f };
-        car.collider.size = { 4.0f, 2.8f, 10.0f };
+        car.baseColliderCenter = { 0.0f, 0.0f, 0.0f };
+        car.collider.center = car.baseColliderCenter;
+        car.baseColliderSize = { 9.0f, 7.0f, 21.0f };
+        car.collider.size = car.baseColliderSize;
         carriages_.push_back(std::move(car));
     }
 
@@ -108,40 +124,172 @@ void ArmoredTrainBoss::Initialize(Object3dCommon* object3dCommon, const Vector3&
         car.colliderObject->GetModel()->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
     }
 
+    SetScaleMultiplier(scaleMultiplier_);
     UpdateCarriageTransforms();
 }
 
-void ArmoredTrainBoss::Update(const Vector3& cameraPos, Player* player, std::list<std::unique_ptr<EnemyBullet>>& enemyBullets, float gameSpeed) {
+void ArmoredTrainBoss::SetScaleMultiplier(float scale) {
+    scaleMultiplier_ = (std::max)(0.2f, scale);
+    for (auto& car : carriages_) {
+        car.scale = {
+            car.baseScale.x * scaleMultiplier_,
+            car.baseScale.y * scaleMultiplier_,
+            car.baseScale.z * scaleMultiplier_
+        };
+        car.lengthOffset = car.baseLengthOffset * scaleMultiplier_;
+        car.collider.center = {
+            car.baseColliderCenter.x * scaleMultiplier_,
+            car.baseColliderCenter.y * scaleMultiplier_,
+            car.baseColliderCenter.z * scaleMultiplier_
+        };
+        car.collider.size = {
+            car.baseColliderSize.x * scaleMultiplier_,
+            car.baseColliderSize.y * scaleMultiplier_,
+            car.baseColliderSize.z * scaleMultiplier_
+        };
+        if (car.object) {
+            car.object->SetScale(car.scale);
+        }
+        if (car.colliderObject) {
+            car.colliderObject->SetScale(car.collider.size);
+        }
+    }
+    UpdateCarriageTransforms();
+}
+
+void ArmoredTrainBoss::ResetChaseState() {
+    isCloseToPlayer_ = false;
+    isOvertaking_ = false;
+    currentSpeed_ = 50.0f;
+    dynamicLeadDistance_ = desiredLeadDistance_;
+    targetDynamicLeadDistance_ = desiredLeadDistance_;
+    isShortDistanceOpportunity_ = false;
+    leadDistanceChangeTimer_ = 3.5f;
+}
+
+void ArmoredTrainBoss::Update(const Vector3& cameraPos, const Vector3& playerForward, float playerSpeed, Player* player, std::list<std::unique_ptr<EnemyBullet>>& enemyBullets, float gameSpeed) {
     if (!isActive_) return;
 
     // 撃破演出中
     if (isDefeated_) {
         defeatTimer_ += gameSpeed;
-        speed_ = (std::max)(0.0f, speed_ - 0.005f * gameSpeed);
-        position_.z += speed_ * gameSpeed;
+        currentSpeed_ = (std::max)(0.0f, currentSpeed_ - 0.8f * gameSpeed);
+        if (rail_) {
+            float totalLen = (std::max)(1.0f, rail_->GetTotalLength());
+            float deltaProg = (currentSpeed_ * (gameSpeed / 60.0f)) / totalLen;
+            railProgress_ = (std::min)(1.0f, railProgress_ + deltaProg);
+            position_ = rail_->GetPosition(railProgress_);
+        } else {
+            position_.z -= currentSpeed_ * (gameSpeed / 60.0f);
+        }
         UpdateCarriageTransforms();
         return;
     }
 
-    // レールに沿った移動、または直進
+    // レール走行・プレイヤー連動チェイス制御
     if (rail_) {
-        railProgress_ += 0.0003f * speed_ * gameSpeed;
-        if (railProgress_ > 1.0f) railProgress_ = 1.0f;
-        position_ = rail_->GetPosition(railProgress_);
-        // レールの接線ベクトルから向きを計算
-        Vector3 nextP = rail_->GetPosition((std::min)(1.0f, railProgress_ + 0.01f));
-        Vector3 forward = { nextP.x - position_.x, nextP.y - position_.y, nextP.z - position_.z };
-        float fLen = std::sqrt(forward.x * forward.x + forward.z * forward.z);
-        if (fLen > 0.0001f) {
-            rotation_.y = std::atan2(forward.x, forward.z);
-            rotation_.x = std::atan2(-forward.y, fLen);
+        if (isFollowPlayer_) {
+            // プレイヤー位置と向き
+            Vector3 playerPos = player ? player->GetWorldPosition() : cameraPos;
+            Vector3 toBoss = { position_.x - playerPos.x, position_.y - playerPos.y, position_.z - playerPos.z };
+            float straightDist = std::sqrt(toBoss.x * toBoss.x + toBoss.y * toBoss.y + toBoss.z * toBoss.z);
+
+            // 自機前進方向におけるボスの前後相対距離 (内積)
+            // 正: ボスが自機の前方にいる / 負: 自機がボスの前にいる(追い抜いた)
+            relativeForwardDist_ = toBoss.x * playerForward.x + toBoss.y * playerForward.y + toBoss.z * playerForward.z;
+
+            // ランダム並走距離の短縮サイクル
+            if (isCloseToPlayer_ && !isOvertaking_ && isRandomLeadEnabled_) {
+                float dtSec = gameSpeed / 60.0f;
+                leadDistanceChangeTimer_ -= dtSec;
+                if (leadDistanceChangeTimer_ <= 0.0f) {
+                    if (!isShortDistanceOpportunity_) {
+                        // 基準距離 -> 接近チャンス（並走距離をランダムに短縮！）
+                        // 接近の最低ラインを70mに変更（70.0m 〜 88.0m）
+                        isShortDistanceOpportunity_ = true;
+                        float randFactor = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+                        targetDynamicLeadDistance_ = 70.0f + randFactor * 18.0f; // 最低70m、最大約88m
+                        // 短縮接近チャンス持続時間: 4.0秒 〜 6.0秒
+                        leadDistanceChangeTimer_ = 4.0f + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f;
+                    } else {
+                        // 接近チャンス終了 -> 基準距離（標準120m）へ復帰
+                        isShortDistanceOpportunity_ = false;
+                        float randOffset = ((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) - 0.5f) * 12.0f;
+                        targetDynamicLeadDistance_ = (std::max)(100.0f, desiredLeadDistance_ + randOffset);
+                        // 通常巡航持続時間: 4.5秒 〜 7.5秒
+                        leadDistanceChangeTimer_ = 4.5f + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 3.0f;
+                    }
+                }
+            } else if (!isRandomLeadEnabled_) {
+                targetDynamicLeadDistance_ = desiredLeadDistance_;
+            }
+
+            // 目標距離を滑らかに補間（前後の位置取りが不自然に急変しないようにする）
+            float distLerpRate = 0.035f * gameSpeed;
+            dynamicLeadDistance_ += (targetDynamicLeadDistance_ - dynamicLeadDistance_) * distLerpRate;
+
+            // --- 3段階のチェイス挙動判定 ---
+            if (!isCloseToPlayer_) {
+                // 【フェーズ1: 出現〜接近】
+                // 出現位置が遠いため、プレイヤーに追いつくまで高速で疾走
+                targetSpeed_ = playerSpeed + rushSpeedBonus_ + 25.0f;
+
+                // プレイヤーの近場（自機前方 desiredLeadDistance_ 付近、かつ直線距離が近づいた）に到達したら並走へ移行
+                if (relativeForwardDist_ >= (desiredLeadDistance_ - 20.0f) && straightDist < 200.0f) {
+                    isCloseToPlayer_ = true;
+                    leadDistanceChangeTimer_ = 3.5f; // 最初は基準距離で少し並走してから短縮チャンスへ
+                }
+            } else {
+                // 【フェーズ3: 追い抜き判定】
+                // プレイヤーがブースト等でボスの前に躍り出た場合 (先頭から見て20m以内または追い抜き)
+                if (relativeForwardDist_ < 20.0f) {
+                    isOvertaking_ = true;
+                } else if (relativeForwardDist_ >= (dynamicLeadDistance_ + 5.0f)) {
+                    isOvertaking_ = false;
+                }
+
+                if (isOvertaking_) {
+                    // 自機より前に出るため進行スピードを急上昇させて追い抜く
+                    targetSpeed_ = playerSpeed + rushSpeedBonus_;
+                } else {
+                    // 【フェーズ2: 並走（シンクロ巡航）】
+                    // プレイヤーの近場で自機速度と同程度で並走
+                    // dynamicLeadDistance_（基準70mまたはランダム短縮距離）との前後ズレに応じて速度を微調整
+                    float distDiff = relativeForwardDist_ - dynamicLeadDistance_;
+                    targetSpeed_ = playerSpeed - distDiff * 0.8f;
+                    // 急停止しないよう下限を設定 (自機速度の50%以上、かつ最低20m/s)
+                    float minSpeed = (std::max)(20.0f, playerSpeed * 0.5f);
+                    if (targetSpeed_ < minSpeed) {
+                        targetSpeed_ = minSpeed;
+                    }
+                }
+            }
+
+            // 加減速のスムージング（急激な速度変化を抑えて自然な列車走行感を出す）
+            float accelRate = (targetSpeed_ > currentSpeed_) ? (2.5f * gameSpeed) : (1.8f * gameSpeed);
+            if (currentSpeed_ < targetSpeed_) {
+                currentSpeed_ = (std::min)(targetSpeed_, currentSpeed_ + accelRate);
+            } else {
+                currentSpeed_ = (std::max)(targetSpeed_, currentSpeed_ - accelRate);
+            }
+
+            // 実速度(m/s)に基づいて進行度を加算（物理的に瞬間移動せず連続走行）
+            float totalLen = (std::max)(1.0f, rail_->GetTotalLength());
+            float deltaProg = (currentSpeed_ * (gameSpeed / 60.0f)) / totalLen;
+            railProgress_ = (std::clamp)(railProgress_ + deltaProg, 0.0f, 1.0f);
+
+        } else {
+            // 固定速度走行モード
+            float totalLen = (std::max)(1.0f, rail_->GetTotalLength());
+            float deltaProg = (currentSpeed_ * (gameSpeed / 60.0f)) / totalLen;
+            railProgress_ = (std::clamp)(railProgress_ + deltaProg, 0.0f, 1.0f);
         }
     } else {
-        // デフォルトは手前方向へ前進
-        position_.z -= speed_ * gameSpeed;
+        // レールなし時の直進
+        position_.z -= currentSpeed_ * (gameSpeed / 60.0f);
     }
 
-    // 車両位置の更新
+    // 各車両の位置・向き（坂道の斜面傾斜・カーブ）を個別に更新
     UpdateCarriageTransforms();
 
     // コア露出判定（護衛車両が2両以上撃破されたら先頭機関車の装甲がパージ）
@@ -162,32 +310,145 @@ void ArmoredTrainBoss::Update(const Vector3& cameraPos, Player* player, std::lis
     ExecuteAttacks(player, enemyBullets, gameSpeed);
 }
 
+bool ArmoredTrainBoss::GetGroundHeight(float x, float z, float startY, float* outGroundY, Vector3* outNormal) const {
+    if (!terrainObjects_ || terrainObjects_->empty()) return false;
+
+    float bestY = -1e9f;
+    Vector3 bestNormal = { 0.0f, 1.0f, 0.0f };
+    bool found = false;
+
+    for (const auto& obj : *terrainObjects_) {
+        if (!obj || !obj->IsCollisionEnabled()) continue;
+        float gy = 0.0f;
+        Vector3 norm;
+        if (obj->RaycastDown(x, z, startY, &gy, &norm)) {
+            if (gy > bestY) {
+                bestY = gy;
+                bestNormal = norm;
+                found = true;
+            }
+        }
+    }
+
+    if (found) {
+        if (outGroundY) *outGroundY = bestY;
+        if (outNormal) *outNormal = bestNormal;
+        return true;
+    }
+    return false;
+}
+
 void ArmoredTrainBoss::UpdateCarriageTransforms() {
-    float cy = std::cos(rotation_.y);
-    float sy = std::sin(rotation_.y);
+    float totalLen = rail_ ? (std::max)(1.0f, rail_->GetTotalLength()) : 1.0f;
 
-    for (auto& car : carriages_) {
-        // 先頭からのオフセット座標を回転させて適用
-        Vector3 carPos = {
-            position_.x + (sy * car.lengthOffset),
-            position_.y,
-            position_.z + (cy * car.lengthOffset)
-        };
+    for (size_t i = 0; i < carriages_.size(); ++i) {
+        auto& car = carriages_[i];
 
+        if (rail_ && rail_->IsValid()) {
+            // 各車両のレール上進行度（先頭進行度 + lengthOffset(負の値) / totalLen）
+            float carProgress = railProgress_ + (car.lengthOffset / totalLen);
+
+            if (carProgress >= 0.0f && carProgress <= 1.0f) {
+                // レール上の正規位置
+                car.position = rail_->GetPosition(carProgress);
+
+                // レールの接線ベクトル（前進方向）からピッチ・ヨー角を個別に算出（坂道の斜面に完全平行化）
+                Vector3 forward = rail_->GetForward(carProgress);
+                float fLen = std::sqrt(forward.x * forward.x + forward.z * forward.z);
+                if (fLen > 0.0001f) {
+                    car.rotation.y = std::atan2(forward.x, forward.z);
+                    car.rotation.x = std::atan2(-forward.y, fLen); // 坂道の傾斜角（ピッチ）
+                }
+                car.rotation.z = rail_->GetTilt(carProgress); // カント（ロール）
+            } else if (carProgress < 0.0f) {
+                // レール始点の手前にいる場合：始点の接線ベクトルを逆方向に伸ばして自然に配置
+                Vector3 startPos = rail_->GetPosition(0.0f);
+                Vector3 startForward = rail_->GetForward(0.0f);
+                float distBehind = -carProgress * totalLen;
+                car.position = {
+                    startPos.x - startForward.x * distBehind,
+                    startPos.y - startForward.y * distBehind,
+                    startPos.z - startForward.z * distBehind
+                };
+                float fLen = std::sqrt(startForward.x * startForward.x + startForward.z * startForward.z);
+                if (fLen > 0.0001f) {
+                    car.rotation.y = std::atan2(startForward.x, startForward.z);
+                    car.rotation.x = std::atan2(-startForward.y, fLen);
+                }
+                car.rotation.z = rail_->GetTilt(0.0f);
+            } else {
+                // レール終点を超えた場合：終点の接線ベクトル方向に自然に延長
+                Vector3 endPos = rail_->GetPosition(1.0f);
+                Vector3 endForward = rail_->GetForward(1.0f);
+                float distAhead = (carProgress - 1.0f) * totalLen;
+                car.position = {
+                    endPos.x + endForward.x * distAhead,
+                    endPos.y + endForward.y * distAhead,
+                    endPos.z + endForward.z * distAhead
+                };
+                float fLen = std::sqrt(endForward.x * endForward.x + endForward.z * endForward.z);
+                if (fLen > 0.0001f) {
+                    car.rotation.y = std::atan2(endForward.x, endForward.z);
+                    car.rotation.x = std::atan2(-endForward.y, fLen);
+                }
+                car.rotation.z = rail_->GetTilt(1.0f);
+            }
+        } else {
+            // レールなし時のフォールバック（直線追従）
+            float cy = std::cos(rotation_.y);
+            float sy = std::sin(rotation_.y);
+            car.position = {
+                position_.x + (sy * car.lengthOffset),
+                position_.y,
+                position_.z + (cy * car.lengthOffset)
+            };
+            car.rotation = rotation_;
+        }
+
+        // 地面メッシュへの自動吸着（地面レイキャスト）
+        if (isGroundSnapEnabled_ && terrainObjects_) {
+            float groundY = 0.0f;
+            Vector3 groundNorm;
+            float searchStartY = car.position.y + 40.0f;
+            if (GetGroundHeight(car.position.x, car.position.z, searchStartY, &groundY, &groundNorm)) {
+                // 車両の底面 (car.scale.y * 0.5f) が地面高さに密着するよう配置
+                car.position.y = groundY + (car.scale.y * 0.5f) + groundSnapOffset_;
+
+                // 前後のサンプリング点による地形勾配（ピッチ角）の精密フィッティング
+                float halfLen = (car.scale.z * 0.5f) * 0.8f;
+                float frontX = car.position.x + std::sin(car.rotation.y) * halfLen;
+                float frontZ = car.position.z + std::cos(car.rotation.y) * halfLen;
+                float backX  = car.position.x - std::sin(car.rotation.y) * halfLen;
+                float backZ  = car.position.z - std::cos(car.rotation.y) * halfLen;
+
+                float frontGY = 0.0f, backGY = 0.0f;
+                bool hasFront = GetGroundHeight(frontX, frontZ, searchStartY, &frontGY);
+                bool hasBack  = GetGroundHeight(backX,  backZ,  searchStartY, &backGY);
+
+                if (hasFront && hasBack) {
+                    float deltaY = frontGY - backGY;
+                    float distXZ = halfLen * 2.0f;
+                    car.rotation.x = std::atan2(-deltaY, distXZ);
+                }
+            }
+        }
+
+        // 先頭車両（i == 0）の位置と向きをボスの代表値として同期
+        if (i == 0) {
+            position_ = car.position;
+            rotation_ = car.rotation;
+        }
+
+        // 3Dオブジェクトとコライダーの更新
         if (car.object) {
-            car.object->SetTranslate(carPos);
-            car.object->SetRotation(rotation_);
+            car.object->SetTranslate(car.position);
+            car.object->SetRotation(car.rotation);
             car.object->Update();
         }
 
         if (car.colliderObject) {
-            Vector3 colPos = {
-                carPos.x + car.collider.center.x,
-                carPos.y + car.collider.center.y,
-                carPos.z + car.collider.center.z
-            };
-            car.colliderObject->SetTranslate(colPos);
-            car.colliderObject->SetRotation(rotation_);
+            car.colliderObject->SetTranslate(car.position);
+            car.colliderObject->SetRotation(car.rotation);
             car.colliderObject->Update();
         }
     }
@@ -216,7 +477,7 @@ void ArmoredTrainBoss::ExecuteAttacks(Player* player, std::list<std::unique_ptr<
 
                 for (int side = -1; side <= 1; side += 2) {
                     auto bullet = std::make_unique<EnemyBullet>();
-                    Vector3 spawnP = { carPos.x + side * 1.8f, carPos.y + 2.0f, carPos.z };
+                    Vector3 spawnP = { carPos.x + side * (3.8f * scaleMultiplier_), carPos.y + (4.0f * scaleMultiplier_), carPos.z };
                     Vector3 vel = { toPlayer.x * 2.2f, toPlayer.y * 2.2f, toPlayer.z * 2.2f };
                     bullet->Initialize(object3dCommon_, spawnP, vel, false, player);
                     enemyBullets.push_back(std::move(bullet));
@@ -225,8 +486,8 @@ void ArmoredTrainBoss::ExecuteAttacks(Player* player, std::list<std::unique_ptr<
                 // ミサイル車: 上方発射後にプレイヤーを追尾するホーミングミサイル
                 for (int side = -1; side <= 1; side += 2) {
                     auto bullet = std::make_unique<EnemyBullet>();
-                    Vector3 spawnP = { carPos.x + side * 1.5f, carPos.y + 3.0f, carPos.z };
-                    Vector3 vel = { side * 0.3f, 1.2f, -0.5f }; // 最初は上空へ跳ね上がる
+                    Vector3 spawnP = { carPos.x + side * (3.5f * scaleMultiplier_), carPos.y + (5.5f * scaleMultiplier_), carPos.z };
+                    Vector3 vel = { side * 0.4f, 1.4f, -0.5f }; // 最初は上空へ高く跳ね上がる
                     bullet->Initialize(object3dCommon_, spawnP, vel, true, player);
                     enemyBullets.push_back(std::move(bullet));
                 }
@@ -240,7 +501,7 @@ void ArmoredTrainBoss::ExecuteAttacks(Player* player, std::list<std::unique_ptr<
 
                 for (float spread = -0.2f; spread <= 0.21f; spread += 0.2f) {
                     auto bullet = std::make_unique<EnemyBullet>();
-                    Vector3 spawnP = { carPos.x, carPos.y + 2.0f, carPos.z + 5.0f };
+                    Vector3 spawnP = { carPos.x, carPos.y + (5.0f * scaleMultiplier_), carPos.z + (12.0f * scaleMultiplier_) };
                     Vector3 vel = { (toPlayer.x + spread) * 2.6f, toPlayer.y * 2.6f, toPlayer.z * 2.6f };
                     bullet->Initialize(object3dCommon_, spawnP, vel, false, player);
                     enemyBullets.push_back(std::move(bullet));
@@ -275,11 +536,11 @@ bool ArmoredTrainBoss::CheckCollision(const Sphere& bulletSphere, int* outCarria
         auto& car = carriages_[i];
         if (car.isDestroyed) continue;
 
-        Vector3 carPos = car.object ? car.object->GetTranslate() : position_;
-        Vector3 colCenter = { carPos.x + car.collider.center.x, carPos.y + car.collider.center.y, carPos.z + car.collider.center.z };
+        Vector3 carPos = car.object ? car.object->GetTranslate() : car.position;
+        Matrix4x4 rotMat = Matrix4x4::MakeAffine({ 1.0f, 1.0f, 1.0f }, car.rotation, { 0.0f, 0.0f, 0.0f });
+        Vector3 colCenter = carPos + (rotMat * car.collider.center);
 
         // OBB 判定
-        Matrix4x4 rotMat = Matrix4x4::RotateY(rotation_.y);
         OBB enemyOBB = CollisionMath::CreateOBB(colCenter, car.collider.size, rotMat);
         if (CollisionMath::IsCollision(bulletSphere, enemyOBB)) {
             if (outCarriageIndex) *outCarriageIndex = i;
@@ -299,10 +560,10 @@ bool ArmoredTrainBoss::CheckRaycast(const Ray& ray, float* outDist, int* outCarr
         auto& car = carriages_[i];
         if (car.isDestroyed) continue;
 
-        Vector3 carPos = car.object ? car.object->GetTranslate() : position_;
-        Vector3 colCenter = { carPos.x + car.collider.center.x, carPos.y + car.collider.center.y, carPos.z + car.collider.center.z };
+        Vector3 carPos = car.object ? car.object->GetTranslate() : car.position;
+        Matrix4x4 rotMat = Matrix4x4::MakeAffine({ 1.0f, 1.0f, 1.0f }, car.rotation, { 0.0f, 0.0f, 0.0f });
+        Vector3 colCenter = carPos + (rotMat * car.collider.center);
 
-        Matrix4x4 rotMat = Matrix4x4::RotateY(rotation_.y);
         OBB enemyOBB = CollisionMath::CreateOBB(colCenter, car.collider.size, rotMat);
 
         float dist = 0.0f;

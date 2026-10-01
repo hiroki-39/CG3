@@ -50,6 +50,14 @@ public:
 	void SetEditorMode(bool mode) { isEditorMode_ = mode; }
 	bool GetEditorMode() const { return isEditorMode_; }
 
+#ifdef ENABLE_EDITOR
+	void SetGamePlaying(bool playing);
+	bool IsGamePlaying() const { return isGamePlaying_; }
+#else
+	void SetGamePlaying(bool) {}
+	bool IsGamePlaying() const { return true; }
+#endif
+
 private:
 	EngineServices() = default;
 	~EngineServices() = default;
@@ -72,6 +80,7 @@ private:
 
 #ifdef ENABLE_EDITOR
 	bool isEditorMode_ = true;
+	bool isGamePlaying_ = false;
 #else
 	bool isEditorMode_ = false;
 #endif

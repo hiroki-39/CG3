@@ -9,6 +9,7 @@
 #include <array>
 
 class Enemy;
+class ArmoredTrainBoss;
 class ParticleEmitter;
 
 class Player {
@@ -52,7 +53,7 @@ public:
     }
     bool IsCutsceneActive() const { return isCutsceneActive_; }
 
-    void Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera = nullptr, float gameSpeed = 1.0f);
+    void Update(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera = nullptr, float gameSpeed = 1.0f, ArmoredTrainBoss* boss = nullptr);
 
     void Draw();
 
@@ -143,7 +144,7 @@ public:
     }
 
     void OnCollision();
-    bool OnTerrainCollision(const Vector3& worldNormal, float penetrationDepth, Object3d* parentCamera = nullptr);
+    bool OnTerrainCollision(const Vector3& worldNormal, float penetrationDepth, Object3d* parentCamera = nullptr, const Vector3* hitPoint = nullptr);
     OBB GetWorldOBB() const;
     float GetTerrainCollisionRadius() const { return terrainCollisionRadius_; }
     void SetTerrainCollisionRadius(float radius) { terrainCollisionRadius_ = radius; }
@@ -201,7 +202,7 @@ private:
     
     
     
-    void Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed);
+    void Attack(std::list<std::unique_ptr<PlayerBullet>>& bullets, std::list<std::unique_ptr<PlayerMissile>>& missiles, const std::list<std::unique_ptr<Enemy>>& enemies, Object3d* parentCamera, float gameSpeed, ArmoredTrainBoss* boss = nullptr);
 
 private:
     std::unique_ptr<Object3d> object_ = nullptr;
@@ -235,6 +236,8 @@ private:
     float terrainKnockbackPower_ = 0.35f; // 壁・地面に当たった時の反発速度
     float terrainPushMargin_ = 0.05f;     // めり込み押し戻しマージン
     float terrainCollisionRadius_ = 0.8f; // 地形・障害物との衝突判定球の半径
+    float terrainBlockTimer_ = 0.0f;       // 衝突直後の障害物方向への入力遮断タイマー
+    Vector2 terrainBlockDir_ = { 0.0f, 0.0f }; // 遮断する方向ベクトル
 
     
     std::string modelName_ = "cube.obj";
@@ -267,10 +270,6 @@ private:
     float rollTimer_ = 0.0f;
     float rollDirection_ = 0.0f; 
     
-    
-    float lastQPressTime_ = 0.0f;
-    float lastEPressTime_ = 0.0f;
-    const float doubleTapThreshold_ = 20.0f; 
 
     
     bool isLockOn_ = false;
@@ -298,8 +297,10 @@ private:
     std::array<std::unique_ptr<Object3d>, MAX_MISSILES> mountedMissiles_;
     std::array<std::unique_ptr<Object3d>, MAX_MISSILES> lockOnReticles_;
     struct LockOnTarget {
-        Enemy* enemy;
-        float lockedTime;
+        Enemy* enemy = nullptr;
+        ArmoredTrainBoss* boss = nullptr;
+        int carriageIndex = -1;
+        float lockedTime = 0.0f;
     };
     std::vector<LockOnTarget> multiLockedEnemies_;
     float missileReloadTimer_ = 0.0f;

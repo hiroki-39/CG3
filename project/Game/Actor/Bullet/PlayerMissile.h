@@ -3,6 +3,7 @@
 #include <memory>
 
 class Enemy;
+class ArmoredTrainBoss;
 
 class PlayerMissile {
 public:
@@ -11,7 +12,7 @@ public:
         FLIGHT   // スラスターを点火し、ターゲットに向かって飛行するフェーズ
     };
 
-    void Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& rotation, const Vector3& velocity, Object3d* parent, Enemy* targetEnemy = nullptr);
+    void Initialize(Object3dCommon* object3dCommon, const Vector3& position, const Vector3& rotation, const Vector3& velocity, Object3d* parent, Enemy* targetEnemy = nullptr, ArmoredTrainBoss* targetBoss = nullptr, int targetCarriageIndex = -1);
     void Update(float gameSpeed = 1.0f);
     void Update3DObjectOnly() { if (object_) object_->Update(); }
     void Draw();
@@ -41,6 +42,8 @@ private:
     float maxFlightDistance_ = 380.0f; // 最大飛行射程（m）
     
     Enemy* targetEnemy_ = nullptr;
+    ArmoredTrainBoss* targetBoss_ = nullptr;
+    int targetCarriageIndex_ = -1;
 
     Phase currentPhase_ = Phase::DROP;
     float phaseTimer_ = 0.0f;

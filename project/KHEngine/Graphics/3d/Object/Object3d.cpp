@@ -484,6 +484,7 @@ void Object3d::EnsureTriangles() const {
 }
 
 bool Object3d::CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* outResult) const {
+	if (!isCollisionEnabled_) return false;
 	EnsureTriangles();
 	if (!hasMeshCollider_) return false;
 
@@ -491,11 +492,32 @@ bool Object3d::CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* o
 		return false;
 	}
 
+	const float r = sphere.radius;
+	const float sMinX = sphere.center.x - r;
+	const float sMaxX = sphere.center.x + r;
+	const float sMinY = sphere.center.y - r;
+	const float sMaxY = sphere.center.y + r;
+	const float sMinZ = sphere.center.z - r;
+	const float sMaxZ = sphere.center.z + r;
+
 	bool hitAny = false;
 	CollisionResult bestResult;
 	bestResult.penetrationDepth = -1.0f;
 
 	for (const auto& tri : triangles_) {
+		// 三角形のAABBと球のAABBを事前判定（高速距離カリング）
+		float tMinX = (std::min)({ tri.p0.x, tri.p1.x, tri.p2.x });
+		float tMaxX = (std::max)({ tri.p0.x, tri.p1.x, tri.p2.x });
+		if (tMaxX < sMinX || tMinX > sMaxX) continue;
+
+		float tMinY = (std::min)({ tri.p0.y, tri.p1.y, tri.p2.y });
+		float tMaxY = (std::max)({ tri.p0.y, tri.p1.y, tri.p2.y });
+		if (tMaxY < sMinY || tMinY > sMaxY) continue;
+
+		float tMinZ = (std::min)({ tri.p0.z, tri.p1.z, tri.p2.z });
+		float tMaxZ = (std::max)({ tri.p0.z, tri.p1.z, tri.p2.z });
+		if (tMaxZ < sMinZ || tMinZ > sMaxZ) continue;
+
 		CollisionResult res;
 		if (CollisionMath::IsCollision(sphere, tri, &res)) {
 			hitAny = true;
@@ -513,6 +535,7 @@ bool Object3d::CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* o
 }
 
 bool Object3d::CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult) const {
+	if (!isCollisionEnabled_) return false;
 	EnsureTriangles();
 	if (!hasMeshCollider_) return false;
 
@@ -520,11 +543,42 @@ bool Object3d::CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult)
 		return false;
 	}
 
+	// OBBを包含するAABB（外接AABB）を計算して三角形の高速カリングに利用
+	float rx = obb.halfExtents.x * std::abs(obb.orientations[0].x) +
+	           obb.halfExtents.y * std::abs(obb.orientations[1].x) +
+	           obb.halfExtents.z * std::abs(obb.orientations[2].x);
+	float ry = obb.halfExtents.x * std::abs(obb.orientations[0].y) +
+	           obb.halfExtents.y * std::abs(obb.orientations[1].y) +
+	           obb.halfExtents.z * std::abs(obb.orientations[2].y);
+	float rz = obb.halfExtents.x * std::abs(obb.orientations[0].z) +
+	           obb.halfExtents.y * std::abs(obb.orientations[1].z) +
+	           obb.halfExtents.z * std::abs(obb.orientations[2].z);
+
+	const float oMinX = obb.center.x - rx;
+	const float oMaxX = obb.center.x + rx;
+	const float oMinY = obb.center.y - ry;
+	const float oMaxY = obb.center.y + ry;
+	const float oMinZ = obb.center.z - rz;
+	const float oMaxZ = obb.center.z + rz;
+
 	bool hitAny = false;
 	CollisionResult bestResult;
 	bestResult.penetrationDepth = -1.0f;
 
 	for (const auto& tri : triangles_) {
+		// 三角形のAABBとOBB外接AABBの重なり判定（高速カリング）
+		float tMinX = (std::min)({ tri.p0.x, tri.p1.x, tri.p2.x });
+		float tMaxX = (std::max)({ tri.p0.x, tri.p1.x, tri.p2.x });
+		if (tMaxX < oMinX || tMinX > oMaxX) continue;
+
+		float tMinY = (std::min)({ tri.p0.y, tri.p1.y, tri.p2.y });
+		float tMaxY = (std::max)({ tri.p0.y, tri.p1.y, tri.p2.y });
+		if (tMaxY < oMinY || tMinY > oMaxY) continue;
+
+		float tMinZ = (std::min)({ tri.p0.z, tri.p1.z, tri.p2.z });
+		float tMaxZ = (std::max)({ tri.p0.z, tri.p1.z, tri.p2.z });
+		if (tMaxZ < oMinZ || tMinZ > oMaxZ) continue;
+
 		CollisionResult res;
 		if (CollisionMath::IsCollision(obb, tri, &res)) {
 			hitAny = true;
@@ -536,6 +590,65 @@ bool Object3d::CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult)
 
 	if (hitAny) {
 		if (outResult) *outResult = bestResult;
+		return true;
+	}
+	return false;
+}
+
+bool Object3d::RaycastDown(float x, float z, float startY, float* outGroundY, Vector3* outNormal) const {
+	if (!isCollisionEnabled_) return false;
+	EnsureTriangles();
+	if (!hasMeshCollider_) return false;
+
+	// AABB による XZ 範囲チェック（高速除外）
+	if (x < broadAABB_.min.x || x > broadAABB_.max.x || z < broadAABB_.min.z || z > broadAABB_.max.z) {
+		return false;
+	}
+
+	float highestY = -1e9f;
+	Vector3 hitNormal = { 0.0f, 1.0f, 0.0f };
+	bool hit = false;
+	constexpr float EPS = 0.001f;
+
+	for (const auto& tri : triangles_) {
+		// 三角形のXZ境界チェック
+		float minX = (std::min)({ tri.p0.x, tri.p1.x, tri.p2.x });
+		float maxX = (std::max)({ tri.p0.x, tri.p1.x, tri.p2.x });
+		if (x < minX - EPS || x > maxX + EPS) continue;
+
+		float minZ = (std::min)({ tri.p0.z, tri.p1.z, tri.p2.z });
+		float maxZ = (std::max)({ tri.p0.z, tri.p1.z, tri.p2.z });
+		if (z < minZ - EPS || z > maxZ + EPS) continue;
+
+		// XZ 平面上での 2D 三角形内外判定 (外積の符号チェック)
+		float v0x = tri.p1.x - tri.p0.x, v0z = tri.p1.z - tri.p0.z;
+		float v1x = tri.p2.x - tri.p1.x, v1z = tri.p2.z - tri.p1.z;
+		float v2x = tri.p0.x - tri.p2.x, v2z = tri.p0.z - tri.p2.z;
+
+		float c0 = (x - tri.p0.x) * v0z - (z - tri.p0.z) * v0x;
+		float c1 = (x - tri.p1.x) * v1z - (z - tri.p1.z) * v1x;
+		float c2 = (x - tri.p2.x) * v2z - (z - tri.p2.z) * v2x;
+
+		if ((c0 >= -EPS && c1 >= -EPS && c2 >= -EPS) || (c0 <= EPS && c1 <= EPS && c2 <= EPS)) {
+			// 平面方程式から Y を算出
+			Vector3 n = tri.normal;
+			if (std::abs(n.y) < 0.1f) {
+				// 面が垂直に近い（急峻な崖・壁）場合は床として除外
+				continue;
+			}
+			float curY = tri.p0.y - (n.x * (x - tri.p0.x) + n.z * (z - tri.p0.z)) / n.y;
+			// startY より下で、かつこれまでの highestY より高い床を採用
+			if (curY <= startY + 5.0f && curY > highestY) {
+				highestY = curY;
+				hitNormal = (n.y > 0.0f) ? n : Vector3(-n.x, -n.y, -n.z);
+				hit = true;
+			}
+		}
+	}
+
+	if (hit) {
+		if (outGroundY) *outGroundY = highestY;
+		if (outNormal) *outNormal = hitNormal;
 		return true;
 	}
 	return false;

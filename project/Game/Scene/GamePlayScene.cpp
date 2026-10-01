@@ -29,15 +29,15 @@
 #include "KHEngine/Scene/SceneManager.h"
 #include "KHEngine/UI/UITextManager.h"
 #include <chrono>
+#include <fstream>
+#include "externals/nlohmann/json.hpp"
 
-static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, std::list<std::unique_ptr<EnhanceRing>>& enhanceRings, std::vector<Enemy*> parentEnemies = {})
+static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, std::unique_ptr<Rail>& outBossRail, float& outBossSpawnProgress, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, std::list<std::unique_ptr<EnhanceRing>>& enhanceRings, std::vector<Enemy*> parentEnemies = {})
 {
 	const Object3d* currentObj = parentObj;
 
 	if (node.type == "CURVE")
 	{
-
-
 		if (!parentEnemies.empty())
 		{
 			for (Enemy* e : parentEnemies)
@@ -47,11 +47,26 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 				e->SetMovePath(std::move(rail));
 			}
 		}
-		else
+		else if (node.name.find("BossRail") != std::string::npos || node.name.find("boss") != std::string::npos || node.name.find("Boss") != std::string::npos)
 		{
+			// ボス戦専用レール (BossRail)
 			auto rail = std::make_unique<Rail>();
 			rail->Initialize(node.curvePoints);
-			outRails.push_back(std::move(rail));
+			outBossRail = std::move(rail);
+			if (node.spawnProgress > 0.0f)
+			{
+				outBossSpawnProgress = node.spawnProgress;
+			}
+		}
+		else
+		{
+			// showPlayerRangeが有効（メインレール）の場合のみプレイヤーのカメラレールに追加
+			if (node.showPlayerRange)
+			{
+				auto rail = std::make_unique<Rail>();
+				rail->Initialize(node.curvePoints);
+				outRails.push_back(std::move(rail));
+			}
 		}
 	}
 
@@ -216,6 +231,12 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 		obj->SetScale(node.scale);
 		obj->SetEnvironmentTextureIndex(skyboxTexIndex);
 
+		// 背景専用オブジェクト（山岳遠景など）はコリジョン判定を無効化
+		if (node.name.find("Background") != std::string::npos || modelName.find("Background") != std::string::npos)
+		{
+			obj->SetCollisionEnabled(false);
+		}
+
 		if (parentObj)
 		{
 			obj->SetParent(parentObj);
@@ -228,7 +249,7 @@ static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* pa
 
 	for (const auto& child : node.children)
 	{
-		CreateObjectFromNode(child, currentObj, instances, outRails, common, skyboxTexIndex, enemies, obstacles, enhanceRings, currentEnemies);
+		CreateObjectFromNode(child, currentObj, instances, outRails, outBossRail, outBossSpawnProgress, common, skyboxTexIndex, enemies, obstacles, enhanceRings, currentEnemies);
 	}
 }
 
@@ -512,6 +533,79 @@ void GamePlayScene::Initialize()
 	}
 	acquiredEnhanceRingCount_ = 0;
 
+	// ボス専用UIスプライトの初期化（幅600px、画面上部中央 Y=35）
+	float bossBarW = 600.0f;
+	float bossBarH = 18.0f;
+	float bossBarX = (1280.0f - bossBarW) * 0.5f;
+	float bossBarY = 35.0f;
+
+	bossHpBarBgSprite_ = std::make_unique<Sprite>();
+	if (bossHpBarBgSprite_)
+	{
+		bossHpBarBgSprite_->Initialize(spriteCommon, whiteTexIndex_);
+		bossHpBarBgSprite_->SetAnchorPoint(Vector2(0.0f, 0.0f));
+		bossHpBarBgSprite_->SetPosition(Vector2(bossBarX, bossBarY));
+		bossHpBarBgSprite_->SetSize(Vector2(bossBarW, bossBarH));
+		bossHpBarBgSprite_->SetColor(Vector4(0.12f, 0.14f, 0.18f, 0.85f));
+		bossHpBarBgSprite_->Update();
+	}
+
+	bossHpBarDelaySprite_ = std::make_unique<Sprite>();
+	if (bossHpBarDelaySprite_)
+	{
+		bossHpBarDelaySprite_->Initialize(spriteCommon, whiteTexIndex_);
+		bossHpBarDelaySprite_->SetAnchorPoint(Vector2(0.0f, 0.0f));
+		bossHpBarDelaySprite_->SetPosition(Vector2(bossBarX, bossBarY));
+		bossHpBarDelaySprite_->SetSize(Vector2(bossBarW, bossBarH));
+		bossHpBarDelaySprite_->SetColor(Vector4(1.0f, 0.85f, 0.2f, 0.9f));
+		bossHpBarDelaySprite_->Update();
+	}
+
+	bossHpBarSprite_ = std::make_unique<Sprite>();
+	if (bossHpBarSprite_)
+	{
+		bossHpBarSprite_->Initialize(spriteCommon, whiteTexIndex_);
+		bossHpBarSprite_->SetAnchorPoint(Vector2(0.0f, 0.0f));
+		bossHpBarSprite_->SetPosition(Vector2(bossBarX, bossBarY));
+		bossHpBarSprite_->SetSize(Vector2(bossBarW, bossBarH));
+		bossHpBarSprite_->SetColor(Vector4(0.95f, 0.2f, 0.15f, 1.0f));
+		bossHpBarSprite_->Update();
+	}
+
+	// WARNING演出用スプライト（上下の赤色帯、画面全体フラッシュ）
+	bossWarningBandTopSprite_ = std::make_unique<Sprite>();
+	if (bossWarningBandTopSprite_)
+	{
+		bossWarningBandTopSprite_->Initialize(spriteCommon, whiteTexIndex_);
+		bossWarningBandTopSprite_->SetAnchorPoint(Vector2(0.0f, 0.0f));
+		bossWarningBandTopSprite_->SetPosition(Vector2(0.0f, 0.0f));
+		bossWarningBandTopSprite_->SetSize(Vector2(1280.0f, 44.0f));
+		bossWarningBandTopSprite_->SetColor(Vector4(0.85f, 0.1f, 0.1f, 0.85f));
+		bossWarningBandTopSprite_->Update();
+	}
+
+	bossWarningBandBottomSprite_ = std::make_unique<Sprite>();
+	if (bossWarningBandBottomSprite_)
+	{
+		bossWarningBandBottomSprite_->Initialize(spriteCommon, whiteTexIndex_);
+		bossWarningBandBottomSprite_->SetAnchorPoint(Vector2(0.0f, 0.0f));
+		bossWarningBandBottomSprite_->SetPosition(Vector2(0.0f, 720.0f - 44.0f));
+		bossWarningBandBottomSprite_->SetSize(Vector2(1280.0f, 44.0f));
+		bossWarningBandBottomSprite_->SetColor(Vector4(0.85f, 0.1f, 0.1f, 0.85f));
+		bossWarningBandBottomSprite_->Update();
+	}
+
+	bossWarningFlashSprite_ = std::make_unique<Sprite>();
+	if (bossWarningFlashSprite_)
+	{
+		bossWarningFlashSprite_->Initialize(spriteCommon, whiteTexIndex_);
+		bossWarningFlashSprite_->SetAnchorPoint(Vector2(0.0f, 0.0f));
+		bossWarningFlashSprite_->SetPosition(Vector2(0.0f, 0.0f));
+		bossWarningFlashSprite_->SetSize(Vector2(1280.0f, 720.0f));
+		bossWarningFlashSprite_->SetColor(Vector4(1.0f, 0.1f, 0.1f, 0.0f));
+		bossWarningFlashSprite_->Update();
+	}
+
 	auto tLevel0 = std::chrono::high_resolution_clock::now();
 	ReloadLevel();
 	auto tLevel1 = std::chrono::high_resolution_clock::now();
@@ -578,6 +672,7 @@ void GamePlayScene::Initialize()
 	armoredTrainBoss_ = std::make_unique<ArmoredTrainBoss>();
 	Vector3 bossSpawnPos = { 0.0f, 0.0f, 150.0f };
 	armoredTrainBoss_->Initialize(object3dCommon, bossSpawnPos, skybox_->GetCubemapSrvIndex());
+	armoredTrainBoss_->SetTerrainObjects(&modelInstances);
 	if (!mainRails_.empty())
 	{
 		armoredTrainBoss_->SetRail(mainRails_[0].get());
@@ -638,6 +733,7 @@ void GamePlayScene::ReloadLevel()
 	railVisualizers_.clear();
 	enemyRailVisualizers_.clear();
 	mainRails_.clear();
+	bossRail_.reset();
 	if (railCameraController_)
 	{
 		railCameraController_->Reset();
@@ -648,15 +744,44 @@ void GamePlayScene::ReloadLevel()
 		player_->SetPowerUpLevel(0);
 	}
 
+	// ボス戦状態のリセット
+	bossBattleStep_ = BossBattleStep::NOT_ACTIVE;
+	isBossSpawned_ = false;
+	bossWarningTimer_ = 0.0f;
+	bossDefeatTimer_ = 0.0f;
+	bossDisplayedHpRate_ = 1.0f;
+	bossWarningSirenTimer_ = 0.0f;
+	if (armoredTrainBoss_)
+	{
+		armoredTrainBoss_->SetActive(false);
+	}
+
 
 	auto levelData = LevelLoader::Load("resources/json/maps/template/template.json");
 	if (levelData)
 	{
 		for (const auto& objData : levelData->objects)
 		{
-			CreateObjectFromNode(objData, nullptr, modelInstances, mainRails_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_, obstacles_, enhanceRings_);
+			CreateObjectFromNode(objData, nullptr, modelInstances, mainRails_, bossRail_, bossSpawnProgressThreshold_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_, obstacles_, enhanceRings_);
 		}
 		OutputDebugStringA("LevelLoader: Successfully reloaded objects.\n");
+
+		// BossRailが存在する場合、マップからの指定がなければ始点近傍のメインレール進行度を自動算出
+		if (bossRail_ && bossRail_->IsValid() && !mainRails_.empty() && mainRails_[0]->IsValid())
+		{
+			if (bossSpawnProgressThreshold_ == 0.60f)
+			{
+				Vector3 bossStartPos = bossRail_->GetPosition(0.0f);
+				bossSpawnProgressThreshold_ = mainRails_[0]->GetClosestProgress(bossStartPos);
+			}
+		}
+
+		// 保存された設定ファイル（boss_settings.json）があれば読み込み（手動保存設定を優先）
+		LoadBossSettings();
+		if (armoredTrainBoss_)
+		{
+			armoredTrainBoss_->SetTerrainObjects(&modelInstances);
+		}
 
 
 		if (railCameraController_)
@@ -911,6 +1036,11 @@ void GamePlayScene::Update()
 	}
 
 
+#ifdef ENABLE_EDITOR
+	// EngineServicesのゲーム再生状態と同期
+	isPlaying_ = services->IsGamePlaying();
+#endif
+
 	if (isPlaying_)
 	{
 		activeCamera_ = camera.get();
@@ -1140,6 +1270,18 @@ void GamePlayScene::Update()
 				}
 				railCameraController_->Update(gameSpeed_, cameraTrackPos);
 			}
+
+			// レール進行度監視によるボス自動出現トリガー
+			if (gamePhase_ == GamePhase::PLAYING && bossBattleStep_ == BossBattleStep::NOT_ACTIVE && railCameraController_)
+			{
+				if (railCameraController_->GetProgress() >= bossSpawnProgressThreshold_)
+				{
+					StartBossWarningSequence();
+				}
+			}
+
+			// ボス戦全体の更新（WARNING警告演出・HPバー追従・撃破シークエンス）
+			UpdateBossBattle(dt);
 		}
 	}
 
@@ -1195,7 +1337,7 @@ void GamePlayScene::Update()
 				player_->SetTargetMoveLimits(limitX, limitYMin, limitYMax);
 			}
 
-			player_->Update(bullets_, missiles_, enemies_, cameraObject_.get(), unscaledGameSpeed);
+			player_->Update(bullets_, missiles_, enemies_, cameraObject_.get(), unscaledGameSpeed, armoredTrainBoss_.get());
 
 
 			if (player_->ConsumeDodgeTrigger())
@@ -1421,7 +1563,12 @@ void GamePlayScene::Update()
 		if (armoredTrainBoss_ && isBossSpawned_)
 		{
 			Vector3 camPos = activeCamera_ ? activeCamera_->GetTranslate() : Vector3{ 0,0,0 };
-			armoredTrainBoss_->Update(camPos, player_.get(), enemyBullets_, gameSpeed_);
+			float playerSpeed = 50.0f;
+			if (railCameraController_)
+			{
+				playerSpeed = railCameraController_->GetBaseSpeed() * railCameraController_->GetSpeedMultiplier();
+			}
+			armoredTrainBoss_->Update(camPos, cameraForward, playerSpeed, player_.get(), enemyBullets_, gameSpeed_);
 
 			// プレイヤー通常弾との判定
 			for (auto& bullet : bullets_)
@@ -1457,26 +1604,14 @@ void GamePlayScene::Update()
 				}
 			}
 
-			// ボス完全撃破時の演出
-			if (armoredTrainBoss_->IsDefeated())
+			// ボス撃破時の演出シークエンス開始（まだBATTLEステートの場合）
+			if (armoredTrainBoss_->IsDefeated() && bossBattleStep_ == BossBattleStep::BATTLE)
 			{
-				static float bossExplodeTimer = 0.0f;
-				bossExplodeTimer += gameSpeed_;
-				if (bossExplodeTimer >= 10.0f)
-				{
-					bossExplodeTimer = 0.0f;
-					const auto& cars = armoredTrainBoss_->GetCarriages();
-					if (!cars.empty())
-					{
-						int randCar = rand() % cars.size();
-						if (cars[randCar].object)
-						{
-							explosionEffect_.SetPosition(cars[randCar].object->GetTranslate());
-							explosionEffect_.Play();
-							SoundManager::GetInstance()->PlaySE("explosion.mp3", 0.9f);
-						}
-					}
-				}
+				bossBattleStep_ = BossBattleStep::DEFEATED_SEQUENCE;
+				bossDefeatTimer_ = 0.0f;
+				score_ += 5000; // ボス撃破ボーナス
+				SoundManager::GetInstance()->PlaySE("explosion.mp3", 1.0f);
+				cameraShakeTimer_ = 1.0f;
 			}
 		}
 
@@ -1580,8 +1715,9 @@ void GamePlayScene::Update()
 					{
 
 						(*it)->OnCollision();
-						hitEffect_.SetPosition((*it)->GetPosition());
-						hitEffect_.Play();
+						// プレイヤー被弾パーティクル（作り直すため一旦無効化）
+						// hitEffect_.SetPosition((*it)->GetPosition());
+						// hitEffect_.Play();
 
 						player_->OnCollision(); cameraShakeTimer_ = 20.0f;
 					}
@@ -1737,9 +1873,10 @@ void GamePlayScene::Update()
 				CollisionResult colRes;
 				if ((*it)->CheckCollisionWithOBB(playerOBB, &colRes))
 				{
-					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get());
-					hitEffect_.SetPosition(colRes.hitPoint);
-					hitEffect_.Play();
+					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get(), &colRes.hitPoint);
+					// プレイヤー地形・障害物衝突パーティクル（作り直すため一旦無効化）
+					// hitEffect_.SetPosition(colRes.hitPoint);
+					// hitEffect_.Play();
 					if (causedDamage)
 					{
 						cameraShakeTimer_ = 20.0f;
@@ -1771,9 +1908,10 @@ void GamePlayScene::Update()
 				CollisionResult colRes;
 				if (modelObj->CheckCollisionWithOBB(playerOBB, &colRes))
 				{
-					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get());
-					hitEffect_.SetPosition(colRes.hitPoint);
-					hitEffect_.Play();
+					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get(), &colRes.hitPoint);
+					// プレイヤー地形モデル衝突パーティクル（作り直すため一旦無効化）
+					// hitEffect_.SetPosition(colRes.hitPoint);
+					// hitEffect_.Play();
 					if (causedDamage)
 					{
 						cameraShakeTimer_ = 20.0f;
@@ -2135,9 +2273,10 @@ void GamePlayScene::Update()
 				}
 			}
 
+			// 全通常敵撃破後のクリア判定（ボス戦が控えている・戦闘中の場合はボス撃破までクリアにしない）
 			if (hasEnemySpawned_ && enemies_.empty() && gamePhase_ == GamePhase::PLAYING)
 			{
-				if (!isBossSpawned_ || (armoredTrainBoss_ && armoredTrainBoss_->IsDefeated()))
+				if (bossBattleStep_ == BossBattleStep::FINISHED || (bossBattleStep_ == BossBattleStep::NOT_ACTIVE && !armoredTrainBoss_))
 				{
 					StartClearSequence();
 				}
@@ -2295,16 +2434,20 @@ void GamePlayScene::Update()
 					if (ImGui::Button("一時停止 (Pause)", ImVec2(130, 36)))
 					{
 						isPlaying_ = false;
+						services->SetGamePlaying(false);
 					}
 					ImGui::SameLine();
 					if (ImGui::Button("リセット (Reset)", ImVec2(110, 36)))
 					{
 						doReset = true;
+						isPlaying_ = false;
+						services->SetGamePlaying(false);
 					}
 					ImGui::SameLine();
 					if (ImGui::Button("全画面 (F1で復帰)", ImVec2(140, 36)))
 					{
-						EngineServices::GetInstance()->SetEditorMode(false);
+						services->SetEditorMode(false);
+						services->SetGamePlaying(true);
 					}
 					ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "状態: プレイ中 (PLAYING)");
 				}
@@ -2313,17 +2456,20 @@ void GamePlayScene::Update()
 					if (ImGui::Button("開始 (Play)", ImVec2(130, 36)))
 					{
 						isPlaying_ = true;
+						services->SetGamePlaying(true);
 					}
 					ImGui::SameLine();
 					if (ImGui::Button("全画面プレイ", ImVec2(140, 36)))
 					{
 						isPlaying_ = true;
-						EngineServices::GetInstance()->SetEditorMode(false);
+						services->SetGamePlaying(true);
+						services->SetEditorMode(false);
 					}
 					ImGui::SameLine();
 					if (ImGui::Button("リセット", ImVec2(100, 36)))
 					{
 						doReset = true;
+						services->SetGamePlaying(false);
 					}
 					ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f), "状態: 停止中 (STOPPED - フリーカメラ可能)");
 					ImGui::TextDisabled("※フリーカメラ: WASD/QE移動, 右クリックドラッグ回転");
@@ -2334,6 +2480,7 @@ void GamePlayScene::Update()
 				if (ImGui::Button("降下演出を再生 (Replay Cutscene)", ImVec2(240, 34)))
 				{
 					isPlaying_ = true;
+					services->SetGamePlaying(true);
 					StartOpeningCutscene();
 				}
 				if (gamePhase_ == GamePhase::START_CUTSCENE)
@@ -2347,6 +2494,7 @@ void GamePlayScene::Update()
 				if (ImGui::Button("クリア演出を再生 (Test Clear)", ImVec2(240, 34)))
 				{
 					isPlaying_ = true;
+					services->SetGamePlaying(true);
 					if (player_) player_->SetDead(false);
 					gamePhase_ = GamePhase::PLAYING;
 					StartClearSequence();
@@ -2363,6 +2511,7 @@ void GamePlayScene::Update()
 				if (ImGui::Button("ゲームオーバー演出を再生 (Test GameOver)", ImVec2(240, 34)))
 				{
 					isPlaying_ = true;
+					services->SetGamePlaying(true);
 					gamePhase_ = GamePhase::PLAYING;
 					StartGameOverSequence();
 				}
@@ -2484,17 +2633,136 @@ void GamePlayScene::Update()
 
 			if (ImGui::CollapsingHeader("装甲列車（中ボス）制御 (Armored Train Boss)", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				if (!isBossSpawned_)
+				float curProg = railCameraController_ ? railCameraController_->GetProgress() : 0.0f;
+				ImGui::Text("現在カメラ進行度: %.3f (%.1f%%)", curProg, curProg * 100.0f);
+
+				// ボス出現進行度のスライダー
+				ImGui::SliderFloat("ボス出現進行度", &bossSpawnProgressThreshold_, 0.0f, 1.0f, "%.3f");
+
+				// ワンクリックで現在の自機カメラ位置を出撃地点にするボタン
+				if (ImGui::Button("現在のカメラ進行度を出撃地点にセット", ImVec2(-1, 28)))
 				{
-					if (ImGui::Button("装甲列車ボスを出現させる (Spawn Boss)", ImVec2(-1, 38)))
+					bossSpawnProgressThreshold_ = curProg;
+				}
+
+				// 設定保存ボタン
+				if (ImGui::Button("ボス出現設定を保存 (Save Settings)", ImVec2(-1, 26)))
+				{
+					SaveBossSettings();
+				}
+
+				ImGui::Spacing();
+				if (armoredTrainBoss_)
+				{
+					float bScale = armoredTrainBoss_->GetScaleMultiplier();
+					if (ImGui::SliderFloat("ボス全体スケール倍率 (Scale)", &bScale, 0.5f, 3.0f, "%.2fx"))
+					{
+						armoredTrainBoss_->SetScaleMultiplier(bScale);
+					}
+
+					bool isFollow = armoredTrainBoss_->IsFollowPlayer();
+					if (ImGui::Checkbox("プレイヤー連動モード (Follow Player)", &isFollow))
+					{
+						armoredTrainBoss_->SetFollowPlayer(isFollow);
+					}
+					if (isFollow)
+					{
+						float leadDist = armoredTrainBoss_->GetDesiredLeadDistance();
+						if (ImGui::SliderFloat("並走基準距離(自機前方m)", &leadDist, 50.0f, 200.0f, "%.1f m"))
+						{
+							armoredTrainBoss_->SetDesiredLeadDistance(leadDist);
+						}
+						bool isRandomLead = armoredTrainBoss_->IsRandomLeadDistanceEnabled();
+						if (ImGui::Checkbox("ランダム接近チャンス (短縮して攻撃部位を露出)", &isRandomLead))
+						{
+							armoredTrainBoss_->SetRandomLeadDistanceEnabled(isRandomLead);
+						}
+						float rushSpeed = armoredTrainBoss_->GetRushSpeedBonus();
+						if (ImGui::SliderFloat("接近/追い抜き追加速度", &rushSpeed, 10.0f, 80.0f, "%.1f m/s"))
+						{
+							armoredTrainBoss_->SetRushSpeedBonus(rushSpeed);
+						}
+
+						bool isGroundSnap = armoredTrainBoss_->IsGroundSnapEnabled();
+						if (ImGui::Checkbox("地面自動吸着 (レイキャスト接地)", &isGroundSnap))
+						{
+							armoredTrainBoss_->SetGroundSnapEnabled(isGroundSnap);
+						}
+						if (isGroundSnap)
+						{
+							float snapOffset = armoredTrainBoss_->GetGroundSnapOffset();
+							if (ImGui::SliderFloat("接地高さ微調整オフセット(m)", &snapOffset, -5.0f, 5.0f, "%.2f m"))
+							{
+								armoredTrainBoss_->SetGroundSnapOffset(snapOffset);
+							}
+						}
+
+						// リアルタイムチェイス監視情報
+						ImGui::Text("チェイス状態: ");
+						ImGui::SameLine();
+						if (armoredTrainBoss_->IsOvertaking())
+						{
+							ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "【追い抜き急加速中】");
+						}
+						else if (armoredTrainBoss_->IsShortDistanceOpportunity())
+						{
+							ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.1f, 1.0f), "【至近距離攻撃チャンス中！】");
+						}
+						else if (armoredTrainBoss_->IsCloseToPlayer())
+						{
+							ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "【基準距離で並走巡航中】");
+						}
+						else
+						{
+							ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "【遠方から急接近中】");
+						}
+
+						ImGui::Text("目標距離: %.1f m (基準: %.1f m)", armoredTrainBoss_->GetDynamicLeadDistance(), armoredTrainBoss_->GetDesiredLeadDistance());
+						ImGui::Text("自機との前後距離: %.1f m", armoredTrainBoss_->GetRelativeForwardDistance());
+						ImGui::Text("ボス実速度: %.1f m/s (目標: %.1f m/s)", armoredTrainBoss_->GetCurrentSpeed(), armoredTrainBoss_->GetTargetSpeed());
+						ImGui::Text("レール進行度: %.1f%%", armoredTrainBoss_->GetRailProgress() * 100.0f);
+					}
+				}
+
+				ImGui::Spacing();
+				if (bossRail_ && bossRail_->IsValid())
+				{
+					ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "● ボス専用レール (BossRail): 検出済み");
+				}
+				else
+				{
+					ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "○ ボス走行レール: メインレール追走 (BossRail未設定)");
+				}
+				ImGui::Separator();
+
+				const char* stepStr = "未遭遇 (NOT_ACTIVE)";
+				if (bossBattleStep_ == BossBattleStep::WARNING_ALERT) stepStr = "WARNING警告中 (ALERT)";
+				else if (bossBattleStep_ == BossBattleStep::BATTLE) stepStr = "戦闘中 (BATTLE)";
+				else if (bossBattleStep_ == BossBattleStep::DEFEATED_SEQUENCE) stepStr = "撃破演出中 (DEFEATED)";
+				else if (bossBattleStep_ == BossBattleStep::FINISHED) stepStr = "撃破完了 (FINISHED)";
+				ImGui::Text("ボス戦フェーズ: %s", stepStr);
+
+				if (bossBattleStep_ == BossBattleStep::NOT_ACTIVE)
+				{
+					if (ImGui::Button("WARNING演出付きで出現 (Start Boss Encounter)", ImVec2(-1, 38)))
+					{
+						StartBossWarningSequence();
+					}
+					if (ImGui::Button("即座に出現させる (Instant Spawn)", ImVec2(-1, 28)))
 					{
 						isBossSpawned_ = true;
+						bossBattleStep_ = BossBattleStep::BATTLE;
 						if (armoredTrainBoss_)
 						{
-							if (railCameraController_ && !mainRails_.empty())
+							if (bossRail_ && bossRail_->IsValid())
 							{
-								float curProg = railCameraController_->GetProgress();
-								float bossProg = std::min(1.0f, curProg + 0.15f);
+								armoredTrainBoss_->SetRail(bossRail_.get());
+								armoredTrainBoss_->SetRailProgress(0.0f);
+							}
+							else if (railCameraController_ && !mainRails_.empty())
+							{
+								float bCurProg = railCameraController_->GetProgress();
+								float bossProg = std::min(1.0f, bCurProg + 0.15f);
 								armoredTrainBoss_->SetRailProgress(bossProg);
 								armoredTrainBoss_->SetRail(mainRails_[0].get());
 							}
@@ -2504,9 +2772,13 @@ void GamePlayScene::Update()
 				}
 				else
 				{
-					if (ImGui::Button("装甲列車ボスを退場させる (Despawn Boss)", ImVec2(-1, 38)))
+					if (ImGui::Button("装甲列車ボスを退場・リセット (Reset Boss)", ImVec2(-1, 38)))
 					{
 						isBossSpawned_ = false;
+						bossBattleStep_ = BossBattleStep::NOT_ACTIVE;
+						bossWarningTimer_ = 0.0f;
+						bossDefeatTimer_ = 0.0f;
+						bossDisplayedHpRate_ = 1.0f;
 						if (armoredTrainBoss_) armoredTrainBoss_->SetActive(false);
 					}
 
@@ -2514,7 +2786,6 @@ void GamePlayScene::Update()
 					{
 						float hpRate = armoredTrainBoss_->GetTotalHpRate();
 						ImGui::ProgressBar(hpRate, ImVec2(-1, 24), "BOSS TOTAL HP");
-						ImGui::Text(armoredTrainBoss_->IsDefeated() ? "状態: 撃破完了 (DEFEATED)" : "状態: 戦闘中 (ENGAGED)");
 
 						ImGui::Separator();
 						ImGui::Text("各車両ステータス:");
@@ -3002,6 +3273,7 @@ void GamePlayScene::Update()
 				if (ImGui::Button("一時停止 (Pause)##TL", ImVec2(125, 26)))
 				{
 					isPlaying_ = false;
+					services->SetGamePlaying(false);
 				}
 				ImGui::PopStyleColor(2);
 			}
@@ -3012,6 +3284,7 @@ void GamePlayScene::Update()
 				if (ImGui::Button("再生 (Play)##TL", ImVec2(125, 26)))
 				{
 					isPlaying_ = true;
+					services->SetGamePlaying(true);
 				}
 				ImGui::PopStyleColor(2);
 			}
@@ -3032,6 +3305,7 @@ void GamePlayScene::Update()
 			if (ImGui::Button("リセット##TL", ImVec2(65, 26)))
 			{
 				isPlaying_ = false;
+				services->SetGamePlaying(false);
 				if (railCameraController_) railCameraController_->Reset();
 				ReloadEnemiesOnly();
 			}
@@ -3045,6 +3319,7 @@ void GamePlayScene::Update()
 			if (ImGui::Button("クリア演出##TL", ImVec2(95, 26)))
 			{
 				isPlaying_ = true;
+				services->SetGamePlaying(true);
 				if (player_) player_->SetDead(false);
 				gamePhase_ = GamePhase::PLAYING;
 				StartClearSequence();
@@ -3267,14 +3542,12 @@ void GamePlayScene::Draw()
 	// 視錐台（Frustum）カリング用の情報取得
 	Frustum frustum{};
 	bool enableCulling = false;
-	/*
 	if (activeCamera_)
 	{
 		Matrix4x4 vp = activeCamera_->GetViewMatrix() * activeCamera_->GetProjectionMatrix();
 		frustum = Frustum::CreateFromViewProjection(vp);
 		enableCulling = true;
 	}
-	*/
 
 	if (object3dCommon) object3dCommon->SetCommonDrawSetting();
 
@@ -3467,10 +3740,33 @@ void GamePlayScene::DrawUI()
 		if (hpBarBgSprite_) { hpBarBgSprite_->Update(); hpBarBgSprite_->Draw(); }
 		if (hpBarSprite_) { hpBarSprite_->Update(); hpBarSprite_->Draw(); }
 		if (isDisplaySprite) { for (auto& sprite : sprites) if (sprite) { sprite->Update(); sprite->Draw(); } }
+
+		// ボス専用HPバースプライト（戦闘中・撃破演出中）
+		if (bossBattleStep_ == BossBattleStep::BATTLE || bossBattleStep_ == BossBattleStep::DEFEATED_SEQUENCE)
+		{
+			float hpRate = armoredTrainBoss_ ? armoredTrainBoss_->GetTotalHpRate() : 0.0f;
+			float barW = 600.0f;
+			if (bossHpBarBgSprite_) { bossHpBarBgSprite_->Update(); bossHpBarBgSprite_->Draw(); }
+			if (bossHpBarDelaySprite_)
+			{
+				bossHpBarDelaySprite_->SetSize(Vector2(barW * std::clamp(bossDisplayedHpRate_, 0.0f, 1.0f), 18.0f));
+				bossHpBarDelaySprite_->Update();
+				bossHpBarDelaySprite_->Draw();
+			}
+			if (bossHpBarSprite_)
+			{
+				bossHpBarSprite_->SetSize(Vector2(barW * std::clamp(hpRate, 0.0f, 1.0f), 18.0f));
+				bossHpBarSprite_->Update();
+				bossHpBarSprite_->Draw();
+			}
+		}
 	}
 
 	// スタート演出用UIテキストの描画
 	DrawCutsceneUI();
+
+	// ボス戦用UI（WARNING警告・詳細ボスHPバー・各車両インジケーター）の描画
+	DrawBossUI();
 
 	// ゲームオーバー演出用UIテキストの描画
 	DrawGameOverUI();
@@ -3840,9 +4136,9 @@ void GamePlayScene::StartGameOverSequence()
 		player_->Update3DObjectOnly();
 		player_->SetDead(true);
 
-		// 初回被弾時の火花＆白煙エフェクト
-		hitEffect_.SetPosition(player_->GetWorldPosition());
-		hitEffect_.Play();
+		// 初回被弾時の火花＆白煙エフェクト（作り直すため一旦無効化）
+		// hitEffect_.SetPosition(player_->GetWorldPosition());
+		// hitEffect_.Play();
 	}
 
 	// レールカメラの前進を即座に停止（その場にとどまる）
@@ -4517,4 +4813,446 @@ void GamePlayScene::DrawClearUI()
 
 	drawList->PopClipRect();
 #endif
+}
+
+void GamePlayScene::StartBossWarningSequence()
+{
+	if (bossBattleStep_ != BossBattleStep::NOT_ACTIVE) return;
+
+	bossBattleStep_ = BossBattleStep::WARNING_ALERT;
+	bossWarningTimer_ = 0.0f;
+	bossWarningSirenTimer_ = 0.0f;
+	cameraShakeTimer_ = 0.6f;
+
+	// アラーム音の再生
+	SoundManager::GetInstance()->PlaySE("Alarm01.wav", 0.85f);
+
+	// ボスをレール上の前方に出現スタンバイ
+	if (armoredTrainBoss_)
+	{
+		armoredTrainBoss_->ResetChaseState();
+		if (bossRail_ && bossRail_->IsValid())
+		{
+			// ボス専用レール（BossRail）を走行
+			armoredTrainBoss_->SetRail(bossRail_.get());
+			armoredTrainBoss_->SetRailProgress(0.0f);
+		}
+		else if (railCameraController_ && !mainRails_.empty())
+		{
+			// メインレールを前方追走
+			float curProg = railCameraController_->GetProgress();
+			float bossProg = (std::min)(0.98f, curProg + 0.12f);
+			armoredTrainBoss_->SetRailProgress(bossProg);
+			armoredTrainBoss_->SetRail(mainRails_[0].get());
+		}
+	}
+}
+
+void GamePlayScene::UpdateBossBattle(float dt)
+{
+	if (bossBattleStep_ == BossBattleStep::NOT_ACTIVE) return;
+
+	if (bossBattleStep_ == BossBattleStep::WARNING_ALERT)
+	{
+		bossWarningTimer_ += dt;
+		bossWarningSirenTimer_ += dt;
+
+		// 0.85秒ごとにサイレンSEを反復再生
+		if (bossWarningSirenTimer_ >= 0.85f && bossWarningTimer_ < kBossWarningDuration - 0.4f)
+		{
+			bossWarningSirenTimer_ = 0.0f;
+			SoundManager::GetInstance()->PlaySE("Alarm01.wav", 0.85f);
+		}
+
+		// 警告時間終了 -> ボス戦開始！
+		if (bossWarningTimer_ >= kBossWarningDuration)
+		{
+			bossBattleStep_ = BossBattleStep::BATTLE;
+			isBossSpawned_ = true;
+			if (armoredTrainBoss_)
+			{
+				armoredTrainBoss_->SetActive(true);
+			}
+			SoundManager::GetInstance()->PlaySE("explosion.mp3", 0.9f);
+			cameraShakeTimer_ = 0.5f;
+		}
+	}
+	else if (bossBattleStep_ == BossBattleStep::BATTLE)
+	{
+		if (armoredTrainBoss_)
+		{
+			// HPゲージのスムーズ遅延追従（格闘ゲーム風のダメージ可視化演出）
+			float currentHpRate = armoredTrainBoss_->GetTotalHpRate();
+			if (bossDisplayedHpRate_ > currentHpRate)
+			{
+				bossDisplayedHpRate_ -= 0.35f * dt;
+				if (bossDisplayedHpRate_ < currentHpRate)
+				{
+					bossDisplayedHpRate_ = currentHpRate;
+				}
+			}
+			else
+			{
+				bossDisplayedHpRate_ = currentHpRate;
+			}
+		}
+	}
+	else if (bossBattleStep_ == BossBattleStep::DEFEATED_SEQUENCE)
+	{
+		bossDefeatTimer_ += dt;
+
+		// 連続大爆発演出（0.12秒ごと）
+		static float defeatExplodeSubTimer = 0.0f;
+		defeatExplodeSubTimer += dt;
+		if (defeatExplodeSubTimer >= 0.12f && armoredTrainBoss_)
+		{
+			defeatExplodeSubTimer = 0.0f;
+			const auto& cars = armoredTrainBoss_->GetCarriages();
+			if (!cars.empty())
+			{
+				int randCar = rand() % cars.size();
+				if (cars[randCar].object)
+				{
+					Vector3 explodePos = cars[randCar].object->GetTranslate();
+					explodePos.x += ((rand() % 100) / 50.0f - 1.0f) * 4.0f;
+					explodePos.y += ((rand() % 100) / 50.0f - 1.0f) * 2.0f;
+					explodePos.z += ((rand() % 100) / 50.0f - 1.0f) * 6.0f;
+					explosionEffect_.SetPosition(explodePos);
+					explosionEffect_.Play();
+					SoundManager::GetInstance()->PlaySE("explosion.mp3", 0.85f);
+					cameraShakeTimer_ = 0.25f;
+				}
+			}
+		}
+
+		// 撃破演出終了 -> ゲームクリア画面へ移行！
+		if (bossDefeatTimer_ >= kBossDefeatDuration)
+		{
+			bossBattleStep_ = BossBattleStep::FINISHED;
+			isBossSpawned_ = false;
+			StartClearSequence();
+		}
+	}
+}
+
+void GamePlayScene::DrawBossUI()
+{
+#ifdef USE_IMGUI
+	if (ImGui::GetCurrentContext() == nullptr) return;
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	if (!viewport) return;
+	ImDrawList* drawList = ImGui::GetForegroundDrawList(viewport);
+	if (!drawList) return;
+
+	// ゲーム画面領域（エディタモード／フルスクリーン対応）
+	ImVec2 viewPos(0.0f, 0.0f);
+	ImVec2 viewSize = viewport->Size;
+#ifdef ENABLE_EDITOR
+	if (EngineServices::GetInstance()->GetEditorMode())
+	{
+		viewPos = EditorSystem::GetInstance()->GetViewportPos();
+		viewSize = EditorSystem::GetInstance()->GetViewportSize();
+		if (viewSize.x <= 10.0f || viewSize.y <= 10.0f) return;
+	}
+#endif
+
+	float screenW = viewSize.x;
+	float screenH = viewSize.y;
+	float scale = screenH / 720.0f;
+	drawList->PushClipRect(viewPos, ImVec2(viewPos.x + screenW, viewPos.y + screenH), true);
+
+	auto imguiManager = EngineServices::GetInstance()->GetImGuiManager();
+	ImFont* fontMplus = imguiManager ? imguiManager->GetFont(ImGuiManager::FontType::Japanese_MPLUS) : ImGui::GetFont();
+	if (!fontMplus) fontMplus = ImGui::GetFont();
+
+	// 1. WARNING警告演出（赤フラッシュ、警告ストライプ、点滅テキスト）
+	if (bossBattleStep_ == BossBattleStep::WARNING_ALERT)
+	{
+		float warnT = bossWarningTimer_;
+		float pulse = 0.5f + 0.5f * std::sin(warnT * 12.0f); // 高速明滅パルス
+
+		// 画面全体の赤色フラッシュ
+		int flashAlpha = static_cast<int>(50.0f + 60.0f * pulse);
+		drawList->AddRectFilled(viewPos, ImVec2(viewPos.x + screenW, viewPos.y + screenH), IM_COL32(255, 20, 20, flashAlpha));
+
+		// 上下の警告ストライプバー（高さ 44px）
+		float barH = 44.0f * scale;
+		// 上の警告帯
+		drawList->AddRectFilled(viewPos, ImVec2(viewPos.x + screenW, viewPos.y + barH), IM_COL32(200, 20, 20, 230));
+		// 下の警告帯
+		drawList->AddRectFilled(ImVec2(viewPos.x, viewPos.y + screenH - barH), ImVec2(viewPos.x + screenW, viewPos.y + screenH), IM_COL32(200, 20, 20, 230));
+
+		// 警告帯の斜線ストライプパターン
+		float stripeW = 30.0f * scale;
+		float stripeOffset = std::fmod(warnT * 80.0f * scale, stripeW * 2.0f);
+		for (float x = -stripeW * 2.0f; x < screenW + stripeW * 2.0f; x += stripeW * 2.0f)
+		{
+			// 上部ストライプ
+			drawList->AddTriangleFilled(
+				ImVec2(viewPos.x + x + stripeOffset, viewPos.y),
+				ImVec2(viewPos.x + x + stripeOffset + stripeW * 0.6f, viewPos.y),
+				ImVec2(viewPos.x + x + stripeOffset - stripeW * 0.4f, viewPos.y + barH),
+				IM_COL32(20, 20, 20, 220)
+			);
+			drawList->AddTriangleFilled(
+				ImVec2(viewPos.x + x + stripeOffset + stripeW * 0.6f, viewPos.y),
+				ImVec2(viewPos.x + x + stripeOffset + stripeW * 0.2f, viewPos.y + barH),
+				ImVec2(viewPos.x + x + stripeOffset - stripeW * 0.4f, viewPos.y + barH),
+				IM_COL32(20, 20, 20, 220)
+			);
+			// 下部ストライプ
+			drawList->AddTriangleFilled(
+				ImVec2(viewPos.x + x - stripeOffset, viewPos.y + screenH - barH),
+				ImVec2(viewPos.x + x - stripeOffset + stripeW * 0.6f, viewPos.y + screenH - barH),
+				ImVec2(viewPos.x + x - stripeOffset - stripeW * 0.4f, viewPos.y + screenH),
+				IM_COL32(20, 20, 20, 220)
+			);
+			drawList->AddTriangleFilled(
+				ImVec2(viewPos.x + x - stripeOffset + stripeW * 0.6f, viewPos.y + screenH - barH),
+				ImVec2(viewPos.x + x - stripeOffset + stripeW * 0.2f, viewPos.y + screenH),
+				ImVec2(viewPos.x + x - stripeOffset - stripeW * 0.4f, viewPos.y + screenH),
+				IM_COL32(20, 20, 20, 220)
+			);
+		}
+
+		// 中央の「WARNING」テキスト描画
+		const char* warnTitle = "WARNING";
+		float titleFontSize = (54.0f + 6.0f * pulse) * scale;
+		ImVec2 titleSize = fontMplus->CalcTextSizeA(titleFontSize, FLT_MAX, -1.0f, warnTitle);
+		ImVec2 titlePos(viewPos.x + (screenW - titleSize.x) * 0.5f, viewPos.y + screenH * 0.40f - titleSize.y * 0.5f);
+
+		// テキストシャドウ・アウトライン
+		float thick = 3.0f * scale;
+		for (float ox = -thick; ox <= thick; ox += thick)
+		{
+			for (float oy = -thick; oy <= thick; oy += thick)
+			{
+				drawList->AddText(fontMplus, titleFontSize, ImVec2(titlePos.x + ox, titlePos.y + oy), IM_COL32(0, 0, 0, 255), warnTitle);
+			}
+		}
+		ImU32 warnCol = pulse > 0.3f ? IM_COL32(255, 40, 40, 255) : IM_COL32(255, 220, 50, 255);
+		drawList->AddText(fontMplus, titleFontSize, titlePos, warnCol, warnTitle);
+
+		// サブテキスト「EMERGENCY: MASSIVE ARMORED TRAIN DETECTED」
+		const char* subText = "EMERGENCY: MASSIVE ARMORED TRAIN DETECTED";
+		float subFontSize = 22.0f * scale;
+		ImVec2 subSize = fontMplus->CalcTextSizeA(subFontSize, FLT_MAX, -1.0f, subText);
+		ImVec2 subPos(viewPos.x + (screenW - subSize.x) * 0.5f, titlePos.y + titleSize.y + 12.0f * scale);
+		for (float ox = -2.0f; ox <= 2.0f; ox += 2.0f)
+		{
+			for (float oy = -2.0f; oy <= 2.0f; oy += 2.0f)
+			{
+				drawList->AddText(fontMplus, subFontSize, ImVec2(subPos.x + ox, subPos.y + oy), IM_COL32(0, 0, 0, 220), subText);
+			}
+		}
+		drawList->AddText(fontMplus, subFontSize, subPos, IM_COL32(255, 240, 240, 240), subText);
+	}
+
+	// 2. ボスHPゲージUI（戦闘中・撃破演出中）
+	if ((bossBattleStep_ == BossBattleStep::BATTLE || bossBattleStep_ == BossBattleStep::DEFEATED_SEQUENCE) && armoredTrainBoss_)
+	{
+		float barW = 600.0f * scale;
+		float barH = 18.0f * scale;
+		float barX = viewPos.x + (screenW - barW) * 0.5f;
+		float barY = viewPos.y + 36.0f * scale;
+
+		float realHpRate = (std::clamp)(armoredTrainBoss_->GetTotalHpRate(), 0.0f, 1.0f);
+		float delayHpRate = (std::clamp)(bossDisplayedHpRate_, 0.0f, 1.0f);
+
+		// ボス名タイトル：「BOSS: ARMORED TRAIN "BEHEMOTH"」
+		const char* bossTitle = "BOSS: ARMORED TRAIN \"BEHEMOTH\"";
+		float bossTitleFontSize = 18.0f * scale;
+		ImVec2 bossTitlePos(barX, barY - 24.0f * scale);
+		// 黒アウトライン
+		drawList->AddText(fontMplus, bossTitleFontSize, ImVec2(bossTitlePos.x + 1.5f, bossTitlePos.y + 1.5f), IM_COL32(0, 0, 0, 255), bossTitle);
+		drawList->AddText(fontMplus, bossTitleFontSize, ImVec2(bossTitlePos.x - 1.5f, bossTitlePos.y - 1.5f), IM_COL32(0, 0, 0, 255), bossTitle);
+		drawList->AddText(fontMplus, bossTitleFontSize, bossTitlePos, IM_COL32(255, 90, 80, 255), bossTitle);
+
+		// HPパーセント表示（右揃え）
+		char hpPercentBuf[32];
+		snprintf(hpPercentBuf, sizeof(hpPercentBuf), "HP %3.0f%%", realHpRate * 100.0f);
+		ImVec2 hpTxtSize = fontMplus->CalcTextSizeA(bossTitleFontSize, FLT_MAX, -1.0f, hpPercentBuf);
+		ImVec2 hpTxtPos(barX + barW - hpTxtSize.x, barY - 24.0f * scale);
+		drawList->AddText(fontMplus, bossTitleFontSize, ImVec2(hpTxtPos.x + 1.5f, hpTxtPos.y + 1.5f), IM_COL32(0, 0, 0, 255), hpPercentBuf);
+		drawList->AddText(fontMplus, bossTitleFontSize, hpTxtPos, IM_COL32(255, 230, 200, 255), hpPercentBuf);
+
+		// 外枠シャドウ
+		drawList->AddRectFilled(ImVec2(barX - 3.0f, barY - 3.0f), ImVec2(barX + barW + 3.0f, barY + barH + 3.0f), IM_COL32(0, 0, 0, 200), 3.0f);
+		// 背景
+		drawList->AddRectFilled(ImVec2(barX, barY), ImVec2(barX + barW, barY + barH), IM_COL32(30, 32, 38, 240), 2.0f);
+
+		// 遅延追従バー（黄色）
+		if (delayHpRate > 0.001f)
+		{
+			drawList->AddRectFilled(ImVec2(barX, barY), ImVec2(barX + barW * delayHpRate, barY + barH), IM_COL32(255, 200, 60, 220), 2.0f);
+		}
+
+		// メインHPバー（深紅〜赤グラデーション）
+		if (realHpRate > 0.001f)
+		{
+			drawList->AddRectFilledMultiColor(
+				ImVec2(barX, barY),
+				ImVec2(barX + barW * realHpRate, barY + barH),
+				IM_COL32(255, 50, 40, 255),
+				IM_COL32(210, 20, 20, 255),
+				IM_COL32(180, 10, 10, 255),
+				IM_COL32(230, 40, 30, 255)
+			);
+		}
+
+		// バー枠線
+		drawList->AddRect(ImVec2(barX, barY), ImVec2(barX + barW, barY + barH), IM_COL32(180, 180, 190, 220), 2.0f, 0, 1.5f);
+
+		// 3. 各車両部位破壊インジケーター（4車両）
+		const auto& cars = armoredTrainBoss_->GetCarriages();
+		if (!cars.empty())
+		{
+			float indGap = 8.0f * scale;
+			float indW = (barW - indGap * (cars.size() - 1)) / static_cast<float>(cars.size());
+			float indH = 18.0f * scale;
+			float indY = barY + barH + 6.0f * scale;
+
+			for (size_t c = 0; c < cars.size(); ++c)
+			{
+				float cx = barX + c * (indW + indGap);
+				bool destroyed = cars[c].isDestroyed;
+
+				// 各車両枠背景
+				ImU32 bgCol = destroyed ? IM_COL32(40, 20, 20, 180) : IM_COL32(25, 40, 50, 200);
+				drawList->AddRectFilled(ImVec2(cx, indY), ImVec2(cx + indW, indY + indH), bgCol, 2.0f);
+
+				// 車両個別HP率
+				float carHpRate = cars[c].maxHp > 0 ? static_cast<float>(cars[c].hp) / cars[c].maxHp : 0.0f;
+				if (!destroyed && carHpRate > 0.001f)
+				{
+					ImU32 carBarCol = (c == 0) ? IM_COL32(255, 120, 40, 200) : IM_COL32(50, 190, 220, 200);
+					drawList->AddRectFilled(ImVec2(cx, indY), ImVec2(cx + indW * carHpRate, indY + indH), carBarCol, 2.0f);
+				}
+
+				// 車両枠線
+				ImU32 borderCol = destroyed ? IM_COL32(150, 40, 40, 150) : IM_COL32(100, 180, 200, 200);
+				drawList->AddRect(ImVec2(cx, indY), ImVec2(cx + indW, indY + indH), borderCol, 2.0f);
+
+				// 車両名称略称表示
+				const char* carShortName = "";
+				if (c == 0) carShortName = "1:CORE 機関車";
+				else if (c == 1) carShortName = "2:重砲塔車";
+				else if (c == 2) carShortName = "3:ミサイル車";
+				else if (c == 3) carShortName = "4:動力発電車";
+
+				float cFontSize = 11.0f * scale;
+				ImVec2 cTxtSize = fontMplus->CalcTextSizeA(cFontSize, FLT_MAX, -1.0f, carShortName);
+				ImVec2 cTxtPos(cx + (indW - cTxtSize.x) * 0.5f, indY + (indH - cTxtSize.y) * 0.5f);
+
+				if (destroyed)
+				{
+					const char* destText = "DESTROYED";
+					ImVec2 dSize = fontMplus->CalcTextSizeA(cFontSize, FLT_MAX, -1.0f, destText);
+					ImVec2 dPos(cx + (indW - dSize.x) * 0.5f, indY + (indH - dSize.y) * 0.5f);
+					drawList->AddText(fontMplus, cFontSize, dPos, IM_COL32(255, 60, 60, 220), destText);
+				}
+				else
+				{
+					drawList->AddText(fontMplus, cFontSize, ImVec2(cTxtPos.x + 1.0f, cTxtPos.y + 1.0f), IM_COL32(0, 0, 0, 220), carShortName);
+					drawList->AddText(fontMplus, cFontSize, cTxtPos, IM_COL32(230, 240, 250, 240), carShortName);
+				}
+			}
+		}
+
+		// 撃破演出中の「TARGET DESTROYED」テキスト表示
+		if (bossBattleStep_ == BossBattleStep::DEFEATED_SEQUENCE)
+		{
+			const char* clearText = "TARGET DESTROYED";
+			float dFontSize = 46.0f * scale;
+			ImVec2 dSize = fontMplus->CalcTextSizeA(dFontSize, FLT_MAX, -1.0f, clearText);
+			ImVec2 dPos(viewPos.x + (screenW - dSize.x) * 0.5f, viewPos.y + screenH * 0.42f);
+
+			for (float ox = -3.0f; ox <= 3.0f; ox += 3.0f)
+			{
+				for (float oy = -3.0f; oy <= 3.0f; oy += 3.0f)
+				{
+					drawList->AddText(fontMplus, dFontSize, ImVec2(dPos.x + ox, dPos.y + oy), IM_COL32(0, 0, 0, 255), clearText);
+				}
+			}
+			drawList->AddText(fontMplus, dFontSize, dPos, IM_COL32(255, 215, 0, 255), clearText);
+		}
+	}
+
+	drawList->PopClipRect();
+#endif
+}
+
+void GamePlayScene::LoadBossSettings()
+{
+	std::string filepath = "resources/json/settings/boss_settings.json";
+	std::ifstream file(filepath);
+	if (!file.is_open()) return;
+
+	try
+	{
+		nlohmann::json root;
+		file >> root;
+		if (root.contains("boss_spawn_progress"))
+		{
+			bossSpawnProgressThreshold_ = root["boss_spawn_progress"].get<float>();
+		}
+		if (armoredTrainBoss_)
+		{
+			if (root.contains("is_follow_player"))
+			{
+				armoredTrainBoss_->SetFollowPlayer(root["is_follow_player"].get<bool>());
+			}
+			if (root.contains("boss_scale"))
+			{
+				armoredTrainBoss_->SetScaleMultiplier(root["boss_scale"].get<float>());
+			}
+			if (root.contains("desired_lead_distance"))
+			{
+				armoredTrainBoss_->SetDesiredLeadDistance(root["desired_lead_distance"].get<float>());
+			}
+			if (root.contains("is_random_lead_enabled"))
+			{
+				armoredTrainBoss_->SetRandomLeadDistanceEnabled(root["is_random_lead_enabled"].get<bool>());
+			}
+			if (root.contains("rush_speed_bonus"))
+			{
+				armoredTrainBoss_->SetRushSpeedBonus(root["rush_speed_bonus"].get<float>());
+			}
+			if (root.contains("is_ground_snap_enabled"))
+			{
+				armoredTrainBoss_->SetGroundSnapEnabled(root["is_ground_snap_enabled"].get<bool>());
+			}
+			if (root.contains("ground_snap_offset"))
+			{
+				armoredTrainBoss_->SetGroundSnapOffset(root["ground_snap_offset"].get<float>());
+			}
+		}
+	}
+	catch (...)
+	{
+	}
+}
+
+void GamePlayScene::SaveBossSettings()
+{
+	std::string dir = "resources/json/settings";
+	std::filesystem::create_directories(dir);
+	std::string filepath = dir + "/boss_settings.json";
+	std::ofstream file(filepath);
+	if (!file.is_open()) return;
+
+	nlohmann::json root;
+	root["boss_spawn_progress"] = bossSpawnProgressThreshold_;
+	if (armoredTrainBoss_)
+	{
+		root["boss_scale"] = armoredTrainBoss_->GetScaleMultiplier();
+		root["is_follow_player"] = armoredTrainBoss_->IsFollowPlayer();
+		root["desired_lead_distance"] = armoredTrainBoss_->GetDesiredLeadDistance();
+		root["is_random_lead_enabled"] = armoredTrainBoss_->IsRandomLeadDistanceEnabled();
+		root["rush_speed_bonus"] = armoredTrainBoss_->GetRushSpeedBonus();
+		root["is_ground_snap_enabled"] = armoredTrainBoss_->IsGroundSnapEnabled();
+		root["ground_snap_offset"] = armoredTrainBoss_->GetGroundSnapOffset();
+	}
+
+	file << root.dump(4);
 }

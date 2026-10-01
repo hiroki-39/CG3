@@ -40,6 +40,7 @@ struct LevelObjectData {
     
     // カーブ（レール）の制御点
     std::vector<LevelCurvePoint> curvePoints;
+    bool showPlayerRange = true; // プレイヤーのメインレールとして扱うか（falseなら敵レール等）
     
     // 敵プロパティ
     bool isEnemy = false;
