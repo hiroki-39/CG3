@@ -36,12 +36,13 @@ public:
     
     // プレイヤー（球またはOBB）との衝突判定（法線・めり込み深さを取得）
     bool CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* outResult) const;
-    bool CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult) const;
+    bool CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult, std::vector<Triangle>* outTestedTriangles = nullptr, std::vector<Triangle>* outHitTriangles = nullptr) const;
 
     bool CheckCollision(const Sphere& bulletSphere) const;
     bool CheckRaycast(const Ray& ray, float* outDist) const;
 
     bool HasMeshCollider() const { return hasMeshCollider_; }
+    size_t GetMeshTriangleCount() const { EnsureTriangles(); return triangles_.size(); }
 
 private:
     std::unique_ptr<Object3d> object_;

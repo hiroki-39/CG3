@@ -138,9 +138,10 @@ public://メンバ関数
 
 	// メッシュコリジョン判定
 	bool CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* outResult = nullptr) const;
-	bool CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult = nullptr) const;
+	bool CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult = nullptr, std::vector<Triangle>* outTestedTriangles = nullptr, std::vector<Triangle>* outHitTriangles = nullptr) const;
 	bool RaycastDown(float x, float z, float startY, float* outGroundY, Vector3* outNormal = nullptr) const;
 	bool HasMeshCollider() const { return hasMeshCollider_; }
+	size_t GetMeshTriangleCount() const { EnsureTriangles(); return triangles_.size(); }
 	void SetCollisionEnabled(bool enable) { isCollisionEnabled_ = enable; }
 	bool IsCollisionEnabled() const { return isCollisionEnabled_; }
 

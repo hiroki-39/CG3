@@ -146,6 +146,11 @@ public:
     void OnCollision();
     bool OnTerrainCollision(const Vector3& worldNormal, float penetrationDepth, Object3d* parentCamera = nullptr, const Vector3* hitPoint = nullptr);
     OBB GetWorldOBB() const;
+    void SetColliderColor(const Vector4& color) {
+        if (colliderObject_ && colliderObject_->GetModel()) {
+            colliderObject_->GetModel()->SetColor(color);
+        }
+    }
     float GetTerrainCollisionRadius() const { return terrainCollisionRadius_; }
     void SetTerrainCollisionRadius(float radius) { terrainCollisionRadius_ = radius; }
     void Heal(int amount) { hp_ += amount; if (hp_ > maxHp_) hp_ = maxHp_; }

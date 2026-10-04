@@ -147,30 +147,6 @@
         },
         {
             "type": "MESH",
-            "name": "enemy.006",
-            "transform": {
-                "translation": [
-                    40.05826950073242,
-                    2377.878173828125,
-                    16.856178283691406
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            },
-            "is_enemy": true,
-            "enemy_type": "TURRET",
-            "is_destructible": true
-        },
-        {
-            "type": "MESH",
             "name": "enemy.008",
             "transform": {
                 "translation": [
@@ -431,126 +407,6 @@
             },
             "is_enemy": true,
             "enemy_type": "PATROL_V",
-            "is_destructible": true
-        },
-        {
-            "type": "MESH",
-            "name": "enemy.019",
-            "transform": {
-                "translation": [
-                    40.05826950073242,
-                    2361.21923828125,
-                    16.856178283691406
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            },
-            "is_enemy": true,
-            "enemy_type": "TURRET",
-            "is_destructible": true
-        },
-        {
-            "type": "MESH",
-            "name": "enemy.020",
-            "transform": {
-                "translation": [
-                    40.05826950073242,
-                    2343.572021484375,
-                    16.856178283691406
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            },
-            "is_enemy": true,
-            "enemy_type": "TURRET",
-            "is_destructible": true
-        },
-        {
-            "type": "MESH",
-            "name": "enemy.021",
-            "transform": {
-                "translation": [
-                    109.81680297851562,
-                    2377.878173828125,
-                    16.856178283691406
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            },
-            "is_enemy": true,
-            "enemy_type": "TURRET",
-            "is_destructible": true
-        },
-        {
-            "type": "MESH",
-            "name": "enemy.022",
-            "transform": {
-                "translation": [
-                    110.82772827148438,
-                    2361.21923828125,
-                    16.856178283691406
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            },
-            "is_enemy": true,
-            "enemy_type": "TURRET",
-            "is_destructible": true
-        },
-        {
-            "type": "MESH",
-            "name": "enemy.023",
-            "transform": {
-                "translation": [
-                    111.68057250976562,
-                    2343.572021484375,
-                    16.856178283691406
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            },
-            "is_enemy": true,
-            "enemy_type": "TURRET",
             "is_destructible": true
         },
         {
@@ -1684,14 +1540,14 @@
                         "z": 10.750642776489258
                     },
                     "handle_left": {
-                        "x": -70.08418273925781,
-                        "y": 4930.01806640625,
-                        "z": 10.997013092041016
+                        "x": -70.08412170410156,
+                        "y": 4930.0185546875,
+                        "z": 11.412237167358398
                     },
                     "handle_right": {
-                        "x": -64.00009155273438,
-                        "y": 5053.33544921875,
-                        "z": 10.513900756835938
+                        "x": -64.00007629394531,
+                        "y": 5053.3359375,
+                        "z": 10.11489486694336
                     },
                     "tilt": 0.0
                 },
@@ -1699,17 +1555,17 @@
                     "position": {
                         "x": -34.35040283203125,
                         "y": 5172.390625,
-                        "z": 8.573577880859375
+                        "z": 6.531848907470703
                     },
                     "handle_left": {
-                        "x": -33.5521240234375,
-                        "y": 5115.7314453125,
-                        "z": 9.72808837890625
+                        "x": -33.55194091796875,
+                        "y": 5115.73046875,
+                        "z": 7.699251174926758
                     },
                     "handle_right": {
-                        "x": -35.175384521484375,
-                        "y": 5230.9384765625,
-                        "z": 7.380584716796875
+                        "x": -35.17547607421875,
+                        "y": 5230.93798828125,
+                        "z": 5.325557708740234
                     },
                     "tilt": 0.0
                 },
@@ -1721,13 +1577,13 @@
                     },
                     "handle_left": {
                         "x": -66.50140380859375,
-                        "y": 5232.6337890625,
-                        "z": 5.879459381103516
+                        "y": 5232.63427734375,
+                        "z": 5.480537414550781
                     },
                     "handle_right": {
                         "x": -76.02896118164062,
                         "y": 5320.86962890625,
-                        "z": 3.977886199951172
+                        "z": 4.235996246337891
                     },
                     "tilt": 0.0
                 },
@@ -2585,6 +2441,29 @@
         },
         {
             "type": "MESH",
+            "name": "Terrain_Background_Mountains",
+            "transform": {
+                "translation": [
+                    0.0,
+                    4000.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_destructible": true,
+            "texture_path": "grass.png"
+        },
+        {
+            "type": "MESH",
             "name": "arch_1",
             "transform": {
                 "translation": [
@@ -2720,6 +2599,29 @@
             },
             "is_destructible": true,
             "texture_path": "gray.png"
+        },
+        {
+            "type": "MESH",
+            "name": "object",
+            "transform": {
+                "translation": [
+                    74.37324523925781,
+                    2511.96240234375,
+                    16.486892700195312
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.5421444773674011,
+                    0.9590266346931458,
+                    0.5421444773674011
+                ]
+            },
+            "is_destructible": true,
+            "texture_path": "wall.png"
         }
     ]
 }
