@@ -181,6 +181,7 @@ private:
 #else
     bool isDrawCollider_ = false;
 #endif
+    bool isDrawTerrainWireframe_ = false; // 判定計算が行われているポリゴンのみワイヤーフレーム表示（F3キー）
     float cameraShakeTimer_ = 0.0f;
     float lastLoadTimeMs_ = 0.0f;
     int score_ = 0;

@@ -534,7 +534,7 @@ bool Object3d::CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* o
 	return false;
 }
 
-bool Object3d::CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult) const {
+bool Object3d::CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult, std::vector<Triangle>* outTestedTriangles, std::vector<Triangle>* outHitTriangles) const {
 	if (!isCollisionEnabled_) return false;
 	EnsureTriangles();
 	if (!hasMeshCollider_) return false;
@@ -579,9 +579,17 @@ bool Object3d::CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult)
 		float tMaxZ = (std::max)({ tri.p0.z, tri.p1.z, tri.p2.z });
 		if (tMaxZ < oMinZ || tMinZ > oMaxZ) continue;
 
+		// 判定対象（Mid-Phase通過）三角形として記録
+		if (outTestedTriangles) {
+			outTestedTriangles->push_back(tri);
+		}
+
 		CollisionResult res;
 		if (CollisionMath::IsCollision(obb, tri, &res)) {
 			hitAny = true;
+			if (outHitTriangles) {
+				outHitTriangles->push_back(tri);
+			}
 			if (res.penetrationDepth > bestResult.penetrationDepth) {
 				bestResult = res;
 			}

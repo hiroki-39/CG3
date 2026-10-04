@@ -118,6 +118,9 @@ void Obstacle::Draw() {
 void Obstacle::DrawCollider() {
     if (colliderObject_ && !isDead_) {
         colliderObject_->Draw();
+    } else if (object_ && !isDead_) {
+        // メッシュコリジョンを持つ障害物はモデル自身をワイヤーフレーム描画
+        object_->Draw();
     }
 }
 
@@ -248,7 +251,7 @@ bool Obstacle::CheckCollisionWithSphere(const Sphere& sphere, CollisionResult* o
     return false;
 }
 
-bool Obstacle::CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult) const {
+bool Obstacle::CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult, std::vector<Triangle>* outTestedTriangles, std::vector<Triangle>* outHitTriangles) const {
     if (isDead_) return false;
     EnsureTriangles();
 
@@ -262,9 +265,15 @@ bool Obstacle::CheckCollisionWithOBB(const OBB& obb, CollisionResult* outResult)
         bestResult.penetrationDepth = -1.0f;
 
         for (const auto& tri : triangles_) {
+            if (outTestedTriangles) {
+                outTestedTriangles->push_back(tri);
+            }
             CollisionResult res;
             if (CollisionMath::IsCollision(obb, tri, &res)) {
                 hitAny = true;
+                if (outHitTriangles) {
+                    outHitTriangles->push_back(tri);
+                }
                 if (res.penetrationDepth > bestResult.penetrationDepth) {
                     bestResult = res;
                 }

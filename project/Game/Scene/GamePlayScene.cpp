@@ -31,6 +31,7 @@
 #include <chrono>
 #include <fstream>
 #include "externals/nlohmann/json.hpp"
+#include "Game/System/TerrainCollisionDebugger.h"
 
 static void CreateObjectFromNode(const LevelObjectData& node, const Object3d* parentObj, std::vector<std::unique_ptr<Object3d>>& instances, std::vector<std::unique_ptr<Rail>>& outRails, std::unique_ptr<Rail>& outBossRail, float& outBossSpawnProgress, Object3dCommon* common, uint32_t skyboxTexIndex, std::list<std::unique_ptr<Enemy>>& enemies, std::list<std::unique_ptr<Obstacle>>& obstacles, std::list<std::unique_ptr<EnhanceRing>>& enhanceRings, std::vector<Enemy*> parentEnemies = {})
 {
@@ -679,6 +680,9 @@ void GamePlayScene::Initialize()
 	}
 	isBossSpawned_ = false;
 
+	// 地形コリジョンデバッガーの初期化
+	TerrainCollisionDebugger::GetInstance()->Initialize(dxCommon, object3dCommon);
+
 	auto tUp0 = std::chrono::high_resolution_clock::now();
 	texManager->ExecuteUploadCommands();
 	texManager->ClearIntermediateResources();
@@ -1029,6 +1033,16 @@ void GamePlayScene::Update()
 		services->SetEditorMode(true);
 	}
 
+
+	if (input && input->TriggerKey(DIK_F2))
+	{
+		isDrawCollider_ = !isDrawCollider_;
+	}
+
+	if (input && input->TriggerKey(DIK_F3))
+	{
+		isDrawTerrainWireframe_ = !isDrawTerrainWireframe_;
+	}
 
 	if (input && input->TriggerKey(DIK_F5))
 	{
@@ -1776,6 +1790,9 @@ void GamePlayScene::Update()
 			}
 		}
 
+		// 地形コリジョンデバッガーのフレーム開始
+		TerrainCollisionDebugger::GetInstance()->BeginFrame();
+
 		for (auto it = obstacles_.begin(); it != obstacles_.end();)
 		{
 			(*it)->Update();
@@ -1871,17 +1888,23 @@ void GamePlayScene::Update()
 				OBB playerOBB = player_->GetWorldOBB();
 
 				CollisionResult colRes;
-				if ((*it)->CheckCollisionWithOBB(playerOBB, &colRes))
+				std::vector<Triangle> testedTris;
+				std::vector<Triangle> hitTris;
+				if ((*it)->CheckCollisionWithOBB(playerOBB, &colRes, &testedTris, &hitTris))
 				{
 					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get(), &colRes.hitPoint);
-					// プレイヤー地形・障害物衝突パーティクル（作り直すため一旦無効化）
-					// hitEffect_.SetPosition(colRes.hitPoint);
-					// hitEffect_.Play();
 					if (causedDamage)
 					{
 						cameraShakeTimer_ = 20.0f;
 					}
 				}
+
+				TerrainCollisionDebugger::GetInstance()->RecordCollisionCheck(
+					static_cast<int>((*it)->GetMeshTriangleCount()),
+					testedTris,
+					hitTris,
+					colRes.isHit ? &colRes : nullptr
+				);
 			}
 
 			if ((*it)->IsDead())
@@ -1906,19 +1929,37 @@ void GamePlayScene::Update()
 			{
 				if (!modelObj) continue;
 				CollisionResult colRes;
-				if (modelObj->CheckCollisionWithOBB(playerOBB, &colRes))
+				std::vector<Triangle> testedTris;
+				std::vector<Triangle> hitTris;
+				if (modelObj->CheckCollisionWithOBB(playerOBB, &colRes, &testedTris, &hitTris))
 				{
 					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get(), &colRes.hitPoint);
-					// プレイヤー地形モデル衝突パーティクル（作り直すため一旦無効化）
-					// hitEffect_.SetPosition(colRes.hitPoint);
-					// hitEffect_.Play();
 					if (causedDamage)
 					{
 						cameraShakeTimer_ = 20.0f;
 					}
 				}
+
+				TerrainCollisionDebugger::GetInstance()->RecordCollisionCheck(
+					static_cast<int>(modelObj->GetMeshTriangleCount()),
+					testedTris,
+					hitTris,
+					colRes.isHit ? &colRes : nullptr
+				);
+			}
+
+			// 自機OBBコライダーの色を接触状態に応じてリアルタイム変化
+			if (TerrainCollisionDebugger::GetInstance()->IsHit())
+			{
+				player_->SetColliderColor({ 1.0f, 0.15f, 0.15f, 1.0f }); // 衝突中: 鮮やかな赤色
+			}
+			else
+			{
+				player_->SetColliderColor({ 0.0f, 1.0f, 1.0f, 1.0f }); // 安全時: 鮮やかな水色
 			}
 		}
+
+		TerrainCollisionDebugger::GetInstance()->EndFrame();
 
 		// プレイヤー弾と地形メッシュ（modelInstances）の衝突判定
 		for (auto& bullet : bullets_)
@@ -2572,7 +2613,9 @@ void GamePlayScene::Update()
 				ImGui::Separator();
 				ImGui::Checkbox("レール軌跡を表示 (Draw Rail)", &isDrawRail_);
 				ImGui::SameLine();
-				ImGui::Checkbox("コライダーを表示 (Draw Collider)", &isDrawCollider_);
+				ImGui::Checkbox("コライダーを表示 [F2]", &isDrawCollider_);
+				ImGui::SameLine();
+				ImGui::Checkbox("判定計算ポリゴンのみ表示 [F3]", &isDrawTerrainWireframe_);
 			}
 
 			if (railCameraController_)
@@ -3615,40 +3658,45 @@ void GamePlayScene::Draw()
 	}
 
 
-	if (isDrawCollider_)
+	if (isDrawCollider_ || isDrawTerrainWireframe_)
 	{
 		if (object3dCommon) object3dCommon->SetWireframeDrawSetting();
-		for (auto& enemy : enemies_)
+
+		if (isDrawCollider_)
 		{
-			enemy->DrawCollider();
-		}
-		if (armoredTrainBoss_ && isBossSpawned_)
-		{
-			armoredTrainBoss_->DrawCollider();
-		}
-		for (auto& obstacle : obstacles_)
-		{
-			obstacle->DrawCollider();
-		}
-		for (auto& ring : enhanceRings_)
-		{
-			ring->DrawCollider();
-		}
-		for (auto& bullet : bullets_)
-		{
-			bullet->DrawCollider();
-		}
-		for (auto& missile : missiles_)
-		{
-			missile->DrawCollider();
-		}
-		for (auto& bullet : enemyBullets_)
-		{
-			bullet->DrawCollider();
-		}
-		if (player_)
-		{
-			player_->DrawCollider();
+			// 障害物のコライダー描画
+			for (auto& obstacle : obstacles_)
+			{
+				obstacle->DrawCollider();
+			}
+			for (auto& enemy : enemies_)
+			{
+				enemy->DrawCollider();
+			}
+			if (armoredTrainBoss_ && isBossSpawned_)
+			{
+				armoredTrainBoss_->DrawCollider();
+			}
+			for (auto& ring : enhanceRings_)
+			{
+				ring->DrawCollider();
+			}
+			for (auto& bullet : bullets_)
+			{
+				bullet->DrawCollider();
+			}
+			for (auto& missile : missiles_)
+			{
+				missile->DrawCollider();
+			}
+			for (auto& bullet : enemyBullets_)
+			{
+				bullet->DrawCollider();
+			}
+			if (player_)
+			{
+				player_->DrawCollider();
+			}
 		}
 
 		if (object3dCommon) object3dCommon->SetCommonDrawSetting();
@@ -3698,6 +3746,17 @@ void GamePlayScene::Draw()
 	ringEffect_.Draw();
 	healRingEffect_.Draw();
 	windEffect_.Draw();
+
+	// 地形コリジョンデバッグ描画（判定の計算が行われている部分のみ描画）
+	if (isDrawTerrainWireframe_ || isDrawCollider_)
+	{
+		TerrainCollisionDebugger::GetInstance()->SetDebugEnabled(true);
+		TerrainCollisionDebugger::GetInstance()->Draw(activeCamera_);
+	}
+	else
+	{
+		TerrainCollisionDebugger::GetInstance()->SetDebugEnabled(false);
+	}
 }
 
 void GamePlayScene::DrawUI()

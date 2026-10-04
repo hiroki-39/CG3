@@ -267,6 +267,16 @@ void Object3dCommon::CreateGraphicsPipeline()
 	// --- ワイヤーフレーム用のパイプラインステートを生成 ---
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC wireframeDesc = graphicsPipelineStateDesc;
 	wireframeDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+	wireframeDesc.RasterizerState.DepthBias = -500; // ソリッド面の上にワイヤーフレームを鮮明に重ねる
+	wireframeDesc.RasterizerState.SlopeScaledDepthBias = -1.0f;
+
+	// ワイヤーフレーム専用ピクセルシェーダー（テクスチャに左右されず鮮やかな蛍光色で描画）
+	Microsoft::WRL::ComPtr<IDxcBlob> wireframePixelShaderBlob = dxCommon_->compileshader(L"resources/shaders/Wireframe.PS.hlsl", L"ps_6_0");
+	if (wireframePixelShaderBlob)
+	{
+		wireframeDesc.PS = { wireframePixelShaderBlob->GetBufferPointer(), wireframePixelShaderBlob->GetBufferSize() };
+	}
+
 	hr = dxCommon_->GetDevice()->CreateGraphicsPipelineState(&wireframeDesc, IID_PPV_ARGS(&wireframePipelineState_));
 	assert(SUCCEEDED(hr));
 }
