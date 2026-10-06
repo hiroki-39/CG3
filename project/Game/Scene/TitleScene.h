@@ -20,14 +20,19 @@ public:
     void Finalize();
 
 private:
+    void UpdateDebugCamera(float dt);
+
     // 3D環境
     std::unique_ptr<Camera> camera_;
+    std::unique_ptr<Camera> debugCamera_;
+    bool isDebugCamera_ = false;
+    float debugCameraMoveSpeed_ = 10.0f;
     std::unique_ptr<Skybox> skybox_;
     std::unique_ptr<Object3d> playerObj_;
 
-    // パーティクルエフェクト（スラスターブースト・気流粒子）
+    // パーティクルエフェクト（スラスターブースト・スピードライン）
     ParticleEffect thrusterEffect_;
-    ParticleEffect windEffect_;
+    ParticleEffect windEffect_; // スピードライン（高速で後方に流れる光の筋）
     std::mt19937 randomEngine_;
 
     // スラスターノズル位置オフセット（モデル原点からのローカル座標。後方へ -2.15f）
@@ -62,9 +67,11 @@ private:
     float diveDropDistanceY_ = 22.0f;   // 下降距離
     float diveForwardDistanceZ_ = 24.0f; // 前進距離
 
-    // ホバリング演出パラメータ
+    // 飛行・巡航演出パラメータ（左右上下のゆったりとした移動とバンク）
     float idleTimer_ = 0.0f;
-    bool isHovering_ = true;
-    float hoverAmplitude_ = 0.08f;
-    float hoverSpeed_ = 1.6f;
+    bool isFlightMotion_ = true;
+    float flightDriftX_ = 0.55f;         // 左右移動の振幅
+    float flightDriftY_ = 0.22f;         // 上下移動の振幅
+    float flightSpeed_ = 0.85f;          // 飛行ゆらぎの速度
+    float flightBankAmount_ = 0.08f;     // 旋回に伴うロール傾き
 };

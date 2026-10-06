@@ -1,68 +1,68 @@
 [
     {
-        "blendMode": 2,
+        "blendMode": 1,
         "colorAnimSpeed": 1.0,
         "emitterParam": {
-            "count": 1,
-            "drag": 0.0,
+            "count": 2,
+            "drag": 0.05,
             "endColor": [
-                0.5,
-                0.85,
+                1.0,
+                1.0,
                 1.0,
                 0.0
             ],
             "endScale": [
-                0.01,
-                0.6,
-                0.01
+                0.12,
+                0.35,
+                0.12
             ],
             "frequency": 0.0,
             "gravity": 0.0,
             "isColorOverLifetime": true,
             "isScaleOverLifetime": true,
             "maxColor": [
-                0.85,
-                0.95,
                 1.0,
-                0.95
+                1.0,
+                1.0,
+                0.6
             ],
-            "maxLifeTime": 0.90,
+            "maxLifeTime": 0.45,
             "maxRotation": [
-                -1.5707963,
                 0.0,
-                0.0
+                0.0,
+                3.14
             ],
             "maxScale": [
-                0.025,
-                2.2,
-                0.025
+                0.06,
+                0.20,
+                0.06
             ],
             "maxVelocity": [
-                0.0,
-                0.0,
-                -75.0
+                0.1,
+                0.05,
+                -1.5
             ],
             "minColor": [
+                0.9,
+                0.95,
                 1.0,
-                1.0,
-                1.0,
-                0.9
+                0.4
             ],
-            "minLifeTime": 0.60,
+            "minLifeTime": 0.30,
             "minRotation": [
-                -1.5707963,
                 0.0,
-                0.0
+                0.0,
+                -3.14
             ],
             "minScale": [
-                0.015,
-                1.0,
-                0.015
+                0.04,
+                0.12,
+                0.04
             ],
             "minVelocity": [
-                0.0,
-                0.0,
-                -50.0
+                -0.1,
+                -0.05,
+                -0.8
             ],
             "useGravity": false
         },
@@ -73,8 +73,8 @@
             1.0,
             1.0
         ],
-        "name": "SpeedLineNode",
-        "shapeType": 2,
+        "name": "WingtipVaporNode",
+        "shapeType": 0,
         "startColor": [
             1.0,
             1.0,

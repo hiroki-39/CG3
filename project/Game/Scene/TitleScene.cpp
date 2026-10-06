@@ -43,6 +43,11 @@ void TitleScene::Initialize()
     camera_ = std::make_unique<Camera>();
     camera_->SetTranslate(cameraPos_);
     camera_->SetRotation(cameraRot_);
+
+    debugCamera_ = std::make_unique<Camera>();
+    debugCamera_->SetTranslate(cameraPos_);
+    debugCamera_->SetRotation(cameraRot_);
+
     if (object3dCommon)
     {
         object3dCommon->SetDefaultCamera(camera_.get());
@@ -166,14 +171,22 @@ void TitleScene::Initialize()
     if (srvManager)
     {
         ParticleManager::GetInstance()->RegisterQuad("quad", "circle2.png");
-        ParticleManager::GetInstance()->RegisterRing("ring", "resources/sprites/effect/gradationLine.png", 32, 0.5f, 1.0f);
-        ParticleManager::GetInstance()->RegisterCylinder("Cylinder", "resources/sprites/effect/gradationLine.png");
+        ParticleManager::GetInstance()->RegisterCylinder("Cylinder", "resources/sprites/effect/gradationLine.png", 16, 0.5f, 0.5f, 4.0f);
 
         thrusterEffect_.Initialize(dxCommon, srvManager);
         thrusterEffect_.LoadFromJson("thruster.json");
+        if (playerObj_)
+        {
+            thrusterEffect_.SetParentMatrix(&playerObj_->GetmatWorld());
+        }
+        thrusterEffect_.SetPosition(nozzleOffset_);
 
         windEffect_.Initialize(dxCommon, srvManager);
         windEffect_.LoadFromJson("wind.json");
+        for (auto& node : windEffect_.GetNodes())
+        {
+            node->emitter.SetUseBillboard(false);
+        }
 
         randomEngine_.seed(1337);
     }
@@ -188,6 +201,104 @@ void TitleScene::Initialize()
     SoundManager::GetInstance()->PlayBGM("tileBGM.mp3", 0.25f, true);
 }
 
+void TitleScene::UpdateDebugCamera(float dt)
+{
+    auto services = Services();
+    if (!services || !debugCamera_) return;
+
+    auto input = services->GetInput();
+    if (!input) return;
+
+    const float kRotateSpeed = 0.005f;
+    const float kMoveSpeed = debugCameraMoveSpeed_;
+
+    LONG dx = input->GetMouseMoveX();
+    LONG dy = input->GetMouseMoveY();
+    LONG wheel = input->GetMouseWheel();
+
+    // マウス右ボタンドラッグでカメラ視点回転
+    if (input->PushMouseButton(1))
+    {
+        Vector3 rot = debugCamera_->GetRotation();
+        rot.y += static_cast<float>(dx) * kRotateSpeed;
+        rot.x += static_cast<float>(dy) * kRotateSpeed;
+
+        const float kMaxPitch = 1.5f;
+        const float kMinPitch = -1.5f;
+        rot.x = std::clamp(rot.x, kMinPitch, kMaxPitch);
+
+        debugCamera_->SetRotation(rot);
+    }
+
+    // 移動速度（Shiftキーで加速）
+    float currentMoveSpeed = kMoveSpeed;
+    if (input->PushKey(DIK_LSHIFT) || input->PushKey(DIK_RSHIFT))
+    {
+        currentMoveSpeed *= 3.0f;
+    }
+    float moveStep = currentMoveSpeed * dt;
+
+    Vector3 pos = debugCamera_->GetTranslate();
+    Vector3 rot = debugCamera_->GetRotation();
+    float yaw = rot.y;
+
+    Vector3 forward = { std::sinf(yaw), 0.0f, std::cosf(yaw) };
+    Vector3 right = { std::cosf(yaw), 0.0f, -std::sinf(yaw) };
+
+    auto normalize = [](Vector3 v)
+    {
+        float len = std::sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+        if (len > 1e-6f) { v.x /= len; v.y /= len; v.z /= len; }
+        return v;
+    };
+
+    forward = normalize(forward);
+    right = normalize(right);
+
+    // WASD による水平移動
+    if (input->PushKey(DIK_W))
+    {
+        pos.x += forward.x * moveStep;
+        pos.z += forward.z * moveStep;
+    }
+    if (input->PushKey(DIK_S))
+    {
+        pos.x -= forward.x * moveStep;
+        pos.z -= forward.z * moveStep;
+    }
+    if (input->PushKey(DIK_D))
+    {
+        pos.x += right.x * moveStep;
+        pos.z += right.z * moveStep;
+    }
+    if (input->PushKey(DIK_A))
+    {
+        pos.x -= right.x * moveStep;
+        pos.z -= right.z * moveStep;
+    }
+
+    // E / Q による上下移動
+    if (input->PushKey(DIK_E))
+    {
+        pos.y += moveStep;
+    }
+    if (input->PushKey(DIK_Q))
+    {
+        pos.y -= moveStep;
+    }
+
+    // マウスホイールによる前後移動
+    if (wheel != 0)
+    {
+        float wheelStep = static_cast<float>(wheel) * 0.01f;
+        pos.x += forward.x * wheelStep;
+        pos.z += forward.z * wheelStep;
+    }
+
+    debugCamera_->SetTranslate(pos);
+    debugCamera_->Update();
+}
+
 void TitleScene::Update()
 {
     UpdateSprites();
@@ -196,16 +307,58 @@ void TitleScene::Update()
     if (!services) return;
 
     auto input = services->GetInput();
+    auto object3dCommon = services->GetObject3dCommon();
 
-    // -------------------------------------------------------------
-    // 決定ボタン押下時の判定（自機を傾けて急降下しゲーム開始）
-    // -------------------------------------------------------------
-    bool isDecisionPressed = false;
 #ifdef ENABLE_EDITOR
     bool isPlaying = services->IsGamePlaying();
 #else
     bool isPlaying = true;
 #endif
+    const float dt = isPlaying ? (1.0f / 60.0f) : 0.0f;
+
+    // -------------------------------------------------------------
+    // デバッグカメラ切り替え（F2キー）
+    // -------------------------------------------------------------
+    if (input && input->TriggerKey(DIK_F2))
+    {
+        isDebugCamera_ = !isDebugCamera_;
+        if (isDebugCamera_ && camera_ && debugCamera_)
+        {
+            debugCamera_->SetTranslate(camera_->GetTranslate());
+            debugCamera_->SetRotation(camera_->GetRotation());
+            debugCamera_->Update();
+        }
+    }
+
+    // -------------------------------------------------------------
+    // 1. カメラ更新とアクティブカメラの決定（自機・描画オブジェクトより先に確定）
+    // -------------------------------------------------------------
+    if (camera_)
+    {
+        camera_->SetTranslate(cameraPos_);
+        camera_->SetRotation(cameraRot_);
+        camera_->Update();
+    }
+
+    if (isDebugCamera_)
+    {
+        // デバッグカメラは一時停止中（Pause）でも動かせるように固定デルタタイムを使用
+        UpdateDebugCamera(1.0f / 60.0f);
+    }
+
+    // デバッグカメラ有効時はデバッグカメラをアクティブカメラとして使用
+    Camera* activeCamera = (isDebugCamera_ && debugCamera_) ? debugCamera_.get() : camera_.get();
+
+    // 描画エンジンにアクティブカメラを設定
+    if (object3dCommon && activeCamera)
+    {
+        object3dCommon->SetDefaultCamera(activeCamera);
+    }
+
+    // -------------------------------------------------------------
+    // 決定ボタン押下時の判定（自機を傾けて急降下しゲーム開始）
+    // -------------------------------------------------------------
+    bool isDecisionPressed = false;
 
     if (input && isPlaying)
     {
@@ -235,9 +388,8 @@ void TitleScene::Update()
     }
 
     // -------------------------------------------------------------
-    // 自機のアニメーション（降下演出 / 前進登場演出 / アイドルホバリング）
+    // 2. 自機のアニメーション計算・更新
     // -------------------------------------------------------------
-    const float dt = isPlaying ? (1.0f / 60.0f) : 0.0f;
     if (isPlaying)
     {
         idleTimer_ += dt;
@@ -272,8 +424,6 @@ void TitleScene::Update()
         curPos.x = diveStartPos_.x + arcX;
         curPos.y = diveStartPos_.y - diveDropDistanceY_ * dropProgress;
         curPos.z = diveStartPos_.z + diveForwardDistanceZ_ * forwardProgress;
-
-        // ※カメラは完全に固定（一切動かさない）
     }
     else if (isIntro_)
     {
@@ -298,14 +448,41 @@ void TitleScene::Update()
     }
     else
     {
-        // === 定位置での巡航・ホバリング演出 ===
+        // === 定位置での巡航・リアル飛行演出（大気中の飛行感覚・左右上下のゆったりとした移動とバンク） ===
         curPos = targetPos_;
         curRot = playerRot_;
 
-        if (isHovering_)
+        if (isFlightMotion_)
         {
-            curPos.y += std::sinf(idleTimer_ * hoverSpeed_) * hoverAmplitude_;
-            curRot.z += std::sinf(idleTimer_ * (hoverSpeed_ * 0.8f)) * 0.012f;
+            // 左右のゆったりとしたS字旋回・ドリフト移動
+            float tFlight = idleTimer_ * flightSpeed_;
+            float driftX = std::sinf(tFlight * 0.7f) * flightDriftX_ + std::sinf(tFlight * 0.35f) * (flightDriftX_ * 0.35f);
+
+            // 上下の自然な高度調整（2つの波の合成で有機的な浮遊感）
+            float driftY = std::sinf(tFlight * 1.3f) * flightDriftY_ + std::cosf(tFlight * 0.65f) * (flightDriftY_ * 0.4f);
+
+            // 前後のわずかなピッチング感
+            float driftZ = std::cosf(tFlight * 0.85f) * 0.08f;
+
+            curPos.x += driftX;
+            curPos.y += driftY;
+            curPos.z += driftZ;
+
+            // 姿勢の連動（左右移動に伴う自然なバンク角、昇降に伴うピッチ角）
+            // 左右移動速度（Xの微分）に応じてロール（Z軸）が傾く
+            float rollVelocity = (std::cosf(tFlight * 0.7f) * 0.7f * flightDriftX_ + std::cosf(tFlight * 0.35f) * 0.35f * (flightDriftX_ * 0.35f));
+            float rollAngle = rollVelocity * -flightBankAmount_;
+
+            // 上下昇降速度に応じて機首（ピッチ X軸）がわずかに頷く
+            float pitchVelocity = (std::cosf(tFlight * 1.3f) * 1.3f * flightDriftY_);
+            float pitchAngle = pitchVelocity * -0.04f;
+
+            // ロールに伴うわずかなヨー（Y軸）旋回
+            float yawAngle = rollAngle * 0.25f;
+
+            curRot.x += pitchAngle;
+            curRot.y += yawAngle;
+            curRot.z += rollAngle;
         }
 
         cameraRot_.x = 0.05f;
@@ -313,8 +490,10 @@ void TitleScene::Update()
 
     playerPos_ = curPos;
 
+    // 自機モデルの更新（現在のアクティブカメラを直接適用して更新）
     if (playerObj_)
     {
+        playerObj_->SetCamera(activeCamera);
         playerObj_->SetTranslate(curPos);
         playerObj_->SetRotation(curRot);
         playerObj_->SetScale(playerScale_);
@@ -323,43 +502,31 @@ void TitleScene::Update()
         playerObj_->Update();
     }
 
-    // カメラ更新
-    if (camera_)
+    // -------------------------------------------------------------
+    // 3. スカイボックス更新
+    // -------------------------------------------------------------
+    if (skybox_ && activeCamera)
     {
-        camera_->SetTranslate(cameraPos_);
-        camera_->SetRotation(cameraRot_);
-        camera_->Update();
-    }
-
-    // スカイボックス更新
-    if (skybox_ && camera_)
-    {
-        skybox_->SetCamera(camera_.get());
+        skybox_->SetCamera(activeCamera);
         skybox_->Update();
     }
 
     // -------------------------------------------------------------
     // ブースト（スラスター）＆周辺粒子（気流線）の更新
     // -------------------------------------------------------------
-    if (camera_)
+    if (activeCamera)
     {
-        Matrix4x4 viewMatrix = camera_->GetViewMatrix();
-        Matrix4x4 projectionMatrix = camera_->GetProjectionMatrix();
-        Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(camera_.get(), true);
+        Matrix4x4 viewMatrix = activeCamera->GetViewMatrix();
+        Matrix4x4 projectionMatrix = activeCamera->GetProjectionMatrix();
+        Matrix4x4 billboardMatrix = Billboard::CreateFromCamera(activeCamera, true);
 
         // 1. スラスター（ブースト炎）
-        // 自機のロール回転に完全連動した機体後方ノズル座標を計算（nozzleOffset_ でノズル中心にピタッと合致）
-        Vector3 nozzlePos = curPos;
+        // 自機（playerObj_）と親子関係を結び、機体の姿勢・移動・ロール回転に完全連動
         if (playerObj_)
         {
-            const Matrix4x4& mat = playerObj_->GetmatWorld();
-            nozzlePos = {
-                nozzleOffset_.x * mat.m[0][0] + nozzleOffset_.y * mat.m[1][0] + nozzleOffset_.z * mat.m[2][0] + mat.m[3][0],
-                nozzleOffset_.x * mat.m[0][1] + nozzleOffset_.y * mat.m[1][1] + nozzleOffset_.z * mat.m[2][1] + mat.m[3][1],
-                nozzleOffset_.x * mat.m[0][2] + nozzleOffset_.y * mat.m[1][2] + nozzleOffset_.z * mat.m[2][2] + mat.m[3][2]
-            };
+            thrusterEffect_.SetParentMatrix(&playerObj_->GetmatWorld());
         }
-        thrusterEffect_.SetPosition(nozzlePos);
+        thrusterEffect_.SetPosition(nozzleOffset_);
 
         if (isDiving_)
         {
@@ -381,22 +548,27 @@ void TitleScene::Update()
         }
         thrusterEffect_.Update(dt, viewMatrix, projectionMatrix, billboardMatrix);
 
-        // 2. 周辺気流粒子（スピードパーティクル）
+        // 2. スピードライン（奥から手前へ一直線に突き抜ける光の筋）
         if (isPlaying)
         {
-            int windSpawnCount = isDiving_ ? 8 : (isIntro_ ? 6 : 2);
-            std::uniform_real_distribution<float> distOffsetX(-7.0f, 7.0f);
-            std::uniform_real_distribution<float> distOffsetY(-2.5f, 3.5f);
-            std::uniform_real_distribution<float> distOffsetZ(10.0f, 35.0f);
+            int speedLineSpawnCount = isDiving_ ? 8 : (isIntro_ ? 6 : 3);
+            std::uniform_real_distribution<float> distOffsetX(-10.0f, 10.0f);
+            std::uniform_real_distribution<float> distOffsetY(-3.5f, 4.5f);
+            std::uniform_real_distribution<float> distOffsetZ(18.0f, 42.0f);
 
-            for (int i = 0; i < windSpawnCount; ++i)
+            for (int i = 0; i < speedLineSpawnCount; ++i)
             {
-                Vector3 windSpawnPos = {
-                    curPos.x + distOffsetX(randomEngine_),
-                    curPos.y + distOffsetY(randomEngine_),
+                float ox = distOffsetX(randomEngine_);
+                if (std::abs(ox) < 1.4f) { ox = (ox >= 0.0f ? 1.4f : -1.4f); }
+                float oy = distOffsetY(randomEngine_);
+
+                Vector3 speedLineSpawnPos = {
+                    curPos.x + ox,
+                    curPos.y + oy,
                     curPos.z + distOffsetZ(randomEngine_)
                 };
-                windEffect_.SetPosition(windSpawnPos);
+
+                windEffect_.SetPosition(speedLineSpawnPos);
                 windEffect_.Play();
             }
         }
@@ -586,6 +758,7 @@ void TitleScene::Update()
                     isIntro_ = true;
                     introTimer_ = 0.0f;
                     isDiving_ = false;
+                    thrusterEffect_.ClearParticles();
                 }
 
                 if (ImGui::Button("降下演出テスト (Test Dive)", ImVec2(-1, 30)))
@@ -618,19 +791,88 @@ void TitleScene::Update()
                 ImGui::DragFloat("前進距離 (Forward Z)", &diveForwardDistanceZ_, 0.5f, 5.0f, 50.0f);
                 ImGui::DragFloat("演出時間 (Duration)", &diveDuration_, 0.05f, 0.5f, 3.0f);
 
+
+
                 ImGui::Spacing();
-                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "■ 浮遊（ホバリング）演出");
-                ImGui::Checkbox("ホバリング有効", &isHovering_);
-                if (isHovering_)
+                ImGui::TextColored(ImVec4(0.2f, 0.9f, 1.0f, 1.0f), "■ 巡航飛行演出 (Flight Motion)");
+                ImGui::Checkbox("巡航飛行アニメーション有効", &isFlightMotion_);
+                if (isFlightMotion_)
                 {
-                    ImGui::SliderFloat("浮遊の振幅", &hoverAmplitude_, 0.0f, 0.3f, "%.3f");
-                    ImGui::SliderFloat("浮遊の周期速度", &hoverSpeed_, 0.1f, 5.0f, "%.2f");
+                    ImGui::SliderFloat("左右ドリフト幅 (Drift X)", &flightDriftX_, 0.0f, 2.0f, "%.2f");
+                    ImGui::SliderFloat("上下ドリフト幅 (Drift Y)", &flightDriftY_, 0.0f, 1.0f, "%.2f");
+                    ImGui::SliderFloat("巡航周期速度 (Speed)", &flightSpeed_, 0.1f, 3.0f, "%.2f");
+                    ImGui::SliderFloat("旋回バンク傾き量 (Bank)", &flightBankAmount_, 0.0f, 0.2f, "%.3f");
+                }
+
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "■ スピードライン演出 (Speed Line)");
+                auto& speedNodes = windEffect_.GetNodes();
+                if (!speedNodes.empty())
+                {
+                    auto& emitter = speedNodes[0]->emitter;
+                    auto param = emitter.GetParameter();
+                    float currentSpeed = -param.minVelocity.z;
+                    if (ImGui::SliderFloat("ライン速度 (Speed)", &currentSpeed, 10.0f, 200.0f, "%.1f"))
+                    {
+                        param.minVelocity.z = -currentSpeed;
+                        param.maxVelocity.z = -(currentSpeed * 1.4f);
+                        emitter.SetParameter(param);
+                    }
+                    if (ImGui::SliderFloat("生存時間 (LifeTime)", &param.maxLifeTime, 0.3f, 2.5f, "%.2f"))
+                    {
+                        param.minLifeTime = param.maxLifeTime * 0.65f;
+                        emitter.SetParameter(param);
+                    }
+                    if (ImGui::SliderFloat("ライン長さ (Length)", &param.maxScale.y, 0.5f, 5.0f, "%.2f"))
+                    {
+                        param.minScale.y = param.maxScale.y * 0.45f;
+                        emitter.SetParameter(param);
+                    }
                 }
 
                 ImGui::Spacing();
                 ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "■ カメラ (Title Camera)");
-                ImGui::DragFloat3("カメラ位置", &cameraPos_.x, 0.05f, -30.0f, 30.0f);
-                ImGui::DragFloat3("カメラ回転", &cameraRot_.x, 0.01f, -3.14f, 3.14f);
+                ImGui::DragFloat3("通常カメラ位置", &cameraPos_.x, 0.05f, -30.0f, 30.0f);
+                ImGui::DragFloat3("通常カメラ回転", &cameraRot_.x, 0.01f, -3.14f, 3.14f);
+
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.7f, 1.0f), "■ デバッグカメラ (Debug Camera)");
+                if (ImGui::Checkbox("デバッグカメラ有効 (F2)", &isDebugCamera_))
+                {
+                    if (isDebugCamera_ && camera_ && debugCamera_)
+                    {
+                        debugCamera_->SetTranslate(camera_->GetTranslate());
+                        debugCamera_->SetRotation(camera_->GetRotation());
+                        debugCamera_->Update();
+                    }
+                }
+                if (isDebugCamera_ && debugCamera_)
+                {
+                    Vector3 dbgPos = debugCamera_->GetTranslate();
+                    Vector3 dbgRot = debugCamera_->GetRotation();
+                    if (ImGui::DragFloat3("デバッグカメラ位置", &dbgPos.x, 0.05f, -50.0f, 50.0f))
+                    {
+                        debugCamera_->SetTranslate(dbgPos);
+                    }
+                    if (ImGui::DragFloat3("デバッグカメラ回転", &dbgRot.x, 0.01f, -3.14f, 3.14f))
+                    {
+                        debugCamera_->SetRotation(dbgRot);
+                    }
+                    ImGui::SliderFloat("カメラ移動速度", &debugCameraMoveSpeed_, 1.0f, 50.0f, "%.1f");
+                    if (ImGui::Button("通常カメラの位置・回転にリセット"))
+                    {
+                        if (camera_)
+                        {
+                            debugCamera_->SetTranslate(camera_->GetTranslate());
+                            debugCamera_->SetRotation(camera_->GetRotation());
+                        }
+                    }
+                    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "操作方法:");
+                    ImGui::BulletText("右ドラッグ: 視点回転");
+                    ImGui::BulletText("WASD: 前後左右移動 (Shiftで加速)");
+                    ImGui::BulletText("E / Q: 上昇 / 下降");
+                    ImGui::BulletText("マウスホイール: 前後移動");
+                }
 
                 ImGui::Spacing();
                 if (ImGui::Button("ユーザー指定値にリセット (x=0,y=0,z=-3, rot=0)"))
@@ -741,7 +983,7 @@ void TitleScene::Draw()
         playerObj_->Draw();
     }
 
-    // 3. スラスターブースト＆気流粒子パーティクル描画
+    // 3. スラスターブースト＆スピードラインパーティクル描画
     thrusterEffect_.Draw();
     windEffect_.Draw();
 }
@@ -753,6 +995,7 @@ void TitleScene::Finalize()
 
     playerObj_.reset();
     skybox_.reset();
+    debugCamera_.reset();
     camera_.reset();
 
     BaseScene::Finalize();

@@ -143,14 +143,36 @@ uint32_t ParticleEmitter::FillInstancingBuffer(ParticleForGPU* outBuffer, uint32
         Matrix4x4 transMat = Matrix4x4::Translation(p.transform.translate);
 
         Matrix4x4 worldMat;
-        if (useBillboard_)
+        if (parentMatrix_)
         {
-            // Z軸回転を活かすため、回転をビルボード行列の前に適用
-            worldMat = scaleMat * rotMat * billboardMatrix * transMat;
+            if (useBillboard_)
+            {
+                // 親のワールド行列でローカル位置をワールド位置へ変換 (行ベクトル形式: v * M)
+                const Matrix4x4& m = *parentMatrix_;
+                Vector3 worldPos = {
+                    p.transform.translate.x * m.m[0][0] + p.transform.translate.y * m.m[1][0] + p.transform.translate.z * m.m[2][0] + m.m[3][0],
+                    p.transform.translate.x * m.m[0][1] + p.transform.translate.y * m.m[1][1] + p.transform.translate.z * m.m[2][1] + m.m[3][1],
+                    p.transform.translate.x * m.m[0][2] + p.transform.translate.y * m.m[1][2] + p.transform.translate.z * m.m[2][2] + m.m[3][2]
+                };
+                worldMat = scaleMat * rotMat * billboardMatrix * Matrix4x4::Translation(worldPos);
+            }
+            else
+            {
+                // 非ビルボード：親の回転・移動に完全連動
+                worldMat = scaleMat * rotMat * transMat * (*parentMatrix_);
+            }
         }
         else
         {
-            worldMat = scaleMat * rotMat * transMat;
+            if (useBillboard_)
+            {
+                // Z軸回転を活かすため、回転をビルボード行列の前に適用
+                worldMat = scaleMat * rotMat * billboardMatrix * transMat;
+            }
+            else
+            {
+                worldMat = scaleMat * rotMat * transMat;
+            }
         }
 
         outBuffer[numInstance].WVP = worldMat * viewProjection;
