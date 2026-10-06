@@ -20,51 +20,102 @@ public:
     void Finalize();
 
 private:
+    void UpdateDebugCamera(float dt);
+
     // 3D環境
     std::unique_ptr<Camera> camera_;
+    std::unique_ptr<Camera> debugCamera_;
+    bool isDebugCamera_ = false;
+    float debugCameraMoveSpeed_ = 10.0f;
     std::unique_ptr<Skybox> skybox_;
     std::unique_ptr<Object3d> playerObj_;
 
-    // パーティクルエフェクト（スラスターブースト・気流粒子）
+    // パーティクルエフェクト（スラスターブースト・スピードライン）
     ParticleEffect thrusterEffect_;
-    ParticleEffect windEffect_;
+    ParticleEffect windEffect_; // スピードライン（高速で後方に流れる光の筋）
     std::mt19937 randomEngine_;
 
-    // スラスターノズル位置オフセット（モデル原点からのローカル座標。後方へ -2.15f）
-    Vector3 nozzleOffset_ = { 0.0f, -0.20f, -2.15f };
+    // スラスターノズル位置オフセット（モデル原点からのローカル座標。機体後端から手前・カメラ側へ離す）
+    Vector3 nozzleOffset_ = { 0.0f, -0.22f, -3.00f };
 
-    // 自機パラメータ（定位置: (0, 0, -3.0)、回転: すべて 0）
-    Vector3 targetPos_ = { 0.0f, 0.0f, -3.0f };
-    Vector3 playerPos_ = { 0.0f, 0.0f, -3.0f };
+    // 自機パラメータ（定位置: (0, 5.5, -3.0)、地面 Graund Y=1.0 の上空を余裕を持って巡航）
+    Vector3 targetPos_ = { 0.0f, 5.5f, -3.0f };
+    Vector3 playerPos_ = { 0.0f, 5.5f, -3.0f };
     Vector3 playerRot_ = { 0.0f, 0.0f, 0.0f }; // すべて 0
     Vector3 playerScale_ = { 0.5f, 0.5f, 0.5f };
     Vector4 playerColor_ = { 0.155f, 0.155f, 0.155f, 1.0f };
     float envCoefficient_ = 0.6f;
 
-    // カメラパラメータ（定点・固定カメラ）
-    Vector3 cameraPos_ = { 0.0f, 0.7f, -8.5f };
-    Vector3 cameraRot_ = { 0.05f, 0.0f, 0.0f };
+    // カメラパラメータ（自機後方上空から前方地形・自機を見下ろす構図）
+    Vector3 cameraPos_ = { 0.0f, 6.3f, -9.5f };
+    Vector3 cameraRot_ = { 0.04f, 0.0f, 0.0f };
 
-    // 登場（前進）演出パラメータ
+    // 起動時手前飛び込み登場演出パラメータ（カメラ・地形は前進し続け、機体が手前画面外から追い抜いて定位置へ入る）
     bool isIntro_ = true;
     float introTimer_ = 0.0f;
-    float introDuration_ = 1.5f;
-    Vector3 startPos_ = { 0.0f, -0.2f, -16.0f };
+    float introDuration_ = 1.4f;
+    float introStartOffsetZ_ = -16.0f;
+    float introStartOffsetY_ = -1.2f;
+    float introBlendTimer_ = 0.0f;       // 巡航モーションへの移行タイマー
+    float introBlendDuration_ = 1.5f;    // 巡航モーションへの移行時間（1.5秒かけて滑らかにフェードイン）
 
-    // 降下演出パラメータ（決定ボタン押下時: 回転はZ軸のみ、右回転して腹を見せながら大回り下降）
+    // スタート演出パラメータ（決定ボタン押下時演出）
+    enum class StartTransitionType {
+        SonicAfterburner = 0, // 案1: 超音速アフターバーナー突入（画面奥へ一閃突破）
+        CameraBreakFlyby = 1, // 案2: カメラブレイク・ローパス（画面手前へ豪快オーバーテイク）
+    };
+    StartTransitionType startTransitionType_ = StartTransitionType::SonicAfterburner;
+    bool isPreviewTransition_ = false;  // シーン遷移なしプレビュー中フラグ
     bool isDiving_ = false;
     float diveTimer_ = 0.0f;
-    float diveDuration_ = 1.2f;
-    Vector3 diveStartPos_ = { 0.0f, 0.0f, -3.0f };
+    float diveDuration_ = 1.3f;
+    Vector3 diveStartPos_ = { 0.0f, 5.5f, -3.0f };
     Vector3 diveStartRot_ = { 0.0f, 0.0f, 0.0f };
-    float diveRollAngle_ = -3.14159265f; // 右回転（180度半回転して完全に腹を見せる）
-    float diveArcWidthX_ = 7.0f;        // 右への大回り膨らみ幅
-    float diveDropDistanceY_ = 22.0f;   // 下降距離
-    float diveForwardDistanceZ_ = 24.0f; // 前進距離
+    Vector3 diveStartCamPos_ = { 0.0f, 6.3f, -9.5f };
+    Vector3 diveStartCamRot_ = { 0.04f, 0.0f, 0.0f };
+    float diveStartProgressZ_ = 0.0f;
 
-    // ホバリング演出パラメータ
+    // 案2（左旋回クライムブレイク）リアルタイム調整用パラメータ
+    Vector3 prop2Rot_ = { -0.60f, 0.0f, -1.15f }; // ピッチ(X), ヨー(Y), ロール(Z) [rad]
+    float prop2MoveX_ = -25.0f;                    // 左方向移動距離 (m)
+    float prop2MoveY_ = 28.0f;                     // 上昇高度 (m)
+    float prop2MoveZ_ = 18.0f;                     // 前進距離 (m)
+    bool prop2PausePreview_ = false;               // プレビュー一時停止（ポーズ）
+    float prop2PreviewProgress_ = 0.65f;           // 一時停止中の演出進行度シークバー (0.0 ~ 1.0)
+
+    void TriggerStartTransition(bool isPreview);
+
+    // 飛行・巡航演出パラメータ（左右上下のゆったりとした移動とバンク）
     float idleTimer_ = 0.0f;
-    bool isHovering_ = true;
-    float hoverAmplitude_ = 0.08f;
-    float hoverSpeed_ = 1.6f;
+    bool isFlightMotion_ = true;
+    float flightDriftX_ = 2.00f;         // 左右移動の振幅 (画像値: 2.00)
+    float flightDriftY_ = 1.00f;         // 上下移動の振幅 (画像値: 1.00)
+    float flightSpeed_ = 1.75f;          // 飛行ゆらぎの速度 (画像値: 1.75)
+    float flightBankAmount_ = 0.200f;    // 旋回に伴うロール傾き (画像値: 0.200)
+
+    // 前進巡航飛行パラメータ（自機とカメラの前方移動、時速300km ≒ 83.33 m/s）
+    float forwardSpeed_ = 300.0f / 3.6f; // 前進巡航速度 (m/s) (画像値: 300.0 km/h)
+    float flightProgressZ_ = 0.0f;       // 前進飛行の累積距離 (m)
+
+    // -------------------------------------------------------------
+    // アクロバット建物スタイリッシュ回避演出（Acrobatic Obstacle Dodge）
+    // -------------------------------------------------------------
+    bool isAcrobaticDodge_ = true;       // スタイリッシュ回避の有効フラグ
+    float dodgeIntensity_ = 1.0f;        // 回避動作のダイナミック倍率 (0.0 ~ 2.0)
+    float dodgeCameraRollAmount_ = 0.02f;// カメラの追従バンク傾き係数（安定重視で控えめに設定）
+    float dodgeThrustBoost_ = 0.0f;      // 回避中のアフターバーナー追加ブースト度合い (0.0 ~ 1.5)
+
+    // -------------------------------------------------------------
+    // タイトルシーン用マップ（title.json から読み込んだ地形・建物ループオブジェクト群）
+    // -------------------------------------------------------------
+    struct TitleMapObjectNode {
+        std::unique_ptr<Object3d> object;
+        std::string name;
+        Vector3 baseTranslation;
+        Vector3 rotation;
+        Vector3 scale;
+        float loopPeriod = 4000.0f; // ループ周期 (Graund/Terrainは2000m、建造物は4000m)
+        int slotIndex = 0;          // スロット番号 (0, 1, 2)
+    };
+    std::vector<TitleMapObjectNode> titleMapNodes_;
 };

@@ -1,0 +1,143 @@
+{
+    "name": "Scene",
+    "objects": [
+        {
+            "type": "MESH",
+            "name": "Terrain_title2",
+            "transform": {
+                "translation": [
+                    0.0,
+                    1422.260498046875,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_destructible": true,
+            "texture_path": "FieldGround.png"
+        },
+        {
+            "type": "MESH",
+            "name": "Terrain_title1",
+            "transform": {
+                "translation": [
+                    0.0,
+                    422.26043701171875,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_destructible": true,
+            "texture_path": "FieldGround.png"
+        },
+        {
+            "type": "MESH",
+            "name": "bridge",
+            "transform": {
+                "translation": [
+                    220.4982452392578,
+                    1211.3306884765625,
+                    32.20967102050781
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_destructible": true,
+            "texture_path": "wall.png"
+        },
+        {
+            "type": "MESH",
+            "name": "collapsed_bridge",
+            "transform": {
+                "translation": [
+                    162.12411499023438,
+                    731.3881225585938,
+                    28.147985458374023
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_destructible": true,
+            "texture_path": "wall.png"
+        },
+        {
+            "type": "MESH",
+            "name": "billding",
+            "transform": {
+                "translation": [
+                    75.09869384765625,
+                    1940.951416015625,
+                    20.19209098815918
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_destructible": true,
+            "texture_path": "cream color.png"
+        },
+        {
+            "type": "MESH",
+            "name": "Graund",
+            "transform": {
+                "translation": [
+                    0.0,
+                    922.2604370117188,
+                    0.9999997019767761
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "is_destructible": true,
+            "texture_path": "wall.png.001"
+        }
+    ]
+}

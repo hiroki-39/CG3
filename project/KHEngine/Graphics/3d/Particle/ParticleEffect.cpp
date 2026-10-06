@@ -34,6 +34,7 @@ void ParticleEffect::AddNode(const std::string& name, int shapeType)
     node->emitter.SetBlendMode(BlendMode::Alpha);
     
     SetupRendererForNode(node.get());
+    node->emitter.SetParentMatrix(parentMatrix_);
     
     nodes_.push_back(std::move(node));
 }
@@ -69,6 +70,23 @@ void ParticleEffect::SetBaseColor(const Vector4& color)
     for (auto& node : nodes_)
     {
         node->baseColor = color;
+    }
+}
+
+void ParticleEffect::SetParentMatrix(const Matrix4x4* parentMatrix)
+{
+    parentMatrix_ = parentMatrix;
+    for (auto& node : nodes_)
+    {
+        node->emitter.SetParentMatrix(parentMatrix_);
+    }
+}
+
+void ParticleEffect::ClearParticles()
+{
+    for (auto& node : nodes_)
+    {
+        node->emitter.Clear();
     }
 }
 
@@ -353,6 +371,7 @@ void ParticleEffect::LoadFromJson(const std::string& filename) {
         node->emitter.SetBlendMode(static_cast<BlendMode>(j["blendMode"]));
 
         SetupRendererForNode(node.get());
+        node->emitter.SetParentMatrix(parentMatrix_);
         nodes_.push_back(std::move(node));
     }
 }

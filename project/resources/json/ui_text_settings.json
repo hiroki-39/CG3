@@ -645,7 +645,7 @@
                     1.0,
                     1.0
                 ],
-                "fontSize": 60.0,
+                "fontSize": 40.0,
                 "fontType": 3,
                 "hasOutline": true,
                 "hasShadow": false,
@@ -659,7 +659,7 @@
                 ],
                 "outlineThickness": 2.0,
                 "posX": 640.0,
-                "posY": 520.0,
+                "posY": 590.0,
                 "shadowColor": [
                     0.0,
                     0.0,

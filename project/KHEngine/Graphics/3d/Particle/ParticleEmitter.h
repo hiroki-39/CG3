@@ -36,6 +36,13 @@ public:
     void SetPosition(const Vector3& pos) { position_ = pos; }
     void SetUseBillboard(bool use) { useBillboard_ = use; }
     
+    // 親行列設定（親子関係の構築）
+    void SetParentMatrix(const Matrix4x4* parentMatrix) { parentMatrix_ = parentMatrix; }
+    const Matrix4x4* GetParentMatrix() const { return parentMatrix_; }
+
+    // パーティクルのクリア
+    void Clear() { particles_.clear(); }
+
     // フィールド設定
     void SetAccelerationField(const AccelerationField& field) { accelField_ = field; }
 
@@ -71,6 +78,7 @@ private:
     std::string textureName_ = "white";
     BlendMode blendMode_ = BlendMode::Alpha;
     bool useBillboard_ = true;
+    const Matrix4x4* parentMatrix_ = nullptr;
 
     float frequencyTimer_ = 0.0f;
     std::mt19937 randomEngine_;

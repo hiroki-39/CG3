@@ -64,6 +64,13 @@ public:
     // エフェクト全体のベースカラーを設定
     void SetBaseColor(const Vector4& color);
 
+    // 親行列設定（親子関係の構築）
+    void SetParentMatrix(const Matrix4x4* parentMatrix);
+    const Matrix4x4* GetParentMatrix() const { return parentMatrix_; }
+
+    // 全ノードのパーティクルをクリア
+    void ClearParticles();
+
     // ノードへのアクセス
     std::vector<std::unique_ptr<Node>>& GetNodes() { return nodes_; }
     void ClearNodes() { nodes_.clear(); }
@@ -74,4 +81,5 @@ private:
     DirectXCommon* dxCommon_ = nullptr;
     SrvManager* srvManager_ = nullptr;
     uint32_t maxInstances_ = 1000;
+    const Matrix4x4* parentMatrix_ = nullptr;
 };
