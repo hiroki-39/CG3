@@ -328,7 +328,11 @@ DirectXGame/imgui.ini
 
 # Logs
 /logs/
+/log/
+log/
 *.log
+error_log.txt
+title_debug.log
 
 # ImGui settings
 imgui.ini

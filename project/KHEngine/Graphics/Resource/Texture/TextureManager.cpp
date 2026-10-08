@@ -2,6 +2,7 @@
 #include "KHEngine/Core/Graphics/DirectXCommon.h"
 #include "KHEngine/Core/Resource/ResourceLocator.h"
 #include "KHEngine/Core/Utility/String/StringUtility.h"
+#include "KHEngine/Core/Utility/Log/Logger.h"
 #include <cassert>
 #include <cstring>
 #include <filesystem>
@@ -158,9 +159,7 @@ void TextureManager::LoadTexture(const std::string& filePath)
 	}
 	if (FAILED(hr))
 	{
-		std::ofstream out("error_log.txt", std::ios::app);
-		out << "Failed to load texture: " << resolved << " hr: " << std::hex << hr << "\n";
-		out.close();
+		Logger::Log("Failed to load texture: " + resolved + " hr: " + std::to_string(hr));
 		assert(SUCCEEDED(hr) && "Failed to load texture file!");
 		return;
 	}

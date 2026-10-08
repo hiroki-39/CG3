@@ -1,4 +1,4 @@
-﻿#include "KHEngine/Core/Utility/Log/Logger.h"
+#include "KHEngine/Core/Utility/Log/Logger.h"
 #include <Windows.h>
 #include <mutex>
 #include <fstream>
@@ -52,8 +52,15 @@ namespace Logger
 		}
 
 
+#if defined(NDEBUG) && !defined(ENABLE_EDITOR)
+		constexpr bool kEnableLogFile = false; // Release構成（製品版）ではログファイル・フォルダを生成しない
+#else
+		constexpr bool kEnableLogFile = true;  // Debug / Development構成では開発用ログファイルを生成
+#endif
+
 		void EnsureStream()
 		{
+			if (!kEnableLogFile) return;
 			if (g_stream && g_stream->is_open()) return;
 			std::string path = CreateLogFilePath();
 			g_stream = std::make_unique<std::ofstream>(path.c_str(), std::ios::out | std::ios::app);
@@ -80,8 +87,10 @@ namespace Logger
 	void Log(const std::string& message)
 	{
 		std::lock_guard<std::mutex> lock(g_mutex);
-		EnsureStream();
-		if (!g_stream || !g_stream->is_open()) return;
+		if (kEnableLogFile)
+		{
+			EnsureStream();
+		}
 
 		auto now = std::chrono::system_clock::now();
 		auto now_time_t = std::chrono::system_clock::to_time_t(now);
@@ -95,8 +104,11 @@ namespace Logger
 			<< " [" << GetCurrentThreadId() << "] "
 			<< message << '\n';
 
-		(*g_stream) << oss.str();
-		g_stream->flush();
+		if (g_stream && g_stream->is_open())
+		{
+			(*g_stream) << oss.str();
+			g_stream->flush();
+		}
 
 		// デバッグ出力にも送る（Visual Studio の出力ウィンドウ等）
 		OutputDebugStringA(oss.str().c_str());
