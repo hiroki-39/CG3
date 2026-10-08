@@ -115,23 +115,16 @@ void TitleScene::Initialize()
     // -------------------------------------------------------------
     titleMapNodes_.clear();
     flightProgressZ_ = 0.0f;
-    std::ofstream dbgFile("title_debug.log");
-    dbgFile << "=== Loading title.json ===" << std::endl;
 
     auto levelData = LevelLoader::Load("resources/json/maps/title/title.json");
-    dbgFile << "levelData: " << (levelData ? "OK" : "NULL") << std::endl;
 
     if (levelData && object3dCommon)
     {
         uint32_t skyboxTexIdx = skybox_ ? skybox_->GetCubemapSrvIndex() : 0;
         auto modelMgr = ModelManager::GetInstance();
-        dbgFile << "objects count: " << levelData->objects.size() << std::endl;
 
         for (const auto& node : levelData->objects)
         {
-            dbgFile << "[Node] name: " << node.name << ", type: " << node.type << ", file: " << node.fileName 
-                    << " pos: (" << node.translation.x << ", " << node.translation.y << ", " << node.translation.z << ")" << std::endl;
-
             if (node.type == "MESH")
             {
                 std::string modelName = node.fileName;
@@ -183,16 +176,13 @@ void TitleScene::Initialize()
                     modelName += ".obj";
                 }
 
-                dbgFile << "  -> Resolved modelName: " << modelName << std::endl;
                 std::string resolvedPath = ResourceLocator::Resolve(modelName, ResourceLocator::AssetType::Model3D);
-                dbgFile << "  -> ResourceLocator::Resolve: " << resolvedPath << std::endl;
 
                 bool hasModel = false;
                 if (modelMgr)
                 {
                     modelMgr->LoadModel(modelName);
                     auto m = modelMgr->FindModel(modelName);
-                    dbgFile << "  -> FindModel: " << (m ? "Found" : "NOT FOUND") << std::endl;
                     hasModel = (m != nullptr);
                 }
 
@@ -256,8 +246,6 @@ void TitleScene::Initialize()
             }
         }
     }
-    dbgFile << "titleMapNodes_ total slots created: " << titleMapNodes_.size() << std::endl;
-    dbgFile.close();
 
     // 全テクスチャ（タイトルマップ用・プリロード用・スカイボックス用）を一括GPUアップロード
     texManager->ExecuteUploadCommands();
