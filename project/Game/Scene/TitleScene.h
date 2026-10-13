@@ -17,6 +17,7 @@ public:
     void Initialize();
     void Update();
     void Draw();
+    void DrawUI() override;
     void Finalize();
 
 private:
@@ -61,19 +62,38 @@ private:
 
     // スタート演出パラメータ（決定ボタン押下時演出）
     enum class StartTransitionType {
-        SonicAfterburner = 0, // 案1: 超音速アフターバーナー突入（画面奥へ一閃突破）
-        CameraBreakFlyby = 1, // 案2: カメラブレイク・ローパス（画面手前へ豪快オーバーテイク）
+        VirtualShatter = 0,     // 新演出: 機体が連射して画面に亀裂が入り、仮想空間が砕け散る演出
+        SonicAfterburner = 1,   // 案1: 超音速アフターバーナー突入（画面奥へ一閃突破）
+        CameraBreakFlyby = 2,   // 案2: カメラブレイク・ローパス（画面手前へ豪快オーバーテイク）
     };
-    StartTransitionType startTransitionType_ = StartTransitionType::SonicAfterburner;
+    StartTransitionType startTransitionType_ = StartTransitionType::VirtualShatter;
+    bool isVirtualSpace_ = true;        // スターフォックス風サイバー仮想空間ビジュアル有効フラグ
     bool isPreviewTransition_ = false;  // シーン遷移なしプレビュー中フラグ
     bool isDiving_ = false;
     float diveTimer_ = 0.0f;
-    float diveDuration_ = 1.3f;
+    float diveDuration_ = 1.45f;
     Vector3 diveStartPos_ = { 0.0f, 5.5f, -3.0f };
     Vector3 diveStartRot_ = { 0.0f, 0.0f, 0.0f };
     Vector3 diveStartCamPos_ = { 0.0f, 6.3f, -9.5f };
     Vector3 diveStartCamRot_ = { 0.04f, 0.0f, 0.0f };
     float diveStartProgressZ_ = 0.0f;
+
+    // 仮想空間自機ポリゴン消滅演出（VirtualShatter / PolygonDissolve）用データ
+    struct PolygonShard3D {
+        std::unique_ptr<Object3d> object;
+        Vector3 position;
+        Vector3 velocity;
+        Vector3 rotation;
+        Vector3 rotSpeed;
+        Vector3 scale;
+        Vector4 color;
+        float life = 1.0f;
+    };
+    std::vector<PolygonShard3D> polyShards3D_;
+    float dissolveProgress_ = 0.0f;
+    bool glitchStarted_ = false;
+
+    void SpawnShipPolygonShards(const Vector3& shipPos);
 
     // 案2（左旋回クライムブレイク）リアルタイム調整用パラメータ
     Vector3 prop2Rot_ = { -0.60f, 0.0f, -1.15f }; // ピッチ(X), ヨー(Y), ロール(Z) [rad]

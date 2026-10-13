@@ -146,6 +146,50 @@ void Object3d::SetColor(const Vector4& color)
 	}
 }
 
+void Object3d::SetEnvironmentCoefficient(float coefficient)
+{
+	if (model) model->SetEnvironmentCoefficient(coefficient);
+	if (materialData_)
+	{
+		materialData_->environmentCoefficient = coefficient;
+	}
+}
+
+void Object3d::SetEnableLighting(bool enable)
+{
+	if (model) model->SetEnableLighting(enable);
+	if (materialData_)
+	{
+		materialData_->enableLighting = enable ? 1 : 0;
+	}
+}
+
+void Object3d::SetSelectLightings(int32_t v)
+{
+	if (!materialResource_ && dxCommon)
+	{
+		SetColor(GetColor());
+	}
+	if (materialData_)
+	{
+		materialData_->selectLightings = v;
+		hasCustomMaterial_ = true;
+	}
+	else if (model)
+	{
+		model->SetSelectLightings(v);
+	}
+}
+
+int32_t Object3d::GetSelectLightings() const
+{
+	if (hasCustomMaterial_ && materialData_)
+	{
+		return materialData_->selectLightings;
+	}
+	return model ? model->GetSelectLightings() : 0;
+}
+
 Vector4 Object3d::GetColor() const
 {
 	if (materialData_)
@@ -177,8 +221,10 @@ void Object3d::SetModel(const std::string& filePath)
 	if (hasCustomMaterial_ && materialData_ && model && model->GetMaterialData())
 	{
 		Vector4 curColor = materialData_->color;
+		int32_t curSelect = materialData_->selectLightings;
 		*materialData_ = *model->GetMaterialData();
 		materialData_->color = curColor; // 設定したカラーを保持
+		materialData_->selectLightings = curSelect;
 	}
 }
 

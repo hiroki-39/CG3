@@ -37,8 +37,8 @@ public:
 	/// </summary>
 	/// <param name="sceneName">遷移先のシーン名</param>
 	/// <param name="fadeDuration">フェードアウト/インにかける時間（秒）</param>
-	/// <param name="fadeColor">フェード色（デフォルト黒）</param>
-	void ChangeScene(const std::string& sceneName, float fadeDuration = 0.5f, const Vector4& fadeColor = { 0.0f, 0.0f, 0.0f, 1.0f });
+	/// <param name="fadeColor">フェード色（デフォルト: 仮想空間ディープティール）</param>
+	void ChangeScene(const std::string& sceneName, float fadeDuration = 0.5f, const Vector4& fadeColor = { 0.012f, 0.045f, 0.080f, 1.0f });
 
 	/// <summary>
 	/// 遷移中かどうか
@@ -52,6 +52,9 @@ public:
 	const std::string& GetCurrentSceneName() const { return currentSceneName_; }
 
 	// トランジション調整用
+	TransitionType GetTransitionType() const { return transitionType_; }
+	void SetTransitionType(TransitionType type) { transitionType_ = type; }
+
 	float GetFadeDuration() const { return fadeDuration_; }
 	void SetFadeDuration(float duration) { fadeDuration_ = duration; }
 	float GetEdgeSoftness() const { return edgeSoftness_; }
@@ -60,6 +63,16 @@ public:
 	void SetFadeColor(const Vector4& c) { fadeColor_ = c; }
 	Vector4 GetEdgeColor() const { return edgeColor_; }
 	void SetEdgeColor(const Vector4& c) { edgeColor_ = c; }
+
+	// Hexagon用パラメータアクセサ
+	const Vector2& GetHexOrigin() const { return hexOrigin_; }
+	void SetHexOrigin(const Vector2& o) { hexOrigin_ = o; }
+	float GetHexTileScale() const { return hexTileScale_; }
+	void SetHexTileScale(float s) { hexTileScale_ = s; }
+	float GetHexBorderWidth() const { return hexBorderWidth_; }
+	void SetHexBorderWidth(float w) { hexBorderWidth_ = w; }
+	float GetHexGlitchIntensity() const { return hexGlitchIntensity_; }
+	void SetHexGlitchIntensity(float g) { hexGlitchIntensity_ = g; }
 
 	// ImGui用共通UI
 	void DrawSceneSelectorUI();
@@ -75,16 +88,30 @@ private:
 
 	std::string currentSceneName_ = "TITLE";
 
-	// トランジション（ルール画像遷移）管理
+	// トランジション管理
+	TransitionType transitionType_ = TransitionType::Hexagon; // デフォルト: PDF仕様ヘキサゴン
 	TransitionState transitionState_ = TransitionState::None;
 	std::string nextSceneName_;
-	float fadeDuration_ = 0.6f;
+	float fadeDuration_ = 0.9f; // Hexagonのデフォルト仕様 (片道0.9秒、往復トータル1.8秒)
 	float fadeTimer_ = 0.0f;
 	float transitionProgress_ = 0.0f;
 	float edgeSoftness_ = 0.06f;
 	int holdFrames_ = 0;
-	Vector4 fadeColor_ = { 0.0f, 0.0f, 0.0f, 1.0f };
-	Vector4 edgeColor_ = { 0.2f, 0.75f, 1.0f, 0.7f }; // 境界発光アクセント
+
+	// 四角形グリッド用カラー
+	Vector4 squareFadeColor_ = { 0.012f, 0.045f, 0.080f, 1.0f }; // 仮想空間ディープサイバーティール
+	Vector4 squareEdgeColor_ = { 0.20f, 1.0f, 0.88f, 0.95f };    // ネオンエメラルド/シアン境界発光
+
+	// ヘキサゴン用パラメータ (仮想空間サイバー世界観カラー)
+	Vector4 hexFadeColor_ = { 0.010f, 0.040f, 0.075f, 1.0f };   // 仮想空間ディープサイバーティール/ネイビー
+	Vector4 hexGlowColor_ = { 0.15f, 1.0f, 0.88f, 1.0f };        // 鮮やかなエメラルドグリーン / ネオンシアン発光
+	Vector2 hexOrigin_ = { 0.5f, 0.5f };                          // 波紋の起点 (画面中央)
+	float hexTileScale_ = 14.0f;                                  // 六角形タイルの密度・サイズ (14.0: 迫力ある大ぶりサイズ)
+	float hexBorderWidth_ = 0.08f;                                // 六角形輪郭線の太さ
+	float hexGlitchIntensity_ = 0.25f;                            // ピーク時の明滅・乱数幅
+
+	Vector4 fadeColor_ = hexFadeColor_;
+	Vector4 edgeColor_ = hexGlowColor_;
 
 	std::unique_ptr<TransitionRenderer> transitionRenderer_ = nullptr;
 	uint32_t ruleTextureIndex_ = UINT32_MAX;

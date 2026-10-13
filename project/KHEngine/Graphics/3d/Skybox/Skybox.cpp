@@ -39,6 +39,7 @@ void Skybox::Update()
 	Matrix4x4 wvpMatrix = Matrix4x4::Multiply(Matrix4x4::Scale({ 500.0f,500.0f,500.0f }), viewMatrix) * camera_->GetProjectionMatrix();
 	transformationMatrixData_->WVP = wvpMatrix;
 	transformationMatrixData_->World = Matrix4x4::Identity();
+	transformationMatrixData_->isVirtualSpace = isVirtualSpace_ ? 1 : 0;
 }
 void Skybox::Draw()
 {

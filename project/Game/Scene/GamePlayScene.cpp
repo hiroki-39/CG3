@@ -1,4 +1,4 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "GamePlayScene.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Core/Utility/Log/Logger.h"
@@ -770,6 +770,7 @@ void GamePlayScene::ReloadLevel()
 		{
 			CreateObjectFromNode(objData, nullptr, modelInstances, mainRails_, bossRail_, bossSpawnProgressThreshold_, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_, obstacles_, enhanceRings_);
 		}
+		ApplyVirtualSpaceStyle();
 		OutputDebugStringA("LevelLoader: Successfully reloaded objects.\n");
 
 		// BossRailが存在する場合、マップからの指定がなければ始点近傍のメインレール進行度を自動算出
@@ -932,6 +933,29 @@ void GamePlayScene::ReloadLevel()
 	StartOpeningCutscene();
 }
 
+void GamePlayScene::ApplyVirtualSpaceStyle()
+{
+	if (skybox_)
+	{
+		skybox_->SetVirtualSpace(isVirtualSpace_);
+	}
+	int32_t lightingMode = isVirtualSpace_ ? 7 : 1;
+	for (auto& obj : modelInstances)
+	{
+		if (obj)
+		{
+			obj->SetSelectLightings(lightingMode);
+		}
+	}
+	for (auto& obs : obstacles_)
+	{
+		if (obs && obs->GetObject3d())
+		{
+			obs->GetObject3d()->SetSelectLightings(lightingMode);
+		}
+	}
+}
+
 void GamePlayScene::ReloadEnemiesOnly()
 {
 	auto services = EngineServices::GetInstance();
@@ -948,6 +972,7 @@ void GamePlayScene::ReloadEnemiesOnly()
 		{
 			LoadEnemiesOnlyFromNode(objData, object3dCommon, skybox_->GetCubemapSrvIndex(), enemies_, obstacles_, enhanceRings_);
 		}
+		ApplyVirtualSpaceStyle();
 		OutputDebugStringA("LevelLoader: Successfully respawned enemies.\n");
 
 
@@ -2431,6 +2456,16 @@ void GamePlayScene::Update()
 			ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "■ 演出・トランジション・シェーダー");
 			ImGui::Separator();
 
+			if (ImGui::CollapsingHeader("サイバー仮想空間ビジュアル (Star Fox Virtual Space)", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				if (ImGui::Checkbox("スターフォックス風 仮想空間シェーダー有効##GameVirtualSpace", &isVirtualSpace_))
+				{
+					ApplyVirtualSpaceStyle();
+				}
+				ImGui::TextDisabled("※ONでエメラルドグリッド地面・ホログラム都市・オーロラ宇宙空間になります");
+			}
+			ImGui::Spacing();
+
 			if (ImGui::CollapsingHeader("画面遷移 (Transition Settings)", ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				if (auto sm = GetSceneManager())
@@ -3650,9 +3685,10 @@ void GamePlayScene::DrawCutsceneUI()
 		drawList->AddRectFilled(ImVec2(viewPos.x, viewPos.y + screenH - barHeight), ImVec2(viewPos.x + screenW, viewPos.y + screenH), IM_COL32(0, 0, 0, 255));
 	}
 
-	// カットシーン中のみスキップ案内（ゲーム画面右下）
+	// カットシーン中のみスキップ案内（ゲーム画面右下）＋タイトル空間破壊からの開幕白フラッシュ減衰
 	if (gamePhase_ == GamePhase::START_CUTSCENE)
 	{
+
 		const char* skipText = "[SPACE] SKIP";
 		drawList->AddText(ImVec2(viewPos.x + screenW - 140.0f * scale, viewPos.y + screenH - barHeight - 30.0f * scale), IM_COL32(200, 200, 200, 180), skipText);
 	}

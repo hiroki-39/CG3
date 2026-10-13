@@ -79,6 +79,8 @@ private:
     bool isDrawRail_ = false;
 #endif
     std::unique_ptr<Skybox> skybox_;
+    bool isVirtualSpace_ = true; // スターフォックス風サイバー仮想空間ビジュアル有効フラグ
+    void ApplyVirtualSpaceStyle();
 #ifdef ENABLE_EDITOR
     bool isPlaying_ = false;
 #else

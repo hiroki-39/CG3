@@ -214,10 +214,139 @@ PixelShaderOutput main(VertexShaderOutput input)
                 output.color.a = gMaterial.color.a * textureColor.a;
             }
             break;
+        case 7:
+            {
+                // ===== スターフォックス風 サイバー仮想空間（ホログラム都市・デジタルグリッド地面） =====
+                float32_t3 wp = input.worldPosition;
+                float32_t dist = length(wp - gCamera.worldPosition);
+
+                // カメラからの奥行きに応じた地平線エメラルドフォグ（遠方のビルがシルエット化して光に溶ける）
+                float32_t fogFactor = saturate((dist - 120.0f) / 780.0f);
+
+                // 視線と法線によるホログラム・リム発光（建物のエッジや輪郭がシアンに透けて光る）
+                float32_t NdotV = saturate(abs(dot(normal, toEye)));
+                float32_t rim = pow(1.0f - NdotV, 2.2f);
+
+                // 地面判定（法線が上向きかつ高度が低いエリア）と建造物・山岳判定
+                bool isGroundSurface = (abs(normal.y) > 0.75f && wp.y < 3.5f);
+
+                float32_t3 holoColor = float32_t3(0.0f, 0.0f, 0.0f);
+
+                if (isGroundSurface)
+                {
+                    // --- 1. 仮想空間の地面（ダークティール面 ＋ サイバーグリッド ＆ 滑走路ドット列） ---
+                    float32_t3 groundBase = float32_t3(0.015f, 0.14f, 0.16f);
+
+                    // メイングリッド（20m間隔の鋭いエメラルドライン）
+                    float2 gMain = abs(frac(wp.xz / 20.0f - 0.5f) - 0.5f) / fwidth(wp.xz / 20.0f);
+                    float mainLine = 1.0f - saturate(min(gMain.x, gMain.y));
+
+                    // サブグリッド（5m間隔の繊細なデジタルメッシュ）
+                    float2 gSub = abs(frac(wp.xz / 5.0f - 0.5f) - 0.5f) / fwidth(wp.xz / 5.0f);
+                    float subLine = (1.0f - saturate(min(gSub.x, gSub.y))) * 0.35f;
+
+                    // 進行方向（Z軸）へ伸びる滑走路ガイドライン＆発光ドット列（参考画像の斜め・直線の光の列）
+                    float32_t runwayMask = smoothstep(2.2f, 0.2f, abs(frac(wp.x / 28.0f + 0.5f) - 0.5f) * 28.0f);
+                    float32_t dotPattern = smoothstep(0.35f, 0.75f, sin(wp.z * 1.8f)) * smoothstep(280.0f, 30.0f, dist);
+                    float32_t guideDots = runwayMask * dotPattern * 0.85f;
+
+                    // 遠方でグリッドのジャギーを抑えつつ美しい光面に収束
+                    float32_t gridFade = smoothstep(550.0f, 60.0f, dist);
+                    float32_t totalGrid = saturate(mainLine * 0.9f + subLine) * gridFade;
+
+                    float32_t3 neonCyan = float32_t3(0.20f, 0.98f, 0.88f);
+                    float32_t3 brightWhiteCyan = float32_t3(0.65f, 1.0f, 0.96f);
+
+                    holoColor = groundBase + neonCyan * totalGrid * 0.75f + brightWhiteCyan * guideDots;
+                }
+                else
+                {
+                    // --- 2. 仮想空間のビル群・橋・山岳（半透明感あるホログラムシルエット ＋ デジタル階層ライン） ---
+                    // 高さに応じたグラデーション（根元はエメラルドの光、上層はクールなディープシアン）
+                    float32_t heightGrad = saturate(wp.y / 65.0f);
+                    float32_t3 bldgBase = lerp(float32_t3(0.03f, 0.24f, 0.27f), float32_t3(0.02f, 0.11f, 0.18f), heightGrad);
+
+                    // 水平方向のホログラムスキャンライン（4m間隔のフロアライン）
+                    float32_t hScan = pow(saturate(sin(wp.y * 1.6f) * 0.5f + 0.5f), 6.0f) * 0.45f;
+
+                    // 垂直方向のエッジ・グリッドライン（建物の立体的なワイヤーフレーム感）
+                    float2 vGrid = abs(frac(wp.xz / 8.0f - 0.5f) - 0.5f) / max(fwidth(wp.xz / 8.0f), 0.001f);
+                    float vLine = (1.0f - saturate(min(vGrid.x, vGrid.y))) * smoothstep(450.0f, 80.0f, dist) * 0.40f;
+
+                    // 法線による面ごとの明暗コントラスト（ホログラムの多面体らしさ）
+                    float32_t faceShade = 0.65f + 0.35f * abs(normal.x - normal.z * 0.5f);
+
+                    float32_t3 rimNeon = float32_t3(0.28f, 1.0f, 0.92f) * (rim * 0.95f);
+                    float32_t3 lineNeon = float32_t3(0.18f, 0.92f, 0.84f) * (hScan + vLine);
+
+                    holoColor = bldgBase * faceShade + rimNeon + lineNeon;
+
+                    // 地上付近（Y=0〜8m）の接地部が地平線の光と溶け合うボトムグロー
+                    float32_t bottomGlow = exp(-max(0.0f, wp.y - 1.0f) * 0.16f);
+                    holoColor += float32_t3(0.15f, 0.85f, 0.78f) * (bottomGlow * 0.32f);
+                }
+
+                // 遠方の地平線エメラルドグローへ美しくフェード（画像の奥のビル群が光の中に浮かぶ表現）
+                float32_t3 horizonFogColor = float32_t3(0.12f, 0.72f, 0.68f);
+                output.color.rgb = lerp(holoColor, horizonFogColor, fogFactor * 0.68f);
+                output.color.a = 1.0f;
+            }
+            break;
+        case 8:
+            {
+                // ===== スターフォックス風 サイバー仮想空間 自機（ホログラム装甲・ネオンパネル・ポリゴン消滅ディゾルブ） =====
+                float32_t3 wp = input.worldPosition;
+                float32_t NdotV = saturate(abs(dot(normal, toEye)));
+                // 輪郭のエメラルド／シアンのネオンリム発光
+                float32_t rim = pow(1.0f - NdotV, 2.2f);
+
+                // 基本装甲カラー：ハイテクなサイバーディープティール＆ネイビー
+                float32_t3 cyberHull = float32_t3(0.04f, 0.20f, 0.26f);
+                // 上面・側面の立体的な陰影
+                float32_t shade = 0.55f + 0.45f * saturate(dot(normal, float32_t3(0.0f, 1.0f, 0.4f)));
+
+                // 鮮やかなネオンシアン＆エメラルドの発光色
+                float32_t3 neonCyan = float32_t3(0.20f, 1.0f, 0.90f);
+                float32_t3 neonEmerald = float32_t3(0.05f, 0.95f, 0.72f);
+
+                // 輪郭ネオンリム発光
+                float32_t3 rimLight = neonCyan * (rim * 1.5f);
+
+                // 機体表面の幾何学デジタルスキャンライン＆ワイヤーフレーム
+                float2 uvMesh = abs(frac(input.texcoord * 18.0f - 0.5f) - 0.5f);
+                float wireLine = (1.0f - saturate(min(uvMesh.x, uvMesh.y) * 12.0f)) * 0.45f;
+                // 機体を流れるエナジーパルス（奥から手前へ走る光の波）
+                float pulse = pow(saturate(sin(wp.z * 1.4f - wp.y * 2.5f) * 0.5f + 0.5f), 7.0f) * 0.60f;
+
+                float32_t3 shipGlow = (cyberHull * shade) + rimLight + (neonEmerald * wireLine) + (neonCyan * pulse);
+                output.color.rgb = shipGlow * gMaterial.color.rgb;
+                output.color.a = 1.0f;
+
+                // ===== ポリゴンディゾルブ消滅（gMaterial.color.a が 1.0 未満のときに発動） =====
+                if (gMaterial.color.a < 0.999f)
+                {
+                    float dissolveProgress = 1.0f - gMaterial.color.a; // 0.0 -> 1.0
+                    
+                    // 3D空間座標に基づくデジタルポリゴングリッドパターン（三角・六角ブロック状の崩壊ノイズ）
+                    float32_t3 blockCoord = floor(wp.xyz * 4.5f);
+                    float polyPattern = frac(sin(dot(blockCoord, float32_t3(12.9898f, 78.233f, 45.164f))) * 43758.5453f);
+                    float dissolveThreshold = dissolveProgress * 1.35f - 0.15f;
+
+                    if (polyPattern < dissolveThreshold)
+                    {
+                        discard;
+                    }
+
+                    // ポリゴン崩壊境界の超高輝度ネオン発光エッジ
+                    float edge = saturate(1.0f - abs(polyPattern - dissolveThreshold) * 10.0f);
+                    output.color.rgb += float32_t3(0.70f, 1.0f, 0.98f) * (edge * 5.0f);
+                }
+            }
+            break;
     }
 
-    // 環境マッピング
-    if (gMaterial.environmentCoefficient > 0.0f)
+    // 環境マッピング（仮想空間シェーダー case 7, 8 時は独自のホログラム発光を維持するため除外）
+    if (gMaterial.environmentCoefficient > 0.0f && gMaterial.selectLightings != 7 && gMaterial.selectLightings != 8)
     {
         // 視線ベクトル（表面からカメラへ）
         float32_t3 toEye = normalize(gCamera.worldPosition - input.worldPosition);
