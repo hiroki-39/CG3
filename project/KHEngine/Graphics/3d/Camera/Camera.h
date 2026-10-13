@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "KHEngine/Math/MathCommon.h"
 #include "KHEngine/Core/OS/WinApp.h"
 
@@ -23,9 +23,8 @@ public:
 	{
 		return Matrix4x4::Multiply(viewMatrix, projectionMatrix);
 	}
-	Vector3& GetTranslate() { return transform.translate; }
-	Vector3& GetRotation() { return transform.rotation; }
-	const Vector3& GetTranslate() const { return transform.translate;}
+	const Vector3& GetTranslate() const { return transform.translate; }
+	const Vector3& GetRotation() const { return transform.rotation; }
 
 
 	// --- Setter ---

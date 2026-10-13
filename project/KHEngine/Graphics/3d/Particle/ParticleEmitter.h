@@ -43,6 +43,15 @@ public:
     // パーティクルのクリア
     void Clear() { particles_.clear(); }
 
+    // 既存パーティクルの座標を一括オフセット（ループ座標リセット時の位置同期用）
+    void OffsetParticles(const Vector3& offset)
+    {
+        for (auto& p : particles_)
+        {
+            p.transform.translate += offset;
+        }
+    }
+
     // フィールド設定
     void SetAccelerationField(const AccelerationField& field) { accelField_ = field; }
 

@@ -22,6 +22,7 @@
 #include "Game/Actor/Enemy/ArmoredTrainBoss.h"
 #include "Game/Actor/Obstacle/Obstacle.h"
 #include "Game/Actor/Item/EnhanceRing.h"
+#include "Game/System/CollisionManager.h"
 #include <vector>
 #include <list>
 #include <random>
@@ -172,6 +173,7 @@ private:
 
     std::list<std::unique_ptr<EnemyBullet>> enemyBullets_;
     
+    std::unique_ptr<CollisionManager> collisionManager_;
     std::list<std::unique_ptr<Obstacle>> obstacles_;
     std::list<std::unique_ptr<EnhanceRing>> enhanceRings_;
 

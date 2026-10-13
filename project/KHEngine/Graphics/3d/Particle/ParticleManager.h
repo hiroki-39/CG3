@@ -37,7 +37,7 @@ public:
   void Update(float dt);
 
   // ゲッター
-  std::vector<std::unique_ptr<ParticleEmitter>> &GetEmitters() {
+  const std::vector<std::unique_ptr<ParticleEmitter>> &GetEmitters() const {
     return emitters_;
   }
 
