@@ -50,6 +50,7 @@
         {
             "type": "MESH",
             "name": "bridge",
+            "file_name": "bridge_title",
             "transform": {
                 "translation": [
                     220.4982452392578,

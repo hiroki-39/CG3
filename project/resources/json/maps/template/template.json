@@ -2599,29 +2599,6 @@
             },
             "is_destructible": true,
             "texture_path": "gray.png"
-        },
-        {
-            "type": "MESH",
-            "name": "object",
-            "transform": {
-                "translation": [
-                    74.37324523925781,
-                    2511.96240234375,
-                    16.486892700195312
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "scale": [
-                    0.5421444773674011,
-                    0.9590266346931458,
-                    0.5421444773674011
-                ]
-            },
-            "is_destructible": true,
-            "texture_path": "wall.png"
         }
     ]
 }

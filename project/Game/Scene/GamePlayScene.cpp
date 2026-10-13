@@ -377,6 +377,8 @@ void GamePlayScene::Initialize()
 	auto srvManager = services->GetSrvManager();
 	auto spriteCommon = services->GetSpriteCommon();
 
+	collisionManager_ = std::make_unique<CollisionManager>();
+
 
 	camera = std::make_unique<Camera>();
 	camera->SetTranslate({ 0.0f, 6.0f, -20.0f });
@@ -1467,113 +1469,12 @@ void GamePlayScene::Update()
 		Vector3 cameraForward = { std::sinf(rot.y), 0.0f, std::cosf(rot.y) };
 
 
-		for (auto it = enemies_.begin(); it != enemies_.end();)
+		// 各種アクターの更新
+		for (auto& enemy : enemies_)
 		{
-			(*it)->Update(cameraPos, cameraForward, player_.get(), enemyBullets_, gameSpeed_);
-
-
-			for (auto& bullet : bullets_)
-			{
-				if (bullet->IsDead()) continue;
-
-				Sphere bulletSphere = { bullet->GetPosition(), 1.0f };
-				bool isHit = false;
-
-				isHit = (*it)->CheckCollision(bulletSphere);
-
-
-				if (!isHit)
-				{
-					Vector3 prev = bullet->GetPreviousPosition();
-					Vector3 curr = bullet->GetPosition();
-					Vector3 diff = { curr.x - prev.x, curr.y - prev.y, curr.z - prev.z };
-					float moveLen = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-					if (moveLen > 0.0001f)
-					{
-						Ray moveRay = { prev, { diff.x / moveLen, diff.y / moveLen, diff.z / moveLen } };
-						float hitDist = 0.0f;
-						if ((*it)->CheckRaycast(moveRay, &hitDist))
-						{
-							if (hitDist <= moveLen + 1.0f)
-							{
-								isHit = true;
-							}
-						}
-					}
-				}
-
-				if (isHit)
-				{
-					bullet->OnCollision();
-					(*it)->OnCollision();
-
-
-					hitEffect_.SetPosition(bulletSphere.center);
-					hitEffect_.Play();
-				}
-			}
-
-
-			for (auto& missile : missiles_)
-			{
-				if (missile->IsDead()) continue;
-
-				Sphere missileSphere = { missile->GetPosition(), 1.0f };
-				bool isHit = false;
-
-				isHit = (*it)->CheckCollision(missileSphere);
-
-
-				if (!isHit)
-				{
-					Vector3 prev = missile->GetPreviousPosition();
-					Vector3 curr = missile->GetPosition();
-					Vector3 diff = { curr.x - prev.x, curr.y - prev.y, curr.z - prev.z };
-					float moveLen = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-					if (moveLen > 0.0001f)
-					{
-						Ray moveRay = { prev, { diff.x / moveLen, diff.y / moveLen, diff.z / moveLen } };
-						float hitDist = 0.0f;
-						if ((*it)->CheckRaycast(moveRay, &hitDist))
-						{
-							if (hitDist <= moveLen + 1.0f)
-							{
-								isHit = true;
-							}
-						}
-					}
-				}
-
-				if (isHit)
-				{
-					missile->OnCollision();
-					// 取得されたリングを消滅させる
-					(*it)->Kill();
-
-
-					hitEffect_.SetPosition(missileSphere.center);
-					hitEffect_.Play();
-
-					explosionEffect_.SetPosition(missileSphere.center);
-					explosionEffect_.Play();
-				}
-			}
-
-			if ((*it)->IsDead())
-			{
-				score_ += 100;
-				explosionEffect_.SetPosition((*it)->GetPosition());
-				explosionEffect_.Play();
-				SoundManager::GetInstance()->PlaySE("small_explosion.mp3", 0.8f);
-				it = enemies_.erase(it);
-			}
-			else
-			{
-				++it;
-			}
+			enemy->Update(cameraPos, cameraForward, player_.get(), enemyBullets_, gameSpeed_);
 		}
 
-		// 装甲列車ボスの更新と弾当たり判定
 		if (armoredTrainBoss_ && isBossSpawned_)
 		{
 			Vector3 camPos = activeCamera_ ? activeCamera_->GetTranslate() : Vector3{ 0,0,0 };
@@ -1583,43 +1484,56 @@ void GamePlayScene::Update()
 				playerSpeed = railCameraController_->GetBaseSpeed() * railCameraController_->GetSpeedMultiplier();
 			}
 			armoredTrainBoss_->Update(camPos, cameraForward, playerSpeed, player_.get(), enemyBullets_, gameSpeed_);
+		}
 
-			// プレイヤー通常弾との判定
-			for (auto& bullet : bullets_)
-			{
-				if (bullet->IsDead()) continue;
-				Sphere bulletSphere = { bullet->GetPosition(), 1.5f };
-				int hitCarIdx = -1;
-				if (armoredTrainBoss_->CheckCollision(bulletSphere, &hitCarIdx))
-				{
-					bullet->OnCollision();
-					armoredTrainBoss_->OnDamaged(hitCarIdx, 1);
-					hitEffect_.SetPosition(bulletSphere.center);
-					hitEffect_.Play();
-					score_ += 50;
-				}
-			}
+		for (auto& bullet : enemyBullets_)
+		{
+			bullet->Update(gameSpeed_);
+		}
 
-			// プレイヤーミサイルとの判定
-			for (auto& missile : missiles_)
-			{
-				if (missile->IsDead()) continue;
-				Sphere missileSphere = { missile->GetPosition(), 2.0f };
-				int hitCarIdx = -1;
-				if (armoredTrainBoss_->CheckCollision(missileSphere, &hitCarIdx))
-				{
-					missile->OnCollision();
-					armoredTrainBoss_->OnDamaged(hitCarIdx, 4);
-					hitEffect_.SetPosition(missileSphere.center);
-					hitEffect_.Play();
-					explosionEffect_.SetPosition(missileSphere.center);
-					explosionEffect_.Play();
-					score_ += 200;
-				}
-			}
+		for (auto& ring : enhanceRings_)
+		{
+			ring->Update();
+		}
 
-			// ボス撃破時の演出シークエンス開始（まだBATTLEステートの場合）
-			if (armoredTrainBoss_->IsDefeated() && bossBattleStep_ == BossBattleStep::BATTLE)
+		for (auto& obstacle : obstacles_)
+		{
+			obstacle->Update();
+		}
+
+		// 地形コリジョンデバッガーのフレーム開始
+		TerrainCollisionDebugger::GetInstance()->BeginFrame();
+
+		// 衝突判定管理クラス (CollisionManager) による一括判定
+		CollisionContext colCtx;
+		colCtx.player = player_.get();
+		colCtx.playerBullets = &bullets_;
+		colCtx.playerMissiles = &missiles_;
+		colCtx.enemies = &enemies_;
+		colCtx.boss = armoredTrainBoss_.get();
+		colCtx.isBossSpawned = isBossSpawned_;
+		colCtx.enemyBullets = &enemyBullets_;
+		colCtx.obstacles = &obstacles_;
+		colCtx.enhanceRings = &enhanceRings_;
+		colCtx.terrainModels = &modelInstances;
+		colCtx.cameraObject = cameraObject_.get();
+
+		colCtx.hitEffect = &hitEffect_;
+		colCtx.explosionEffect = &explosionEffect_;
+		colCtx.dodgeEffect = &dodgeEffect_;
+		colCtx.ringEffect = &ringEffect_;
+		colCtx.healRingEffect = &healRingEffect_;
+
+		colCtx.score = &score_;
+		colCtx.cameraShakeTimer = &cameraShakeTimer_;
+		colCtx.isJustDodgeActive = &isJustDodgeActive_;
+		colCtx.justDodgeTimer = &justDodgeTimer_;
+		colCtx.justDodgeMaxTime = justDodgeMaxTime_;
+		colCtx.acquiredEnhanceRingCount = &acquiredEnhanceRingCount_;
+		colCtx.maxEnhanceRingIcons = kMaxEnhanceRingIcons;
+
+		colCtx.onBossDefeated = [this]() {
+			if (bossBattleStep_ == BossBattleStep::BATTLE)
 			{
 				bossBattleStep_ = BossBattleStep::DEFEATED_SEQUENCE;
 				bossDefeatTimer_ = 0.0f;
@@ -1627,357 +1541,14 @@ void GamePlayScene::Update()
 				SoundManager::GetInstance()->PlaySE("explosion.mp3", 1.0f);
 				cameraShakeTimer_ = 1.0f;
 			}
-		}
+		};
 
-		for (auto it = enemyBullets_.begin(); it != enemyBullets_.end();)
+		if (collisionManager_)
 		{
-			(*it)->Update(gameSpeed_);
-
-			// --- 地形・建物（modelInstances）および障害物（obstacles_）との衝突判定 ---
-			if (!(*it)->IsDead())
-			{
-				Vector3 curr = (*it)->GetPosition();
-				Vector3 prev = (*it)->GetPreviousPosition();
-				Sphere bulletSphere = { curr, 1.2f };
-				bool isHit = false;
-
-				// 1. 障害物（obstacles_）との衝突判定
-				for (const auto& obstacle : obstacles_)
-				{
-					if (!obstacle || obstacle->IsDead()) continue;
-
-					if (obstacle->CheckCollision(bulletSphere))
-					{
-						isHit = true;
-						break;
-					}
-
-					// レイキャスト判定（高速移動によるすり抜け防止）
-					Vector3 diff = { curr.x - prev.x, curr.y - prev.y, curr.z - prev.z };
-					float moveLen = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-					if (moveLen > 0.0001f)
-					{
-						Ray moveRay = { prev, { diff.x / moveLen, diff.y / moveLen, diff.z / moveLen } };
-						float hitDist = 0.0f;
-						if (obstacle->CheckRaycast(moveRay, &hitDist))
-						{
-							if (hitDist <= moveLen + 1.2f)
-							{
-								isHit = true;
-								break;
-							}
-						}
-					}
-				}
-
-				// 2. 地形・建物メッシュ（modelInstances）との衝突判定
-				if (!isHit)
-				{
-					Vector3 mid = { (prev.x + curr.x) * 0.5f, (prev.y + curr.y) * 0.5f, (prev.z + curr.z) * 0.5f };
-					Sphere midSphere = { mid, 1.2f };
-
-					for (const auto& modelObj : modelInstances)
-					{
-						if (!modelObj) continue;
-
-						if (modelObj->CheckCollisionWithSphere(bulletSphere, nullptr) ||
-							modelObj->CheckCollisionWithSphere(midSphere, nullptr))
-						{
-							isHit = true;
-							break;
-						}
-					}
-				}
-
-				if (isHit)
-				{
-					(*it)->OnCollision();
-					hitEffect_.SetPosition(curr);
-					hitEffect_.Play();
-				}
-			}
-
-			if (!(*it)->IsDead() && player_ && !player_->IsDead())
-			{
-				Sphere bulletSphere = { (*it)->GetPosition(), 1.0f };
-
-
-				OBB playerOBB = player_->GetWorldOBB();
-
-				if (CollisionMath::IsCollision(bulletSphere, playerOBB))
-				{
-					if (player_->IsRolling() && player_->GetRollTimer() < 15.0f)
-					{
-
-						isJustDodgeActive_ = true;
-						justDodgeTimer_ = justDodgeMaxTime_;
-
-
-						auto pp = EngineServices::GetInstance()->GetPostProcess();
-						if (pp)
-						{
-							pp->SetEffectActive("Grayscale", true);
-							pp->SetEffectActive("Vignetting", true);
-						}
-
-						dodgeEffect_.SetPosition((*it)->GetPosition());
-						dodgeEffect_.Play();
-
-						(*it)->OnCollision();
-					}
-					else
-					{
-
-						(*it)->OnCollision();
-						// プレイヤー被弾パーティクル（作り直すため一旦無効化）
-						// hitEffect_.SetPosition((*it)->GetPosition());
-						// hitEffect_.Play();
-
-						player_->OnCollision(); cameraShakeTimer_ = 20.0f;
-					}
-				}
-			}
-
-			if ((*it)->IsDead())
-			{
-				it = enemyBullets_.erase(it);
-			}
-			else
-			{
-				++it;
-			}
-		}
-
-
-		for (auto it = enhanceRings_.begin(); it != enhanceRings_.end();)
-		{
-			(*it)->Update();
-
-			if (!(*it)->IsDead() && player_ && !player_->IsDead())
-			{
-				if ((*it)->CheckCollision(player_.get()))
-				{
-					if ((*it)->GetType() == RingType::POWER_UP) {
-						acquiredEnhanceRingCount_ = std::min(kMaxEnhanceRingIcons, acquiredEnhanceRingCount_ + 1);
-						if (player_) {
-							player_->SetPowerUpLevel(acquiredEnhanceRingCount_);
-						}
-						SoundManager::GetInstance()->PlaySE("powerup.mp3", 0.9f);
-					} else if ((*it)->GetType() == RingType::HEAL) {
-						player_->Heal(3000);
-						SoundManager::GetInstance()->PlaySE("powerup.mp3", 0.8f);
-					}
-					
-					if ((*it)->GetType() == RingType::POWER_UP) {
-						ringEffect_.SetPosition((*it)->GetPosition());
-						ringEffect_.Play();
-					} else {
-						healRingEffect_.SetPosition((*it)->GetPosition());
-						healRingEffect_.Play();
-					}
-
-					(*it)->StartShrink(player_.get());
-				}
-			}
-
-			if ((*it)->IsDead())
-			{
-				it = enhanceRings_.erase(it);
-			}
-			else
-			{
-				++it;
-			}
-		}
-
-		// 地形コリジョンデバッガーのフレーム開始
-		TerrainCollisionDebugger::GetInstance()->BeginFrame();
-
-		for (auto it = obstacles_.begin(); it != obstacles_.end();)
-		{
-			(*it)->Update();
-
-
-			for (auto& bullet : bullets_)
-			{
-				if (bullet->IsDead()) continue;
-
-				Sphere bulletSphere = { bullet->GetPosition(), 1.0f };
-				bool isHit = false;
-
-				isHit = (*it)->CheckCollision(bulletSphere);
-
-
-				if (!isHit)
-				{
-					Vector3 prev = bullet->GetPreviousPosition();
-					Vector3 curr = bullet->GetPosition();
-					Vector3 diff = { curr.x - prev.x, curr.y - prev.y, curr.z - prev.z };
-					float moveLen = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-					if (moveLen > 0.0001f)
-					{
-						Ray moveRay = { prev, { diff.x / moveLen, diff.y / moveLen, diff.z / moveLen } };
-						float hitDist = 0.0f;
-						if ((*it)->CheckRaycast(moveRay, &hitDist))
-						{
-							if (hitDist <= moveLen + 1.0f)
-							{
-								isHit = true;
-							}
-						}
-					}
-				}
-
-				if (isHit)
-				{
-					bullet->OnCollision();
-					(*it)->OnCollision();
-
-
-					hitEffect_.SetPosition(bulletSphere.center);
-					hitEffect_.Play();
-				}
-			}
-
-
-			for (auto& missile : missiles_)
-			{
-				if (missile->IsDead()) continue;
-
-				Sphere missileSphere = { missile->GetPosition(), 1.0f };
-				bool isHit = false;
-
-				isHit = (*it)->CheckCollision(missileSphere);
-
-
-				if (!isHit)
-				{
-					Vector3 prev = missile->GetPreviousPosition();
-					Vector3 curr = missile->GetPosition();
-					Vector3 diff = { curr.x - prev.x, curr.y - prev.y, curr.z - prev.z };
-					float moveLen = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-					if (moveLen > 0.0001f)
-					{
-						Ray moveRay = { prev, { diff.x / moveLen, diff.y / moveLen, diff.z / moveLen } };
-						float hitDist = 0.0f;
-						if ((*it)->CheckRaycast(moveRay, &hitDist))
-						{
-							if (hitDist <= moveLen + 1.0f)
-							{
-								isHit = true;
-							}
-						}
-					}
-				}
-
-				if (isHit)
-				{
-					missile->OnCollision();
-					// 取得されたリングを消滅させる
-					(*it)->Kill();
-
-
-					hitEffect_.SetPosition(missileSphere.center);
-					hitEffect_.Play();
-				}
-			}
-
-			// プレイヤーとのメッシュ／障害物衝突判定（接触・めり込み・はじかれ）
-			if (player_ && !player_->IsDead())
-			{
-				OBB playerOBB = player_->GetWorldOBB();
-
-				CollisionResult colRes;
-				std::vector<Triangle> testedTris;
-				std::vector<Triangle> hitTris;
-				if ((*it)->CheckCollisionWithOBB(playerOBB, &colRes, &testedTris, &hitTris))
-				{
-					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get(), &colRes.hitPoint);
-					if (causedDamage)
-					{
-						cameraShakeTimer_ = 20.0f;
-					}
-				}
-
-				TerrainCollisionDebugger::GetInstance()->RecordCollisionCheck(
-					static_cast<int>((*it)->GetMeshTriangleCount()),
-					testedTris,
-					hitTris,
-					colRes.isHit ? &colRes : nullptr
-				);
-			}
-
-			if ((*it)->IsDead())
-			{
-				explosionEffect_.SetPosition((*it)->GetPosition());
-				explosionEffect_.Play();
-				SoundManager::GetInstance()->PlaySE("explosion.mp3", 0.8f);
-				it = obstacles_.erase(it);
-			}
-			else
-			{
-				++it;
-			}
-		}
-
-		// --- 地形・背景メッシュ（modelInstances）とのメッシュ衝突判定 ---
-		if (player_ && !player_->IsDead())
-		{
-			OBB playerOBB = player_->GetWorldOBB();
-
-			for (auto& modelObj : modelInstances)
-			{
-				if (!modelObj) continue;
-				CollisionResult colRes;
-				std::vector<Triangle> testedTris;
-				std::vector<Triangle> hitTris;
-				if (modelObj->CheckCollisionWithOBB(playerOBB, &colRes, &testedTris, &hitTris))
-				{
-					bool causedDamage = player_->OnTerrainCollision(colRes.normal, colRes.penetrationDepth, cameraObject_.get(), &colRes.hitPoint);
-					if (causedDamage)
-					{
-						cameraShakeTimer_ = 20.0f;
-					}
-				}
-
-				TerrainCollisionDebugger::GetInstance()->RecordCollisionCheck(
-					static_cast<int>(modelObj->GetMeshTriangleCount()),
-					testedTris,
-					hitTris,
-					colRes.isHit ? &colRes : nullptr
-				);
-			}
-
-			// 自機OBBコライダーの色を接触状態に応じてリアルタイム変化
-			if (TerrainCollisionDebugger::GetInstance()->IsHit())
-			{
-				player_->SetColliderColor({ 1.0f, 0.15f, 0.15f, 1.0f }); // 衝突中: 鮮やかな赤色
-			}
-			else
-			{
-				player_->SetColliderColor({ 0.0f, 1.0f, 1.0f, 1.0f }); // 安全時: 鮮やかな水色
-			}
+			collisionManager_->ProcessAllCollisions(colCtx);
 		}
 
 		TerrainCollisionDebugger::GetInstance()->EndFrame();
-
-		// プレイヤー弾と地形メッシュ（modelInstances）の衝突判定
-		for (auto& bullet : bullets_)
-		{
-			if (bullet->IsDead()) continue;
-			Sphere bulletSphere = { bullet->GetPosition(), 1.0f };
-			for (auto& modelObj : modelInstances)
-			{
-				if (!modelObj) continue;
-				if (modelObj->CheckCollisionWithSphere(bulletSphere, nullptr))
-				{
-					bullet->OnCollision();
-					hitEffect_.SetPosition(bulletSphere.center);
-					hitEffect_.Play();
-					break;
-				}
-			}
-		}
 
 		bool isLockOn = false;
 		if (player_ && player_->GetObject3d() && player_->GetReticle() && activeCamera_)
@@ -2899,14 +2470,14 @@ void GamePlayScene::Update()
 			{
 				if (camera)
 				{
-					Vector3& camPosRef = camera->GetTranslate();
+					Vector3 camPosRef = camera->GetTranslate();
 					float camPosArr[3] = { camPosRef.x, camPosRef.y, camPosRef.z };
 					if (ImGui::DragFloat3("座標 (Translate)", camPosArr, 0.1f))
 					{
 						camera->SetTranslate(Vector3(camPosArr[0], camPosArr[1], camPosArr[2]));
 					}
 
-					Vector3& camRotRef = camera->GetRotation();
+					Vector3 camRotRef = camera->GetRotation();
 					float camRotArr[3] = { camRotRef.x, camRotRef.y, camRotRef.z };
 					if (ImGui::DragFloat3("回転 (Rotation)", camRotArr, 0.1f))
 					{

@@ -180,6 +180,9 @@
     <ClCompile Include="Game\System\TerrainCollisionDebugger.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="Game\System\CollisionManager.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
     <ClCompile Include="Game\Actor\Player\Player.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -399,6 +402,9 @@
       <Filter>繝倥ャ繝€繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="Game\System\TerrainCollisionDebugger.h">
+      <Filter>繝倥ャ繝€繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\System\CollisionManager.h">
       <Filter>繝倥ャ繝€繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="Game\Actor\Player\Player.h">

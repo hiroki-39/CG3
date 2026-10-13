@@ -70,20 +70,25 @@ void TitleScene::Initialize()
     auto modelManager = ModelManager::GetInstance();
     if (modelManager)
     {
-        // 1. 地形・背景モデル（約15MBの巨大OBJをタイトル起動時にパース・キャッシュ）
-        modelManager->LoadModel("AITerrain_00_OPEN_SEA.obj");
-        modelManager->LoadModel("AITerrain_01_PLAINS.obj");
-        modelManager->LoadModel("AITerrain_02_HILLS.obj");
-        modelManager->LoadModel("AITerrain_03_CANYON.obj");
-        modelManager->LoadModel("AITerrain_Background_Mountains.obj");
-        modelManager->LoadModel("pillar.obj");
+        // 1. ゲームプレイシーン（template.json）用 地形・背景・建造物モデルの事前ロード
+        modelManager->LoadModel("Terrain_00_SEA.obj");
+        modelManager->LoadModel("Terrain_01_PLAINS.obj");
+        modelManager->LoadModel("Terrain_02_HILLS.obj");
+        modelManager->LoadModel("Terrain_03_CANYON.obj");
+        modelManager->LoadModel("Terrain_Background_Mountains.obj");
+        modelManager->LoadModel("arch_1.obj");
+        modelManager->LoadModel("collapsed bridge.obj");
+        modelManager->LoadModel("bridge.obj");
+        modelManager->LoadModel("top_building.obj");
+        modelManager->LoadModel("under_building.obj");
         modelManager->LoadModel("wall.obj");
 
         // 2. プレイヤー・敵・弾・障害物モデル
         modelManager->LoadModel("player.obj");
         modelManager->LoadModel("cube.obj");
         modelManager->LoadModel("plane.obj");
-        modelManager->LoadModel("Fighter.obj");
+        modelManager->LoadModel("enemy.obj");
+        modelManager->LoadModel("fixedTurret.obj");
         modelManager->LoadModel("missile.obj");
         modelManager->LoadModel("RockOn.obj");
         modelManager->LoadModel("collider_cube_player.obj");
@@ -707,6 +712,23 @@ void TitleScene::Update()
         if (isPlaying)
         {
             flightProgressZ_ += forwardSpeed_ * dt;
+
+            // 1周目（周期 2000.0m）が終わり2周目に入るタイミングで進んだ距離をリセット（ラップアラウンド）
+            // 長時間タイトルシーンに滞在しても移動距離の数値が膨大にならず、浮動小数点精度低下等のバグを防止する
+            constexpr float kLoopPeriodZ = 2000.0f;
+            if (flightProgressZ_ >= kLoopPeriodZ)
+            {
+                flightProgressZ_ -= kLoopPeriodZ;
+
+                // ワールド座標で発生しているスピードライン（気流粒子）も同距離分シフトし、継ぎ目なく連続表示させる
+                for (auto& node : windEffect_.GetNodes())
+                {
+                    if (node)
+                    {
+                        node->emitter.OffsetParticles({ 0.0f, 0.0f, -kLoopPeriodZ });
+                    }
+                }
+            }
         }
 
         curPos.x = targetPos_.x;
@@ -745,7 +767,19 @@ void TitleScene::Update()
             if (isPlaying)
             {
                 idleTimer_ += dt;
-                introBlendTimer_ += dt;
+                // 長時間放置時の浮動小数点精度低下を防ぐため、サイン波の共通周期（40π / flightSpeed_）でラップアラウンド
+                if (flightSpeed_ > 0.001f)
+                {
+                    const float kIdleWavePeriod = (40.0f * std::numbers::pi_v<float>) / flightSpeed_;
+                    if (idleTimer_ >= kIdleWavePeriod)
+                    {
+                        idleTimer_ -= kIdleWavePeriod;
+                    }
+                }
+                if (introBlendTimer_ < introBlendDuration_)
+                {
+                    introBlendTimer_ += dt;
+                }
             }
         }
 
@@ -1644,7 +1678,7 @@ void TitleScene::Update()
                     forwardSpeed_ = speedKmh / 3.6f;
                 }
                 ImGui::Text("現在速度: %.1f km/h (%.2f m/s)", speedKmh, forwardSpeed_);
-                ImGui::Text("前進飛行距離: %.1f m", flightProgressZ_);
+                ImGui::Text("前進飛行距離: %.1f m / 2000.0 m (1周で自動リセット)", flightProgressZ_);
                 if (ImGui::Button("飛行距離を 0 にリセット"))
                 {
                     flightProgressZ_ = 0.0f;
