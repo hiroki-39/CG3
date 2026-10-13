@@ -32,6 +32,7 @@ public:
     const Vector3& GetPosition() const { return position_; }
     const LevelCollider& GetCollider() const { return collider_; }
     bool IsDead() const { return isDead_; }
+    Object3d* GetObject3d() const { return object_.get(); }
 
     
     // プレイヤー（球またはOBB）との衝突判定（法線・めり込み深さを取得）

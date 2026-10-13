@@ -65,9 +65,9 @@ void EditorSystem::Draw(uint32_t gameSceneSrvIndex) {
             // 各ウィンドウを対応するドックに割り当てる
             ImGui::DockBuilderDockWindow("メニュー", dock_id_left);
             ImGui::DockBuilderDockWindow("インスペクター", dock_id_right);
-            ImGui::DockBuilderDockWindow("UIテキストエディタ", dock_id_right);
             ImGui::DockBuilderDockWindow("エフェクトエディター", dock_id_right);
             ImGui::DockBuilderDockWindow("エネミーエディター", dock_id_right);
+            ImGui::DockBuilderDockWindow("UIテキストエディタ", dock_id_right);
             ImGui::DockBuilderDockWindow("タイムライン", dock_id_bottom);
             ImGui::DockBuilderDockWindow("ゲーム画面", dock_main_id);
             ImGui::DockBuilderDockWindow("エフェクト画面", dock_main_id);
@@ -85,6 +85,26 @@ void EditorSystem::Draw(uint32_t gameSceneSrvIndex) {
 
     // 各ウィンドウの描画
     DrawViewport(gameSceneSrvIndex);
+
+    // -------------------------------------------------------------------------
+    // ドッキングタブ順序の永続固定保証:
+    // シーン遷移（タイトル⇔ゲームプレイ等）の際、シーン破棄により「インスペクター」が
+    // 1フレームでも呼ばれなくなると、再生成時にタブ末尾（一番右）へ再配置されてしまう。
+    // ここでエフェクトエディター等より前に必ずインスペクターを先行登録しておくことで、
+    // シーンを何往復またいでも「インスペクター」が常に一番左（先頭タブ）に永続固定される。
+    // （実際のUIコンテンツは各シーンの DrawUI() 内で追記される）
+    // -------------------------------------------------------------------------
+    if (ImGui::Begin("インスペクター")) {
+    }
+    ImGui::End();
+
+    if (ImGui::Begin("メニュー")) {
+    }
+    ImGui::End();
+
+    if (ImGui::Begin("タイムライン")) {
+    }
+    ImGui::End();
     
     // エフェクトスタジオのウィンドウ描画
     EffectStudio::GetInstance()->DrawViewportWindow();

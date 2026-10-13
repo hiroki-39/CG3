@@ -231,7 +231,9 @@ void SceneManager::DrawUI()
 			isOpening = false;
 		}
 
-		transitionRenderer_->Draw(ruleTextureIndex_, prog, isOpening, fadeColor_, edgeSoftness_, edgeColor_);
+		transitionRenderer_->Draw(ruleTextureIndex_, prog, isOpening,
+			transitionType_, fadeColor_, edgeSoftness_, edgeColor_,
+			hexOrigin_, hexTileScale_, hexBorderWidth_, hexGlitchIntensity_);
 	}
 }
 
@@ -282,10 +284,18 @@ void SceneManager::ChangeScene(const std::string& sceneName, float fadeDuration,
 		return;
 	}
 
-	// イン（左右端から中央へ閉じるトランジション）開始
+	// イン（トランジション）開始
 	nextSceneName_ = sceneName;
 	fadeDuration_ = fadeDuration;
-	fadeColor_ = fadeColor;
+	if (transitionType_ == TransitionType::Hexagon)
+	{
+		fadeColor_ = hexFadeColor_;
+		edgeColor_ = hexGlowColor_;
+	}
+	else
+	{
+		fadeColor_ = fadeColor;
+	}
 	fadeTimer_ = 0.0f;
 	transitionProgress_ = 0.0f;
 	holdFrames_ = 0;
@@ -338,24 +348,79 @@ void SceneManager::DrawSceneSelectorUI()
 void SceneManager::DrawTransitionSettingsUI()
 {
 #ifdef USE_IMGUI
-	ImGui::Text("ルール画像トランジション設定");
-	ImGui::SliderFloat("遷移時間 (秒)", &fadeDuration_, 0.1f, 3.0f, "%.2f s");
-	ImGui::SliderFloat("境界のぼかし (Softness)", &edgeSoftness_, 0.001f, 0.3f, "%.3f");
-
-	float fc[4] = { fadeColor_.x, fadeColor_.y, fadeColor_.z, fadeColor_.w };
-	if (ImGui::ColorEdit4("トランジション色", fc))
+	ImGui::TextColored(ImVec4(0.2f, 0.9f, 1.0f, 1.0f), "■ 画面遷移演出（トランジション）設定");
+	
+	// トランジション方式の切り替え
+	int currentType = static_cast<int>(transitionType_);
+	ImGui::Text("方式切り替え:");
+	if (ImGui::RadioButton("ヘキサゴン (Hexagon - PDF仕様)", &currentType, 1))
 	{
-		fadeColor_ = { fc[0], fc[1], fc[2], fc[3] };
+		transitionType_ = TransitionType::Hexagon;
+		fadeDuration_ = 0.9f;
+		fadeColor_ = hexFadeColor_;
+		edgeColor_ = hexGlowColor_;
+	}
+	ImGui::SameLine();
+	if (ImGui::RadioButton("四角形グリッド (Square Grid)", &currentType, 0))
+	{
+		transitionType_ = TransitionType::SquareGrid;
+		fadeDuration_ = 0.5f;
+		fadeColor_ = squareFadeColor_;
+		edgeColor_ = squareEdgeColor_;
 	}
 
-	float ec[4] = { edgeColor_.x, edgeColor_.y, edgeColor_.z, edgeColor_.w };
-	if (ImGui::ColorEdit4("エッジ発光色", ec))
+	ImGui::Separator();
+	ImGui::SliderFloat("遷移時間 (秒)", &fadeDuration_, 0.2f, 3.0f, "%.2f s");
+
+	if (transitionType_ == TransitionType::Hexagon)
 	{
-		edgeColor_ = { ec[0], ec[1], ec[2], ec[3] };
+		ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.5f, 1.0f), "【ヘキサゴン・トランジション パラメータ (PDF仕様)】");
+		
+		float origin[2] = { hexOrigin_.x, hexOrigin_.y };
+		if (ImGui::SliderFloat2("波紋起点 (OriginCoord)", origin, 0.0f, 1.0f, "%.2f"))
+		{
+			hexOrigin_ = { origin[0], origin[1] };
+		}
+		ImGui::SliderFloat("六角形サイズ (HexTileScale: 小さいほど巨大)", &hexTileScale_, 4.0f, 40.0f, "%.1f");
+		ImGui::SliderFloat("輪郭線太さ (BorderWidth)", &hexBorderWidth_, 0.02f, 0.25f, "%.3f");
+		ImGui::SliderFloat("グリッチ明滅 (GlitchIntensity)", &hexGlitchIntensity_, 0.0f, 1.0f, "%.2f");
+
+		float ec[4] = { edgeColor_.x, edgeColor_.y, edgeColor_.z, edgeColor_.w };
+		if (ImGui::ColorEdit4("ネオン発光色 (GlowColorHex)", ec))
+		{
+			edgeColor_ = { ec[0], ec[1], ec[2], ec[3] };
+			hexGlowColor_ = edgeColor_;
+		}
+
+		float fc[4] = { fadeColor_.x, fadeColor_.y, fadeColor_.z, fadeColor_.w };
+		if (ImGui::ColorEdit4("背景ベース色 (FadeColor)", fc))
+		{
+			fadeColor_ = { fc[0], fc[1], fc[2], fc[3] };
+			hexFadeColor_ = fadeColor_;
+		}
+	}
+	else
+	{
+		ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.9f, 1.0f), "【四角形グリッド パラメータ】");
+		ImGui::SliderFloat("境界ぼかし (Softness)", &edgeSoftness_, 0.001f, 0.3f, "%.3f");
+
+		float fc[4] = { fadeColor_.x, fadeColor_.y, fadeColor_.z, fadeColor_.w };
+		if (ImGui::ColorEdit4("トランジション色", fc))
+		{
+			fadeColor_ = { fc[0], fc[1], fc[2], fc[3] };
+			squareFadeColor_ = fadeColor_;
+		}
+
+		float ec[4] = { edgeColor_.x, edgeColor_.y, edgeColor_.z, edgeColor_.w };
+		if (ImGui::ColorEdit4("エッジ発光色", ec))
+		{
+			edgeColor_ = { ec[0], ec[1], ec[2], ec[3] };
+			squareEdgeColor_ = edgeColor_;
+		}
 	}
 
 	ImGui::Spacing();
-	if (ImGui::Button("テスト再生 (現シーン再読込)", ImVec2(200, 32)))
+	if (ImGui::Button("テスト再生 (現シーン再読込)", ImVec2(220, 32)))
 	{
 		ChangeScene(currentSceneName_, fadeDuration_, fadeColor_);
 	}

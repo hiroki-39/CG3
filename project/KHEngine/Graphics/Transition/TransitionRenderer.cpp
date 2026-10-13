@@ -126,7 +126,9 @@ void TransitionRenderer::CreateGraphicsPipeline()
 }
 
 void TransitionRenderer::Draw(uint32_t ruleTextureIndex, float progress, bool isOpening,
-	const Vector4& fadeColor, float edgeSoftness, const Vector4& edgeColor)
+	TransitionType type,
+	const Vector4& fadeColor, float edgeSoftness, const Vector4& edgeColor,
+	const Vector2& originCoord, float hexTileScale, float borderWidth, float glitchIntensity)
 {
 	if (!constMap_) return;
 
@@ -135,8 +137,15 @@ void TransitionRenderer::Draw(uint32_t ruleTextureIndex, float progress, bool is
 	constMap_->progress = progress;
 	constMap_->edgeSoftness = edgeSoftness;
 	constMap_->isOpening = isOpening ? 1 : 0;
-	constMap_->padding0 = 0.0f;
+	constMap_->transitionType = static_cast<int32_t>(type);
 	constMap_->edgeColor = edgeColor;
+	constMap_->originCoord = originCoord;
+	constMap_->hexTileScale = hexTileScale;
+	constMap_->borderWidth = borderWidth;
+	constMap_->glitchIntensity = glitchIntensity;
+	constMap_->padding0 = 0.0f;
+	constMap_->padding1 = 0.0f;
+	constMap_->padding2 = 0.0f;
 
 	auto commandList = dxCommon_->GetCommandList();
 

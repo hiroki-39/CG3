@@ -17,6 +17,8 @@ public:// 構造体
 		Matrix4x4 WVP;
 		Matrix4x4 World;
 		Matrix4x4 WorldInverseTranspose;
+		int32_t isVirtualSpace = 0;
+		float padding[3] = { 0.0f, 0.0f, 0.0f };
 	};
 
 	struct SkyboxVertexData
@@ -49,6 +51,9 @@ public:
 
 	uint32_t GetCubemapSrvIndex() const { return cubemapSrvIndex_; }
 
+	void SetVirtualSpace(bool enable) { isVirtualSpace_ = enable; }
+	bool IsVirtualSpace() const { return isVirtualSpace_; }
+
 private:
 	
 	/// <summary>
@@ -78,6 +83,7 @@ private:
 	Camera* camera_ = nullptr;
 
 	uint32_t cubemapSrvIndex_ = 0;
+	bool isVirtualSpace_ = false;
 
 	// 頂点バッファリソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;

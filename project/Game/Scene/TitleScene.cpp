@@ -57,10 +57,11 @@ void TitleScene::Initialize()
     }
 
     // -------------------------------------------------------------
-    // スカイボックスの初期化
+    // スカイボックスの初期化（スターフォックス風サイバー仮想空間対応）
     // -------------------------------------------------------------
     skybox_ = std::make_unique<Skybox>();
     skybox_->Initialize(dxCommon, "resources/skybox.dds");
+    skybox_->SetVirtualSpace(isVirtualSpace_);
 
     // -------------------------------------------------------------
     // ゲームプレイ用アセットの事前キャッシュ（プリロード）：
@@ -235,6 +236,11 @@ void TitleScene::Initialize()
                     obj->SetEnvironmentTextureIndex(skyboxTexIdx);
                     obj->SetEnvironmentCoefficient(0.45f);
                     obj->SetEnableLighting(true);
+                    if (isVirtualSpace_)
+                    {
+                        // サイバー仮想空間シェーダー（case 7: エメラルドグリッド地面＆ホログラム建造物）を適用
+                        obj->SetSelectLightings(7);
+                    }
                     obj->Update();
 
                     TitleMapObjectNode mapNode;
@@ -296,12 +302,15 @@ void TitleScene::Initialize()
         }
 
         playerObj_->SetScale(playerScale_);
+        // 仮想空間に調和するスタイリッシュなサイバーホログラム自機マテリアル（case 8）
+        playerColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
         playerObj_->SetColor(playerColor_);
+        playerObj_->SetSelectLightings(8); // サイバー仮想空間自機シェーダー（ネオンリム・パネル・ポリゴン消滅ディゾルブ）
         if (skybox_)
         {
             playerObj_->SetEnvironmentTextureIndex(skybox_->GetCubemapSrvIndex());
         }
-        playerObj_->SetEnvironmentCoefficient(envCoefficient_);
+        playerObj_->SetEnvironmentCoefficient(0.0f); // ホログラム発光を純粋に保つため環境反射はオフ
         playerObj_->SetEnableLighting(true);
 
         // 巡航飛行の初期位置に配置
@@ -313,7 +322,7 @@ void TitleScene::Initialize()
     }
 
     // -------------------------------------------------------------
-    // ブースト・気流粒子パーティクルエフェクトの初期化
+    // ブースト・気流粒子・着弾スパークエフェクトの初期化
     // -------------------------------------------------------------
     if (srvManager)
     {
@@ -346,6 +355,9 @@ void TitleScene::Initialize()
         randomEngine_.seed(1337);
     }
 
+    // 3Dポリゴン破片用モデルのロード
+    ModelManager::GetInstance()->LoadModel("polygon_shard.obj");
+
     // 演出タイマーの初期化（起動直後から手前飛び込み登場演出開始）
     isIntro_ = true;
     introTimer_ = 0.0f;
@@ -354,6 +366,8 @@ void TitleScene::Initialize()
     isDiving_ = false;
     diveTimer_ = 0.0f;
     flightProgressZ_ = 0.0f;
+    dissolveProgress_ = 0.0f;
+    polyShards3D_.clear();
 
     // タイトルBGMの再生（ループ再生、音量0.25）
     SoundManager::GetInstance()->PlayBGM("tileBGM.mp3", 0.25f, true);
@@ -457,6 +471,66 @@ void TitleScene::UpdateDebugCamera(float dt)
     debugCamera_->Update();
 }
 
+void TitleScene::SpawnShipPolygonShards(const Vector3& shipPos)
+{
+    auto services = Services();
+    if (!services) return;
+    auto object3dCommon = services->GetObject3dCommon();
+    if (!object3dCommon) return;
+
+    polyShards3D_.clear();
+
+    std::mt19937 rng(54321);
+    std::uniform_real_distribution<float> distOffset(-1.8f, 1.8f);
+    std::uniform_real_distribution<float> distVel(-10.0f, 10.0f);
+    std::uniform_real_distribution<float> distVelY(-6.0f, 9.0f);
+    std::uniform_real_distribution<float> distVelZ(-4.0f, 16.0f);
+    std::uniform_real_distribution<float> distRot(-3.14f, 3.14f);
+    std::uniform_real_distribution<float> distRotSpd(-8.0f, 8.0f);
+    std::uniform_real_distribution<float> distScale(0.40f, 1.10f);
+
+    // 自機周囲から飛び散る48個の3Dポリゴン破片
+    for (int i = 0; i < 48; ++i)
+    {
+        PolygonShard3D shard;
+        shard.position = {
+            shipPos.x + distOffset(rng) * 1.5f,
+            shipPos.y + distOffset(rng) * 0.7f,
+            shipPos.z + distOffset(rng) * 2.0f
+        };
+        shard.velocity = {
+            distVel(rng),
+            distVelY(rng) + 1.5f,
+            distVelZ(rng) + forwardSpeed_
+        };
+        shard.rotation = { distRot(rng), distRot(rng), distRot(rng) };
+        shard.rotSpeed = { distRotSpd(rng), distRotSpd(rng), distRotSpd(rng) };
+        float sc = distScale(rng);
+        shard.scale = { sc, sc, sc };
+        shard.life = 1.0f;
+
+        // エメラルドグリーン＆ネオンシアンの発光ポリゴンカラー
+        if (i % 3 == 0)
+            shard.color = { 0.10f, 1.0f, 0.85f, 1.0f };
+        else if (i % 3 == 1)
+            shard.color = { 0.25f, 0.95f, 1.0f, 1.0f };
+        else
+            shard.color = { 0.05f, 0.85f, 0.65f, 1.0f };
+
+        shard.object = std::make_unique<Object3d>();
+        shard.object->Initialize(object3dCommon);
+        shard.object->SetModel("polygon_shard.obj");
+        shard.object->SetSelectLightings(6); // ネオン高輝度プラズマ発光シェーダー
+        shard.object->SetColor(shard.color);
+        shard.object->SetScale(shard.scale);
+        shard.object->SetRotation(shard.rotation);
+        shard.object->SetTranslate(shard.position);
+        shard.object->Update();
+
+        polyShards3D_.push_back(std::move(shard));
+    }
+}
+
 void TitleScene::TriggerStartTransition(bool isPreview)
 {
     if (isDiving_) return;
@@ -476,7 +550,22 @@ void TitleScene::TriggerStartTransition(bool isPreview)
     diveStartCamRot_ = cameraRot_;
     diveStartProgressZ_ = flightProgressZ_;
 
-    if (startTransitionType_ == StartTransitionType::SonicAfterburner)
+    // 仮想空間自機ポリゴン消滅演出の状態リセット
+    dissolveProgress_ = 0.0f;
+    glitchStarted_ = false;
+    polyShards3D_.clear();
+
+    if (startTransitionType_ == StartTransitionType::VirtualShatter)
+    {
+        // タイムライン（合計 1.15秒）:
+        //  0.00s〜0.45s: 決定ボタン押下 ➔ 自機がポリゴンに分解し、破片が周囲へ美しく分散（グリッチなし）
+        //  0.45s〜1.15s: ポリゴンが分散したところから、激しいグリッチ振動＆カメラシェイクが発動！
+        //  1.15s: 通常のシーンフェードトランジションでゲームシーンへ移行
+        diveDuration_ = isPreview ? 1.35f : 1.15f;
+
+        SpawnShipPolygonShards(diveStartPos_);
+    }
+    else if (startTransitionType_ == StartTransitionType::SonicAfterburner)
     {
         diveDuration_ = 1.3f;
     }
@@ -546,7 +635,7 @@ void TitleScene::Update()
     }
 
     // -------------------------------------------------------------
-    // 決定ボタン押下時の判定（自機を傾けて急降下しゲーム開始）
+    // 決定ボタン押下時の判定（演出開始）
     // -------------------------------------------------------------
     bool isDecisionPressed = false;
 
@@ -588,25 +677,135 @@ void TitleScene::Update()
         // 演出完了時の処理（ポーズ中でない場合のみ）
         if (diveTimer_ >= diveDuration_ && (!prop2PausePreview_ || !isPreviewTransition_))
         {
+            // ポストプロセスのグリッチをリセット
+            if (auto pp = services->GetPostProcess())
+            {
+                pp->SetEffectActive("Random(Glitch)", false);
+            }
+
             if (isPreviewTransition_)
             {
                 // プレビュー時は自動リセットして巡航へ復帰
                 isDiving_ = false;
                 isPreviewTransition_ = false;
                 diveTimer_ = 0.0f;
+                dissolveProgress_ = 0.0f;
+                polyShards3D_.clear();
+                playerColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+                if (playerObj_) playerObj_->SetColor(playerColor_);
             }
             else
             {
-                // 本番突入時: 演出が完全に終わり、自機が飛び去った瞬間に画面遷移を開始！
+                // 本番突入時: 設定されているトランジション（ヘキサゴンまたは四角形グリッド）でゲームシーンへ移行
                 auto sceneManager = GetSceneManager();
                 if (sceneManager && !sceneManager->IsTransitioning())
                 {
-                    sceneManager->ChangeScene("GAMEPLAY", 0.5f);
+                    float fadeDur = sceneManager->GetFadeDuration();
+                    Vector4 fadeCol = sceneManager->GetFadeColor();
+                    sceneManager->ChangeScene("GAMEPLAY", fadeDur, fadeCol);
+                    return;
                 }
             }
         }
 
-        if (startTransitionType_ == StartTransitionType::SonicAfterburner)
+        if (startTransitionType_ == StartTransitionType::VirtualShatter)
+        {
+            // =========================================================
+            // 【仮想空間自機ポリゴン消滅シーケンス（合計 1.15秒）】
+            //  0.00s〜0.45s: 自機がポリゴンに分解し、破片が四散して分散（この間はグリッチ＆シェイクOFFで視認性を確保）
+            //  0.45s〜1.15s: ポリゴンが分散した瞬間、空間グリッチ振動＆激しいカメラシェイク発動！
+            //  1.15s: 通常のフェードトランジションでゲームシーンへ移行
+            // =========================================================
+            flightProgressZ_ += forwardSpeed_ * dt;
+            float deltaZ = flightProgressZ_ - diveStartProgressZ_;
+
+            curPos.x = diveStartPos_.x;
+            curPos.y = diveStartPos_.y;
+            curPos.z = diveStartPos_.z + deltaZ;
+
+            // 0.00s〜0.45s で自機がポリゴンディゾルブ消滅（0.45s時点で完全に透明・分解）
+            dissolveProgress_ = std::clamp(diveTimer_ / 0.45f, 0.0f, 1.0f);
+
+            // 自機のマテリアルアルファ値をディゾルブ進行度に応じて減衰（シェーダー case 8 でポリゴンブロックが分解）
+            playerColor_.w = 1.0f - dissolveProgress_;
+            if (playerObj_)
+            {
+                playerObj_->SetColor(playerColor_);
+            }
+
+            // ポリゴン分散後のグリッチ判定（0.45s以降に発動）
+            bool isGlitchActive = (diveTimer_ >= 0.45f);
+
+            if (isGlitchActive && !glitchStarted_)
+            {
+                glitchStarted_ = true;
+                // 分散完了時のグリッチ発生インパクト音再生
+                SoundManager::GetInstance()->PlaySE("small_explosion.mp3", 0.75f);
+            }
+
+            // ポストプロセス（デジタルグリッチ振動演出: 0.45s以降のみ有効化）
+            if (auto pp = services->GetPostProcess())
+            {
+                pp->SetEffectActive("Random(Glitch)", isGlitchActive);
+                if (isGlitchActive)
+                {
+                    if (auto* d = pp->GetData())
+                    {
+                        float glitchPhase = (diveTimer_ - 0.45f) / 0.70f;
+                        d->glitchStrength = 0.22f + glitchPhase * 0.15f;
+                        d->noiseStrength = 0.12f + glitchPhase * 0.08f;
+                    }
+                }
+            }
+
+            // 決定時も前方に急加速・速度上昇せず、通常の巡航位置を安定維持
+            dodgeThrustBoost_ = 0.0f;
+            curRot = diveStartRot_;
+
+            // カメラ制御: 0.45s以降にグリッチ振動（激しいカメラシェイク）を発動
+            if (!isDebugCamera_ || !debugCamera_)
+            {
+                if (isGlitchActive)
+                {
+                    float glitchPhase = (diveTimer_ - 0.45f) / 0.70f;
+                    float shakeAmp = 0.22f + glitchPhase * 0.18f;
+                    cameraPos_.x = diveStartCamPos_.x + std::sinf(diveTimer_ * 95.0f) * shakeAmp;
+                    cameraPos_.y = diveStartCamPos_.y + std::cosf(diveTimer_ * 115.0f) * shakeAmp * 0.8f;
+                }
+                else
+                {
+                    // 分散中（0.0s〜0.45s）はカメラを安定させ、ポリゴンの飛散を美しく見せる
+                    cameraPos_.x = diveStartCamPos_.x;
+                    cameraPos_.y = diveStartCamPos_.y;
+                }
+                cameraPos_.z = diveStartCamPos_.z + deltaZ;
+                cameraRot_ = diveStartCamRot_;
+            }
+
+            // 3Dポリゴン破片の更新（機体から四散して消滅）
+            for (auto& shard : polyShards3D_)
+            {
+                if (!shard.object) continue;
+                shard.position.x += shard.velocity.x * dt;
+                shard.position.y += shard.velocity.y * dt;
+                shard.position.z += shard.velocity.z * dt;
+                shard.rotation.x += shard.rotSpeed.x * dt;
+                shard.rotation.y += shard.rotSpeed.y * dt;
+                shard.rotation.z += shard.rotSpeed.z * dt;
+
+                // 0.0sから分散開始し、1.10sにかけてフェードアウト
+                float shardFade = std::clamp(1.0f - (diveTimer_ / 1.10f), 0.0f, 1.0f);
+                Vector4 col = shard.color;
+                col.w = shardFade;
+                shard.object->SetColor(col);
+                shard.object->SetCamera(activeCamera);
+                shard.object->SetTranslate(shard.position);
+                shard.object->SetRotation(shard.rotation);
+                shard.object->SetScale(shard.scale * (1.0f + dissolveProgress_ * 0.3f));
+                shard.object->Update();
+            }
+        }
+        else if (startTransitionType_ == StartTransitionType::SonicAfterburner)
         {
             // =========================================================
             // 【案1: 超音速アフターバーナー上昇】（大空・上空へ急上昇突破）
@@ -1264,7 +1463,12 @@ void TitleScene::Update()
 
         if (isDiving_)
         {
-            if (startTransitionType_ == StartTransitionType::SonicAfterburner)
+            if (startTransitionType_ == StartTransitionType::VirtualShatter)
+            {
+                // 仮想空間自機ポリゴン消滅演出: エメラルドシアン〜高輝度ホワイトシアン
+                thrusterEffect_.SetBaseColor(dissolveProgress_ > 0.0f ? Vector4{ 0.85f, 1.0f, 0.96f, 1.0f } : Vector4{ 0.25f, 1.0f, 0.85f, 1.0f });
+            }
+            else if (startTransitionType_ == StartTransitionType::SonicAfterburner)
             {
                 // 超音速アフターバーナー: 白熱オレンジ〜ホワイトシアンの超巨大高エネルギー炎
                 float t = diveTimer_ / diveDuration_;
@@ -1445,6 +1649,8 @@ void TitleScene::Update()
                 if (auto sm = GetSceneManager())
                 {
                     sm->DrawSceneSelectorUI();
+                    ImGui::Spacing();
+                    sm->DrawTransitionSettingsUI();
                 }
             }
 
@@ -1491,19 +1697,7 @@ void TitleScene::Update()
 
                 if (ImGui::Button("ゲームプレイを開始する (Start Game)", ImVec2(-1, 40)))
                 {
-                    if (!isDiving_)
-                    {
-                        services->SetGamePlaying(true);
-                        isDiving_ = true;
-                        diveTimer_ = 0.0f;
-                        diveStartPos_ = playerPos_;
-                        diveStartRot_ = playerRot_;
-                        auto sm = GetSceneManager();
-                        if (sm && !sm->IsTransitioning())
-                        {
-                            sm->ChangeScene("GAMEPLAY", 1.0f);
-                        }
-                    }
+                    TriggerStartTransition(false);
                 }
             }
 
@@ -1526,9 +1720,29 @@ void TitleScene::Update()
 
                 ImGui::Spacing();
                 ImGui::Separator();
+                ImGui::TextColored(ImVec4(0.15f, 1.0f, 0.80f, 1.0f), "■ サイバー仮想空間ビジュアル (Star Fox Virtual Space)");
+                if (ImGui::Checkbox("スターフォックス風 仮想空間シェーダー有効##VirtualSpace", &isVirtualSpace_))
+                {
+                    if (skybox_)
+                    {
+                        skybox_->SetVirtualSpace(isVirtualSpace_);
+                    }
+                    for (auto& nodeItem : titleMapNodes_)
+                    {
+                        if (nodeItem.object)
+                        {
+                            nodeItem.object->SetSelectLightings(isVirtualSpace_ ? 7 : 1);
+                        }
+                    }
+                }
+                ImGui::TextDisabled("※ONでエメラルドグリッド地面・ホログラム都市・オーロラ宇宙空間になります");
+
+                ImGui::Spacing();
+                ImGui::Separator();
                 ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "■ スタート演出切り替え (Start Transition)");
                 int currentType = static_cast<int>(startTransitionType_);
                 const char* typeNames[] = {
+                    "新演出(A案): オート4連射 ➔ 画面亀裂 ➔ 仮想空間粉砕ブレイク",
                     "案1: 超音速アフターバーナー上昇 (大空へ急上昇突破)",
                     "案2: 左旋回クライムブレイク (建造物を飛び越え左上空へ離脱)"
                 };
@@ -1775,8 +1989,8 @@ void TitleScene::Update()
                     cameraPos_ = { 0.0f, 6.3f, -9.5f };
                     cameraRot_ = { 0.04f, 0.0f, 0.0f };
                     nozzleOffset_ = { 0.0f, -0.22f, -3.00f };
-                    startTransitionType_ = StartTransitionType::SonicAfterburner;
-                    diveDuration_ = 1.3f;
+                    startTransitionType_ = StartTransitionType::VirtualShatter;
+                    diveDuration_ = 1.48f;
                     isDiving_ = false;
                     isPreviewTransition_ = false;
                 }
@@ -1877,22 +2091,48 @@ void TitleScene::Draw()
         }
     }
 
-    // 3. 自機モデル描画
-    if (playerObj_)
+    // 3. 自機モデル（消滅していない場合）＆3Dポリゴン破片描画
+    if (playerObj_ && playerColor_.w > 0.001f)
     {
         playerObj_->Draw();
     }
 
-    // 4. スラスターブースト＆スピードラインパーティクル描画
-    thrusterEffect_.Draw();
-    windEffect_.Draw();
+    for (const auto& shard : polyShards3D_)
+    {
+        if (shard.object)
+        {
+            shard.object->Draw();
+        }
+    }
+
+    // 4. スラスターブースト＆スピードライン描画
+    if (playerColor_.w > 0.1f)
+    {
+        thrusterEffect_.Draw();
+        windEffect_.Draw();
+    }
+}
+
+void TitleScene::DrawUI()
+{
+    BaseScene::DrawUI();
 }
 
 void TitleScene::Finalize()
 {
+    // ポストプロセスのグリッチ等をリセット
+    if (auto services = Services())
+    {
+        if (auto pp = services->GetPostProcess())
+        {
+            pp->SetEffectActive("Random(Glitch)", false);
+        }
+    }
+
     // タイトルBGM停止
     SoundManager::GetInstance()->StopBGM();
 
+    polyShards3D_.clear();
     titleMapNodes_.clear();
     playerObj_.reset();
     skybox_.reset();
