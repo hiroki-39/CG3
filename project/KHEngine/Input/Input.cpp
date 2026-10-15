@@ -1,4 +1,5 @@
-﻿#include "Input.h"
+#include "Input.h"
+#include "KHEngine/Core/Services/EngineServices.h"
 
 using namespace Microsoft::WRL;
 
@@ -59,8 +60,6 @@ void Input::Initialize(WinApp* winApp)
 
 void Input::Update()
 {
-	HRESULT result;
-
 	//前回のキーの入力状態を保存
 	memcpy(keyPre, key, sizeof(key));
 
@@ -101,10 +100,30 @@ void Input::Update()
 		padStatePre = padState;
 		memset(&padState, 0, sizeof(padState));
 	}
+
+	// 1のキーでデモプレイモードの解除・トグル切り替え
+	if (key[DIK_1] && !keyPre[DIK_1])
+	{
+		auto services = EngineServices::GetInstance();
+		if (services)
+		{
+			services->ToggleDemoMode();
+		}
+	}
 }
 
 bool Input::PushKey(BYTE keyNumber)
 {
+	// デモプレイ中は1キー以外のキー入力を受け付けない
+	auto services = EngineServices::GetInstance();
+	if (services && services->IsDemoMode())
+	{
+		if (keyNumber != DIK_1)
+		{
+			return false;
+		}
+	}
+
 	//キーが押されている場合はtrueを返す
 	if (key[keyNumber])
 	{
@@ -117,6 +136,16 @@ bool Input::PushKey(BYTE keyNumber)
 
 bool Input::TriggerKey(BYTE keyNumber)
 {
+	// デモプレイ中は1キー以外のキー入力を受け付けない
+	auto services = EngineServices::GetInstance();
+	if (services && services->IsDemoMode())
+	{
+		if (keyNumber != DIK_1)
+		{
+			return false;
+		}
+	}
+
 	//キーが押されていて、前回の状態が押されていない場合はトリガーと判断する
 	if (key[keyNumber] && !keyPre[keyNumber])
 	{
@@ -130,12 +159,18 @@ bool Input::TriggerKey(BYTE keyNumber)
 /* --- マウス --- */
 bool Input::PushMouseButton(int button)
 {
+	auto services = EngineServices::GetInstance();
+	if (services && services->IsDemoMode()) return false;
+
 	if (button < 0 || button >= 4) return false;
 	return (mouseState.rgbButtons[button] & 0x80) != 0;
 }
 
 bool Input::TriggerMouseButton(int button)
 {
+	auto services = EngineServices::GetInstance();
+	if (services && services->IsDemoMode()) return false;
+
 	if (button < 0 || button >= 4) return false;
 	bool now = (mouseState.rgbButtons[button] & 0x80) != 0;
 	bool prev = (mouseStatePre.rgbButtons[button] & 0x80) != 0;
@@ -144,28 +179,43 @@ bool Input::TriggerMouseButton(int button)
 
 LONG Input::GetMouseMoveX() const
 {
+	auto services = EngineServices::GetInstance();
+	if (services && services->IsDemoMode()) return 0;
+
 	return mouseState.lX;
 }
 
 LONG Input::GetMouseMoveY() const
 {
+	auto services = EngineServices::GetInstance();
+	if (services && services->IsDemoMode()) return 0;
+
 	return mouseState.lY;
 }
 
 LONG Input::GetMouseWheel() const
 {
+	auto services = EngineServices::GetInstance();
+	if (services && services->IsDemoMode()) return 0;
+
 	return mouseState.lZ;
 }
 
 /* --- コントローラ（XInput） --- */
 bool Input::PushPadButton(WORD buttonMask)
 {
+	auto services = EngineServices::GetInstance();
+	if (services && services->IsDemoMode()) return false;
+
 	if (!padConnected) return false;
 	return (padState.Gamepad.wButtons & buttonMask) != 0;
 }
 
 bool Input::TriggerPadButton(WORD buttonMask)
 {
+	auto services = EngineServices::GetInstance();
+	if (services && services->IsDemoMode()) return false;
+
 	if (!padConnected) return false;
 	bool now = (padState.Gamepad.wButtons & buttonMask) != 0;
 	bool prev = (padStatePre.Gamepad.wButtons & buttonMask) != 0;

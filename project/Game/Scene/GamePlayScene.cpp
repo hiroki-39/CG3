@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "GamePlayScene.h"
 #include "KHEngine/Core/Services/EngineServices.h"
 #include "KHEngine/Core/Utility/Log/Logger.h"
@@ -376,6 +376,8 @@ void GamePlayScene::Initialize()
 	auto dxCommon = services->GetDirectXCommon();
 	auto srvManager = services->GetSrvManager();
 	auto spriteCommon = services->GetSpriteCommon();
+
+	demoTimer_ = 0.0f;
 
 	collisionManager_ = std::make_unique<CollisionManager>();
 
@@ -1076,6 +1078,26 @@ void GamePlayScene::Update()
 		ReloadLevel();
 	}
 
+	// デモプレイ中：ゲームプレイ部分は見せず、演出・画面遷移を見せた後タイトルシーンへ戻る
+	if (services && services->IsDemoMode())
+	{
+		demoTimer_ += dt;
+		// 画面遷移（明転約0.9秒）完了後、ゲーム画面を約1.6秒見せてからタイトルへ戻る（合計2.5秒）
+		if (demoTimer_ >= 2.5f)
+		{
+			auto sceneManager = GetSceneManager();
+			if (sceneManager && !sceneManager->IsTransitioning())
+			{
+				float fadeDur = sceneManager->GetFadeDuration();
+				Vector4 fadeCol = sceneManager->GetFadeColor();
+				sceneManager->ChangeScene("TITLE", fadeDur, fadeCol);
+			}
+		}
+	}
+	else
+	{
+		demoTimer_ = 0.0f;
+	}
 
 #ifdef ENABLE_EDITOR
 	// EngineServicesのゲーム再生状態と同期

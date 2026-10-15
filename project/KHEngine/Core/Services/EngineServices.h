@@ -50,6 +50,11 @@ public:
 	void SetEditorMode(bool mode) { isEditorMode_ = mode; }
 	bool GetEditorMode() const { return isEditorMode_; }
 
+	// デモプレイモード設定（デフォルト: 有効）
+	void SetDemoMode(bool mode) { isDemoMode_ = mode; }
+	bool IsDemoMode() const { return isDemoMode_; }
+	void ToggleDemoMode() { isDemoMode_ = !isDemoMode_; }
+
 #ifdef ENABLE_EDITOR
 	void SetGamePlaying(bool playing);
 	bool IsGamePlaying() const { return isGamePlaying_; }
@@ -77,6 +82,7 @@ private:
 	PostProcess* postProcess_ = nullptr;
 
 	float deltaTime_ = 1.0f / 60.0f;
+	bool isDemoMode_ = false; // デモプレイモード（デフォルト: false 通常プレイ。1キーまたはImGuiでデモ突入可能）
 
 #ifdef ENABLE_EDITOR
 	bool isEditorMode_ = true;

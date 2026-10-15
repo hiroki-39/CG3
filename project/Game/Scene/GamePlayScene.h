@@ -87,6 +87,9 @@ private:
     bool isPlaying_ = true;
 #endif
 
+    // デモプレイ演出用タイマー（一定時間後にタイトルへ戻る）
+    float demoTimer_ = 0.0f;
+
     
     Vector3 currentCameraRot_ = {0.0f, 0.0f, 0.0f};
     float lastCameraYaw_ = 0.0f;

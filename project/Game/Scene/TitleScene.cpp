@@ -365,6 +365,7 @@ void TitleScene::Initialize()
     idleTimer_ = 0.0f;
     isDiving_ = false;
     diveTimer_ = 0.0f;
+    demoTimer_ = 0.0f;
     flightProgressZ_ = 0.0f;
     dissolveProgress_ = 0.0f;
     polyShards3D_.clear();
@@ -646,6 +647,23 @@ void TitleScene::Update()
         {
             isDecisionPressed = true;
         }
+    }
+
+    // デモプレイ中：自機登場演出（約1.4秒）完了後、巡航飛行をじっくり眺めてから自動突入
+    if (services && services->IsDemoMode())
+    {
+        if (!isIntro_ && !isDiving_)
+        {
+            demoTimer_ += dt;
+            if (demoTimer_ >= demoCruiseDuration_)
+            {
+                isDecisionPressed = true;
+            }
+        }
+    }
+    else
+    {
+        demoTimer_ = 0.0f;
     }
 
     if (isDecisionPressed && !isDiving_)
@@ -1693,6 +1711,21 @@ void TitleScene::Update()
             {
                 ImGui::Text("現在: タイトル画面 (TITLE SCENE)");
                 ImGui::TextDisabled("SPACEキーを押すか、下のボタンでゲームを開始できます。");
+                ImGui::Spacing();
+
+                if (auto services = Services())
+                {
+                    bool isDemo = services->IsDemoMode();
+                    if (ImGui::Checkbox("デモプレイモード (展示用ループ)##TitleDemo", &isDemo))
+                    {
+                        services->SetDemoMode(isDemo);
+                    }
+                    if (isDemo)
+                    {
+                        ImGui::SliderFloat("巡航飛行鑑賞時間 (秒)##DemoCruise", &demoCruiseDuration_, 3.0f, 30.0f, "%.1f 秒");
+                        ImGui::ProgressBar(std::clamp(demoTimer_ / demoCruiseDuration_, 0.0f, 1.0f), ImVec2(-1, 16));
+                    }
+                }
                 ImGui::Spacing();
 
                 if (ImGui::Button("ゲームプレイを開始する (Start Game)", ImVec2(-1, 40)))
