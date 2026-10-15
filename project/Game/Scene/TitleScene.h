@@ -105,6 +105,10 @@ private:
 
     void TriggerStartTransition(bool isPreview);
 
+    // デモプレイ演出用タイマー・巡航時間設定
+    float demoTimer_ = 0.0f;
+    float demoCruiseDuration_ = 10.0f; // 巡航飛行をじっくり眺める時間（秒）
+
     // 飛行・巡航演出パラメータ（左右上下のゆったりとした移動とバンク）
     float idleTimer_ = 0.0f;
     bool isFlightMotion_ = true;

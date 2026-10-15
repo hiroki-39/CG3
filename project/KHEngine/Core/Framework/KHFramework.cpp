@@ -12,6 +12,7 @@
 #include "KHEngine/Debug/Editor/EnemyStudio.cpp"
 #endif
 #include "KHEngine/Core/Services/EngineServices.h"
+#include "KHEngine/Scene/SceneManager.h"
 #include <chrono>
 
 void KHFramework::Run()
@@ -155,6 +156,33 @@ void KHFramework::FrameworkUpdate(float deltaTime)
 		{
 			// フルスクリーンプレイ時: ForegroundDrawListでUIテキストを描画
 			UITextManager::GetInstance()->Draw(ImGui::GetForegroundDrawList(), ImVec2(0.0f, 0.0f), ImVec2(1280.0f, 720.0f));
+		}
+
+		// デモプレイモード / 通常プレイモードのガイド表示（展示用バッジ）
+		auto drawList = ImGui::GetForegroundDrawList();
+		auto services = EngineServices::GetInstance();
+		if (drawList && services)
+		{
+			if (services->IsDemoMode())
+			{
+				// デモプレイ中：サイバーブルーのスタイリッシュなバッジ
+				drawList->AddRectFilled(ImVec2(16.0f, 16.0f), ImVec2(330.0f, 46.0f), IM_COL32(8, 16, 26, 210), 6.0f);
+				drawList->AddRect(ImVec2(16.0f, 16.0f), ImVec2(330.0f, 46.0f), IM_COL32(0, 220, 255, 220), 6.0f, 0, 1.5f);
+				drawList->AddText(ImVec2(24.0f, 22.0f), IM_COL32(0, 240, 255, 255), "DEMO PLAY MODE | Press [1] to Play");
+			}
+			else
+			{
+				// 通常プレイ時（解除中）：タイトル画面またはエディタ中のみ控えめに案内を表示
+				auto sm = services->GetSceneManager();
+				bool isTitle = (sm && sm->GetCurrentSceneName() == "TITLE");
+				bool isEditor = services->GetEditorMode();
+				if (isTitle || isEditor)
+				{
+					drawList->AddRectFilled(ImVec2(16.0f, 16.0f), ImVec2(265.0f, 46.0f), IM_COL32(8, 20, 14, 180), 6.0f);
+					drawList->AddRect(ImVec2(16.0f, 16.0f), ImVec2(265.0f, 46.0f), IM_COL32(80, 220, 120, 180), 6.0f, 0, 1.0f);
+					drawList->AddText(ImVec2(24.0f, 22.0f), IM_COL32(100, 240, 140, 220), "PLAY MODE | Press [1] for Demo");
+				}
+			}
 		}
 	}
 #endif
